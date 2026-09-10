@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-lab.invalid/schemas/experiment/0.1",
+  "title": "Virtual Lab Experiment",
+  "type": "object",
+  "required": ["schema_version", "experiment_id", "revision", "name", "controller", "environment", "population", "metrics"],
+  "properties": {
+    "schema_version": {"const": "vlab.experiment/0.1"},
+    "workspace_id": {"type": ["string", "null"]},
+    "experiment_id": {"type": "string", "minLength": 1},
+    "revision": {"type": "integer", "minimum": 1},
+    "name": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "created_at": {"type": "string"},
+    "created_by": {
+      "type": "object",
+      "properties": {
+        "human_id": {"type": ["string", "null"]},
+        "actor_type": {"enum": ["human", "ai"]},
+        "ai_client": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "parent": {
+      "type": ["object", "null"],
+      "properties": {
+        "experiment_id": {"type": "string"},
+        "revision": {"type": "integer"}
+      }
+    },
+    "controller": {
+      "type": "object",
+      "required": ["language", "source"],
+      "properties": {
+        "language": {"const": "python-vlab"},
+        "language_version": {"type": "string"},
+        "source": {"type": "string"},
+        "source_hash": {"type": "string"},
+        "ir_version": {"type": "string"},
+        "ir_hash": {"type": "string"}
+      }
+    },
+    "environment": {"type": "object"},
+    "population": {"type": "object"},
+    "physics": {"type": "object"},
+    "observation": {"type": "object"},
+    "timing": {
+      "type": "object",
+      "properties": {
+        "physics_dt": {"type": "number", "exclusiveMinimum": 0},
+        "control_dt": {"type": "number", "exclusiveMinimum": 0},
+        "metric_dt": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "metrics": {"type": "array", "items": {"type": "object"}},
+    "parameters": {"type": "object"},
+    "references": {"type": "array", "items": {"type": "object"}
+  },
+  "additionalProperties": true
+}
