@@ -11,7 +11,7 @@
     <header>
       <p class="eyebrow">VIRTUAL LAB · ROUND 1</p>
       <h1>Executable architecture probe</h1>
-      <p class="lede">A deterministic Rust/WASM simulation executes inside a Web Worker. Python-like controller source is parsed and lowered to versioned, target-independent IR before execution.</p>
+      <p class="lede">A deterministic Rust/WASM simulation executes inside a Web Worker. Python-like controller source is parsed, type-checked, lowered to versioned IR, then compiled once to executable Rust bytecode inside the WASM worker.</p>
     </header>
 
     <section class="grid">
@@ -33,10 +33,10 @@
       <article class="card editor-card">
         <div class="section-head">
           <div>
-            <h2>python-vlab/0.1 probe</h2>
-            <p>Author-facing source → parser/validation → controller IR.</p>
+            <h2>python-vlab/0.1 compiled controller</h2>
+            <p>Source → validation/type check → versioned IR → executable Rust bytecode.</p>
           </div>
-          <button id="compile">Compile to IR</button>
+          <button id="compile" disabled>Compile &amp; apply</button>
         </div>
         <textarea id="controller-source" spellcheck="false" aria-label="Controller source"></textarea>
         <p id="compile-error" class="error" role="alert"></p>
@@ -44,7 +44,7 @@
     </section>
 
     <section class="card">
-      <h2>Versioned controller IR</h2>
+      <h2>Versioned controller IR · compilation input</h2>
       <pre id="controller-ir"></pre>
     </section>
   </main>

@@ -1,6 +1,9 @@
 use std::f64::consts::TAU;
 use wasm_bindgen::prelude::*;
 
+mod controller_ir;
+pub use controller_ir::IrControllerRuntime;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec2 {
     pub x: f64,
@@ -77,13 +80,10 @@ pub struct Action {
     pub turning: f64,
 }
 
-/// Physics owns physical evolution and action application. Controllers never
-/// receive mutable physical state.
 pub trait PhysicsModel {
     fn step(&self, state: &mut [AgentPhysicalState], actuators: &[Action], dt: f64);
 }
 
-/// Observation construction belongs to the simulator/environment boundary.
 pub trait ObservationModel {
     fn observe(
         &self,
@@ -94,8 +94,6 @@ pub trait ObservationModel {
     ) -> Observation;
 }
 
-/// Replaceable spatial query boundary. Optimized implementations must be
-/// checked against BruteForceNeighbourIndex.
 pub trait NeighbourIndex {
     fn query(
         &self,
@@ -106,15 +104,11 @@ pub trait NeighbourIndex {
     );
 }
 
-/// Compiled controllers receive only declared observations and return actions.
-/// Any controller-private state is encapsulated inside the runtime.
 pub trait ControllerRuntime {
     fn reset(&mut self, agent_count: usize);
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action;
 }
 
-/// Metrics are read-only scientific observers and have their own sampling
-/// schedule.
 pub trait MetricRuntime {
     fn reset(&mut self);
     fn observe(&mut self, state: &[AgentPhysicalState], scientific_time: f64);
@@ -185,8 +179,6 @@ impl ObservationModel for LocalObservationModel {
     }
 }
 
-/// A deliberately simple local controller used only to exercise the generic
-/// Round 1B kernel. It is not the Active Elastic Model reference controller.
 #[derive(Clone, Debug)]
 pub struct LocalCentroidProbeController {
     base_speed: f64,
@@ -355,6 +347,11 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.metrics.push(metric);
     }
 
+    pub fn replace_controller(&mut self, controller: C) {
+        self.controller = controller;
+        self.reset();
+    }
+
     pub fn reset(&mut self) {
         self.state = Self::initial_state(self.seed, &self.config);
         self.actuators.fill(Action::default());
@@ -410,8 +407,6 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.control_updates
     }
 
-    /// Snapshot is a pure read/copy operation. Renderer sampling frequency
-    /// therefore cannot advance or mutate scientific state.
     pub fn snapshot(&self) -> Snapshot {
         Snapshot {
             scientific_time: self.scientific_time(),
@@ -423,13 +418,18 @@ impl<C: ControllerRuntime> Simulation<C> {
 
 #[wasm_bindgen]
 pub struct ProbeSimulation {
-    simulation: Simulation<LocalCentroidProbeController>,
+    simulation: Simulation<IrControllerRuntime>,
 }
 
 #[wasm_bindgen]
 impl ProbeSimulation {
     #[wasm_bindgen(constructor)]
-    pub fn new(seed: u32, agent_count: u32) -> Result<ProbeSimulation, JsValue> {
+    pub fn new(
+        seed: u32,
+        agent_count: u32,
+        controller_ir_json: &str,
+        parameters_json: &str,
+    ) -> Result<ProbeSimulation, JsValue> {
         let config = SimulationConfig {
             agent_count: agent_count as usize,
             physics_dt: 0.01,
@@ -438,10 +438,18 @@ impl ProbeSimulation {
             neighbour_radius: 1.5,
             initial_extent: 2.0,
         };
-        let controller = LocalCentroidProbeController::new(0.12, 0.003, 0.08);
+        let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
+            .map_err(|message| JsValue::from_str(&message))?;
         let simulation = Simulation::new(seed as u64, config, controller)
             .map_err(|message| JsValue::from_str(&message))?;
         Ok(Self { simulation })
+    }
+
+    pub fn set_controller(&mut self, controller_ir_json: &str, parameters_json: &str) -> Result<(), JsValue> {
+        let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
+            .map_err(|message| JsValue::from_str(&message))?;
+        self.simulation.replace_controller(controller);
+        Ok(())
     }
 
     pub fn advance_ticks(&mut self, ticks: u32) -> f64 {
