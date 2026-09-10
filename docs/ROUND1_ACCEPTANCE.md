@@ -18,36 +18,39 @@ The deployed standalone Virtual Lab must present:
 
 ## Scientific acceptance scenario
 
-1. Open the actual deployed GitHub Pages application.
-2. Confirm the simulation is computed locally rather than replaying a canned animation.
-3. Run the reference Active Elastic Model.
-4. Confirm controller source corresponds recognizably to the local scientific rule.
-5. Pause and restart successfully.
-6. Modify a scientifically meaningful controller expression/sign/term.
-7. Apply/recompile the source and restart.
-8. Confirm the trajectory/collective behavior changes in a scientifically corresponding way.
-9. Restore the reference controller and reproduce the reference behavior for the same seed/configuration.
-10. Introduce invalid source and confirm a useful compile/validation error without corrupting the lab session.
-11. Restore valid source and run again.
+The complete Round 1 product must support this end-to-end scenario:
 
-## Engineering self-verification loop
+1. open the actual deployed GitHub Pages application;
+2. confirm the simulation is computed locally rather than replaying a canned animation;
+3. run the reference Active Elastic Model;
+4. confirm controller source corresponds recognizably to the local scientific rule;
+5. pause and restart successfully;
+6. modify a scientifically meaningful controller expression/sign/term;
+7. Apply/recompile the source and restart;
+8. confirm the trajectory/collective behavior changes in a scientifically corresponding way;
+9. restore the reference controller and reproduce the reference behavior for the same seed/configuration;
+10. introduce invalid source and confirm a useful compile/validation error without corrupting the lab session;
+11. restore valid source and run again.
 
-The implementation agent repeats:
+## Two-agent acceptance loop
 
-```text
-implement
-  -> automated tests
-  -> production/static build
-  -> deploy GitHub Pages
-  -> open deployed URL in browser
-  -> interact with all required controls
-  -> inspect visual state + console/network/runtime errors
-  -> compare behavior with requirements
-  -> repair
-  -> repeat
-```
+Round 1 deliberately separates implementation from browser/computer verification.
 
-The first successful build is not a completion condition.
+### ChatGPT responsibility
+
+ChatGPT performs architecture, implementation, scientific/software tests, repository changes, build/CI/deployment configuration, deployment, and defect repair. Before browser handoff, ChatGPT verifies everything that can be established through code, tests, build artifacts, deployment state, and repository inspection.
+
+### Work responsibility
+
+Work performs only the microscopic deployed-browser checks defined in:
+
+- #16 — desktop simulation controls;
+- #17 — controller edit, compile error, and recovery;
+- #18 — responsive UI, reload stability, console/network/runtime errors.
+
+Each Work issue records PASS/FAIL and exact reproduction evidence. A Work failure returns to ChatGPT for repair and redeployment, after which that same Work checklist is rerun.
+
+This loop continues until all three Work issues pass.
 
 ## Automated invariant checks expected in Round 1
 
@@ -65,4 +68,4 @@ The first successful build is not a completion condition.
 
 ## Owner-review boundary
 
-The implementation agent should resolve ordinary software defects before handoff. The owner is the final scientific oracle for whether the reproduced Active Elastic dynamics and deliberately broken-controller failure modes are faithful to the model.
+ChatGPT and Work should resolve ordinary software defects before owner handoff. The owner is the final scientific oracle for whether the reproduced Active Elastic dynamics and deliberately broken-controller failure modes are faithful to the model.
