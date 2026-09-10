@@ -74,7 +74,7 @@ Replaceable adapters:
 
 ### Round 1
 
-Polished standalone lab + Rust/WASM scientific kernel + Active Elastic Model + visible editable Python controller + Apply/recompile/restart + live visualization + multi-experiment UI foundation + closed-loop browser verification.
+Polished standalone lab + Rust/WASM scientific kernel + Active Elastic Model + visible editable Python controller + Apply/recompile/restart + live visualization + multi-experiment UI foundation + deployed-browser verification.
 
 ### Round 2
 
@@ -93,6 +93,28 @@ Active Elastic Model:
 
 A correct Round 1 must expose the real model/controller semantics rather than a hard-coded flock-like animation. The owner should be able to alter a scientifically meaningful controller rule and observe the corresponding change/failure after recompilation/restart.
 
+## Execution ownership
+
+The current project uses two AI execution roles:
+
+- **ChatGPT** is the primary implementation agent. It owns architecture, scientific/software implementation, automated tests, GitHub repository changes, CI/build/deployment configuration, defect repair, and redeployment.
+- **Work** is the cloud-browser verification agent. It owns only issues explicitly marked `[WORK]`, with small deterministic browser checklists.
+
+For Round 1, ChatGPT owns #1, #2, and #11–#15. Work owns #16–#18. Later-round ownership is assigned when those rounds become active.
+
+GitHub's native assignee field is not used to represent these product agents; execution ownership is encoded in issue titles and bodies.
+
 ## Closed-loop development principle
 
-Implementation agents are expected to close their own loop: implement, build, test, deploy, open the actual deployed application, interact with it, inspect behavior and browser/runtime errors, repair, and repeat before requesting scientific-owner feedback. Human review should focus on scientific fidelity and design judgment rather than elementary software breakage.
+The closed loop is distributed explicitly across the two agents:
+
+```text
+ChatGPT implement/test/deploy
+  -> Work exercise deployed browser checklist
+  -> PASS: continue/close gate
+  -> FAIL: exact reproduction evidence
+  -> ChatGPT repair/redeploy
+  -> Work rerun same checklist
+```
+
+This repeats until the deployed product passes all applicable checks. Human review should focus on scientific fidelity and design judgment rather than elementary software breakage.
