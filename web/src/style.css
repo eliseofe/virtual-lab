@@ -1,0 +1,29 @@
+:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #182026; background: #f3f5f6; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0 72px; }
+header { max-width: 800px; margin-bottom: 28px; }
+.eyebrow { font-size: 12px; letter-spacing: .16em; font-weight: 700; margin: 0 0 8px; }
+h1 { font-size: clamp(34px, 6vw, 64px); line-height: 1; margin: 0; letter-spacing: -.035em; }
+.lede { color: #53616a; font-size: 17px; line-height: 1.55; max-width: 760px; }
+.grid { display: grid; grid-template-columns: minmax(280px, .78fr) minmax(420px, 1.45fr); gap: 18px; align-items: start; }
+.card { background: white; border: 1px solid #dde2e5; border-radius: 16px; padding: 22px; box-shadow: 0 8px 24px rgba(24, 32, 38, .05); margin-bottom: 18px; }
+h2 { font-size: 17px; margin: 0 0 12px; }
+p { line-height: 1.5; }
+#worker-status { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: #796e25; }
+#worker-status[data-state="ready"] { color: #17663b; }
+#worker-status[data-state="error"], .error { color: #a12622; }
+.metric { margin: 24px 0; padding: 18px; background: #f6f8f9; border-radius: 12px; }
+.metric span { display: block; color: #66737b; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.metric strong { display: block; font-size: 34px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.actions, .section-head { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+button { border: 1px solid #c9d0d4; border-radius: 9px; background: #fff; padding: 9px 12px; font: inherit; cursor: pointer; }
+button:hover:not(:disabled) { background: #f4f6f7; }
+button:disabled { opacity: .45; cursor: default; }
+.note, .section-head p { color: #69767e; font-size: 13px; }
+.section-head p { margin: 4px 0 0; }
+textarea, pre { width: 100%; font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+textarea { min-height: 330px; resize: vertical; border: 1px solid #d9dfe2; border-radius: 10px; padding: 14px; margin-top: 14px; background: #fbfcfc; }
+pre { overflow: auto; background: #12171a; color: #e8edef; border-radius: 10px; padding: 16px; min-height: 170px; }
+.error { min-height: 1.2em; font-size: 13px; }
+@media (max-width: 800px) { main { padding-top: 32px; } .grid { grid-template-columns: 1fr; } .section-head { align-items: flex-start; } textarea { min-height: 280px; } }

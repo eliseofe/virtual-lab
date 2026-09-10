@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Virtual Lab · Round 1A execution probe</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">VIRTUAL LAB · ROUND 1A</p>
+      <h1>Executable architecture probe</h1>
+      <p class="lede">Rust/WASM scientific time executes inside a Web Worker. Python-like controller source is parsed and lowered to versioned, target-independent IR before execution.</p>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Scientific kernel boundary</h2>
+        <p id="worker-status" data-state="loading">Loading WASM worker…</p>
+        <div class="metric"><span>Scientific time</span><strong id="scientific-time">0.000</strong></div>
+        <div class="actions">
+          <button id="advance" disabled>Advance 10 physics ticks</button>
+          <button id="reset" disabled>Reset</button>
+        </div>
+        <p class="note">This probe advances by explicit scientific ticks. Rendering and wall-clock frame cadence do not advance the kernel.</p>
+      </article>
+
+      <article class="card editor-card">
+        <div class="section-head">
+          <div>
+            <h2>python-vlab/0.1 probe</h2>
+            <p>Author-facing source → parser/validation → controller IR.</p>
+          </div>
+          <button id="compile">Compile to IR</button>
+        </div>
+        <textarea id="controller-source" spellcheck="false" aria-label="Controller source"></textarea>
+        <p id="compile-error" class="error" role="alert"></p>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Versioned controller IR</h2>
+      <pre id="controller-ir"></pre>
+    </section>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
