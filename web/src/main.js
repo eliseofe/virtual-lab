@@ -13,6 +13,7 @@ const referenceSource = `class ActiveElasticAgent(Agent):
 
 const status = document.querySelector("#worker-status");
 const time = document.querySelector("#scientific-time");
+const detail = document.querySelector("#kernel-detail");
 const source = document.querySelector("#controller-source");
 const ir = document.querySelector("#controller-ir");
 const error = document.querySelector("#compile-error");
@@ -27,11 +28,11 @@ worker.addEventListener("message", (event) => {
   if (message.type === "ready") {
     status.textContent = `WASM worker ready · kernel ${message.kernelVersion}`;
     status.dataset.state = "ready";
-    time.textContent = message.scientificTime.toFixed(3);
     advance.disabled = false;
     reset.disabled = false;
-  } else if (message.type === "advanced" || message.type === "reset") {
+  } else if (["snapshot", "advanced", "reset"].includes(message.type)) {
     time.textContent = message.scientificTime.toFixed(3);
+    detail.textContent = `${message.agentCount} agents · ${message.physicsTicks} physics ticks · ${message.controlUpdates} control updates`;
   } else if (message.type === "error") {
     status.textContent = `Worker error: ${message.message}`;
     status.dataset.state = "error";
