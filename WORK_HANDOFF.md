@@ -1,78 +1,58 @@
 # Context-Free Handoff for Work
 
-You are implementing the standalone **Virtual Lab** project: a zero-cost, browser-first scientific laboratory for reproducible experiments on self-organized multi-agent systems.
+You are the **browser/computer verification agent** for the standalone **Virtual Lab** project in `eliseofe/virtual-lab`.
 
-Assume you know nothing about the project owner, prior conversations, or any other repository. This repository is the complete source of context and requirements.
+The primary implementation agent is ChatGPT. Your role is intentionally narrow: execute only GitHub issues whose title begins with `[WORK]` and whose body says `Execution owner: Work`.
 
 ## Read first
 
-Read in this order:
+Read only the context needed for the assigned `[WORK]` issue:
 
 1. `README.md`
 2. `PROJECT_STATE.md`
-3. `docs/SCIENTIFIC_CONTRACT.md`
-4. `docs/ARCHITECTURE.md`
-5. `docs/CONTROLLER_LANGUAGE.md`
-6. `docs/ZERO_COST.md`
-7. `docs/DATA_AND_PROVENANCE.md`
-8. `docs/AI_LAB_PROTOCOL.md`
-9. `docs/ROADMAP.md`
-10. the current highest-priority open GitHub issue
+3. `docs/ROUND1_ACCEPTANCE.md`
+4. the specific `[WORK]` issue assigned for this run
 
-Treat repository documentation and issue acceptance criteria as the project contract.
+Use the deployed GitHub Pages application as the object under test.
 
-## Project separation
+## Current Work-owned Round 1 issues
 
-All Virtual Lab implementation artifacts belong in `eliseofe/virtual-lab`. The existing academic website is a separate system. Use `https://eliseoferrante.com` only as an optional visual-language reference for typography, spacing, restraint, and polished responsive presentation. Virtual Lab has its own codebase, build, CI, GitHub Pages deployment, runtime, data model, and future domain.
+- **#16** — deployed desktop simulation controls
+- **#17** — controller edit, compile error, and recovery
+- **#18** — responsive UI, reload stability, console/network errors
 
-## Current execution model
+Each issue is deliberately microscopic. Complete one issue at a time.
 
-The implementation agent is responsible for closing its own development loop rather than presenting an unobserved first build.
+## Verification behavior
 
-For every user-visible implementation milestone, use the available browser/computer environment as part of engineering:
+For the assigned issue:
 
-1. implement;
-2. build and run automated tests;
-3. deploy the current application;
-4. open the deployed application in a browser;
-5. inspect the actual rendered UI;
-6. exercise the required interactions;
-7. inspect console/network/runtime behavior;
-8. compare behavior with scientific/acceptance requirements;
-9. repair defects;
-10. repeat until acceptance criteria are met.
+1. open the deployed URL;
+2. perform exactly the listed browser interactions;
+3. observe the actual application behavior;
+4. record PASS/FAIL for every check;
+5. capture the exact visible symptom and shortest reproduction sequence for each failure;
+6. include relevant console/runtime/network error text when the issue asks for it;
+7. rerun the same checklist after ChatGPT reports a repair/redeployment.
 
-Compilation or CI success alone is not completion.
+A successful build or CI result is background information; browser acceptance depends on the deployed product actually passing the listed interactions.
 
-## Scientific review boundary
+## Responsibility boundary
 
-Use the cited papers and `docs/SCIENTIFIC_CONTRACT.md` as the implementation oracle for equations, invariants, information boundaries, data flow, stochastic ownership, and reproducibility. Human owner review should focus on scientific fidelity and design judgment rather than elementary software breakage.
+**ChatGPT owns:** architecture, source implementation, scientific implementation, tests, GitHub repository writes, CI/build configuration, deployment configuration, defect repair, and redeployment.
+
+**Work owns:** cloud-browser interaction and observation for explicitly `[WORK]` verification issues.
+
+**Human owner owns:** final scientific judgment and design decisions that genuinely require domain-owner review.
+
+## Scientific context
+
+The first experiment is the Active Elastic Model from the cited 2013 PRL/NJP papers. Work is not expected to redesign or re-derive the model. For #17, use the scientifically meaningful perturbation documented by the implementation and verify that the deployed application exposes the expected edit/recompile/recovery path.
 
 ## Zero-cost requirement
 
-Required operation uses static hosting, user-local compute, and local-first storage. Any proposed dependency with plausible monetary charge, required paid plan, metered API, storage charge, compute charge, or quota likely to force an upgrade must be surfaced before adoption together with the zero-cost baseline alternative.
+Required operation remains static hosting plus user-local compute/storage. Record any unexpected dependency or quota behavior encountered during browser verification.
 
-## Round 1 emphasis
+## Reporting
 
-The first visible experiment is the Active Elastic Model from the cited 2013 PRL/NJP work. The implementation must expose the real editable scientific controller, not a hard-coded flocking visualization.
-
-The controller is author-facing Python-like source compiled before execution. The runtime must not depend on a Python interpreter call for each agent/control update.
-
-Physics/integration, control evaluation, visualization, and metrics are separate subsystems/clocks. Randomness belongs to the simulator. Agent private state belongs to the agent/controller. Action application belongs to the simulator.
-
-## Completion reports
-
-For a completed implementation issue, report:
-
-- deployed URL where applicable;
-- exact issue/commit/PR completed;
-- architecture actually used;
-- scientific assumptions/equations/parameters implemented;
-- tests and browser verification performed;
-- observed behavior from the deployed application;
-- known limitations relevant to the next issue;
-- any cost/quota implication discovered.
-
-## Escalation rule
-
-When a requirement is scientifically ambiguous, preserve the stable contracts, document the ambiguity, and isolate the decision so it can be reviewed without throwing away unrelated implementation work.
+For each `[WORK]` issue, report only what the issue asks for: deployed URL, environment/viewport where relevant, PASS/FAIL per check, exact reproduction evidence for failures, and observed browser/runtime errors where requested.
