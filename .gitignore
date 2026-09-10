@@ -1,0 +1,25 @@
+# Local scientific output
+runs/
+results/
+trajectories/
+artifacts/
+*.vlab-run
+*.vlab-results
+
+# Rust
+/target/
+**/target/
+
+# JS / frontend
+node_modules/
+dist/
+
+# Editors / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Local environment
+.env
+.env.*
+!.env.example
