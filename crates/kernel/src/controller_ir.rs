@@ -407,7 +407,7 @@ impl<'a> Lowerer<'a> {
                     return Ok(Type::Scalar);
                 }
                 if let Some(loop_variable) = self.active_loop_variable {
-                    if path == format!("{loop_variable}.relative_position") {
+                    if path.as_str() == format!("{loop_variable}.relative_position") {
                         self.instructions.push(Instruction::LoadNeighbourRelativePosition);
                         return Ok(Type::Vec2);
                     }
@@ -514,9 +514,6 @@ enum Target {
     PrivateState(usize),
 }
 
-/// Executable controller produced once from versioned IR. This is not a
-/// Python interpreter: source parsing/type checking occurs before this point,
-/// and the Rust runtime executes compact validated scientific bytecode.
 pub struct IrControllerRuntime {
     instructions: Vec<Instruction>,
     parameters: Vec<f64>,
