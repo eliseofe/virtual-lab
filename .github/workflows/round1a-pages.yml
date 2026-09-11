@@ -70,20 +70,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy
     steps:
-      - name: Verify deployed browser reaches kernel ready
+      - name: Checkout browser smoke script
+        uses: actions/checkout@v6
+      - name: Verify deployed browser reaches kernel ready with populated editors
         run: |
           URL="https://eliseofe.github.io/virtual-lab/"
           for attempt in 1 2 3 4 5 6; do
-            google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=3000 --dump-dom "$URL" > /tmp/virtual-lab.html 2>/tmp/chrome.log || true
-            if grep -Eq 'id="worker-status"[^>]*data-state="ready"[^>]*>Kernel [^<]+ ready<' /tmp/virtual-lab.html; then
-              grep -Eq 'id="experiment-config"' /tmp/virtual-lab.html
-              grep -Eq 'id="initializer-source"' /tmp/virtual-lab.html
-              echo "Deployed browser reached kernel ready."
+            if node web/scripts/browser-smoke.mjs "$URL"; then
               exit 0
             fi
+            echo "Deployed browser check attempt $attempt failed; retrying after propagation delay."
             sleep 5
           done
-          echo "Deployed browser did not reach kernel ready."
-          cat /tmp/chrome.log || true
-          grep -n "worker-status\|setup-error\|compile-error" /tmp/virtual-lab.html || true
           exit 1
