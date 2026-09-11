@@ -72,7 +72,8 @@ impl NeighbourIndex for PeriodicGridNeighbourIndex {
         self.buckets.clear();
         self.buckets.reserve(state.len());
         for (index, agent) in state.iter().enumerate() {
-            self.buckets.entry(self.cell_of(agent)).or_default().push(index);
+            let cell = self.cell_of(agent);
+            self.buckets.entry(cell).or_default().push(index);
         }
     }
 
