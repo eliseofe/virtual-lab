@@ -82,7 +82,7 @@ Realtime is optional. Revision-aware synchronization is the correctness mechanis
 
 The migration was deployed to the live Supabase project as `experiment_registry_v1`.
 
-Validation used two temporary Auth identities, Student A and Student B, under the real PostgreSQL `authenticated` role with simulated authenticated JWT claims. All temporary identities and data were deleted afterward.
+Validation used two temporary Auth identities, Student A and Student B, under the PostgreSQL `authenticated` role with authenticated JWT claims. All temporary identities and data were deleted afterward.
 
 Observed results:
 
