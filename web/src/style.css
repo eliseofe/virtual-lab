@@ -6,7 +6,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
-button, select, textarea { font: inherit; }
+button, select, textarea, input { font: inherit; }
 button, select { min-height: 40px; }
 .app-shell { width: min(1500px, 100%); margin: 0 auto; padding: 24px 28px 44px; }
 .topbar { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; margin: 6px 0 22px; }
@@ -42,6 +42,12 @@ button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: .42; cursor: default; }
 button.primary { background: #1d5166; color: #fff; border-color: #1d5166; font-weight: 650; }
 button.primary:hover:not(:disabled) { background: #17485b; border-color: #17485b; }
+.speed-control { margin-top: 14px; padding: 11px 10px; border-radius: 10px; background: #f4f7f8; }
+.speed-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.speed-heading .field-label { margin: 0; }
+.speed-heading strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+#simulation-speed { width: 100%; margin: 9px 0 2px; accent-color: #1d5166; }
+.speed-control .muted { margin: 4px 0 0; font-size: 11px; }
 .stats-grid { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .stats-grid div { min-width: 0; padding: 9px 7px; border-radius: 9px; background: #f4f7f8; }
 .stats-grid span { display: block; color: #78888e; font-size: 9.5px; text-transform: uppercase; letter-spacing: .055em; }

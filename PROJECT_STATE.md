@@ -116,6 +116,28 @@ For Round 1, ChatGPT owns #1, #2, and #11–#15. Work owns #16–#18. Later-roun
 
 GitHub's native assignee field is not used to represent these product agents; execution ownership is encoded in issue titles and bodies.
 
+## Persistent issue-first development workflow — added 11 September 2026
+
+GitHub issues are the durable cross-chat development record for this project.
+
+- Every substantive new feature, defect, behavior change, deployment-policy change, or scientific-validation task starts with a GitHub issue before implementation begins.
+- The issue records the user-observed problem or requested behavior, implementation scope, and acceptance criteria.
+- Branches and pull requests reference the relevant issue number(s).
+- Material findings discovered during implementation are added to the active issue when they are useful for future handoff or diagnosis.
+- When the implementation is merged and verified, the issue is updated with the result and closed.
+- Small mechanical follow-ups that belong to an already-active change may remain inside that issue rather than creating issue noise.
+
+The purpose is persistence across ChatGPT conversations, Work sessions, human handoffs, and future implementation agents; conversation memory alone is not the project record.
+
+## Conservative deployment retention — added 11 September 2026
+
+Git is the durable source and history. Deployed build artifacts are transient delivery products rather than archival storage.
+
+- GitHub Pages upload artifacts use explicit `retention-days: 1`.
+- Build/deployment history may remain in GitHub for operational visibility, but it is not relied upon as source recovery.
+- Large or long-lived generated artifacts should not be retained in Actions unless a future task has an explicit reproducibility reason.
+- Repository source, commits, issues, and pull requests are the persistent record.
+
 ## Closed-loop development principle
 
 The closed loop is distributed explicitly across the two agents:

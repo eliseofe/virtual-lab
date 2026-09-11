@@ -58,6 +58,7 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: web/dist
+          retention-days: 1
 
   deploy:
     if: github.event_name != 'pull_request'

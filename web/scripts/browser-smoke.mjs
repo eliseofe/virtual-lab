@@ -88,7 +88,10 @@ async function state(send) {
     configValue: document.querySelector('#experiment-config')?.value ?? null,
     initializerValue: document.querySelector('#initializer-source')?.value ?? null,
     controllerValue: document.querySelector('#controller-source')?.value ?? null,
-    scientificTime: document.querySelector('#scientific-time')?.textContent ?? null
+    scientificTime: document.querySelector('#scientific-time')?.textContent ?? null,
+    physicsTicks: document.querySelector('#physics-ticks')?.textContent ?? null,
+    speed: document.querySelector('#simulation-speed')?.value ?? null,
+    speedLabel: document.querySelector('#simulation-speed-value')?.textContent ?? null
   })`;
   const result = await send("Runtime.evaluate", { expression, returnByValue: true });
   const value = result?.result?.value;
@@ -125,17 +128,33 @@ try {
       for (const marker of ["class ActiveElasticAgent", "pow(2.0, 1.0 / POTENTIAL_ALPHA)", "K1 * dot(proximal, obs.heading) + U", "K2 * dot(proximal, perpendicular(obs.heading))"]) {
         if (!latest.controllerValue?.includes(marker)) throw new Error(`controller source is missing '${marker}'`);
       }
+      if (latest.speed !== "20" || latest.speedLabel !== "20×") throw new Error(`runtime speed did not default to 20×: ${JSON.stringify(latest)}`);
 
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#run').click()" });
       await sleep(700);
       const running = await state(cdp.send);
-      const time = Number(running?.scientificTime ?? 0);
-      if (!(time > 0)) throw new Error(`simulation did not advance after Run: ${JSON.stringify(running)}`);
+      const firstTime = Number(running?.scientificTime ?? 0);
+      if (!(firstTime > 1.0)) throw new Error(`default accelerated simulation did not advance faster than the old 1× ceiling: ${JSON.stringify(running)}`);
       if (running?.statusState === "error") throw new Error(`simulation entered error state after Run: ${JSON.stringify(running)}`);
+
+      await cdp.send("Runtime.evaluate", {
+        expression: `(() => {
+          const speed = document.querySelector('#simulation-speed');
+          speed.value = '60';
+          speed.dispatchEvent(new Event('input', { bubbles: true }));
+        })()`,
+      });
+      const beforeSpeedChange = Number(running?.scientificTime ?? 0);
+      await sleep(350);
+      const faster = await state(cdp.send);
+      const afterSpeedChange = Number(faster?.scientificTime ?? 0);
+      if (faster?.speed !== "60" || faster?.speedLabel !== "60×") throw new Error(`live speed control did not update without restart: ${JSON.stringify(faster)}`);
+      if (!(afterSpeedChange > beforeSpeedChange)) throw new Error(`scientific time did not continue after live speed change: ${JSON.stringify(faster)}`);
+      if (faster?.statusState === "error") throw new Error(`simulation entered error state after live speed change: ${JSON.stringify(faster)}`);
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#pause').click()" });
 
-      console.log(JSON.stringify(running, null, 2));
-      console.log("Browser reached kernel ready with filtered student parameters and advanced the 2012 controller.");
+      console.log(JSON.stringify(faster, null, 2));
+      console.log("Browser reached kernel ready, ran accelerated, and changed runtime speed live without resetting scientific state.");
       succeeded = true;
       break;
     }

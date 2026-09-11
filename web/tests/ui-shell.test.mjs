@@ -17,12 +17,15 @@ function editableConfig(main) {
   return match[1];
 }
 
-test("Round 1 UI exposes experiment config, initializer source, controller source, simulation stage, and controls", async () => {
+test("Round 1 UI exposes experiment config, initializer source, controller source, simulation stage, controls, and runtime speed", async () => {
   const html = await text("src/index.html");
   for (const required of [
     'id="experiment-select"', 'id="experiment-config"', 'id="initializer-source"', 'id="apply-setup"',
     'id="simulation-canvas"', 'id="controller-source"', 'id="run"', 'id="pause"', 'id="restart"', 'id="compile"',
+    'id="simulation-speed"', 'id="simulation-speed-value"',
   ]) assert.match(html, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(html, /value="20"/);
+  assert.match(html, /does not change scientific Δt/);
   assert.doesNotMatch(html, /id="initialization-seed"/);
   assert.doesNotMatch(html, /id="initialization-agent-count"/);
 });
@@ -65,7 +68,17 @@ test("renderer uses fixed arena coordinates and renders agent orientation", asyn
   assert.doesNotMatch(main, /Math\.min\(\.\.\.xs\)/);
   assert.doesNotMatch(main, /Math\.max\(\.\.\.xs\)/);
   assert.match(main, /requestAnimationFrame\(drawSnapshot\)/);
-  assert.match(main, /postMessage\(\{ type: "advance", ticks: 5 \}\)/);
+});
+
+test("runtime speed changes execution throughput without becoming a scientific parameter", async () => {
+  const main = await text("src/main.js");
+  const config = editableConfig(main);
+  assert.match(main, /const RUNTIME_INTERVAL_MS = 50/);
+  assert.match(main, /function runtimeSpeed\(\)/);
+  assert.match(main, /function ticksPerAdvance\(\)/);
+  assert.match(main, /worker\.postMessage\(\{ type: "advance", ticks: ticksPerAdvance\(\) \}\)/);
+  assert.match(main, /ui\.speed\.addEventListener\("input", updateSpeedLabel\)/);
+  assert.doesNotMatch(config, /RUNTIME_INTERVAL_MS|runtimeSpeed|simulation-speed/);
 });
 
 test("hidden simulator settings stay outside the editable config namespace", async () => {
