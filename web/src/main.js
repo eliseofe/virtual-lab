@@ -2,73 +2,69 @@ import { compileController } from "./controller/compiler.js";
 import { compileConfig, numericParameters } from "./config/compiler.js";
 import { compileInitializer } from "./initializer/compiler.js";
 
-const defaultConfigSource = `# Simulator / run parameters
-SEED = 2026
+// Simulator-owned implementation settings. These are deliberately not part of
+// the student experiment parameter namespace.
+const INTERNAL_SEED = 2026;
+const INTERNAL_PHYSICS_DT = 0.01;
+const INTERNAL_METRIC_DT = 0.10;
+
+const defaultConfigSource = `# EXPERIMENTAL SETUP
+# Number of agents in this run.
 N = 91
-PHYSICS_DT = 0.01
-CONTROL_DT = 0.05
-METRIC_DT = 0.10
-NEIGHBOUR_RADIUS = 1.5
-
-# Initialization parameters
+# Side length (m) of the square arena. Boundaries are periodic.
+ARENA_SIZE = 10.0
+# Initial placement: "hexagon_perturbed" or "random".
 INITIALIZATION_METHOD = "hexagon_perturbed"
-HEX_RADIUS = 5
-HEX_SPACING = 0.65
-HEX_POSITION_JITTER = 0.0
-RANDOM_EXTENT = 2.0
+# Maximum independent x/y displacement (m) added to each hex-lattice position.
+# 0.0 gives a perfect lattice; increase this to perturb the initial positions.
+INITIAL_POSITION_NOISE = 0.0
+# Controller update period (s). Ferrante et al. (2012) use 0.1 s.
+CONTROL_DT = 0.1
+# Bearing-noise amount from Ferrante et al. (2012).
+# The simulator applies a uniform bearing perturbation in [-2*pi*sigma, +2*pi*sigma].
+SENSOR_NOISE = 0.1
+# Duration (s) of one visual experiment. The run pauses when this is reached.
+EXPERIMENT_DURATION = 2500.0
 
-# Adaptive Behavior (2012), Table 1
-# N tested in the paper: 10, 50, 100, 500, 1000
-# RHO_INFORMED tested in the paper: 0.01, 0.05, 0.10, 0.15, 0.20
-RHO_INFORMED = 0.0
+# CONTROLLER PARAMETERS — Adaptive Behavior (2012), MDMC + proximal control
+# Maximum forward speed (m/s); also the MDMC forward-bias speed.
 U = 0.005
+# Maximum angular speed (rad/s).
 OMEGA_MAX = 1.5707963267948966
+# MDMC gains.
 K1 = 0.5
 K2 = 0.06
-K3 = 0.25
-WHEEL_BASE = 0.14
+# Generalized Lennard-Jones proximal-control parameters.
 POTENTIAL_ALPHA = 2.0
 POTENTIAL_EPSILON = 1.5
+# Desired inter-agent distance (m). Hex-lattice spacing is derived from this value.
 DESIRED_DISTANCE = 0.45
+# Maximum range (m) of proximal interaction.
 PROXIMAL_RANGE = 0.81
-ALIGNMENT_RANGE = 2.0
-SENSOR_NOISE = 0.1
-EXPERIMENT_DURATION = 2500.0
-RUN_COUNT = 100
-
-# PRL/NJP motion-control aliases for the same roles
-V0 = U
-ALPHA = K1
-BETA = K2
-
-# Parameters still used by the current controller stub
-# (kept explicit rather than hidden in the simulator)
-SPRING_K = 5.0
-SPRING_L = 0.65
-DR = 0.158
-DTHETA = 0.0
 `;
 
 const defaultInitializerSource = `def hexagon_perturbed(config, rng, place):
-    radius = config.HEX_RADIUS
+    # Radius is bookkeeping, derived from N rather than exposed as an experiment parameter.
+    radius = ceil((sqrt(12.0 * config.N - 3.0) - 3.0) / 6.0)
     i = 0
     for q in range(-radius, radius + 1):
         for r in range(-radius, radius + 1):
             s = -q - r
             if max(abs(q), abs(r), abs(s)) <= radius:
                 if i < config.N:
-                    x = config.HEX_SPACING * (q + 0.5 * r)
-                    y = config.HEX_SPACING * SQRT3_OVER_2 * r
-                    x += rng.uniform(-config.HEX_POSITION_JITTER, config.HEX_POSITION_JITTER)
-                    y += rng.uniform(-config.HEX_POSITION_JITTER, config.HEX_POSITION_JITTER)
+                    x = config.DESIRED_DISTANCE * (q + 0.5 * r)
+                    y = config.DESIRED_DISTANCE * SQRT3_OVER_2 * r
+                    x += rng.uniform(-config.INITIAL_POSITION_NOISE, config.INITIAL_POSITION_NOISE)
+                    y += rng.uniform(-config.INITIAL_POSITION_NOISE, config.INITIAL_POSITION_NOISE)
                     theta = rng.uniform(0.0, TAU)
                     place(i, x, y, theta)
                     i += 1
 
 def random_uniform(config, rng, place):
+    half = config.ARENA_SIZE / 2.0
     for i in range(config.N):
-        x = rng.uniform(-config.RANDOM_EXTENT, config.RANDOM_EXTENT)
-        y = rng.uniform(-config.RANDOM_EXTENT, config.RANDOM_EXTENT)
+        x = rng.uniform(-half, half)
+        y = rng.uniform(-half, half)
         theta = rng.uniform(0.0, TAU)
         place(i, x, y, theta)
 
@@ -81,13 +77,16 @@ def initialize(config, rng, place):
 
 const referenceSource = `class ActiveElasticAgent(Agent):
     def step(self, obs):
-        force = Vec2(0.0, 0.0)
+        proximal = Vec2(0.0, 0.0)
+        sigma_lj = DESIRED_DISTANCE / pow(2.0, 1.0 / POTENTIAL_ALPHA)
         for neighbour in obs.neighbours:
             displacement = neighbour.relative_position
             distance = norm(displacement)
-            force += SPRING_K * (distance - SPRING_L) * displacement / distance
-        forward = V0 + ALPHA * dot(force, obs.heading)
-        turning = BETA * dot(force, perpendicular(obs.heading))
+            ratio = sigma_lj / distance
+            magnitude = -(4.0 * POTENTIAL_ALPHA * POTENTIAL_EPSILON / distance) * (2.0 * pow(ratio, 2.0 * POTENTIAL_ALPHA) - pow(ratio, POTENTIAL_ALPHA))
+            proximal += magnitude * displacement / distance
+        forward = K1 * dot(proximal, obs.heading) + U
+        turning = K2 * dot(proximal, perpendicular(obs.heading))
         return Motion(forward, turning)
 `;
 
@@ -127,7 +126,8 @@ let wasmReady = false;
 let initialized = false;
 let running = false;
 let advancePending = false;
-let latestXY = [];
+let latestState = [];
+let activeArenaSize = 10.0;
 let appliedConfig = null;
 let runTimer = null;
 
@@ -150,25 +150,54 @@ function requireNumber(values, name, { integer = false, positive = false, nonneg
 function compileSetup() {
   const config = compileConfig(ui.config.value);
   const values = config.values;
-  requireNumber(values, "SEED", { integer: true, nonnegative: true });
   const agentCount = requireNumber(values, "N", { integer: true, positive: true });
-  const physicsDt = requireNumber(values, "PHYSICS_DT", { positive: true });
+  const arenaSize = requireNumber(values, "ARENA_SIZE", { positive: true });
   const controlDt = requireNumber(values, "CONTROL_DT", { positive: true });
-  const metricDt = requireNumber(values, "METRIC_DT", { positive: true });
-  const neighbourRadius = requireNumber(values, "NEIGHBOUR_RADIUS", { positive: true });
-  const initializer = compileInitializer(ui.initializerSource.value, config);
+  const sensorNoise = requireNumber(values, "SENSOR_NOISE", { nonnegative: true });
+  requireNumber(values, "EXPERIMENT_DURATION", { positive: true });
+  const maxForwardSpeed = requireNumber(values, "U", { positive: true });
+  const maxAngularSpeed = requireNumber(values, "OMEGA_MAX", { positive: true });
+  requireNumber(values, "K1");
+  requireNumber(values, "K2");
+  requireNumber(values, "POTENTIAL_ALPHA", { positive: true });
+  requireNumber(values, "POTENTIAL_EPSILON", { positive: true });
+  requireNumber(values, "DESIRED_DISTANCE", { positive: true });
+  const proximalRange = requireNumber(values, "PROXIMAL_RANGE", { positive: true });
+  requireNumber(values, "INITIAL_POSITION_NOISE", { nonnegative: true });
+
+  const initializerConfig = { ...config, values: { ...values, SEED: INTERNAL_SEED } };
+  const initializer = compileInitializer(ui.initializerSource.value, initializerConfig);
   if (initializer.state.length !== agentCount) throw new Error(`Initializer produced ${initializer.state.length} agents, expected N=${agentCount}.`);
+  const half = arenaSize / 2;
+  const outside = initializer.state.findIndex((agent) => Math.abs(agent.x) > half || Math.abs(agent.y) > half);
+  if (outside !== -1) {
+    throw new Error(`Initial agent ${outside} does not fit inside ARENA_SIZE=${arenaSize}. Increase the arena size or reduce the initial cluster/noise.`);
+  }
+
   ui.initializerIr.textContent = JSON.stringify({
     version: initializer.version,
     method: initializer.method,
+    seed: INTERNAL_SEED,
     agentCount: initializer.state.length,
+    arenaSize,
     firstAgents: initializer.state.slice(0, 5),
   }, null, 2);
+
   return {
     config,
     setup: {
       initialState: initializer.state,
-      simulation: { physicsDt, controlDt, metricDt, neighbourRadius },
+      simulation: {
+        seed: INTERNAL_SEED,
+        physicsDt: INTERNAL_PHYSICS_DT,
+        controlDt,
+        metricDt: INTERNAL_METRIC_DT,
+        interactionRadius: proximalRange,
+        arenaSize,
+        sensorNoise,
+        maxForwardSpeed,
+        maxAngularSpeed,
+      },
     },
   };
 }
@@ -210,10 +239,11 @@ function initializeIfReady() {
     const { config, setup } = compileSetup();
     const controller = compileControllerFor(config);
     appliedConfig = config;
+    activeArenaSize = setup.simulation.arenaSize;
     ui.setupError.textContent = "";
     ui.error.textContent = "";
-    setFeedback(ui.setupFeedback, "Configuration and initializer compiled successfully.", "success");
-    setFeedback(ui.feedback, "Reference controller compiled successfully.", "success");
+    setFeedback(ui.setupFeedback, "Student parameters and initialization compiled successfully.", "success");
+    setFeedback(ui.feedback, "2012 MDMC/proximal controller compiled successfully.", "success");
     ui.status.textContent = "Experiment compiled · starting kernel simulation…";
     worker.postMessage({ type: "initialize", setup, ir: controller.compiled, parameters: controller.parameters });
     initialized = true;
@@ -227,14 +257,21 @@ function initializeIfReady() {
 }
 
 function updateSnapshot(message) {
-  if (Array.isArray(message.xy) || ArrayBuffer.isView(message.xy)) {
-    latestXY = Array.from(message.xy);
-    ui.canvasEmpty.hidden = latestXY.length > 0;
+  if (Array.isArray(message.state) || ArrayBuffer.isView(message.state)) {
+    latestState = Array.from(message.state);
+    ui.canvasEmpty.hidden = latestState.length > 0;
   }
-  ui.time.textContent = Number(message.scientificTime ?? 0).toFixed(3);
+  if (Number.isFinite(message.arenaSize)) activeArenaSize = Number(message.arenaSize);
+  const scientificTime = Number(message.scientificTime ?? 0);
+  ui.time.textContent = scientificTime.toFixed(3);
   ui.physicsTicks.textContent = String(message.physicsTicks ?? 0);
   ui.controlUpdates.textContent = String(message.controlUpdates ?? 0);
   advancePending = false;
+  const duration = appliedConfig?.values?.EXPERIMENT_DURATION;
+  if (running && Number.isFinite(duration) && scientificTime >= duration) {
+    setRunning(false);
+    ui.status.textContent = `Experiment duration reached (${duration} s)`;
+  }
 }
 
 function drawSnapshot() {
@@ -245,26 +282,41 @@ function drawSnapshot() {
   const width = Math.max(1, Math.floor(rect.width * ratio));
   const height = Math.max(1, Math.floor(rect.height * ratio));
   if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+
   context.clearRect(0, 0, width, height);
-  context.fillStyle = "#f7f9fa"; context.fillRect(0, 0, width, height);
-  context.strokeStyle = "#e1e6e9"; context.lineWidth = ratio;
-  const step = 48 * ratio;
-  for (let x = step; x < width; x += step) { context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke(); }
-  for (let y = step; y < height; y += step) { context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke(); }
-  if (latestXY.length >= 2) {
-    const xs = [], ys = [];
-    for (let i = 0; i < latestXY.length; i += 2) { xs.push(latestXY[i]); ys.push(latestXY[i + 1]); }
-    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const spanX = Math.max(maxX - minX, 1), spanY = Math.max(maxY - minY, 1);
-    const pad = 54 * ratio;
-    const scale = Math.min((width - 2 * pad) / spanX, (height - 2 * pad) / spanY);
-    const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2;
-    context.fillStyle = "#1c4e63";
-    for (let i = 0; i < latestXY.length; i += 2) {
-      const x = width / 2 + (latestXY[i] - centerX) * scale;
-      const y = height / 2 - (latestXY[i + 1] - centerY) * scale;
-      context.beginPath(); context.arc(x, y, 4.2 * ratio, 0, Math.PI * 2); context.fill();
-    }
+  context.fillStyle = "#f7f9fa";
+  context.fillRect(0, 0, width, height);
+
+  const pad = 30 * ratio;
+  const side = Math.max(1, Math.min(width, height) - 2 * pad);
+  const left = (width - side) / 2;
+  const top = (height - side) / 2;
+  context.fillStyle = "#ffffff";
+  context.fillRect(left, top, side, side);
+  context.strokeStyle = "#b8c3c8";
+  context.lineWidth = 1.5 * ratio;
+  context.strokeRect(left, top, side, side);
+
+  const arena = Math.max(activeArenaSize, 1e-9);
+  const toCanvasX = (x) => left + ((x + arena / 2) / arena) * side;
+  const toCanvasY = (y) => top + ((arena / 2 - y) / arena) * side;
+
+  context.strokeStyle = "#1c4e63";
+  context.fillStyle = "#1c4e63";
+  context.lineWidth = 1.6 * ratio;
+  const bodyRadius = 4.2 * ratio;
+  const headingLength = 11 * ratio;
+  for (let i = 0; i + 2 < latestState.length; i += 3) {
+    const x = toCanvasX(latestState[i]);
+    const y = toCanvasY(latestState[i + 1]);
+    const heading = latestState[i + 2];
+    context.beginPath();
+    context.arc(x, y, bodyRadius, 0, Math.PI * 2);
+    context.fill();
+    context.beginPath();
+    context.moveTo(x, y);
+    context.lineTo(x + Math.cos(heading) * headingLength, y - Math.sin(heading) * headingLength);
+    context.stroke();
   }
   requestAnimationFrame(drawSnapshot);
 }
@@ -278,7 +330,7 @@ worker.addEventListener("message", (event) => {
     return;
   }
   if (message.type === "ready") {
-    ui.status.textContent = `Kernel ${message.kernelVersion} ready`;
+    ui.status.textContent = `Kernel ${message.kernelVersion} ready · periodic arena`;
     ui.status.dataset.state = "ready";
     ui.runState.textContent = "Paused";
     setControlsEnabled(true);
@@ -291,7 +343,7 @@ worker.addEventListener("message", (event) => {
       ui.status.textContent = "Controller active · run restarted";
       setRunning(false);
     } else if (message.type === "setup-applied") {
-      setFeedback(ui.setupFeedback, "Configuration and initializer applied. Run restarted cleanly.", "success");
+      setFeedback(ui.setupFeedback, "Student parameters and initialization applied. Run restarted cleanly.", "success");
       ui.status.textContent = "Setup active · run restarted";
       setRunning(false);
     } else if (message.type === "reset") setRunning(false);
@@ -332,7 +384,7 @@ worker.addEventListener("error", (event) => {
 
 function markSetupDirty() {
   ui.setupError.textContent = "";
-  setFeedback(ui.setupFeedback, "Setup source modified. Apply setup to compile and restart.", "dirty");
+  setFeedback(ui.setupFeedback, "Student parameters or initialization modified. Apply setup to compile and restart.", "dirty");
 }
 ui.config.addEventListener("input", markSetupDirty);
 ui.initializerSource.addEventListener("input", markSetupDirty);
@@ -342,9 +394,10 @@ ui.applySetup.addEventListener("click", () => {
     const { config, setup } = compileSetup();
     const controller = compileControllerFor(config);
     appliedConfig = config;
+    activeArenaSize = setup.simulation.arenaSize;
     ui.setupError.textContent = "";
     ui.error.textContent = "";
-    setFeedback(ui.setupFeedback, "Setup compiled. Applying configuration and initialization…", "working");
+    setFeedback(ui.setupFeedback, "Setup compiled. Applying parameters and initialization…", "working");
     setRunning(false);
     worker.postMessage({ type: "apply-setup", setup, ir: controller.compiled, parameters: controller.parameters });
   } catch (error) {
