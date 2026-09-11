@@ -11,6 +11,12 @@ async function text(relative) {
   return readFile(path.join(web, relative), "utf8");
 }
 
+function editableConfig(main) {
+  const match = main.match(/const defaultConfigSource = `([\s\S]*?)`;\n/);
+  assert.ok(match, "defaultConfigSource must be present");
+  return match[1];
+}
+
 test("Round 1 UI exposes experiment config, initializer source, controller source, simulation stage, and controls", async () => {
   const html = await text("src/index.html");
   for (const required of [
@@ -23,17 +29,17 @@ test("Round 1 UI exposes experiment config, initializer source, controller sourc
 
 test("student config exposes only active experiment and controller parameters", async () => {
   const main = await text("src/main.js");
-  assert.match(main, /const defaultConfigSource = `/);
+  const config = editableConfig(main);
   for (const parameter of [
     "N", "ARENA_SIZE", "INITIAL_POSITION_NOISE", "CONTROL_DT", "SENSOR_NOISE", "EXPERIMENT_DURATION",
     "U", "OMEGA_MAX", "K1", "K2", "POTENTIAL_ALPHA", "POTENTIAL_EPSILON", "DESIRED_DISTANCE", "PROXIMAL_RANGE",
-  ]) assert.match(main, new RegExp(`\\n${parameter} = `));
+  ]) assert.match(config, new RegExp(`(?:^|\\n)${parameter} = `));
 
   for (const hiddenOrRemoved of [
     "PHYSICS_DT", "METRIC_DT", "NEIGHBOUR_RADIUS", "HEX_RADIUS", "HEX_SPACING", "HEX_POSITION_JITTER", "RANDOM_EXTENT",
     "RHO_INFORMED", "K3", "WHEEL_BASE", "ALIGNMENT_RANGE", "RUN_COUNT", "V0 = U", "ALPHA = K1", "BETA = K2",
     "SPRING_K", "SPRING_L", "DR =", "DTHETA",
-  ]) assert.doesNotMatch(main, new RegExp(hiddenOrRemoved.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  ]) assert.doesNotMatch(config, new RegExp(hiddenOrRemoved.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
   assert.match(main, /def hexagon_perturbed\(config, rng, place\):/);
   assert.match(main, /def random_uniform\(config, rng, place\):/);
@@ -64,9 +70,11 @@ test("renderer uses fixed arena coordinates and renders agent orientation", asyn
 
 test("hidden simulator settings stay outside the editable config namespace", async () => {
   const main = await text("src/main.js");
+  const config = editableConfig(main);
   assert.match(main, /const INTERNAL_SEED = 2026/);
   assert.match(main, /const INTERNAL_PHYSICS_DT = 0\.01/);
   assert.match(main, /const INTERNAL_METRIC_DT = 0\.10/);
+  assert.doesNotMatch(config, /INTERNAL_SEED|INTERNAL_PHYSICS_DT|INTERNAL_METRIC_DT/);
 });
 
 test("setup and controller application use separate worker paths", async () => {
