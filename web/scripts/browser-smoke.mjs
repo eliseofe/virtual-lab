@@ -6,19 +6,12 @@ const chrome = process.env.CHROME_BIN ?? "google-chrome";
 const profile = `/tmp/vlab-chrome-${process.pid}`;
 
 const child = spawn(chrome, [
-  "--headless",
-  "--no-sandbox",
-  "--disable-gpu",
-  "--disable-dev-shm-usage",
-  "--remote-debugging-address=127.0.0.1",
-  "--remote-debugging-port=0",
-  `--user-data-dir=${profile}`,
-  url,
+  "--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
+  "--remote-debugging-address=127.0.0.1", "--remote-debugging-port=0", `--user-data-dir=${profile}`, url,
 ], { stdio: ["ignore", "ignore", "pipe"] });
 
 let chromeLog = "";
 child.stderr.on("data", (chunk) => { chromeLog += chunk.toString(); });
-
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function waitForPort() {
@@ -64,8 +57,7 @@ function connect(wsUrl) {
     if (message.id && pending.has(message.id)) {
       const { resolve, reject } = pending.get(message.id);
       pending.delete(message.id);
-      if (message.error) reject(new Error(message.error.message));
-      else resolve(message.result);
+      if (message.error) reject(new Error(message.error.message)); else resolve(message.result);
     } else if (message.method === "Runtime.exceptionThrown") {
       const details = message.params?.exceptionDetails;
       exceptions.push(details?.exception?.description ?? details?.text ?? "JavaScript exception");
@@ -95,7 +87,8 @@ async function state(send) {
     controllerError: document.querySelector('#compile-error')?.textContent ?? null,
     configValue: document.querySelector('#experiment-config')?.value ?? null,
     initializerValue: document.querySelector('#initializer-source')?.value ?? null,
-    controllerValue: document.querySelector('#controller-source')?.value ?? null
+    controllerValue: document.querySelector('#controller-source')?.value ?? null,
+    scientificTime: document.querySelector('#scientific-time')?.textContent ?? null
   })`;
   const result = await send("Runtime.evaluate", { expression, returnByValue: true });
   const value = result?.result?.value;
@@ -115,28 +108,41 @@ try {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     latest = await state(cdp.send);
     if (latest?.statusState === "ready" && /Kernel .* ready/.test(latest.status ?? "")) {
-      const requiredConfig = ["INITIALIZATION_METHOD", "U = 0.005", "K1 = 0.5", "K2 = 0.06", "V0 = U"];
+      const requiredConfig = [
+        'INITIALIZATION_METHOD = "hexagon_perturbed"', "ARENA_SIZE = 10.0", "CONTROL_DT = 0.1",
+        "INITIAL_POSITION_NOISE = 0.0", "U = 0.005", "OMEGA_MAX = 1.5707963267948966",
+        "K1 = 0.5", "K2 = 0.06", "DESIRED_DISTANCE = 0.45", "PROXIMAL_RANGE = 0.81",
+      ];
       for (const marker of requiredConfig) {
         if (!latest.configValue?.includes(marker)) throw new Error(`preloaded config is missing '${marker}'`);
       }
-      for (const marker of ["def hexagon_perturbed", "def random_uniform", "place(i, x, y, theta)"]) {
+      for (const removed of ["PHYSICS_DT =", "METRIC_DT =", "NEIGHBOUR_RADIUS =", "K3 =", "V0 = U", "SPRING_K ="]) {
+        if (latest.configValue?.includes(removed)) throw new Error(`preloaded config still exposes '${removed}'`);
+      }
+      for (const marker of ["def hexagon_perturbed", "def random_uniform", "config.DESIRED_DISTANCE", "config.ARENA_SIZE", "place(i, x, y, theta)"]) {
         if (!latest.initializerValue?.includes(marker)) throw new Error(`preloaded initializer is missing '${marker}'`);
       }
-      if (!latest.controllerValue?.includes("class ActiveElasticAgent")) throw new Error("controller source did not preload");
-      console.log(JSON.stringify(latest, null, 2));
-      console.log("Browser reached kernel ready with populated parameter, initializer, and controller editors.");
+      for (const marker of ["class ActiveElasticAgent", "pow(2.0, 1.0 / POTENTIAL_ALPHA)", "K1 * dot(proximal, obs.heading) + U", "K2 * dot(proximal, perpendicular(obs.heading))"]) {
+        if (!latest.controllerValue?.includes(marker)) throw new Error(`controller source is missing '${marker}'`);
+      }
+
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#run').click()" });
+      await sleep(700);
+      const running = await state(cdp.send);
+      const time = Number(running?.scientificTime ?? 0);
+      if (!(time > 0)) throw new Error(`simulation did not advance after Run: ${JSON.stringify(running)}`);
+      if (running?.statusState === "error") throw new Error(`simulation entered error state after Run: ${JSON.stringify(running)}`);
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#pause').click()" });
+
+      console.log(JSON.stringify(running, null, 2));
+      console.log("Browser reached kernel ready with filtered student parameters and advanced the 2012 controller.");
       succeeded = true;
       break;
     }
-    if (latest?.statusState === "error") {
-      throw new Error(`browser reported startup error: ${JSON.stringify(latest)}`);
-    }
+    if (latest?.statusState === "error") throw new Error(`browser reported startup error: ${JSON.stringify(latest)}`);
     await sleep(100);
   }
-
-  if (!succeeded) {
-    throw new Error(`browser did not reach kernel ready: ${JSON.stringify(latest)}; exceptions=${JSON.stringify(cdp.exceptions)}`);
-  }
+  if (!succeeded) throw new Error(`browser did not reach kernel ready: ${JSON.stringify(latest)}; exceptions=${JSON.stringify(cdp.exceptions)}`);
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);

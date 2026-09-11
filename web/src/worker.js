@@ -1,17 +1,19 @@
 let simulation = null;
 let wasm = null;
 let wasmReady = false;
+let activeArenaSize = 1.0;
 
 function emitSnapshot(type) {
   if (!simulation) return;
-  const xy = simulation.snapshot_xy();
+  const state = simulation.snapshot_state();
   self.postMessage({
     type,
     physicsTicks: simulation.physics_ticks(),
     controlUpdates: simulation.control_updates(),
     scientificTime: simulation.scientific_time(),
-    agentCount: xy.length / 2,
-    xy,
+    agentCount: state.length / 3,
+    arenaSize: activeArenaSize,
+    state,
   });
 }
 
@@ -19,10 +21,15 @@ function simulationValues(setup = {}) {
   const simulationSetup = setup.simulation ?? {};
   return {
     initialState: Array.isArray(setup.initialState) ? setup.initialState : [],
+    seed: Number(simulationSetup.seed),
     physicsDt: Number(simulationSetup.physicsDt),
     controlDt: Number(simulationSetup.controlDt),
     metricDt: Number(simulationSetup.metricDt),
-    neighbourRadius: Number(simulationSetup.neighbourRadius),
+    interactionRadius: Number(simulationSetup.interactionRadius),
+    arenaSize: Number(simulationSetup.arenaSize),
+    sensorNoise: Number(simulationSetup.sensorNoise),
+    maxForwardSpeed: Number(simulationSetup.maxForwardSpeed),
+    maxAngularSpeed: Number(simulationSetup.maxAngularSpeed),
   };
 }
 
@@ -43,12 +50,18 @@ self.addEventListener("message", (event) => {
   try {
     if (message.type === "initialize") {
       const setup = simulationValues(message.setup);
+      activeArenaSize = setup.arenaSize;
       simulation = new wasm.ProbeSimulation(
         JSON.stringify(setup.initialState),
+        setup.seed,
         setup.physicsDt,
         setup.controlDt,
         setup.metricDt,
-        setup.neighbourRadius,
+        setup.interactionRadius,
+        setup.arenaSize,
+        setup.sensorNoise,
+        setup.maxForwardSpeed,
+        setup.maxAngularSpeed,
         JSON.stringify(message.ir),
         JSON.stringify(message.parameters ?? {}),
       );
@@ -62,12 +75,18 @@ self.addEventListener("message", (event) => {
     }
     if (message.type === "apply-setup") {
       const setup = simulationValues(message.setup);
+      activeArenaSize = setup.arenaSize;
       simulation.set_setup(
         JSON.stringify(setup.initialState),
+        setup.seed,
         setup.physicsDt,
         setup.controlDt,
         setup.metricDt,
-        setup.neighbourRadius,
+        setup.interactionRadius,
+        setup.arenaSize,
+        setup.sensorNoise,
+        setup.maxForwardSpeed,
+        setup.maxAngularSpeed,
       );
       simulation.set_controller(JSON.stringify(message.ir), JSON.stringify(message.parameters ?? {}));
       emitSnapshot("setup-applied");
