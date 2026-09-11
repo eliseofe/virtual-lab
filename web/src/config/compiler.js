@@ -20,7 +20,7 @@ function stripComment(raw) {
   return raw;
 }
 
-function parseLiteral(text, line) {
+function parseValue(text, line, values) {
   const value = text.trim();
   if (/^[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?$/.test(value)) return Number(value);
   if (value === "True") return true;
@@ -34,7 +34,13 @@ function parseLiteral(text, line) {
       throw new ConfigCompileError("invalid string literal", line);
     }
   }
-  throw new ConfigCompileError("values must currently be Python scalar literals (number, string, True, False, or None)", line);
+  if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
+    if (!Object.prototype.hasOwnProperty.call(values, value)) {
+      throw new ConfigCompileError(`unknown parameter alias '${value}'`, line);
+    }
+    return values[value];
+  }
+  throw new ConfigCompileError("values must be Python scalar literals or aliases to an earlier parameter", line);
 }
 
 export function compileConfig(source) {
@@ -48,10 +54,10 @@ export function compileConfig(source) {
     if (!match) throw new ConfigCompileError("expected NAME = value", line);
     const name = match[1];
     if (Object.prototype.hasOwnProperty.call(values, name)) throw new ConfigCompileError(`duplicate parameter '${name}'`, line);
-    values[name] = parseLiteral(match[2], line);
+    values[name] = parseValue(match[2], line, values);
   }
   if (!Object.keys(values).length) throw new ConfigCompileError("configuration is empty");
-  return { version: "vlab.config/0.1", values };
+  return { version: "vlab.config/0.2", values };
 }
 
 export function numericParameters(config) {
