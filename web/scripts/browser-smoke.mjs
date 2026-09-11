@@ -116,7 +116,7 @@ try {
       const requiredConfig = [
         'INITIALIZATION_METHOD = "hexagon_perturbed"', "ARENA_SIZE = 10.0", "CONTROL_DT = 0.1",
         "INITIAL_POSITION_NOISE = 0.0", "U = 0.005", "OMEGA_MAX = 1.5707963267948966",
-        "K1 = 0.5", "K2 = 0.06", "DESIRED_DISTANCE = 0.45", "PROXIMAL_RANGE = 0.81",
+        "K1 = 0.005", "K2 = 0.06", "DESIRED_DISTANCE = 0.45", "PROXIMAL_RANGE = 0.81",
       ];
       for (const marker of requiredConfig) {
         if (!latest.configValue?.includes(marker)) throw new Error(`preloaded config is missing '${marker}'`);
