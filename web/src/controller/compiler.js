@@ -1,13 +1,5 @@
 const FORBIDDEN_ROOTS = new Set([
-  "random",
-  "rng",
-  "seed",
-  "world",
-  "simulator",
-  "environment",
-  "agents",
-  "filesystem",
-  "network",
+  "random", "rng", "seed", "world", "simulator", "environment", "agents", "filesystem", "network",
 ]);
 
 const CALL_SIGNATURES = {
@@ -15,6 +7,7 @@ const CALL_SIGNATURES = {
   dot: { args: ["vec2", "vec2"], result: "scalar" },
   perpendicular: { args: ["vec2"], result: "vec2" },
   norm: { args: ["vec2"], result: "scalar" },
+  pow: { args: ["scalar", "scalar"], result: "scalar" },
   Motion: { args: ["scalar", "scalar"], result: "action" },
 };
 
@@ -166,9 +159,7 @@ class ExprParser {
   }
 }
 
-function parseExpr(text, line) {
-  return new ExprParser(text, line).parse();
-}
+function parseExpr(text, line) { return new ExprParser(text, line).parse(); }
 
 function parseTarget(text, line) {
   if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(text)) return text;
@@ -295,9 +286,7 @@ function checkStatements(body, scope) {
       if (current && current !== valueType) throw new ControllerCompileError("type", `assignment to '${statement.target}' changes type from ${current} to ${valueType}`, statement.line);
       if (statement.target.startsWith("self.")) {
         if (current !== valueType) throw new ControllerCompileError("type", `private state '${statement.target}' expects ${current}, got ${valueType}`, statement.line);
-      } else {
-        scope.locals.set(statement.target, valueType);
-      }
+      } else scope.locals.set(statement.target, valueType);
     } else if (statement.kind === "aug_assign") {
       const current = targetType(statement.target, scope, statement.line, false);
       if (!current) throw new ControllerCompileError("type", `augmented assignment target '${statement.target}' must already exist`, statement.line);
@@ -352,7 +341,6 @@ export function compileController(source, options = {}) {
 
   const lines = meaningfulLines(source);
   if (lines.length < 3) throw new ControllerCompileError("syntax", "controller requires class, step method, and body");
-
   const classMatch = lines[0].text.match(/^class\s+([A-Za-z_][A-Za-z0-9_]*)\(Agent\):$/);
   if (!classMatch || lines[0].indent !== 0) throw new ControllerCompileError("syntax", "controller must start with 'class Name(Agent):'", lines[0].line);
 
