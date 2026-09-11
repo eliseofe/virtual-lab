@@ -25,52 +25,23 @@
         <section class="panel experiment-panel">
           <label class="field-label" for="experiment-select">Experiment</label>
           <select id="experiment-select" aria-label="Selected experiment">
-            <option value="kernel-probe">Local spring controller · kernel validation</option>
+            <option value="kernel-probe">Active-elastic controller · Round 1</option>
           </select>
-          <p class="muted">Round 1 workspace shell. The Active Elastic Model remains a separate scientific-validation task.</p>
+          <p class="muted">Round 1 exposes configuration, initialization and controller source separately. Scientific fidelity remains owner-reviewed.</p>
         </section>
 
         <section class="panel metadata-panel">
-          <div class="panel-heading">
-            <span>Experiment revision</span>
-            <strong>0.1-dev</strong>
-          </div>
+          <div class="panel-heading"><span>Experiment revision</span><strong>0.1-dev</strong></div>
           <dl class="metadata-grid">
             <div><dt>Execution</dt><dd>Rust / WASM worker</dd></div>
-            <div><dt>Controller</dt><dd>python-vlab/0.1 → IR → Rust bytecode</dd></div>
-            <div><dt>Initialization</dt><dd>Simulator-owned swarm setup</dd></div>
+            <div><dt>Parameters</dt><dd>Python-style editable config</dd></div>
+            <div><dt>Initialization</dt><dd>Python-style source → initializer IR</dd></div>
+            <div><dt>Controller</dt><dd>python-vlab/0.1 → controller IR</dd></div>
           </dl>
         </section>
 
-        <section class="panel initialization-panel">
-          <div class="panel-heading">
-            <span>Swarm initialization</span>
-            <strong id="initialization-state">Applied</strong>
-          </div>
-          <div class="initialization-grid">
-            <label>
-              <span>Seed</span>
-              <input id="initialization-seed" type="number" min="0" step="1" inputmode="numeric">
-            </label>
-            <label>
-              <span>Agents</span>
-              <input id="initialization-agent-count" type="number" min="1" step="1" inputmode="numeric">
-            </label>
-            <label>
-              <span>Extent</span>
-              <input id="initialization-extent" type="number" min="0.000001" step="0.1" inputmode="decimal">
-            </label>
-          </div>
-          <button id="apply-initialization" disabled>Apply initialization &amp; restart</button>
-          <p class="muted">Starting swarm configuration is simulator-owned and independent of controller source and controller parameters.</p>
-          <p id="initialization-error" class="error" role="alert"></p>
-        </section>
-
         <section class="panel run-panel">
-          <div class="panel-heading">
-            <span>Run state</span>
-            <strong id="run-state">Initializing</strong>
-          </div>
+          <div class="panel-heading"><span>Run state</span><strong id="run-state">Initializing</strong></div>
           <div class="control-grid">
             <button id="run" class="primary" disabled>Run</button>
             <button id="pause" disabled>Pause</button>
@@ -87,10 +58,7 @@
       <section class="stage-column">
         <section class="panel stage-panel">
           <div class="stage-heading">
-            <div>
-              <p class="section-kicker">LIVE SIMULATION</p>
-              <h2>Scientific state</h2>
-            </div>
+            <div><p class="section-kicker">LIVE SIMULATION</p><h2>Scientific state</h2></div>
             <span class="badge">render-only observer</span>
           </div>
           <div class="canvas-wrap">
@@ -103,13 +71,42 @@
         <section class="panel editor-panel">
           <div class="stage-heading editor-heading">
             <div>
+              <p class="section-kicker">EXPERIMENT PARAMETERS</p>
+              <h2>Editable Python-style configuration</h2>
+              <p class="muted">This is an open-ended parameter namespace, not a fixed form. Simulator, initialization and controller parameters can be added here without adding UI fields.</p>
+            </div>
+            <button id="apply-setup" class="primary" disabled>Apply setup &amp; restart</button>
+          </div>
+          <textarea id="experiment-config" class="code-editor config-editor" spellcheck="false" aria-label="Experiment parameters"></textarea>
+          <div id="setup-feedback" class="feedback" data-state="idle" role="status">Setup source has not been modified.</div>
+          <p id="setup-error" class="error" role="alert"></p>
+        </section>
+
+        <section class="panel editor-panel">
+          <div class="stage-heading editor-heading">
+            <div>
+              <p class="section-kicker">SWARM INITIALIZATION SOURCE</p>
+              <h2>Editable initialization rule</h2>
+              <p class="muted">The selected initialization method comes from the parameter namespace. The source below maps that choice to simulator-owned initialization primitives.</p>
+            </div>
+          </div>
+          <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initialization source"></textarea>
+          <details class="ir-details">
+            <summary>Compiled initializer IR</summary>
+            <pre id="initializer-ir"></pre>
+          </details>
+        </section>
+
+        <section class="panel editor-panel">
+          <div class="stage-heading editor-heading">
+            <div>
               <p class="section-kicker">CONTROLLER SOURCE</p>
               <h2>Editable local agent rule</h2>
-              <p class="muted">Apply compiles source to versioned IR and executable Rust bytecode, then restarts the run using the currently applied swarm initialization.</p>
+              <p class="muted">Controller parameters come from the same editable configuration namespace. Apply compiles the controller and restarts with the currently applied simulator setup.</p>
             </div>
-            <button id="compile" class="primary" disabled>Apply &amp; restart</button>
+            <button id="compile" class="primary" disabled>Apply controller &amp; restart</button>
           </div>
-          <textarea id="controller-source" spellcheck="false" aria-label="Controller source"></textarea>
+          <textarea id="controller-source" class="code-editor controller-editor" spellcheck="false" aria-label="Controller source"></textarea>
           <div id="compile-feedback" class="feedback" data-state="idle" role="status">Controller source has not been modified.</div>
           <p id="compile-error" class="error" role="alert"></p>
           <details class="ir-details">
