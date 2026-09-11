@@ -219,12 +219,10 @@ impl ControllerRuntime for LocalCentroidProbeController {
 
 #[derive(Clone, Debug)]
 pub struct SimulationConfig {
-    pub agent_count: usize,
     pub physics_dt: f64,
     pub control_dt: f64,
     pub metric_dt: f64,
     pub neighbour_radius: f64,
-    pub initial_extent: f64,
 }
 
 impl SimulationConfig {
@@ -241,22 +239,48 @@ impl SimulationConfig {
     }
 
     fn validate(&self) -> Result<(u32, u32), String> {
-        if self.agent_count == 0 {
-            return Err("agent_count must be positive".to_owned());
-        }
         if !self.physics_dt.is_finite() || self.physics_dt <= 0.0 {
             return Err("physics_dt must be finite and positive".to_owned());
         }
         if !self.neighbour_radius.is_finite() || self.neighbour_radius <= 0.0 {
             return Err("neighbour_radius must be finite and positive".to_owned());
         }
-        if !self.initial_extent.is_finite() || self.initial_extent <= 0.0 {
-            return Err("initial_extent must be finite and positive".to_owned());
-        }
         Ok((
             Self::validated_stride(self.control_dt, self.physics_dt, "control_dt")?,
             Self::validated_stride(self.metric_dt, self.physics_dt, "metric_dt")?,
         ))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SwarmInitialization {
+    pub seed: u64,
+    pub agent_count: usize,
+    pub extent: f64,
+}
+
+impl SwarmInitialization {
+    fn validate(&self) -> Result<(), String> {
+        if self.agent_count == 0 {
+            return Err("agent_count must be positive".to_owned());
+        }
+        if !self.extent.is_finite() || self.extent <= 0.0 {
+            return Err("initialization extent must be finite and positive".to_owned());
+        }
+        Ok(())
+    }
+
+    fn build_state(&self) -> Vec<AgentPhysicalState> {
+        let mut rng = SimulatorRng::new(self.seed);
+        (0..self.agent_count)
+            .map(|_| AgentPhysicalState {
+                position: Vec2::new(
+                    (2.0 * rng.unit_f64() - 1.0) * self.extent,
+                    (2.0 * rng.unit_f64() - 1.0) * self.extent,
+                ),
+                heading_angle: rng.unit_f64() * TAU,
+            })
+            .collect()
     }
 }
 
@@ -292,7 +316,7 @@ pub struct Snapshot {
 }
 
 pub struct Simulation<C: ControllerRuntime> {
-    seed: u64,
+    initialization: SwarmInitialization,
     config: SimulationConfig,
     control_stride: u32,
     metric_stride: u32,
@@ -308,13 +332,18 @@ pub struct Simulation<C: ControllerRuntime> {
 }
 
 impl<C: ControllerRuntime> Simulation<C> {
-    pub fn new(seed: u64, config: SimulationConfig, mut controller: C) -> Result<Self, String> {
+    pub fn new(
+        initialization: SwarmInitialization,
+        config: SimulationConfig,
+        mut controller: C,
+    ) -> Result<Self, String> {
+        initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
-        controller.reset(config.agent_count);
-        let state = Self::initial_state(seed, &config);
+        controller.reset(initialization.agent_count);
+        let state = initialization.build_state();
         Ok(Self {
-            seed,
-            actuators: vec![Action::default(); config.agent_count],
+            actuators: vec![Action::default(); initialization.agent_count],
+            initialization,
             config,
             control_stride,
             metric_stride,
@@ -329,22 +358,19 @@ impl<C: ControllerRuntime> Simulation<C> {
         })
     }
 
-    fn initial_state(seed: u64, config: &SimulationConfig) -> Vec<AgentPhysicalState> {
-        let mut rng = SimulatorRng::new(seed);
-        (0..config.agent_count)
-            .map(|_| AgentPhysicalState {
-                position: Vec2::new(
-                    (2.0 * rng.unit_f64() - 1.0) * config.initial_extent,
-                    (2.0 * rng.unit_f64() - 1.0) * config.initial_extent,
-                ),
-                heading_angle: rng.unit_f64() * TAU,
-            })
-            .collect()
-    }
-
     pub fn add_metric(&mut self, mut metric: Box<dyn MetricRuntime>) {
         metric.reset();
         self.metrics.push(metric);
+    }
+
+    pub fn replace_initialization(
+        &mut self,
+        initialization: SwarmInitialization,
+    ) -> Result<(), String> {
+        initialization.validate()?;
+        self.initialization = initialization;
+        self.reset();
+        Ok(())
     }
 
     pub fn replace_controller(&mut self, controller: C) {
@@ -353,11 +379,11 @@ impl<C: ControllerRuntime> Simulation<C> {
     }
 
     pub fn reset(&mut self) {
-        self.state = Self::initial_state(self.seed, &self.config);
-        self.actuators.fill(Action::default());
+        self.state = self.initialization.build_state();
+        self.actuators = vec![Action::default(); self.initialization.agent_count];
         self.physics_ticks = 0;
         self.control_updates = 0;
-        self.controller.reset(self.config.agent_count);
+        self.controller.reset(self.initialization.agent_count);
         for metric in &mut self.metrics {
             metric.reset();
         }
@@ -427,25 +453,48 @@ impl ProbeSimulation {
     pub fn new(
         seed: u32,
         agent_count: u32,
+        initial_extent: f64,
         controller_ir_json: &str,
         parameters_json: &str,
     ) -> Result<ProbeSimulation, JsValue> {
-        let config = SimulationConfig {
+        let initialization = SwarmInitialization {
+            seed: seed as u64,
             agent_count: agent_count as usize,
+            extent: initial_extent,
+        };
+        let config = SimulationConfig {
             physics_dt: 0.01,
             control_dt: 0.05,
             metric_dt: 0.10,
             neighbour_radius: 1.5,
-            initial_extent: 2.0,
         };
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
             .map_err(|message| JsValue::from_str(&message))?;
-        let simulation = Simulation::new(seed as u64, config, controller)
+        let simulation = Simulation::new(initialization, config, controller)
             .map_err(|message| JsValue::from_str(&message))?;
         Ok(Self { simulation })
     }
 
-    pub fn set_controller(&mut self, controller_ir_json: &str, parameters_json: &str) -> Result<(), JsValue> {
+    pub fn set_initialization(
+        &mut self,
+        seed: u32,
+        agent_count: u32,
+        initial_extent: f64,
+    ) -> Result<(), JsValue> {
+        self.simulation
+            .replace_initialization(SwarmInitialization {
+                seed: seed as u64,
+                agent_count: agent_count as usize,
+                extent: initial_extent,
+            })
+            .map_err(|message| JsValue::from_str(&message))
+    }
+
+    pub fn set_controller(
+        &mut self,
+        controller_ir_json: &str,
+        parameters_json: &str,
+    ) -> Result<(), JsValue> {
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
             .map_err(|message| JsValue::from_str(&message))?;
         self.simulation.replace_controller(controller);
@@ -495,18 +544,24 @@ mod tests {
 
     fn config() -> SimulationConfig {
         SimulationConfig {
-            agent_count: 12,
             physics_dt: 0.01,
             control_dt: 0.05,
             metric_dt: 0.10,
             neighbour_radius: 2.0,
-            initial_extent: 1.0,
+        }
+    }
+
+    fn initialization(seed: u64) -> SwarmInitialization {
+        SwarmInitialization {
+            seed,
+            agent_count: 12,
+            extent: 1.0,
         }
     }
 
     fn simulation(seed: u64) -> Simulation<LocalCentroidProbeController> {
         Simulation::new(
-            seed,
+            initialization(seed),
             config(),
             LocalCentroidProbeController::new(0.1, 0.002, 0.04),
         )
@@ -562,6 +617,21 @@ mod tests {
     }
 
     #[test]
+    fn replacing_initialization_restarts_without_changing_simulation_config() {
+        let mut sim = simulation(19);
+        sim.advance_physics_ticks(10);
+        sim.replace_initialization(SwarmInitialization {
+            seed: 19,
+            agent_count: 5,
+            extent: 1.0,
+        })
+        .unwrap();
+        assert_eq!(sim.snapshot().state.len(), 5);
+        assert_eq!(sim.physics_ticks(), 0);
+        assert_eq!(sim.control_updates(), 0);
+    }
+
+    #[test]
     fn brute_force_neighbour_query_is_a_clear_reference_oracle() {
         let state = vec![
             AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
@@ -584,14 +654,17 @@ mod tests {
     #[test]
     fn returned_actions_are_applied_only_by_simulator_physics() {
         let cfg = SimulationConfig {
-            agent_count: 1,
             physics_dt: 0.1,
             control_dt: 0.1,
             metric_dt: 0.1,
             neighbour_radius: 1.0,
-            initial_extent: 1.0,
         };
-        let mut sim = Simulation::new(2, cfg, ConstantController).unwrap();
+        let initialization = SwarmInitialization {
+            seed: 2,
+            agent_count: 1,
+            extent: 1.0,
+        };
+        let mut sim = Simulation::new(initialization, cfg, ConstantController).unwrap();
         let before = sim.snapshot().state[0];
         sim.advance_physics_ticks(1);
         let after = sim.snapshot().state[0];
@@ -603,6 +676,25 @@ mod tests {
     fn invalid_clock_ratio_is_rejected() {
         let mut cfg = config();
         cfg.control_dt = 0.055;
-        assert!(Simulation::new(1, cfg, LocalCentroidProbeController::new(0.1, 0.0, 0.0)).is_err());
+        assert!(Simulation::new(
+            initialization(1),
+            cfg,
+            LocalCentroidProbeController::new(0.1, 0.0, 0.0),
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn invalid_swarm_initialization_is_rejected_before_replacement() {
+        let mut sim = simulation(3);
+        let before = sim.snapshot();
+        assert!(sim
+            .replace_initialization(SwarmInitialization {
+                seed: 3,
+                agent_count: 0,
+                extent: 1.0,
+            })
+            .is_err());
+        assert_eq!(sim.snapshot(), before);
     }
 }
