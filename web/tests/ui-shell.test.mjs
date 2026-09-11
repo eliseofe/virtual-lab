@@ -17,13 +17,15 @@ function editableConfig(main) {
   return match[1];
 }
 
-test("Round 1 UI exposes experiment config, initializer source, controller source, simulation stage, controls, and runtime speed", async () => {
+test("Round 1 UI exposes experiment config, initializer source, controller source, simulation stage, controls, runtime speed, and run seed", async () => {
   const html = await text("src/index.html");
   for (const required of [
     'id="experiment-select"', 'id="experiment-config"', 'id="initializer-source"', 'id="apply-setup"',
-    'id="simulation-canvas"', 'id="controller-source"', 'id="run"', 'id="pause"', 'id="restart"', 'id="compile"',
-    'id="simulation-speed"', 'id="simulation-speed-value"', 'id="actual-simulation-speed"',
+    'id="simulation-canvas"', 'id="controller-source"', 'id="run"', 'id="pause"', 'id="restart"', 'id="restart-new-seed"', 'id="compile"',
+    'id="simulation-speed"', 'id="simulation-speed-value"', 'id="actual-simulation-speed"', 'id="run-seed"',
   ]) assert.match(html, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(html, /Restart same seed/);
+  assert.match(html, /New seed &amp; restart/);
   assert.match(html, /value="20"/);
   assert.match(html, /Actual speed is measured from model time versus wall time and does not affect the simulation/);
   assert.doesNotMatch(html, /id="initialization-seed"/);
@@ -41,7 +43,7 @@ test("student config exposes only active experiment and controller parameters", 
   for (const hiddenOrRemoved of [
     "PHYSICS_DT", "METRIC_DT", "NEIGHBOUR_RADIUS", "HEX_RADIUS", "HEX_SPACING", "HEX_POSITION_JITTER", "RANDOM_EXTENT",
     "RHO_INFORMED", "K3", "WHEEL_BASE", "ALIGNMENT_RANGE", "RUN_COUNT", "V0 = U", "ALPHA = K1", "BETA = K2",
-    "SPRING_K", "SPRING_L", "DR =", "DTHETA",
+    "SPRING_K", "SPRING_L", "DR =", "DTHETA", "SEED =",
   ]) assert.doesNotMatch(config, new RegExp(hiddenOrRemoved.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
   assert.match(main, /def hexagon_perturbed\(config, rng, place\):/);
@@ -79,6 +81,19 @@ test("runtime speed changes execution throughput without becoming a scientific p
   assert.match(main, /worker\.postMessage\(\{ type: "advance", ticks: ticksPerAdvance\(\) \}\)/);
   assert.match(main, /ui\.speed\.addEventListener\("input", updateSpeedLabel\)/);
   assert.doesNotMatch(config, /RUNTIME_INTERVAL_MS|runtimeSpeed|simulation-speed/);
+});
+
+test("run seed is simulator provenance with explicit reproducible and randomized restart paths", async () => {
+  const main = await text("src/main.js");
+  const worker = await text("src/worker.js");
+  const config = editableConfig(main);
+  assert.match(main, /let activeSeed = INTERNAL_SEED/);
+  assert.match(main, /globalThis\.crypto\.getRandomValues/);
+  assert.match(main, /ui\.restartNewSeed\.addEventListener/);
+  assert.match(main, /configSource: appliedConfigSource/);
+  assert.match(main, /initializerSource: appliedInitializerSource/);
+  assert.match(worker, /seed: activeSeed/);
+  assert.doesNotMatch(config, /SEED\s*=/);
 });
 
 test("hidden simulator settings stay outside the editable config namespace", async () => {
