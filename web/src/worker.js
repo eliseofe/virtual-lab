@@ -15,6 +15,14 @@ function emitSnapshot(type) {
   });
 }
 
+function initializationValues(initialization = {}) {
+  return {
+    seed: Number(initialization.seed ?? 2026),
+    agentCount: Number(initialization.agentCount ?? 32),
+    extent: Number(initialization.extent ?? 2.0),
+  };
+}
+
 async function loadWasm() {
   const moduleUrl = new URL("./wasm/vlab_kernel.js", import.meta.url).href;
   wasm = await import(moduleUrl);
@@ -32,9 +40,11 @@ self.addEventListener("message", (event) => {
 
   try {
     if (message.type === "initialize") {
+      const initialization = initializationValues(message.initialization);
       simulation = new wasm.ProbeSimulation(
-        Number(message.seed ?? 2026),
-        Number(message.agentCount ?? 32),
+        initialization.seed,
+        initialization.agentCount,
+        initialization.extent,
         JSON.stringify(message.ir),
         JSON.stringify(message.parameters ?? {}),
       );
@@ -48,6 +58,16 @@ self.addEventListener("message", (event) => {
       return;
     }
 
+    if (message.type === "apply-initialization") {
+      const initialization = initializationValues(message.initialization);
+      simulation.set_initialization(
+        initialization.seed,
+        initialization.agentCount,
+        initialization.extent,
+      );
+      emitSnapshot("initialization-applied");
+      return;
+    }
     if (message.type === "apply-controller") {
       simulation.set_controller(JSON.stringify(message.ir), JSON.stringify(message.parameters ?? {}));
       emitSnapshot("controller-applied");
@@ -65,7 +85,7 @@ self.addEventListener("message", (event) => {
     }
   } catch (error) {
     self.postMessage({
-      type: "controller-runtime-error",
+      type: message.type === "apply-initialization" ? "initialization-error" : "controller-runtime-error",
       message: error instanceof Error ? error.message : String(error),
     });
   }
