@@ -44,12 +44,8 @@ jobs:
       - name: Build static browser artifact
         run: node web/scripts/build.mjs
 
-      - name: Verify required static artifacts
-        run: |
-          test -f web/dist/index.html
-          test -f web/dist/worker.js
-          test -f web/dist/wasm/vlab_kernel.js
-          test -f web/dist/wasm/vlab_kernel_bg.wasm
+      - name: Verify coherent browser artifact
+        run: node web/scripts/verify-dist.mjs
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
