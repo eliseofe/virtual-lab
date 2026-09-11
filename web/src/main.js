@@ -7,6 +7,7 @@ import { compileInitializer } from "./initializer/compiler.js";
 const INTERNAL_SEED = 2026;
 const INTERNAL_PHYSICS_DT = 0.01;
 const INTERNAL_METRIC_DT = 0.10;
+const RUNTIME_INTERVAL_MS = 50;
 
 const defaultConfigSource = `# EXPERIMENTAL SETUP
 # Number of agents in this run.
@@ -96,6 +97,8 @@ const ui = {
   time: document.querySelector("#scientific-time"),
   physicsTicks: document.querySelector("#physics-ticks"),
   controlUpdates: document.querySelector("#control-updates"),
+  speed: document.querySelector("#simulation-speed"),
+  speedValue: document.querySelector("#simulation-speed-value"),
   config: document.querySelector("#experiment-config"),
   initializerSource: document.querySelector("#initializer-source"),
   initializerIr: document.querySelector("#initializer-ir"),
@@ -216,6 +219,21 @@ function setControlsEnabled(enabled) {
   ui.restart.disabled = !enabled;
   ui.compile.disabled = !enabled;
   ui.applySetup.disabled = !enabled;
+  ui.speed.disabled = !enabled;
+}
+
+function runtimeSpeed() {
+  const speed = Number(ui.speed.value);
+  return Number.isFinite(speed) && speed > 0 ? speed : 1;
+}
+
+function ticksPerAdvance() {
+  const wallSecondsPerRequest = RUNTIME_INTERVAL_MS / 1000;
+  return Math.max(1, Math.round((wallSecondsPerRequest * runtimeSpeed()) / INTERNAL_PHYSICS_DT));
+}
+
+function updateSpeedLabel() {
+  ui.speedValue.textContent = `${runtimeSpeed()}×`;
 }
 
 function setRunning(next) {
@@ -227,9 +245,9 @@ function setRunning(next) {
     runTimer = setInterval(() => {
       if (!advancePending) {
         advancePending = true;
-        worker.postMessage({ type: "advance", ticks: 5 });
+        worker.postMessage({ type: "advance", ticks: ticksPerAdvance() });
       }
-    }, 50);
+    }, RUNTIME_INTERVAL_MS);
   }
 }
 
@@ -424,6 +442,8 @@ ui.source.addEventListener("input", () => {
   setFeedback(ui.feedback, "Controller source modified. Apply controller to compile and restart.", "dirty");
 });
 
+ui.speed.addEventListener("input", updateSpeedLabel);
+updateSpeedLabel();
 ui.run.addEventListener("click", () => setRunning(true));
 ui.pause.addEventListener("click", () => setRunning(false));
 ui.restart.addEventListener("click", () => { setRunning(false); worker.postMessage({ type: "reset" }); });
