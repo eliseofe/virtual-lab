@@ -2,6 +2,7 @@ let simulation = null;
 let wasm = null;
 let wasmReady = false;
 let activeArenaSize = 1.0;
+let activeSeed = 0;
 
 function emitSnapshot(type) {
   if (!simulation) return;
@@ -13,6 +14,7 @@ function emitSnapshot(type) {
     scientificTime: simulation.scientific_time(),
     agentCount: state.length / 3,
     arenaSize: activeArenaSize,
+    seed: activeSeed,
     state,
   });
 }
@@ -51,6 +53,7 @@ self.addEventListener("message", (event) => {
     if (message.type === "initialize") {
       const setup = simulationValues(message.setup);
       activeArenaSize = setup.arenaSize;
+      activeSeed = setup.seed >>> 0;
       simulation = new wasm.ProbeSimulation(
         JSON.stringify(setup.initialState),
         setup.seed,
@@ -89,6 +92,7 @@ self.addEventListener("message", (event) => {
         setup.maxAngularSpeed,
       );
       simulation.set_controller(JSON.stringify(message.ir), JSON.stringify(message.parameters ?? {}));
+      activeSeed = setup.seed >>> 0;
       emitSnapshot("setup-applied");
       return;
     }

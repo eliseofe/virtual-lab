@@ -99,6 +99,7 @@ const ui = {
   controlUpdates: document.querySelector("#control-updates"),
   speed: document.querySelector("#simulation-speed"),
   speedValue: document.querySelector("#simulation-speed-value"),
+  runSeed: document.querySelector("#run-seed"),
   config: document.querySelector("#experiment-config"),
   initializerSource: document.querySelector("#initializer-source"),
   initializerIr: document.querySelector("#initializer-ir"),
@@ -112,6 +113,7 @@ const ui = {
   run: document.querySelector("#run"),
   pause: document.querySelector("#pause"),
   restart: document.querySelector("#restart"),
+  restartNewSeed: document.querySelector("#restart-new-seed"),
   compile: document.querySelector("#compile"),
   canvas: document.querySelector("#simulation-canvas"),
   canvasEmpty: document.querySelector("#canvas-empty"),
@@ -131,7 +133,13 @@ let running = false;
 let advancePending = false;
 let latestState = [];
 let activeArenaSize = 10.0;
+let activeSeed = INTERNAL_SEED;
 let appliedConfig = null;
+let appliedConfigSource = defaultConfigSource;
+let appliedInitializerSource = defaultInitializerSource;
+let appliedController = null;
+let pendingSetup = null;
+let pendingController = null;
 let runTimer = null;
 
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
@@ -150,8 +158,8 @@ function requireNumber(values, name, { integer = false, positive = false, nonneg
   return value;
 }
 
-function compileSetup() {
-  const config = compileConfig(ui.config.value);
+function compileSetup({ seed = activeSeed, configSource = ui.config.value, initializerSource = ui.initializerSource.value } = {}) {
+  const config = compileConfig(configSource);
   const values = config.values;
   const agentCount = requireNumber(values, "N", { integer: true, positive: true });
   const arenaSize = requireNumber(values, "ARENA_SIZE", { positive: true });
@@ -168,8 +176,8 @@ function compileSetup() {
   const proximalRange = requireNumber(values, "PROXIMAL_RANGE", { positive: true });
   requireNumber(values, "INITIAL_POSITION_NOISE", { nonnegative: true });
 
-  const initializerConfig = { ...config, values: { ...values, SEED: INTERNAL_SEED } };
-  const initializer = compileInitializer(ui.initializerSource.value, initializerConfig);
+  const initializerConfig = { ...config, values: { ...values, SEED: seed } };
+  const initializer = compileInitializer(initializerSource, initializerConfig);
   if (initializer.state.length !== agentCount) throw new Error(`Initializer produced ${initializer.state.length} agents, expected N=${agentCount}.`);
   const half = arenaSize / 2;
   const outside = initializer.state.findIndex((agent) => Math.abs(agent.x) > half || Math.abs(agent.y) > half);
@@ -180,7 +188,7 @@ function compileSetup() {
   ui.initializerIr.textContent = JSON.stringify({
     version: initializer.version,
     method: initializer.method,
-    seed: INTERNAL_SEED,
+    seed,
     agentCount: initializer.state.length,
     arenaSize,
     firstAgents: initializer.state.slice(0, 5),
@@ -191,7 +199,7 @@ function compileSetup() {
     setup: {
       initialState: initializer.state,
       simulation: {
-        seed: INTERNAL_SEED,
+        seed,
         physicsDt: INTERNAL_PHYSICS_DT,
         controlDt,
         metricDt: INTERNAL_METRIC_DT,
@@ -217,6 +225,7 @@ function setControlsEnabled(enabled) {
   ui.run.disabled = !enabled || running;
   ui.pause.disabled = !enabled || !running;
   ui.restart.disabled = !enabled;
+  ui.restartNewSeed.disabled = !enabled;
   ui.compile.disabled = !enabled;
   ui.applySetup.disabled = !enabled;
   ui.speed.disabled = !enabled;
@@ -234,6 +243,18 @@ function ticksPerAdvance() {
 
 function updateSpeedLabel() {
   ui.speedValue.textContent = `${runtimeSpeed()}×`;
+}
+
+function updateSeedLabel() {
+  ui.runSeed.textContent = String(activeSeed >>> 0);
+}
+
+function randomSeedDifferentFromCurrent() {
+  const value = new Uint32Array(1);
+  globalThis.crypto.getRandomValues(value);
+  let next = value[0] >>> 0;
+  if (next === (activeSeed >>> 0)) next = (next + 1) >>> 0;
+  return next;
 }
 
 function setRunning(next) {
@@ -254,12 +275,16 @@ function setRunning(next) {
 function initializeIfReady() {
   if (!wasmReady || initialized) return;
   try {
-    const { config, setup } = compileSetup();
+    const { config, setup } = compileSetup({ seed: activeSeed });
     const controller = compileControllerFor(config);
     appliedConfig = config;
+    appliedConfigSource = ui.config.value;
+    appliedInitializerSource = ui.initializerSource.value;
+    appliedController = controller;
     activeArenaSize = setup.simulation.arenaSize;
     ui.setupError.textContent = "";
     ui.error.textContent = "";
+    updateSeedLabel();
     setFeedback(ui.setupFeedback, "Student parameters and initialization compiled successfully.", "success");
     setFeedback(ui.feedback, "2012 MDMC/proximal controller compiled successfully.", "success");
     ui.status.textContent = "Experiment compiled · starting kernel simulation…";
@@ -280,6 +305,10 @@ function updateSnapshot(message) {
     ui.canvasEmpty.hidden = latestState.length > 0;
   }
   if (Number.isFinite(message.arenaSize)) activeArenaSize = Number(message.arenaSize);
+  if (Number.isInteger(message.seed)) {
+    activeSeed = Number(message.seed) >>> 0;
+    updateSeedLabel();
+  }
   const scientificTime = Number(message.scientificTime ?? 0);
   ui.time.textContent = scientificTime.toFixed(3);
   ui.physicsTicks.textContent = String(message.physicsTicks ?? 0);
@@ -387,18 +416,31 @@ worker.addEventListener("message", (event) => {
   if (["snapshot", "advanced", "reset", "controller-applied", "setup-applied"].includes(message.type)) {
     updateSnapshot(message);
     if (message.type === "controller-applied") {
+      if (pendingController) appliedController = pendingController;
+      pendingController = null;
       setFeedback(ui.feedback, "Controller compiled and applied. Run restarted cleanly.", "success");
       ui.status.textContent = "Controller active · run restarted";
       setRunning(false);
     } else if (message.type === "setup-applied") {
+      if (pendingSetup) {
+        appliedConfig = pendingSetup.config;
+        appliedConfigSource = pendingSetup.configSource;
+        appliedInitializerSource = pendingSetup.initializerSource;
+        appliedController = pendingSetup.controller;
+      }
+      pendingSetup = null;
       setFeedback(ui.setupFeedback, "Student parameters and initialization applied. Run restarted cleanly.", "success");
       ui.status.textContent = "Setup active · run restarted";
       setRunning(false);
-    } else if (message.type === "reset") setRunning(false);
+    } else if (message.type === "reset") {
+      ui.status.textContent = `Run restarted with seed ${activeSeed}`;
+      setRunning(false);
+    }
     return;
   }
   if (message.type === "setup-error") {
     advancePending = false;
+    pendingSetup = null;
     ui.setupError.textContent = message.message;
     setFeedback(ui.setupFeedback, "Setup runtime application failed.", "error");
     ui.status.textContent = "Setup runtime error";
@@ -408,6 +450,7 @@ worker.addEventListener("message", (event) => {
   }
   if (message.type === "controller-runtime-error") {
     advancePending = false;
+    pendingController = null;
     ui.error.textContent = `runtime-initialization: ${message.message}`;
     setFeedback(ui.feedback, "Controller runtime initialization failed; previous valid controller remains recoverable.", "error");
     ui.status.textContent = "Controller runtime error";
@@ -439,9 +482,11 @@ ui.initializerSource.addEventListener("input", markSetupDirty);
 
 ui.applySetup.addEventListener("click", () => {
   try {
-    const { config, setup } = compileSetup();
+    const configSource = ui.config.value;
+    const initializerSource = ui.initializerSource.value;
+    const { config, setup } = compileSetup({ seed: activeSeed, configSource, initializerSource });
     const controller = compileControllerFor(config);
-    appliedConfig = config;
+    pendingSetup = { config, configSource, initializerSource, controller };
     activeArenaSize = setup.simulation.arenaSize;
     ui.setupError.textContent = "";
     ui.error.textContent = "";
@@ -449,6 +494,7 @@ ui.applySetup.addEventListener("click", () => {
     setRunning(false);
     worker.postMessage({ type: "apply-setup", setup, ir: controller.compiled, parameters: controller.parameters });
   } catch (error) {
+    pendingSetup = null;
     ui.setupError.textContent = error instanceof Error ? error.message : String(error);
     setFeedback(ui.setupFeedback, "Setup compilation failed. Current valid setup was not replaced.", "error");
   }
@@ -458,10 +504,12 @@ ui.compile.addEventListener("click", () => {
   try {
     if (!appliedConfig) throw new Error("No valid applied experiment configuration.");
     const controller = compileControllerFor(appliedConfig);
+    pendingController = controller;
     ui.error.textContent = "";
     setFeedback(ui.feedback, "Compilation passed. Applying controller…", "working");
     worker.postMessage({ type: "apply-controller", ir: controller.compiled, parameters: controller.parameters });
   } catch (error) {
+    pendingController = null;
     ui.error.textContent = error instanceof Error ? error.message : String(error);
     setFeedback(ui.feedback, "Compilation failed. Current valid controller was not replaced.", "error");
   }
@@ -474,8 +522,33 @@ ui.source.addEventListener("input", () => {
 
 ui.speed.addEventListener("input", updateSpeedLabel);
 updateSpeedLabel();
+updateSeedLabel();
 ui.run.addEventListener("click", () => setRunning(true));
 ui.pause.addEventListener("click", () => setRunning(false));
-ui.restart.addEventListener("click", () => { setRunning(false); worker.postMessage({ type: "reset" }); });
+ui.restart.addEventListener("click", () => {
+  setRunning(false);
+  worker.postMessage({ type: "reset" });
+});
+ui.restartNewSeed.addEventListener("click", () => {
+  try {
+    if (!appliedConfig || !appliedController) throw new Error("No valid applied experiment is available to restart.");
+    const seed = randomSeedDifferentFromCurrent();
+    const { config, setup } = compileSetup({ seed, configSource: appliedConfigSource, initializerSource: appliedInitializerSource });
+    pendingSetup = {
+      config,
+      configSource: appliedConfigSource,
+      initializerSource: appliedInitializerSource,
+      controller: appliedController,
+    };
+    ui.setupError.textContent = "";
+    setFeedback(ui.setupFeedback, `Generating a new realization with seed ${seed}…`, "working");
+    setRunning(false);
+    worker.postMessage({ type: "apply-setup", setup, ir: appliedController.compiled, parameters: appliedController.parameters });
+  } catch (error) {
+    pendingSetup = null;
+    ui.setupError.textContent = error instanceof Error ? error.message : String(error);
+    setFeedback(ui.setupFeedback, "Could not generate a new-seed realization.", "error");
+  }
+});
 
 requestAnimationFrame(drawSnapshot);

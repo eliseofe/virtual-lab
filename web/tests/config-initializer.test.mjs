@@ -34,9 +34,9 @@ def initialize(config, rng, place):
         random_uniform(config, rng, place)
 `;
 
-function baseConfig(method = "hexagon_perturbed", desiredDistance = 0.45, arenaSize = 10.0) {
+function baseConfig(method = "hexagon_perturbed", desiredDistance = 0.45, arenaSize = 10.0, seed = 2026) {
   return compileConfig(`
-SEED = 2026
+SEED = ${seed}
 N = 91
 ARENA_SIZE = ${arenaSize}
 INITIALIZATION_METHOD = "${method}"
@@ -100,6 +100,14 @@ test("random initializer uses arena size directly and remains seeded", () => {
   assert.equal(first.state.length, 91);
   assert.deepEqual(first.state, second.state);
   assert.ok(first.state.every((agent) => Math.abs(agent.x) <= 4.0 && Math.abs(agent.y) <= 4.0 && agent.heading >= 0 && agent.heading < Math.PI * 2));
+});
+
+test("same run seed exactly replays initialization while a new seed changes the realization", () => {
+  const seed2026a = compileInitializer(initializerSource, baseConfig("random", 0.45, 8.0, 2026));
+  const seed2026b = compileInitializer(initializerSource, baseConfig("random", 0.45, 8.0, 2026));
+  const seed2027 = compileInitializer(initializerSource, baseConfig("random", 0.45, 8.0, 2027));
+  assert.deepEqual(seed2026a.state, seed2026b.state);
+  assert.notDeepEqual(seed2026a.state, seed2027.state);
 });
 
 test("initializer fails loudly when the source does not place all N agents", () => {

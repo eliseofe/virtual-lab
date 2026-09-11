@@ -92,7 +92,8 @@ async function state(send) {
     physicsTicks: document.querySelector('#physics-ticks')?.textContent ?? null,
     speed: document.querySelector('#simulation-speed')?.value ?? null,
     speedLabel: document.querySelector('#simulation-speed-value')?.textContent ?? null,
-    actualSpeed: document.querySelector('#actual-simulation-speed')?.textContent ?? null
+    actualSpeed: document.querySelector('#actual-simulation-speed')?.textContent ?? null,
+    runSeed: document.querySelector('#run-seed')?.textContent ?? null
   })`;
   const result = await send("Runtime.evaluate", { expression, returnByValue: true });
   const value = result?.result?.value;
@@ -120,7 +121,7 @@ try {
       for (const marker of requiredConfig) {
         if (!latest.configValue?.includes(marker)) throw new Error(`preloaded config is missing '${marker}'`);
       }
-      for (const removed of ["PHYSICS_DT =", "METRIC_DT =", "NEIGHBOUR_RADIUS =", "K3 =", "V0 = U", "SPRING_K ="]) {
+      for (const removed of ["PHYSICS_DT =", "METRIC_DT =", "NEIGHBOUR_RADIUS =", "K3 =", "V0 = U", "SPRING_K =", "SEED ="]) {
         if (latest.configValue?.includes(removed)) throw new Error(`preloaded config still exposes '${removed}'`);
       }
       for (const marker of ["def hexagon_perturbed", "def random_uniform", "config.DESIRED_DISTANCE", "config.ARENA_SIZE", "place(i, x, y, theta)"]) {
@@ -130,6 +131,7 @@ try {
         if (!latest.controllerValue?.includes(marker)) throw new Error(`controller source is missing '${marker}'`);
       }
       if (latest.speed !== "20" || latest.speedLabel !== "20×") throw new Error(`runtime speed did not default to 20×: ${JSON.stringify(latest)}`);
+      if (latest.runSeed !== "2026") throw new Error(`initial run seed is not the deterministic default: ${JSON.stringify(latest)}`);
 
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#run').click()" });
       await sleep(700);
@@ -156,8 +158,26 @@ try {
       if (faster?.statusState === "error") throw new Error(`simulation entered error state after live speed change: ${JSON.stringify(faster)}`);
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#pause').click()" });
 
-      console.log(JSON.stringify(faster, null, 2));
-      console.log("Browser reached kernel ready, reported measured speed, ran accelerated, and changed runtime speed live without resetting scientific state.");
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#restart').click()" });
+      await sleep(120);
+      const replay = await state(cdp.send);
+      if (replay?.runSeed !== "2026" || Number(replay?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve seed and reset time: ${JSON.stringify(replay)}`);
+
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#restart-new-seed').click()" });
+      await sleep(180);
+      const randomized = await state(cdp.send);
+      if (!/^\d+$/.test(randomized?.runSeed ?? "") || randomized.runSeed === "2026") throw new Error(`new-seed restart did not produce a distinct visible seed: ${JSON.stringify(randomized)}`);
+      if (Number(randomized?.scientificTime ?? -1) !== 0) throw new Error(`new-seed restart did not reset scientific time: ${JSON.stringify(randomized)}`);
+      if (randomized?.statusState === "error") throw new Error(`new-seed restart entered error state: ${JSON.stringify(randomized)}`);
+
+      const randomizedSeed = randomized.runSeed;
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#restart').click()" });
+      await sleep(120);
+      const replayRandomized = await state(cdp.send);
+      if (replayRandomized?.runSeed !== randomizedSeed || Number(replayRandomized?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve the new seed: ${JSON.stringify(replayRandomized)}`);
+
+      console.log(JSON.stringify(replayRandomized, null, 2));
+      console.log("Browser reached kernel ready, reported measured speed, changed runtime speed live, and verified same-seed/new-seed restart controls.");
       succeeded = true;
       break;
     }

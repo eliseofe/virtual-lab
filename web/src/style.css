@@ -35,13 +35,15 @@ select:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
 dt { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #89969b; }
 dd { margin: 0; font-size: 12.5px; line-height: 1.35; }
 .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
-.control-grid #restart { grid-column: 1 / -1; }
 button { border: 1px solid #cbd4d8; border-radius: 9px; background: #fff; padding: 8px 12px; color: #203038; cursor: pointer; transition: background .12s ease, border-color .12s ease, transform .05s ease; }
 button:hover:not(:disabled) { background: #f4f7f8; border-color: #b9c7cc; }
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: .42; cursor: default; }
 button.primary { background: #1d5166; color: #fff; border-color: #1d5166; font-weight: 650; }
 button.primary:hover:not(:disabled) { background: #17485b; border-color: #17485b; }
+.seed-row { margin-top: 9px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 9px; background: #f8fafb; border: 1px solid #e4e9eb; }
+.seed-row span { color: #78888e; font-size: 9.5px; text-transform: uppercase; letter-spacing: .055em; }
+.seed-row strong { font: 13px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; color: #213139; }
 .speed-control { margin-top: 14px; padding: 11px 10px; border-radius: 10px; background: #f4f7f8; }
 .speed-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .speed-heading .field-label { margin: 4px 0 0; }
