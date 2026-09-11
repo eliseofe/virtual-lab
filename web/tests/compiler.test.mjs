@@ -25,6 +25,17 @@ test("spring-local source lowers to typed versioned target-independent IR", () =
   assert.deepEqual(ir.parameters, parameters);
 });
 
+test("pow is available for the generalized Lennard-Jones proximal law", () => {
+  const proximal = `class Proximal(Agent):
+    def step(self, obs):
+        ratio = 0.5
+        magnitude = pow(ratio, POTENTIAL_ALPHA)
+        return Motion(magnitude, 0.0)
+`;
+  const ir = compileController(proximal, { parameters: { POTENTIAL_ALPHA: "scalar" } });
+  assert.equal(ir.body[1].value.name, "pow");
+});
+
 test("forbidden simulator/randomness access is rejected", () => {
   const invalid = `class Bad(Agent):
     def step(self, obs):
