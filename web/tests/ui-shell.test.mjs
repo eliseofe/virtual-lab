@@ -11,10 +11,14 @@ async function text(relative) {
   return readFile(path.join(web, relative), "utf8");
 }
 
-test("Round 1 UI exposes experiment workspace, simulation stage, controller editor, and controls", async () => {
+test("Round 1 UI exposes experiment workspace, swarm initialization, simulation stage, controller editor, and controls", async () => {
   const html = await text("src/index.html");
   for (const required of [
     'id="experiment-select"',
+    'id="initialization-seed"',
+    'id="initialization-agent-count"',
+    'id="initialization-extent"',
+    'id="apply-initialization"',
     'id="simulation-canvas"',
     'id="controller-source"',
     'id="run"',
@@ -31,6 +35,15 @@ test("renderer consumes snapshots and scientific advancement stays in worker mes
   assert.match(main, /requestAnimationFrame\(drawSnapshot\)/);
   assert.match(main, /postMessage\(\{ type: "advance", ticks: 5 \}\)/);
   assert.doesNotMatch(main, /scientificTime\s*\+=/);
+});
+
+test("swarm initialization and controller application use separate worker paths", async () => {
+  const main = await text("src/main.js");
+  const worker = await text("src/worker.js");
+  assert.match(main, /type: "apply-initialization"/);
+  assert.match(main, /type: "apply-controller"/);
+  assert.match(worker, /simulation\.set_initialization/);
+  assert.match(worker, /simulation\.set_controller/);
 });
 
 test("invalid source path preserves the current valid controller", async () => {
