@@ -16,6 +16,12 @@ const parameterValues = {
   L: 1.0,
 };
 
+const defaultInitialization = {
+  seed: 2026,
+  agentCount: 32,
+  extent: 2.0,
+};
+
 const referenceSource = `class LocalSpringAgent(Agent):
     def step(self, obs):
         force = Vec2(0.0, 0.0)
@@ -34,11 +40,16 @@ const ui = {
   time: document.querySelector("#scientific-time"),
   physicsTicks: document.querySelector("#physics-ticks"),
   controlUpdates: document.querySelector("#control-updates"),
-  agentCount: document.querySelector("#agent-count"),
   source: document.querySelector("#controller-source"),
   ir: document.querySelector("#controller-ir"),
   error: document.querySelector("#compile-error"),
   feedback: document.querySelector("#compile-feedback"),
+  initializationState: document.querySelector("#initialization-state"),
+  initializationError: document.querySelector("#initialization-error"),
+  initializationSeed: document.querySelector("#initialization-seed"),
+  initializationAgentCount: document.querySelector("#initialization-agent-count"),
+  initializationExtent: document.querySelector("#initialization-extent"),
+  applyInitialization: document.querySelector("#apply-initialization"),
   run: document.querySelector("#run"),
   pause: document.querySelector("#pause"),
   restart: document.querySelector("#restart"),
@@ -48,6 +59,9 @@ const ui = {
 };
 
 ui.source.value = referenceSource;
+ui.initializationSeed.value = String(defaultInitialization.seed);
+ui.initializationAgentCount.value = String(defaultInitialization.agentCount);
+ui.initializationExtent.value = String(defaultInitialization.extent);
 
 let wasmReady = false;
 let initialized = false;
@@ -55,6 +69,8 @@ let running = false;
 let advancePending = false;
 let latestXY = [];
 let currentCompiled = null;
+let appliedInitialization = { ...defaultInitialization };
+let pendingInitialization = null;
 let runTimer = null;
 
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
@@ -70,11 +86,30 @@ function compileSource() {
   return compiled;
 }
 
+function readInitialization() {
+  const seed = Number(ui.initializationSeed.value);
+  const agentCount = Number(ui.initializationAgentCount.value);
+  const extent = Number(ui.initializationExtent.value);
+
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
+    throw new Error("Seed must be an integer between 0 and 4294967295.");
+  }
+  if (!Number.isInteger(agentCount) || agentCount < 1 || agentCount > 0xffffffff) {
+    throw new Error("Agent count must be a positive integer.");
+  }
+  if (!Number.isFinite(extent) || extent <= 0) {
+    throw new Error("Extent must be finite and positive.");
+  }
+
+  return { seed, agentCount, extent };
+}
+
 function setControlsEnabled(enabled) {
   ui.run.disabled = !enabled || running;
   ui.pause.disabled = !enabled || !running;
   ui.restart.disabled = !enabled;
   ui.compile.disabled = !enabled;
+  ui.applyInitialization.disabled = !enabled;
 }
 
 function setRunning(next) {
@@ -100,11 +135,11 @@ function initializeIfReady() {
   try {
     currentCompiled = compileSource();
     ui.error.textContent = "";
+    ui.initializationError.textContent = "";
     setFeedback("Reference controller compiled successfully.", "success");
     worker.postMessage({
       type: "initialize",
-      seed: 2026,
-      agentCount: 32,
+      initialization: appliedInitialization,
       ir: currentCompiled,
       parameters: parameterValues,
     });
@@ -123,7 +158,6 @@ function updateSnapshot(message) {
   ui.time.textContent = Number(message.scientificTime ?? 0).toFixed(3);
   ui.physicsTicks.textContent = String(message.physicsTicks ?? 0);
   ui.controlUpdates.textContent = String(message.controlUpdates ?? 0);
-  ui.agentCount.textContent = String(message.agentCount ?? latestXY.length / 2);
   advancePending = false;
 }
 
@@ -202,20 +236,40 @@ worker.addEventListener("message", (event) => {
     ui.status.textContent = `Kernel ${message.kernelVersion} ready`;
     ui.status.dataset.state = "ready";
     ui.runState.textContent = "Paused";
+    ui.initializationState.textContent = "Applied";
     setControlsEnabled(true);
     return;
   }
 
-  if (["snapshot", "advanced", "reset", "controller-applied"].includes(message.type)) {
+  if (["snapshot", "advanced", "reset", "controller-applied", "initialization-applied"].includes(message.type)) {
     updateSnapshot(message);
     if (message.type === "controller-applied") {
-      ui.status.textContent = "Controller active · run restarted from seed 2026";
+      ui.status.textContent = "Controller active · run restarted with applied swarm initialization";
       ui.status.dataset.state = "ready";
       setFeedback("Controller compiled and applied. Run restarted cleanly.", "success");
+      setRunning(false);
+    } else if (message.type === "initialization-applied") {
+      if (pendingInitialization) {
+        appliedInitialization = pendingInitialization;
+        pendingInitialization = null;
+      }
+      ui.initializationError.textContent = "";
+      ui.initializationState.textContent = "Applied";
+      ui.status.textContent = "Swarm initialization applied · run restarted";
+      ui.status.dataset.state = "ready";
       setRunning(false);
     } else if (message.type === "reset") {
       setRunning(false);
     }
+    return;
+  }
+
+  if (message.type === "initialization-error") {
+    advancePending = false;
+    pendingInitialization = null;
+    ui.initializationState.textContent = "Invalid";
+    ui.initializationError.textContent = message.message;
+    setRunning(false);
     return;
   }
 
@@ -251,6 +305,28 @@ ui.compile.addEventListener("click", () => {
 ui.source.addEventListener("input", () => {
   ui.error.textContent = "";
   setFeedback("Controller source modified. Apply to compile and restart.", "dirty");
+});
+
+for (const field of [ui.initializationSeed, ui.initializationAgentCount, ui.initializationExtent]) {
+  field.addEventListener("input", () => {
+    ui.initializationError.textContent = "";
+    ui.initializationState.textContent = "Modified";
+  });
+}
+
+ui.applyInitialization.addEventListener("click", () => {
+  try {
+    const initialization = readInitialization();
+    ui.initializationError.textContent = "";
+    ui.initializationState.textContent = "Applying…";
+    pendingInitialization = initialization;
+    setRunning(false);
+    worker.postMessage({ type: "apply-initialization", initialization });
+  } catch (error) {
+    pendingInitialization = null;
+    ui.initializationState.textContent = "Invalid";
+    ui.initializationError.textContent = error instanceof Error ? error.message : String(error);
+  }
 });
 
 ui.run.addEventListener("click", () => setRunning(true));
