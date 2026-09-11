@@ -27,7 +27,7 @@
           <select id="experiment-select" aria-label="Selected experiment">
             <option value="kernel-probe">Local spring controller · kernel validation</option>
           </select>
-          <p class="muted">Round 1 workspace shell. The Active Elastic Model will replace this validation experiment after the open scientific convention review in issue #14.</p>
+          <p class="muted">Round 1 workspace shell. The Active Elastic Model remains a separate scientific-validation task.</p>
         </section>
 
         <section class="panel metadata-panel">
@@ -38,9 +38,32 @@
           <dl class="metadata-grid">
             <div><dt>Execution</dt><dd>Rust / WASM worker</dd></div>
             <div><dt>Controller</dt><dd>python-vlab/0.1 → IR → Rust bytecode</dd></div>
-            <div><dt>Seed</dt><dd>2026</dd></div>
-            <div><dt>Agents</dt><dd id="agent-count">32</dd></div>
+            <div><dt>Initialization</dt><dd>Simulator-owned swarm setup</dd></div>
           </dl>
+        </section>
+
+        <section class="panel initialization-panel">
+          <div class="panel-heading">
+            <span>Swarm initialization</span>
+            <strong id="initialization-state">Applied</strong>
+          </div>
+          <div class="initialization-grid">
+            <label>
+              <span>Seed</span>
+              <input id="initialization-seed" type="number" min="0" step="1" inputmode="numeric">
+            </label>
+            <label>
+              <span>Agents</span>
+              <input id="initialization-agent-count" type="number" min="1" step="1" inputmode="numeric">
+            </label>
+            <label>
+              <span>Extent</span>
+              <input id="initialization-extent" type="number" min="0.000001" step="0.1" inputmode="decimal">
+            </label>
+          </div>
+          <button id="apply-initialization" disabled>Apply initialization &amp; restart</button>
+          <p class="muted">Starting swarm configuration is simulator-owned and independent of controller source and controller parameters.</p>
+          <p id="initialization-error" class="error" role="alert"></p>
         </section>
 
         <section class="panel run-panel">
@@ -82,7 +105,7 @@
             <div>
               <p class="section-kicker">CONTROLLER SOURCE</p>
               <h2>Editable local agent rule</h2>
-              <p class="muted">Apply compiles source to versioned IR and executable Rust bytecode, then restarts the run from the same seed.</p>
+              <p class="muted">Apply compiles source to versioned IR and executable Rust bytecode, then restarts the run using the currently applied swarm initialization.</p>
             </div>
             <button id="compile" class="primary" disabled>Apply &amp; restart</button>
           </div>
