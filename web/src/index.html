@@ -25,16 +25,16 @@
         <section class="panel experiment-panel">
           <label class="field-label" for="experiment-select">Experiment</label>
           <select id="experiment-select" aria-label="Selected experiment">
-            <option value="kernel-probe">Active-elastic controller · Round 1</option>
+            <option value="kernel-probe">Self-organized flocking · 2012 MDMC + proximal control</option>
           </select>
-          <p class="muted">Round 1 exposes configuration, initialization and controller source separately. Scientific fidelity remains owner-reviewed.</p>
+          <p class="muted">Student view: experimental setup and controller parameters are editable; simulator implementation details remain fixed.</p>
         </section>
 
         <section class="panel metadata-panel">
           <div class="panel-heading"><span>Experiment revision</span><strong>0.1-dev</strong></div>
           <dl class="metadata-grid">
             <div><dt>Execution</dt><dd>Rust / WASM worker</dd></div>
-            <div><dt>Parameters</dt><dd>Python-style editable config</dd></div>
+            <div><dt>Parameters</dt><dd>Student-facing Python-style config</dd></div>
             <div><dt>Initialization</dt><dd>Python-style source → initializer IR</dd></div>
             <div><dt>Controller</dt><dd>python-vlab/0.1 → controller IR</dd></div>
           </dl>
@@ -59,21 +59,21 @@
         <section class="panel stage-panel">
           <div class="stage-heading">
             <div><p class="section-kicker">LIVE SIMULATION</p><h2>Scientific state</h2></div>
-            <span class="badge">render-only observer</span>
+            <span class="badge">periodic square arena</span>
           </div>
           <div class="canvas-wrap">
             <canvas id="simulation-canvas" width="960" height="600" aria-label="Live agent simulation"></canvas>
             <div id="canvas-empty" class="canvas-empty">Waiting for first simulator snapshot…</div>
           </div>
-          <p class="muted stage-note">The renderer consumes snapshots only. Rendering does not advance scientific time or mutate simulation state.</p>
+          <p class="muted stage-note">Agent position and orientation are rendered in fixed arena coordinates. Crossing an arena edge wraps periodically to the opposite edge.</p>
         </section>
 
         <section class="panel editor-panel">
           <div class="stage-heading editor-heading">
             <div>
               <p class="section-kicker">EXPERIMENT PARAMETERS</p>
-              <h2>Editable Python-style configuration</h2>
-              <p class="muted">This is an open-ended parameter namespace, not a fixed form. Simulator, initialization and controller parameters can be added here without adding UI fields.</p>
+              <h2>Student-facing configuration</h2>
+              <p class="muted">These are the experimental-setup and controller parameters available to the student. Numerical integration, rendering clocks and other simulator machinery are fixed infrastructure.</p>
             </div>
             <button id="apply-setup" class="primary" disabled>Apply setup &amp; restart</button>
           </div>
@@ -87,7 +87,7 @@
             <div>
               <p class="section-kicker">SWARM INITIALIZATION SOURCE</p>
               <h2>Editable initialization rule</h2>
-              <p class="muted">The selected initialization method comes from the parameter namespace. The source below maps that choice to simulator-owned initialization primitives.</p>
+              <p class="muted">The selected initialization method uses the student-facing setup values to construct every agent position and initial orientation.</p>
             </div>
           </div>
           <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initialization source"></textarea>
@@ -102,7 +102,7 @@
             <div>
               <p class="section-kicker">CONTROLLER SOURCE</p>
               <h2>Editable local agent rule</h2>
-              <p class="muted">Controller parameters come from the same editable configuration namespace. Apply compiles the controller and restarts with the currently applied simulator setup.</p>
+              <p class="muted">The controller uses the same student-facing parameter configuration. Apply compiles the controller and restarts the current experiment.</p>
             </div>
             <button id="compile" class="primary" disabled>Apply controller &amp; restart</button>
           </div>
