@@ -1,34 +1,64 @@
 import { compileController } from "./controller/compiler.js";
+import { compileConfig, numericParameters } from "./config/compiler.js";
+import { compileInitializer } from "./initializer/compiler.js";
 
-const parameterTypes = {
-  V0: "scalar",
-  ALPHA: "scalar",
-  BETA: "scalar",
-  K: "scalar",
-  L: "scalar",
-};
+const defaultConfigSource = `# Simulator / run parameters
+SEED = 2026
+N = 91
+PHYSICS_DT = 0.01
+CONTROL_DT = 0.05
+METRIC_DT = 0.10
+NEIGHBOUR_RADIUS = 1.5
 
-const parameterValues = {
-  V0: 0.12,
-  ALPHA: 0.003,
-  BETA: 0.08,
-  K: 0.1,
-  L: 1.0,
-};
+# Initialization parameters
+INITIALIZATION_METHOD = "hexagon_perturbed"
+HEX_SPACING = 0.65
+HEX_POSITION_JITTER = 0.0
+RANDOM_EXTENT = 2.0
 
-const defaultInitialization = {
-  seed: 2026,
-  agentCount: 32,
-  extent: 2.0,
-};
+# Active-elastic controller parameters (PRL/NJP notation)
+# Motion-control role mapping to Adaptive Behavior (2012):
+# V0 <-> U, ALPHA <-> K1, BETA <-> K2
+V0 = 0.002
+ALPHA = 0.01
+BETA = 0.12
+SPRING_K = 5.0
+SPRING_L = 0.65
+DR = 0.158
+DTHETA = 0.0
 
-const referenceSource = `class LocalSpringAgent(Agent):
+# Adaptive Behavior Table 1 parameters, exposed in the same namespace
+RHO_INFORMED = 0.0
+U = 0.005
+OMEGA_MAX = 1.5707963267948966
+K1 = 0.5
+K2 = 0.06
+K3 = 0.25
+WHEEL_BASE = 0.14
+POTENTIAL_ALPHA = 2.0
+POTENTIAL_EPSILON = 1.5
+DESIRED_DISTANCE = 0.45
+PROXIMAL_RANGE = 0.81
+ALIGNMENT_RANGE = 2.0
+SENSOR_NOISE = 0.1
+EXPERIMENT_DURATION = 2500.0
+RUN_COUNT = 100
+`;
+
+const defaultInitializerSource = `def initialize(config):
+    if config.INITIALIZATION_METHOD == "hexagon_perturbed":
+        return HexagonPerturbed(config.HEX_SPACING, config.HEX_POSITION_JITTER)
+    if config.INITIALIZATION_METHOD == "random":
+        return RandomUniform(config.RANDOM_EXTENT)
+`;
+
+const referenceSource = `class ActiveElasticAgent(Agent):
     def step(self, obs):
         force = Vec2(0.0, 0.0)
         for neighbour in obs.neighbours:
             displacement = neighbour.relative_position
             distance = norm(displacement)
-            force += K * (distance - L) * displacement / distance
+            force += SPRING_K * (distance - SPRING_L) * displacement / distance
         forward = V0 + ALPHA * dot(force, obs.heading)
         turning = BETA * dot(force, perpendicular(obs.heading))
         return Motion(forward, turning)
@@ -40,16 +70,16 @@ const ui = {
   time: document.querySelector("#scientific-time"),
   physicsTicks: document.querySelector("#physics-ticks"),
   controlUpdates: document.querySelector("#control-updates"),
+  config: document.querySelector("#experiment-config"),
+  initializerSource: document.querySelector("#initializer-source"),
+  initializerIr: document.querySelector("#initializer-ir"),
+  setupError: document.querySelector("#setup-error"),
+  setupFeedback: document.querySelector("#setup-feedback"),
+  applySetup: document.querySelector("#apply-setup"),
   source: document.querySelector("#controller-source"),
   ir: document.querySelector("#controller-ir"),
   error: document.querySelector("#compile-error"),
   feedback: document.querySelector("#compile-feedback"),
-  initializationState: document.querySelector("#initialization-state"),
-  initializationError: document.querySelector("#initialization-error"),
-  initializationSeed: document.querySelector("#initialization-seed"),
-  initializationAgentCount: document.querySelector("#initialization-agent-count"),
-  initializationExtent: document.querySelector("#initialization-extent"),
-  applyInitialization: document.querySelector("#apply-initialization"),
   run: document.querySelector("#run"),
   pause: document.querySelector("#pause"),
   restart: document.querySelector("#restart"),
@@ -58,10 +88,9 @@ const ui = {
   canvasEmpty: document.querySelector("#canvas-empty"),
 };
 
+ui.config.value = defaultConfigSource;
+ui.initializerSource.value = defaultInitializerSource;
 ui.source.value = referenceSource;
-ui.initializationSeed.value = String(defaultInitialization.seed);
-ui.initializationAgentCount.value = String(defaultInitialization.agentCount);
-ui.initializationExtent.value = String(defaultInitialization.extent);
 
 let wasmReady = false;
 let initialized = false;
@@ -69,39 +98,51 @@ let running = false;
 let advancePending = false;
 let latestXY = [];
 let currentCompiled = null;
-let appliedInitialization = { ...defaultInitialization };
-let pendingInitialization = null;
+let appliedConfig = null;
 let runTimer = null;
 
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 
-function setFeedback(message, state = "idle") {
-  ui.feedback.textContent = message;
-  ui.feedback.dataset.state = state;
+function setFeedback(element, message, state = "idle") {
+  element.textContent = message;
+  element.dataset.state = state;
 }
 
-function compileSource() {
+function requireNumber(values, name, { integer = false, positive = false, nonnegative = false } = {}) {
+  const value = values[name];
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${name} must be numeric.`);
+  if (integer && !Number.isInteger(value)) throw new Error(`${name} must be an integer.`);
+  if (positive && value <= 0) throw new Error(`${name} must be positive.`);
+  if (nonnegative && value < 0) throw new Error(`${name} must be non-negative.`);
+  return value;
+}
+
+function compileSetup() {
+  const config = compileConfig(ui.config.value);
+  const values = config.values;
+  const seed = requireNumber(values, "SEED", { integer: true, nonnegative: true });
+  const agentCount = requireNumber(values, "N", { integer: true, positive: true });
+  const physicsDt = requireNumber(values, "PHYSICS_DT", { positive: true });
+  const controlDt = requireNumber(values, "CONTROL_DT", { positive: true });
+  const metricDt = requireNumber(values, "METRIC_DT", { positive: true });
+  const neighbourRadius = requireNumber(values, "NEIGHBOUR_RADIUS", { positive: true });
+  const initializer = compileInitializer(ui.initializerSource.value, config);
+  ui.initializerIr.textContent = JSON.stringify(initializer, null, 2);
+  return {
+    config,
+    setup: {
+      initialization: { seed, agentCount, ...initializer },
+      simulation: { physicsDt, controlDt, metricDt, neighbourRadius },
+    },
+  };
+}
+
+function compileControllerFor(config) {
+  const parameters = numericParameters(config);
+  const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
   const compiled = compileController(ui.source.value, { parameters: parameterTypes });
   ui.ir.textContent = JSON.stringify(compiled, null, 2);
-  return compiled;
-}
-
-function readInitialization() {
-  const seed = Number(ui.initializationSeed.value);
-  const agentCount = Number(ui.initializationAgentCount.value);
-  const extent = Number(ui.initializationExtent.value);
-
-  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
-    throw new Error("Seed must be an integer between 0 and 4294967295.");
-  }
-  if (!Number.isInteger(agentCount) || agentCount < 1 || agentCount > 0xffffffff) {
-    throw new Error("Agent count must be a positive integer.");
-  }
-  if (!Number.isFinite(extent) || extent <= 0) {
-    throw new Error("Extent must be finite and positive.");
-  }
-
-  return { seed, agentCount, extent };
+  return { compiled, parameters };
 }
 
 function setControlsEnabled(enabled) {
@@ -109,7 +150,7 @@ function setControlsEnabled(enabled) {
   ui.pause.disabled = !enabled || !running;
   ui.restart.disabled = !enabled;
   ui.compile.disabled = !enabled;
-  ui.applyInitialization.disabled = !enabled;
+  ui.applySetup.disabled = !enabled;
 }
 
 function setRunning(next) {
@@ -133,20 +174,19 @@ function setRunning(next) {
 function initializeIfReady() {
   if (!wasmReady || initialized) return;
   try {
-    currentCompiled = compileSource();
+    const { config, setup } = compileSetup();
+    const controller = compileControllerFor(config);
+    appliedConfig = config;
+    currentCompiled = controller.compiled;
+    ui.setupError.textContent = "";
     ui.error.textContent = "";
-    ui.initializationError.textContent = "";
-    setFeedback("Reference controller compiled successfully.", "success");
-    worker.postMessage({
-      type: "initialize",
-      initialization: appliedInitialization,
-      ir: currentCompiled,
-      parameters: parameterValues,
-    });
+    setFeedback(ui.setupFeedback, "Configuration and initializer compiled successfully.", "success");
+    setFeedback(ui.feedback, "Reference controller compiled successfully.", "success");
+    worker.postMessage({ type: "initialize", setup, ir: controller.compiled, parameters: controller.parameters });
     initialized = true;
   } catch (error) {
-    ui.error.textContent = error instanceof Error ? error.message : String(error);
-    setFeedback("Controller compilation failed.", "error");
+    ui.setupError.textContent = error instanceof Error ? error.message : String(error);
+    setFeedback(ui.setupFeedback, "Setup compilation failed.", "error");
   }
 }
 
@@ -172,52 +212,31 @@ function drawSnapshot() {
     canvas.width = width;
     canvas.height = height;
   }
-
   context.clearRect(0, 0, width, height);
   context.fillStyle = "#f7f9fa";
   context.fillRect(0, 0, width, height);
-
   context.strokeStyle = "#e1e6e9";
   context.lineWidth = ratio;
   const step = 48 * ratio;
   for (let x = step; x < width; x += step) {
-    context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, height);
-    context.stroke();
+    context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke();
   }
   for (let y = step; y < height; y += step) {
-    context.beginPath();
-    context.moveTo(0, y);
-    context.lineTo(width, y);
-    context.stroke();
+    context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke();
   }
-
   if (latestXY.length >= 2) {
-    const xs = [];
-    const ys = [];
-    for (let i = 0; i < latestXY.length; i += 2) {
-      xs.push(latestXY[i]);
-      ys.push(latestXY[i + 1]);
-    }
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    const spanX = Math.max(maxX - minX, 1);
-    const spanY = Math.max(maxY - minY, 1);
+    const xs = [], ys = [];
+    for (let i = 0; i < latestXY.length; i += 2) { xs.push(latestXY[i]); ys.push(latestXY[i + 1]); }
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const spanX = Math.max(maxX - minX, 1), spanY = Math.max(maxY - minY, 1);
     const pad = 54 * ratio;
     const scale = Math.min((width - 2 * pad) / spanX, (height - 2 * pad) / spanY);
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
+    const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2;
     context.fillStyle = "#1c4e63";
     for (let i = 0; i < latestXY.length; i += 2) {
       const x = width / 2 + (latestXY[i] - centerX) * scale;
       const y = height / 2 - (latestXY[i + 1] - centerY) * scale;
-      context.beginPath();
-      context.arc(x, y, 4.2 * ratio, 0, Math.PI * 2);
-      context.fill();
+      context.beginPath(); context.arc(x, y, 4.2 * ratio, 0, Math.PI * 2); context.fill();
     }
   }
   requestAnimationFrame(drawSnapshot);
@@ -227,60 +246,44 @@ worker.addEventListener("message", (event) => {
   const message = event.data ?? {};
   if (message.type === "wasm-ready") {
     wasmReady = true;
-    ui.status.textContent = `Kernel ${message.kernelVersion} loaded · compiling controller…`;
+    ui.status.textContent = `Kernel ${message.kernelVersion} loaded · compiling experiment…`;
     initializeIfReady();
     return;
   }
-
   if (message.type === "ready") {
     ui.status.textContent = `Kernel ${message.kernelVersion} ready`;
     ui.status.dataset.state = "ready";
     ui.runState.textContent = "Paused";
-    ui.initializationState.textContent = "Applied";
     setControlsEnabled(true);
     return;
   }
-
-  if (["snapshot", "advanced", "reset", "controller-applied", "initialization-applied"].includes(message.type)) {
+  if (["snapshot", "advanced", "reset", "controller-applied", "setup-applied"].includes(message.type)) {
     updateSnapshot(message);
     if (message.type === "controller-applied") {
-      ui.status.textContent = "Controller active · run restarted with applied swarm initialization";
-      ui.status.dataset.state = "ready";
-      setFeedback("Controller compiled and applied. Run restarted cleanly.", "success");
+      setFeedback(ui.feedback, "Controller compiled and applied. Run restarted cleanly.", "success");
+      ui.status.textContent = "Controller active · run restarted";
       setRunning(false);
-    } else if (message.type === "initialization-applied") {
-      if (pendingInitialization) {
-        appliedInitialization = pendingInitialization;
-        pendingInitialization = null;
-      }
-      ui.initializationError.textContent = "";
-      ui.initializationState.textContent = "Applied";
-      ui.status.textContent = "Swarm initialization applied · run restarted";
-      ui.status.dataset.state = "ready";
+    } else if (message.type === "setup-applied") {
+      setFeedback(ui.setupFeedback, "Configuration and initializer applied. Run restarted cleanly.", "success");
+      ui.status.textContent = "Setup active · run restarted";
       setRunning(false);
-    } else if (message.type === "reset") {
-      setRunning(false);
-    }
+    } else if (message.type === "reset") setRunning(false);
     return;
   }
-
-  if (message.type === "initialization-error") {
+  if (message.type === "setup-error") {
     advancePending = false;
-    pendingInitialization = null;
-    ui.initializationState.textContent = "Invalid";
-    ui.initializationError.textContent = message.message;
+    ui.setupError.textContent = message.message;
+    setFeedback(ui.setupFeedback, "Setup runtime application failed.", "error");
     setRunning(false);
     return;
   }
-
   if (message.type === "controller-runtime-error") {
     advancePending = false;
     ui.error.textContent = `runtime-initialization: ${message.message}`;
-    setFeedback("Controller runtime initialization failed; previous valid controller remains recoverable.", "error");
+    setFeedback(ui.feedback, "Controller runtime initialization failed; previous valid controller remains recoverable.", "error");
     setRunning(false);
     return;
   }
-
   if (message.type === "error") {
     advancePending = false;
     ui.status.textContent = `Worker error: ${message.message}`;
@@ -289,51 +292,51 @@ worker.addEventListener("message", (event) => {
   }
 });
 
+function markSetupDirty() {
+  ui.setupError.textContent = "";
+  setFeedback(ui.setupFeedback, "Setup source modified. Apply setup to compile and restart.", "dirty");
+}
+ui.config.addEventListener("input", markSetupDirty);
+ui.initializerSource.addEventListener("input", markSetupDirty);
+
+ui.applySetup.addEventListener("click", () => {
+  try {
+    const { config, setup } = compileSetup();
+    const controller = compileControllerFor(config);
+    appliedConfig = config;
+    currentCompiled = controller.compiled;
+    ui.setupError.textContent = "";
+    ui.error.textContent = "";
+    setFeedback(ui.setupFeedback, "Setup compiled. Applying configuration and initialization…", "working");
+    setRunning(false);
+    worker.postMessage({ type: "apply-setup", setup, ir: controller.compiled, parameters: controller.parameters });
+  } catch (error) {
+    ui.setupError.textContent = error instanceof Error ? error.message : String(error);
+    setFeedback(ui.setupFeedback, "Setup compilation failed. Current valid setup was not replaced.", "error");
+  }
+});
+
 ui.compile.addEventListener("click", () => {
   try {
-    const compiled = compileSource();
+    if (!appliedConfig) throw new Error("No valid applied experiment configuration.");
+    const controller = compileControllerFor(appliedConfig);
     ui.error.textContent = "";
-    currentCompiled = compiled;
-    setFeedback("Compilation passed. Applying controller…", "working");
-    worker.postMessage({ type: "apply-controller", ir: compiled, parameters: parameterValues });
+    currentCompiled = controller.compiled;
+    setFeedback(ui.feedback, "Compilation passed. Applying controller…", "working");
+    worker.postMessage({ type: "apply-controller", ir: controller.compiled, parameters: controller.parameters });
   } catch (error) {
     ui.error.textContent = error instanceof Error ? error.message : String(error);
-    setFeedback("Compilation failed. Current valid controller was not replaced.", "error");
+    setFeedback(ui.feedback, "Compilation failed. Current valid controller was not replaced.", "error");
   }
 });
 
 ui.source.addEventListener("input", () => {
   ui.error.textContent = "";
-  setFeedback("Controller source modified. Apply to compile and restart.", "dirty");
-});
-
-for (const field of [ui.initializationSeed, ui.initializationAgentCount, ui.initializationExtent]) {
-  field.addEventListener("input", () => {
-    ui.initializationError.textContent = "";
-    ui.initializationState.textContent = "Modified";
-  });
-}
-
-ui.applyInitialization.addEventListener("click", () => {
-  try {
-    const initialization = readInitialization();
-    ui.initializationError.textContent = "";
-    ui.initializationState.textContent = "Applying…";
-    pendingInitialization = initialization;
-    setRunning(false);
-    worker.postMessage({ type: "apply-initialization", initialization });
-  } catch (error) {
-    pendingInitialization = null;
-    ui.initializationState.textContent = "Invalid";
-    ui.initializationError.textContent = error instanceof Error ? error.message : String(error);
-  }
+  setFeedback(ui.feedback, "Controller source modified. Apply controller to compile and restart.", "dirty");
 });
 
 ui.run.addEventListener("click", () => setRunning(true));
 ui.pause.addEventListener("click", () => setRunning(false));
-ui.restart.addEventListener("click", () => {
-  setRunning(false);
-  worker.postMessage({ type: "reset" });
-});
+ui.restart.addEventListener("click", () => { setRunning(false); worker.postMessage({ type: "reset" }); });
 
 requestAnimationFrame(drawSnapshot);
