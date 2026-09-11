@@ -33,7 +33,7 @@ U = 0.005
 # Maximum angular speed (rad/s).
 OMEGA_MAX = 1.5707963267948966
 # MDMC gains.
-K1 = 0.5
+K1 = 0.005
 K2 = 0.06
 # Generalized Lennard-Jones proximal-control parameters.
 POTENTIAL_ALPHA = 2.0
