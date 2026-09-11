@@ -1,6 +1,5 @@
-use std::f64::consts::TAU;
-use serde::Deserialize;
 use wasm_bindgen::prelude::*;
+use serde::Deserialize;
 
 mod controller_ir;
 pub use controller_ir::IrControllerRuntime;
@@ -36,8 +35,10 @@ pub struct AgentPhysicalState {
     pub position: Vec2,
     pub heading_angle: f64,
 }
+
 impl AgentPhysicalState {
     pub fn heading(self) -> Vec2 { Vec2::new(self.heading_angle.cos(), self.heading_angle.sin()) }
+    pub fn heading_perpendicular(self) -> Vec2 { Vec2::new(-self.heading_angle.sin(), self.heading_angle.cos()) }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -50,14 +51,9 @@ pub struct Observation {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Action {
-    pub forward: f64,
-    pub turning: f64,
-}
+pub struct Action { pub forward: f64, pub turning: f64 }
 
-pub trait PhysicsModel {
-    fn step(&self, state: &mut [AgentPhysicalState], actuators: &[Action], dt: f64);
-}
+pub trait PhysicsModel { fn step(&self, state: &mut [AgentPhysicalState], actuators: &[Action], dt: f64); }
 pub trait ObservationModel {
     fn observe(&self, state: &[AgentPhysicalState], agent_index: usize, neighbours: &dyn NeighbourIndex, radius: f64) -> Observation;
 }
@@ -94,9 +90,8 @@ impl NeighbourIndex for BruteForceNeighbourIndex {
         let origin = state[agent_index].position;
         let radius2 = radius * radius;
         for (index, candidate) in state.iter().enumerate() {
-            if index != agent_index && (candidate.position - origin).norm_squared() <= radius2 {
-                out.push(index);
-            }
+            if index == agent_index { continue; }
+            if (candidate.position - origin).norm_squared() <= radius2 { out.push(index); }
         }
     }
 }
@@ -133,7 +128,7 @@ impl ControllerRuntime for LocalCentroidProbeController {
     fn reset(&mut self, agent_count: usize) { self.private_steps = vec![0; agent_count]; }
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action {
         self.private_steps[agent_index] = self.private_steps[agent_index].saturating_add(1);
-        let force = observation.neighbours.iter().fold(Vec2::ZERO, |acc, n| acc + n.relative_position);
+        let force = observation.neighbours.iter().fold(Vec2::ZERO, |acc, neighbour| acc + neighbour.relative_position);
         let perpendicular = Vec2::new(-observation.heading.y, observation.heading.x);
         Action {
             forward: self.base_speed + self.attraction * force.dot(observation.heading),
@@ -142,15 +137,11 @@ impl ControllerRuntime for LocalCentroidProbeController {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct SimulationConfig {
-    #[serde(rename = "physicsDt")]
     pub physics_dt: f64,
-    #[serde(rename = "controlDt")]
     pub control_dt: f64,
-    #[serde(rename = "metricDt")]
     pub metric_dt: f64,
-    #[serde(rename = "neighbourRadius")]
     pub neighbour_radius: f64,
 }
 impl SimulationConfig {
@@ -159,7 +150,7 @@ impl SimulationConfig {
         let ratio = period / physics_dt;
         let rounded = ratio.round();
         if rounded < 1.0 || (ratio - rounded).abs() > 1e-9 {
-            return Err(format!("{name} must be an integer multiple of physics_dt"));
+            return Err(format!("{name} must be an integer multiple of physics_dt in Round 1B"));
         }
         Ok(rounded as u32)
     }
@@ -174,130 +165,19 @@ impl SimulationConfig {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum InitializationMethod {
-    RandomUniform { extent: f64 },
-    HexagonPerturbed { spacing: f64, jitter: f64 },
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SwarmInitialization {
-    pub seed: u64,
-    pub agent_count: usize,
-    pub method: InitializationMethod,
-}
-
-#[derive(Debug, Deserialize)]
-struct InitializationInput {
-    seed: u64,
-    #[serde(rename = "agentCount")]
-    agent_count: usize,
-    method: String,
-    extent: Option<f64>,
-    spacing: Option<f64>,
-    jitter: Option<f64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SetupInput {
-    initialization: InitializationInput,
-    simulation: SimulationConfig,
-}
-
-impl TryFrom<InitializationInput> for SwarmInitialization {
-    type Error = String;
-    fn try_from(value: InitializationInput) -> Result<Self, Self::Error> {
-        let method = match value.method.as_str() {
-            "random_uniform" => InitializationMethod::RandomUniform {
-                extent: value.extent.ok_or("random_uniform requires extent")?,
-            },
-            "hexagon_perturbed" => InitializationMethod::HexagonPerturbed {
-                spacing: value.spacing.ok_or("hexagon_perturbed requires spacing")?,
-                jitter: value.jitter.ok_or("hexagon_perturbed requires jitter")?,
-            },
-            other => return Err(format!("unsupported initialization method '{other}'")),
-        };
-        let result = Self { seed: value.seed, agent_count: value.agent_count, method };
-        result.validate()?;
-        Ok(result)
-    }
-}
+pub struct SwarmInitialization { pub state: Vec<AgentPhysicalState> }
 
 impl SwarmInitialization {
     fn validate(&self) -> Result<(), String> {
-        if self.agent_count == 0 { return Err("agent_count must be positive".to_owned()); }
-        match self.method {
-            InitializationMethod::RandomUniform { extent } => {
-                if !extent.is_finite() || extent <= 0.0 { return Err("random extent must be finite and positive".to_owned()); }
-            }
-            InitializationMethod::HexagonPerturbed { spacing, jitter } => {
-                if !spacing.is_finite() || spacing <= 0.0 { return Err("hexagon spacing must be finite and positive".to_owned()); }
-                if !jitter.is_finite() || jitter < 0.0 { return Err("hexagon jitter must be finite and non-negative".to_owned()); }
+        if self.state.is_empty() { return Err("initial state must contain at least one agent".to_owned()); }
+        for (index, agent) in self.state.iter().enumerate() {
+            if !agent.position.x.is_finite() || !agent.position.y.is_finite() || !agent.heading_angle.is_finite() {
+                return Err(format!("initial state for agent {index} contains a non-finite value"));
             }
         }
         Ok(())
     }
-
-    fn hex_coordinates(count: usize) -> Vec<(i32, i32)> {
-        let mut coords = Vec::with_capacity(count);
-        coords.push((0, 0));
-        let mut radius = 1_i32;
-        while coords.len() < count {
-            for q in -radius..=radius {
-                for r in -radius..=radius {
-                    let s = -q - r;
-                    if q.abs().max(r.abs()).max(s.abs()) == radius {
-                        coords.push((q, r));
-                        if coords.len() == count { return coords; }
-                    }
-                }
-            }
-            radius += 1;
-        }
-        coords
-    }
-
-    fn build_state(&self) -> Vec<AgentPhysicalState> {
-        let mut rng = SimulatorRng::new(self.seed);
-        match self.method {
-            InitializationMethod::RandomUniform { extent } => (0..self.agent_count).map(|_| AgentPhysicalState {
-                position: Vec2::new(
-                    (2.0 * rng.unit_f64() - 1.0) * extent,
-                    (2.0 * rng.unit_f64() - 1.0) * extent,
-                ),
-                heading_angle: rng.unit_f64() * TAU,
-            }).collect(),
-            InitializationMethod::HexagonPerturbed { spacing, jitter } => {
-                let vertical = (3.0_f64).sqrt() * 0.5 * spacing;
-                Self::hex_coordinates(self.agent_count).into_iter().map(|(q, r)| {
-                    let base_x = spacing * (q as f64 + 0.5 * r as f64);
-                    let base_y = vertical * r as f64;
-                    let dx = (2.0 * rng.unit_f64() - 1.0) * jitter;
-                    let dy = (2.0 * rng.unit_f64() - 1.0) * jitter;
-                    AgentPhysicalState {
-                        position: Vec2::new(base_x + dx, base_y + dy),
-                        heading_angle: rng.unit_f64() * TAU,
-                    }
-                }).collect()
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-struct SimulatorRng { state: u64 }
-impl SimulatorRng {
-    fn new(seed: u64) -> Self { Self { state: seed } }
-    fn next_u64(&mut self) -> u64 {
-        self.state = self.state.wrapping_add(0x9E3779B97F4A7C15);
-        let mut z = self.state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
-        z ^ (z >> 31)
-    }
-    fn unit_f64(&mut self) -> f64 {
-        const SCALE: f64 = 1.0 / ((1_u64 << 53) as f64);
-        ((self.next_u64() >> 11) as f64) * SCALE
-    }
+    fn build_state(&self) -> Vec<AgentPhysicalState> { self.state.clone() }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -327,10 +207,10 @@ impl<C: ControllerRuntime> Simulation<C> {
     pub fn new(initialization: SwarmInitialization, config: SimulationConfig, mut controller: C) -> Result<Self, String> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
-        controller.reset(initialization.agent_count);
+        controller.reset(initialization.state.len());
         let state = initialization.build_state();
         Ok(Self {
-            actuators: vec![Action::default(); initialization.agent_count],
+            actuators: vec![Action::default(); initialization.state.len()],
             initialization,
             config,
             control_stride,
@@ -346,29 +226,27 @@ impl<C: ControllerRuntime> Simulation<C> {
         })
     }
 
-    pub fn replace_controller(&mut self, controller: C) {
-        self.controller = controller;
-        self.reset();
-    }
+    pub fn add_metric(&mut self, mut metric: Box<dyn MetricRuntime>) { metric.reset(); self.metrics.push(metric); }
 
-    pub fn replace_setup_and_controller(&mut self, initialization: SwarmInitialization, config: SimulationConfig, controller: C) -> Result<(), String> {
+    pub fn replace_setup(&mut self, initialization: SwarmInitialization, config: SimulationConfig) -> Result<(), String> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
         self.initialization = initialization;
         self.config = config;
         self.control_stride = control_stride;
         self.metric_stride = metric_stride;
-        self.controller = controller;
         self.reset();
         Ok(())
     }
 
+    pub fn replace_controller(&mut self, controller: C) { self.controller = controller; self.reset(); }
+
     pub fn reset(&mut self) {
         self.state = self.initialization.build_state();
-        self.actuators = vec![Action::default(); self.initialization.agent_count];
+        self.actuators = vec![Action::default(); self.state.len()];
         self.physics_ticks = 0;
         self.control_updates = 0;
-        self.controller.reset(self.initialization.agent_count);
+        self.controller.reset(self.state.len());
         for metric in &mut self.metrics { metric.reset(); }
     }
 
@@ -400,11 +278,23 @@ impl<C: ControllerRuntime> Simulation<C> {
     }
 }
 
-fn parse_setup(setup_json: &str) -> Result<(SwarmInitialization, SimulationConfig), String> {
-    let input: SetupInput = serde_json::from_str(setup_json).map_err(|error| format!("invalid setup JSON: {error}"))?;
-    let initialization = SwarmInitialization::try_from(input.initialization)?;
-    input.simulation.validate()?;
-    Ok((initialization, input.simulation))
+#[derive(Deserialize)]
+struct InitialAgentJson { x: f64, y: f64, heading: f64 }
+
+fn parse_initial_state(json: &str) -> Result<SwarmInitialization, String> {
+    let agents: Vec<InitialAgentJson> = serde_json::from_str(json).map_err(|error| format!("invalid initial state JSON: {error}"))?;
+    let initialization = SwarmInitialization {
+        state: agents.into_iter().map(|agent| AgentPhysicalState {
+            position: Vec2::new(agent.x, agent.y),
+            heading_angle: agent.heading,
+        }).collect(),
+    };
+    initialization.validate()?;
+    Ok(initialization)
+}
+
+fn simulation_config(physics_dt: f64, control_dt: f64, metric_dt: f64, neighbour_radius: f64) -> SimulationConfig {
+    SimulationConfig { physics_dt, control_dt, metric_dt, neighbour_radius }
 }
 
 #[wasm_bindgen]
@@ -413,17 +303,33 @@ pub struct ProbeSimulation { simulation: Simulation<IrControllerRuntime> }
 #[wasm_bindgen]
 impl ProbeSimulation {
     #[wasm_bindgen(constructor)]
-    pub fn new(setup_json: &str, controller_ir_json: &str, parameters_json: &str) -> Result<ProbeSimulation, JsValue> {
-        let (initialization, config) = parse_setup(setup_json).map_err(|message| JsValue::from_str(&message))?;
+    pub fn new(
+        initial_state_json: &str,
+        physics_dt: f64,
+        control_dt: f64,
+        metric_dt: f64,
+        neighbour_radius: f64,
+        controller_ir_json: &str,
+        parameters_json: &str,
+    ) -> Result<ProbeSimulation, JsValue> {
+        let initialization = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
+        let config = simulation_config(physics_dt, control_dt, metric_dt, neighbour_radius);
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json).map_err(|message| JsValue::from_str(&message))?;
         let simulation = Simulation::new(initialization, config, controller).map_err(|message| JsValue::from_str(&message))?;
         Ok(Self { simulation })
     }
 
-    pub fn set_setup(&mut self, setup_json: &str, controller_ir_json: &str, parameters_json: &str) -> Result<(), JsValue> {
-        let (initialization, config) = parse_setup(setup_json).map_err(|message| JsValue::from_str(&message))?;
-        let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json).map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_setup_and_controller(initialization, config, controller).map_err(|message| JsValue::from_str(&message))
+    pub fn set_setup(
+        &mut self,
+        initial_state_json: &str,
+        physics_dt: f64,
+        control_dt: f64,
+        metric_dt: f64,
+        neighbour_radius: f64,
+    ) -> Result<(), JsValue> {
+        let initialization = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
+        let config = simulation_config(physics_dt, control_dt, metric_dt, neighbour_radius);
+        self.simulation.replace_setup(initialization, config).map_err(|message| JsValue::from_str(&message))
     }
 
     pub fn set_controller(&mut self, controller_ir_json: &str, parameters_json: &str) -> Result<(), JsValue> {
@@ -432,10 +338,7 @@ impl ProbeSimulation {
         Ok(())
     }
 
-    pub fn advance_ticks(&mut self, ticks: u32) -> f64 {
-        self.simulation.advance_physics_ticks(ticks);
-        self.simulation.scientific_time()
-    }
+    pub fn advance_ticks(&mut self, ticks: u32) -> f64 { self.simulation.advance_physics_ticks(ticks); self.simulation.scientific_time() }
     pub fn reset(&mut self) { self.simulation.reset(); }
     pub fn scientific_time(&self) -> f64 { self.simulation.scientific_time() }
     pub fn physics_ticks(&self) -> u32 { self.simulation.physics_ticks() }
@@ -458,87 +361,65 @@ mod tests {
     fn config() -> SimulationConfig {
         SimulationConfig { physics_dt: 0.01, control_dt: 0.05, metric_dt: 0.10, neighbour_radius: 2.0 }
     }
-    fn random_initialization(seed: u64) -> SwarmInitialization {
-        SwarmInitialization { seed, agent_count: 12, method: InitializationMethod::RandomUniform { extent: 1.0 } }
+    fn initialization(offset: f64, count: usize) -> SwarmInitialization {
+        SwarmInitialization {
+            state: (0..count).map(|index| AgentPhysicalState {
+                position: Vec2::new(offset + index as f64 * 0.1, 0.0),
+                heading_angle: index as f64 * 0.01,
+            }).collect(),
+        }
     }
-    fn simulation(seed: u64) -> Simulation<LocalCentroidProbeController> {
-        Simulation::new(random_initialization(seed), config(), LocalCentroidProbeController::new(0.1, 0.002, 0.04)).unwrap()
+    fn simulation(offset: f64) -> Simulation<LocalCentroidProbeController> {
+        Simulation::new(initialization(offset, 12), config(), LocalCentroidProbeController::new(0.1, 0.002, 0.04)).unwrap()
     }
 
     #[test]
-    fn same_seed_and_schedule_are_exactly_deterministic() {
-        let mut a = simulation(42);
-        let mut b = simulation(42);
-        a.advance_physics_ticks(250);
-        b.advance_physics_ticks(250);
+    fn same_initial_state_and_schedule_are_exactly_deterministic() {
+        let mut a = simulation(0.0); let mut b = simulation(0.0);
+        a.advance_physics_ticks(250); b.advance_physics_ticks(250);
         assert_eq!(a.snapshot(), b.snapshot());
     }
 
     #[test]
-    fn seed_changes_simulator_owned_initialization() {
-        assert_ne!(simulation(42).snapshot().state, simulation(43).snapshot().state);
-    }
-
-    #[test]
-    fn hexagon_initializer_supports_arbitrary_population_size() {
-        let init = SwarmInitialization {
-            seed: 4,
-            agent_count: 17,
-            method: InitializationMethod::HexagonPerturbed { spacing: 0.65, jitter: 0.0 },
-        };
-        let state = init.build_state();
-        assert_eq!(state.len(), 17);
-        assert_eq!(state[0].position, Vec2::ZERO);
-    }
-
-    #[test]
-    fn hexagon_jitter_is_seed_deterministic() {
-        let init = SwarmInitialization {
-            seed: 9,
-            agent_count: 9,
-            method: InitializationMethod::HexagonPerturbed { spacing: 0.65, jitter: 0.03 },
-        };
-        assert_eq!(init.build_state(), init.build_state());
+    fn explicit_initial_state_changes_simulator_start() {
+        assert_ne!(simulation(0.0).snapshot().state, simulation(1.0).snapshot().state);
     }
 
     #[test]
     fn renderer_sampling_frequency_cannot_change_trajectory() {
-        let mut sparse = simulation(7);
-        sparse.advance_physics_ticks(300);
-        let expected = sparse.snapshot();
-        let mut frequent = simulation(7);
-        for _ in 0..30 { frequent.advance_physics_ticks(10); let _ = frequent.snapshot(); }
-        assert_eq!(expected, frequent.snapshot());
+        let mut sparse_render = simulation(0.0); sparse_render.advance_physics_ticks(300); let expected = sparse_render.snapshot();
+        let mut frequent_render = simulation(0.0);
+        for _ in 0..30 { frequent_render.advance_physics_ticks(10); let _ = frequent_render.snapshot(); }
+        assert_eq!(expected, frequent_render.snapshot());
     }
 
     #[test]
     fn control_and_physics_clocks_are_independent() {
-        let mut sim = simulation(11);
-        sim.advance_physics_ticks(20);
-        assert_eq!(sim.physics_ticks(), 20);
-        assert_eq!(sim.control_updates(), 4);
-        assert!((sim.scientific_time() - 0.20).abs() < 1e-12);
+        let mut sim = simulation(0.0); sim.advance_physics_ticks(20);
+        assert_eq!(sim.physics_ticks(), 20); assert_eq!(sim.control_updates(), 4); assert!((sim.scientific_time() - 0.20).abs() < 1e-12);
     }
 
     #[test]
     fn reset_reconstructs_exact_initial_state() {
-        let mut sim = simulation(19);
-        let initial = sim.snapshot();
-        sim.advance_physics_ticks(100);
-        sim.reset();
-        assert_eq!(initial, sim.snapshot());
+        let mut sim = simulation(0.0); let initial = sim.snapshot(); sim.advance_physics_ticks(100); sim.reset(); assert_eq!(initial, sim.snapshot());
     }
 
     #[test]
-    fn brute_force_neighbour_query_is_reference_oracle() {
+    fn replacing_setup_restarts_with_new_explicit_state() {
+        let mut sim = simulation(0.0); sim.advance_physics_ticks(10);
+        let next = initialization(2.0, 5);
+        sim.replace_setup(next.clone(), config()).unwrap();
+        assert_eq!(sim.snapshot().state, next.state); assert_eq!(sim.physics_ticks(), 0); assert_eq!(sim.control_updates(), 0);
+    }
+
+    #[test]
+    fn brute_force_neighbour_query_is_a_clear_reference_oracle() {
         let state = vec![
             AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
             AgentPhysicalState { position: Vec2::new(0.5, 0.0), heading_angle: 0.0 },
             AgentPhysicalState { position: Vec2::new(2.0, 0.0), heading_angle: 0.0 },
         ];
-        let mut out = Vec::new();
-        BruteForceNeighbourIndex.query(&state, 0, 1.0, &mut out);
-        assert_eq!(out, vec![1]);
+        let mut out = Vec::new(); BruteForceNeighbourIndex.query(&state, 0, 1.0, &mut out); assert_eq!(out, vec![1]);
     }
 
     struct ConstantController;
@@ -550,18 +431,26 @@ mod tests {
     #[test]
     fn returned_actions_are_applied_only_by_simulator_physics() {
         let cfg = SimulationConfig { physics_dt: 0.1, control_dt: 0.1, metric_dt: 0.1, neighbour_radius: 1.0 };
-        let init = SwarmInitialization { seed: 2, agent_count: 1, method: InitializationMethod::RandomUniform { extent: 1.0 } };
-        let mut sim = Simulation::new(init, cfg, ConstantController).unwrap();
-        let before = sim.snapshot().state[0];
-        sim.advance_physics_ticks(1);
-        let after = sim.snapshot().state[0];
-        assert!(((after.position - before.position).norm_squared().sqrt() - 0.1).abs() < 1e-12);
+        let mut sim = Simulation::new(initialization(0.0, 1), cfg, ConstantController).unwrap();
+        let before = sim.snapshot().state[0]; sim.advance_physics_ticks(1); let after = sim.snapshot().state[0];
+        let displacement = after.position - before.position; assert!((displacement.norm_squared().sqrt() - 0.1).abs() < 1e-12);
     }
 
     #[test]
     fn invalid_clock_ratio_is_rejected() {
-        let mut cfg = config();
-        cfg.control_dt = 0.055;
-        assert!(Simulation::new(random_initialization(1), cfg, LocalCentroidProbeController::new(0.1, 0.0, 0.0)).is_err());
+        let mut cfg = config(); cfg.control_dt = 0.055;
+        assert!(Simulation::new(initialization(0.0, 3), cfg, LocalCentroidProbeController::new(0.1, 0.0, 0.0)).is_err());
+    }
+
+    #[test]
+    fn empty_initial_state_is_rejected() {
+        assert!(Simulation::new(SwarmInitialization { state: Vec::new() }, config(), LocalCentroidProbeController::new(0.1, 0.0, 0.0)).is_err());
+    }
+
+    #[test]
+    fn initial_state_json_is_validated() {
+        let parsed = parse_initial_state(r#"[{"x":1.0,"y":2.0,"heading":0.5}]"#).unwrap();
+        assert_eq!(parsed.state[0].position, Vec2::new(1.0, 2.0));
+        assert!(parse_initial_state("[]").is_err());
     }
 }
