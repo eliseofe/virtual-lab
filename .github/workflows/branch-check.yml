@@ -1,0 +1,45 @@
+name: Round 1 swarm-initialization branch check
+
+on:
+  push:
+    branches: [round1-swarm-initialization]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust with WASM target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: Test Rust kernel
+        run: cargo test --workspace
+
+      - name: Test browser code
+        run: node --test web/tests/*.test.mjs
+
+      - name: Build Rust kernel for browser
+        working-directory: crates/kernel
+        run: wasm-pack build --release --target web --out-dir ../../web/public/wasm --out-name vlab_kernel
+
+      - name: Build static browser artifact
+        run: node web/scripts/build.mjs
+
+      - name: Verify required static artifacts
+        run: |
+          test -f web/dist/index.html
+          test -f web/dist/worker.js
+          test -f web/dist/wasm/vlab_kernel.js
+          test -f web/dist/wasm/vlab_kernel_bg.wasm
