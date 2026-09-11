@@ -102,7 +102,12 @@ fn minimum_image(delta: Vec2, arena_size: f64) -> Vec2 {
 }
 
 fn wrap_coordinate(value: f64, arena_size: f64) -> f64 {
-    (value + arena_size / 2.0).rem_euclid(arena_size) - arena_size / 2.0
+    let half = arena_size / 2.0;
+    if value >= -half && value < half {
+        value
+    } else {
+        (value + half).rem_euclid(arena_size) - half
+    }
 }
 
 fn wrap_state(state: &mut [AgentPhysicalState], arena_size: f64) {
