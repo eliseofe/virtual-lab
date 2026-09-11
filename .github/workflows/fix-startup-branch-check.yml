@@ -36,17 +36,5 @@ jobs:
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
           sleep 1
-          google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=3000 --dump-dom http://127.0.0.1:4173/ > /tmp/vlab-dom.html 2>/tmp/vlab-chrome.log || true
-          if ! grep -Eq 'id="worker-status"[^>]*data-state="ready"[^>]*>Kernel [^<]+ ready<' /tmp/vlab-dom.html; then
-            echo '--- Chrome diagnostics ---'
-            cat /tmp/vlab-chrome.log || true
-            echo '--- Runtime status fields ---'
-            grep -nE 'worker-status|setup-error|compile-error|setup-feedback|compile-feedback' /tmp/vlab-dom.html || true
-            echo '--- Loaded scripts/assets ---'
-            grep -nE '<script|assets-' /tmp/vlab-dom.html || true
-            echo '--- Server requests ---'
-            cat /tmp/vlab-server.log || true
-            exit 1
-          fi
-          grep -Eq 'Configuration and initializer compiled successfully' /tmp/vlab-dom.html
-          grep -Eq 'Reference controller compiled successfully' /tmp/vlab-dom.html
+          cd ../..
+          node web/scripts/browser-smoke.mjs http://127.0.0.1:4173/
