@@ -48,8 +48,6 @@ create table if not exists public.experiments (
   updated_by_ai_client text
 );
 
--- Reserved now so later professor/submission/curation workflows can preserve an exact
--- experiment state independently of the owner's mutable working experiment.
 create table if not exists public.preserved_experiment_snapshots (
   id uuid primary key default gen_random_uuid(),
   source_experiment_id uuid references public.experiments(id) on delete set null,
@@ -164,8 +162,6 @@ revoke all on table public.preserved_experiment_snapshots from anon, authenticat
 grant select, update on table public.profiles to authenticated;
 grant select, insert, update, delete on table public.experiment_collections to authenticated;
 grant select, insert, update, delete on table public.experiments to authenticated;
--- Preserved snapshots are intentionally not writable/readable by ordinary authenticated
--- clients yet. #45 will add explicit submission/curation permissions.
 
 create policy "profiles_select_self"
 on public.profiles for select
@@ -245,7 +241,6 @@ on public.experiments for delete
 to authenticated
 using ((select auth.uid()) = owner_id);
 
--- Optimistic concurrency is part of the client/API contract: updates must target both
--- experiment id and the base revision read by the client. The trigger above increments
--- revision atomically on every accepted mutation. A zero-row update means the base
--- revision is stale and must be surfaced as a conflict, never retried blindly.
+-- Optimistic concurrency is the API/client contract: updates target both id and
+-- the base revision previously read. The trigger increments revision atomically.
+-- A zero-row update is a stale-write conflict and must be surfaced, not retried.
