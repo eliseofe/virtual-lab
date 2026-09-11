@@ -91,7 +91,8 @@ async function state(send) {
     scientificTime: document.querySelector('#scientific-time')?.textContent ?? null,
     physicsTicks: document.querySelector('#physics-ticks')?.textContent ?? null,
     speed: document.querySelector('#simulation-speed')?.value ?? null,
-    speedLabel: document.querySelector('#simulation-speed-value')?.textContent ?? null
+    speedLabel: document.querySelector('#simulation-speed-value')?.textContent ?? null,
+    actualSpeed: document.querySelector('#actual-simulation-speed')?.textContent ?? null
   })`;
   const result = await send("Runtime.evaluate", { expression, returnByValue: true });
   const value = result?.result?.value;
@@ -135,6 +136,7 @@ try {
       const running = await state(cdp.send);
       const firstTime = Number(running?.scientificTime ?? 0);
       if (!(firstTime > 1.0)) throw new Error(`default accelerated simulation did not advance faster than the old 1× ceiling: ${JSON.stringify(running)}`);
+      if (!/^\d+(?:\.\d+)?×$/.test(running?.actualSpeed ?? "")) throw new Error(`actual runtime factor did not become numeric while running: ${JSON.stringify(running)}`);
       if (running?.statusState === "error") throw new Error(`simulation entered error state after Run: ${JSON.stringify(running)}`);
 
       await cdp.send("Runtime.evaluate", {
@@ -150,11 +152,12 @@ try {
       const afterSpeedChange = Number(faster?.scientificTime ?? 0);
       if (faster?.speed !== "60" || faster?.speedLabel !== "60×") throw new Error(`live speed control did not update without restart: ${JSON.stringify(faster)}`);
       if (!(afterSpeedChange > beforeSpeedChange)) throw new Error(`scientific time did not continue after live speed change: ${JSON.stringify(faster)}`);
+      if (!/^\d+(?:\.\d+)?×$/.test(faster?.actualSpeed ?? "")) throw new Error(`actual runtime factor did not recover after live speed change: ${JSON.stringify(faster)}`);
       if (faster?.statusState === "error") throw new Error(`simulation entered error state after live speed change: ${JSON.stringify(faster)}`);
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#pause').click()" });
 
       console.log(JSON.stringify(faster, null, 2));
-      console.log("Browser reached kernel ready, ran accelerated, and changed runtime speed live without resetting scientific state.");
+      console.log("Browser reached kernel ready, reported measured speed, ran accelerated, and changed runtime speed live without resetting scientific state.");
       succeeded = true;
       break;
     }
