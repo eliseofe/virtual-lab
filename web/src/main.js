@@ -12,22 +12,14 @@ NEIGHBOUR_RADIUS = 1.5
 
 # Initialization parameters
 INITIALIZATION_METHOD = "hexagon_perturbed"
+HEX_RADIUS = 5
 HEX_SPACING = 0.65
 HEX_POSITION_JITTER = 0.0
 RANDOM_EXTENT = 2.0
 
-# Active-elastic controller parameters (PRL/NJP notation)
-# Motion-control role mapping to Adaptive Behavior (2012):
-# V0 <-> U, ALPHA <-> K1, BETA <-> K2
-V0 = 0.002
-ALPHA = 0.01
-BETA = 0.12
-SPRING_K = 5.0
-SPRING_L = 0.65
-DR = 0.158
-DTHETA = 0.0
-
-# Adaptive Behavior Table 1 parameters, exposed in the same namespace
+# Adaptive Behavior (2012), Table 1
+# N tested in the paper: 10, 50, 100, 500, 1000
+# RHO_INFORMED tested in the paper: 0.01, 0.05, 0.10, 0.15, 0.20
 RHO_INFORMED = 0.0
 U = 0.005
 OMEGA_MAX = 1.5707963267948966
@@ -43,13 +35,48 @@ ALIGNMENT_RANGE = 2.0
 SENSOR_NOISE = 0.1
 EXPERIMENT_DURATION = 2500.0
 RUN_COUNT = 100
+
+# PRL/NJP motion-control aliases for the same roles
+V0 = U
+ALPHA = K1
+BETA = K2
+
+# Parameters still used by the current controller stub
+# (kept explicit rather than hidden in the simulator)
+SPRING_K = 5.0
+SPRING_L = 0.65
+DR = 0.158
+DTHETA = 0.0
 `;
 
-const defaultInitializerSource = `def initialize(config):
+const defaultInitializerSource = `def hexagon_perturbed(config, rng, place):
+    radius = config.HEX_RADIUS
+    i = 0
+    for q in range(-radius, radius + 1):
+        for r in range(-radius, radius + 1):
+            s = -q - r
+            if max(abs(q), abs(r), abs(s)) <= radius:
+                if i < config.N:
+                    x = config.HEX_SPACING * (q + 0.5 * r)
+                    y = config.HEX_SPACING * SQRT3_OVER_2 * r
+                    x += rng.uniform(-config.HEX_POSITION_JITTER, config.HEX_POSITION_JITTER)
+                    y += rng.uniform(-config.HEX_POSITION_JITTER, config.HEX_POSITION_JITTER)
+                    theta = rng.uniform(0.0, TAU)
+                    place(i, x, y, theta)
+                    i += 1
+
+def random_uniform(config, rng, place):
+    for i in range(config.N):
+        x = rng.uniform(-config.RANDOM_EXTENT, config.RANDOM_EXTENT)
+        y = rng.uniform(-config.RANDOM_EXTENT, config.RANDOM_EXTENT)
+        theta = rng.uniform(0.0, TAU)
+        place(i, x, y, theta)
+
+def initialize(config, rng, place):
     if config.INITIALIZATION_METHOD == "hexagon_perturbed":
-        return HexagonPerturbed(config.HEX_SPACING, config.HEX_POSITION_JITTER)
-    if config.INITIALIZATION_METHOD == "random":
-        return RandomUniform(config.RANDOM_EXTENT)
+        hexagon_perturbed(config, rng, place)
+    elif config.INITIALIZATION_METHOD == "random":
+        random_uniform(config, rng, place)
 `;
 
 const referenceSource = `class ActiveElasticAgent(Agent):
@@ -88,6 +115,10 @@ const ui = {
   canvasEmpty: document.querySelector("#canvas-empty"),
 };
 
+for (const [name, element] of Object.entries(ui)) {
+  if (!element) throw new Error(`Virtual Lab UI mismatch: missing element '${name}'`);
+}
+
 ui.config.value = defaultConfigSource;
 ui.initializerSource.value = defaultInitializerSource;
 ui.source.value = referenceSource;
@@ -97,7 +128,6 @@ let initialized = false;
 let running = false;
 let advancePending = false;
 let latestXY = [];
-let currentCompiled = null;
 let appliedConfig = null;
 let runTimer = null;
 
@@ -120,18 +150,24 @@ function requireNumber(values, name, { integer = false, positive = false, nonneg
 function compileSetup() {
   const config = compileConfig(ui.config.value);
   const values = config.values;
-  const seed = requireNumber(values, "SEED", { integer: true, nonnegative: true });
+  requireNumber(values, "SEED", { integer: true, nonnegative: true });
   const agentCount = requireNumber(values, "N", { integer: true, positive: true });
   const physicsDt = requireNumber(values, "PHYSICS_DT", { positive: true });
   const controlDt = requireNumber(values, "CONTROL_DT", { positive: true });
   const metricDt = requireNumber(values, "METRIC_DT", { positive: true });
   const neighbourRadius = requireNumber(values, "NEIGHBOUR_RADIUS", { positive: true });
   const initializer = compileInitializer(ui.initializerSource.value, config);
-  ui.initializerIr.textContent = JSON.stringify(initializer, null, 2);
+  if (initializer.state.length !== agentCount) throw new Error(`Initializer produced ${initializer.state.length} agents, expected N=${agentCount}.`);
+  ui.initializerIr.textContent = JSON.stringify({
+    version: initializer.version,
+    method: initializer.method,
+    agentCount: initializer.state.length,
+    firstAgents: initializer.state.slice(0, 5),
+  }, null, 2);
   return {
     config,
     setup: {
-      initialization: { seed, agentCount, ...initializer },
+      initialState: initializer.state,
       simulation: { physicsDt, controlDt, metricDt, neighbourRadius },
     },
   };
@@ -157,10 +193,7 @@ function setRunning(next) {
   running = next;
   ui.runState.textContent = running ? "Running" : "Paused";
   setControlsEnabled(initialized);
-  if (runTimer) {
-    clearInterval(runTimer);
-    runTimer = null;
-  }
+  if (runTimer) { clearInterval(runTimer); runTimer = null; }
   if (running) {
     runTimer = setInterval(() => {
       if (!advancePending) {
@@ -177,16 +210,19 @@ function initializeIfReady() {
     const { config, setup } = compileSetup();
     const controller = compileControllerFor(config);
     appliedConfig = config;
-    currentCompiled = controller.compiled;
     ui.setupError.textContent = "";
     ui.error.textContent = "";
     setFeedback(ui.setupFeedback, "Configuration and initializer compiled successfully.", "success");
     setFeedback(ui.feedback, "Reference controller compiled successfully.", "success");
+    ui.status.textContent = "Experiment compiled · starting kernel simulation…";
     worker.postMessage({ type: "initialize", setup, ir: controller.compiled, parameters: controller.parameters });
     initialized = true;
   } catch (error) {
+    initialized = false;
     ui.setupError.textContent = error instanceof Error ? error.message : String(error);
     setFeedback(ui.setupFeedback, "Setup compilation failed.", "error");
+    ui.status.textContent = "Setup error — see experiment parameters / initialization source";
+    ui.status.dataset.state = "error";
   }
 }
 
@@ -208,22 +244,13 @@ function drawSnapshot() {
   const rect = canvas.getBoundingClientRect();
   const width = Math.max(1, Math.floor(rect.width * ratio));
   const height = Math.max(1, Math.floor(rect.height * ratio));
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
-  }
+  if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
   context.clearRect(0, 0, width, height);
-  context.fillStyle = "#f7f9fa";
-  context.fillRect(0, 0, width, height);
-  context.strokeStyle = "#e1e6e9";
-  context.lineWidth = ratio;
+  context.fillStyle = "#f7f9fa"; context.fillRect(0, 0, width, height);
+  context.strokeStyle = "#e1e6e9"; context.lineWidth = ratio;
   const step = 48 * ratio;
-  for (let x = step; x < width; x += step) {
-    context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke();
-  }
-  for (let y = step; y < height; y += step) {
-    context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke();
-  }
+  for (let x = step; x < width; x += step) { context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke(); }
+  for (let y = step; y < height; y += step) { context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke(); }
   if (latestXY.length >= 2) {
     const xs = [], ys = [];
     for (let i = 0; i < latestXY.length; i += 2) { xs.push(latestXY[i]); ys.push(latestXY[i + 1]); }
@@ -274,6 +301,8 @@ worker.addEventListener("message", (event) => {
     advancePending = false;
     ui.setupError.textContent = message.message;
     setFeedback(ui.setupFeedback, "Setup runtime application failed.", "error");
+    ui.status.textContent = "Setup runtime error";
+    ui.status.dataset.state = "error";
     setRunning(false);
     return;
   }
@@ -281,6 +310,8 @@ worker.addEventListener("message", (event) => {
     advancePending = false;
     ui.error.textContent = `runtime-initialization: ${message.message}`;
     setFeedback(ui.feedback, "Controller runtime initialization failed; previous valid controller remains recoverable.", "error");
+    ui.status.textContent = "Controller runtime error";
+    ui.status.dataset.state = "error";
     setRunning(false);
     return;
   }
@@ -290,6 +321,13 @@ worker.addEventListener("message", (event) => {
     ui.status.dataset.state = "error";
     setRunning(false);
   }
+});
+
+worker.addEventListener("error", (event) => {
+  ui.status.textContent = `Worker load error: ${event.message || "worker failed to start"}`;
+  ui.status.dataset.state = "error";
+  ui.setupError.textContent = event.message || "Worker failed to start.";
+  setFeedback(ui.setupFeedback, "Worker failed before the experiment could start.", "error");
 });
 
 function markSetupDirty() {
@@ -304,7 +342,6 @@ ui.applySetup.addEventListener("click", () => {
     const { config, setup } = compileSetup();
     const controller = compileControllerFor(config);
     appliedConfig = config;
-    currentCompiled = controller.compiled;
     ui.setupError.textContent = "";
     ui.error.textContent = "";
     setFeedback(ui.setupFeedback, "Setup compiled. Applying configuration and initialization…", "working");
@@ -321,7 +358,6 @@ ui.compile.addEventListener("click", () => {
     if (!appliedConfig) throw new Error("No valid applied experiment configuration.");
     const controller = compileControllerFor(appliedConfig);
     ui.error.textContent = "";
-    currentCompiled = controller.compiled;
     setFeedback(ui.feedback, "Compilation passed. Applying controller…", "working");
     worker.postMessage({ type: "apply-controller", ir: controller.compiled, parameters: controller.parameters });
   } catch (error) {
