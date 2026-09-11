@@ -9,13 +9,15 @@ const manifest = JSON.parse(await readFile(path.join(dist, "build-manifest.json"
 if (!/^assets-[0-9a-f]{16}$/.test(manifest.assetDir)) throw new Error("invalid versioned asset directory in manifest");
 const assetDir = path.join(dist, manifest.assetDir);
 for (const relative of [
-  "main.js", "worker.js", "style.css", "config/compiler.js", "initializer/compiler.js", "controller/compiler.js",
+  "main.js", "runtime-speed.js", "worker.js", "style.css", "config/compiler.js", "initializer/compiler.js", "controller/compiler.js",
   "wasm/vlab_kernel.js", "wasm/vlab_kernel_bg.wasm",
 ]) await stat(path.join(assetDir, relative));
 
 const index = await readFile(path.join(dist, "index.html"), "utf8");
 if (!index.includes(`./${manifest.assetDir}/main.js`)) throw new Error("index does not reference versioned main.js");
+if (!index.includes(`./${manifest.assetDir}/runtime-speed.js`)) throw new Error("index does not reference versioned runtime-speed.js");
 if (!index.includes(`./${manifest.assetDir}/style.css`)) throw new Error("index does not reference versioned style.css");
+if (index.includes('src="./runtime-speed.js"')) throw new Error("index still references unversioned runtime-speed.js");
 const main = await readFile(path.join(assetDir, "main.js"), "utf8");
 for (const required of [
   "defaultConfigSource",
