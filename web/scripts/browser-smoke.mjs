@@ -1,15 +1,17 @@
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 
 const url = process.argv[2] ?? "http://127.0.0.1:4173/";
 const chrome = process.env.CHROME_BIN ?? "google-chrome";
-const port = 9222 + Math.floor(Math.random() * 500);
 const profile = `/tmp/vlab-chrome-${process.pid}`;
 
 const child = spawn(chrome, [
   "--headless",
   "--no-sandbox",
   "--disable-gpu",
-  `--remote-debugging-port=${port}`,
+  "--disable-dev-shm-usage",
+  "--remote-debugging-address=127.0.0.1",
+  "--remote-debugging-port=0",
   `--user-data-dir=${profile}`,
   url,
 ], { stdio: ["ignore", "ignore", "pipe"] });
@@ -19,23 +21,37 @@ child.stderr.on("data", (chunk) => { chromeLog += chunk.toString(); });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function json(path) {
+async function waitForPort() {
+  let lastError;
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    if (child.exitCode !== null) throw new Error(`Chrome exited before DevTools started (code ${child.exitCode})`);
+    try {
+      const text = await readFile(`${profile}/DevToolsActivePort`, "utf8");
+      const port = Number(text.split(/\r?\n/)[0]);
+      if (Number.isInteger(port) && port > 0) return port;
+    } catch (error) { lastError = error; }
+    await sleep(100);
+  }
+  throw lastError ?? new Error("Chrome did not publish DevToolsActivePort");
+}
+
+async function json(port, path) {
   const response = await fetch(`http://127.0.0.1:${port}${path}`);
   if (!response.ok) throw new Error(`DevTools HTTP ${response.status}`);
   return response.json();
 }
 
-async function waitForTarget() {
+async function waitForTarget(port) {
   let lastError;
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
     try {
-      const targets = await json("/json/list");
+      const targets = await json(port, "/json/list");
       const target = targets.find((item) => item.type === "page" && item.url.startsWith("http"));
       if (target?.webSocketDebuggerUrl) return target.webSocketDebuggerUrl;
     } catch (error) { lastError = error; }
     await sleep(100);
   }
-  throw lastError ?? new Error("Chrome DevTools target did not appear");
+  throw lastError ?? new Error("Chrome DevTools page target did not appear");
 }
 
 function connect(wsUrl) {
@@ -51,7 +67,8 @@ function connect(wsUrl) {
       if (message.error) reject(new Error(message.error.message));
       else resolve(message.result);
     } else if (message.method === "Runtime.exceptionThrown") {
-      exceptions.push(message.params?.exceptionDetails?.text ?? "JavaScript exception");
+      const details = message.params?.exceptionDetails;
+      exceptions.push(details?.exception?.description ?? details?.text ?? "JavaScript exception");
     }
   });
   const ready = new Promise((resolve, reject) => {
@@ -78,8 +95,7 @@ async function state(send) {
     controllerError: document.querySelector('#compile-error')?.textContent ?? null,
     configValue: document.querySelector('#experiment-config')?.value ?? null,
     initializerValue: document.querySelector('#initializer-source')?.value ?? null,
-    controllerValue: document.querySelector('#controller-source')?.value ?? null,
-    agentCount: document.querySelector('#simulation-canvas') ? Number(document.querySelector('#control-updates')?.textContent ?? -1) : -1
+    controllerValue: document.querySelector('#controller-source')?.value ?? null
   })`;
   const result = await send("Runtime.evaluate", { expression, returnByValue: true });
   const value = result?.result?.value;
@@ -88,13 +104,15 @@ async function state(send) {
 
 let cdp;
 try {
-  const wsUrl = await waitForTarget();
+  const port = await waitForPort();
+  const wsUrl = await waitForTarget(port);
   cdp = connect(wsUrl);
   await cdp.send("Runtime.enable");
   await cdp.send("Page.enable");
 
   let latest = null;
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  let succeeded = false;
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     latest = await state(cdp.send);
     if (latest?.statusState === "ready" && /Kernel .* ready/.test(latest.status ?? "")) {
       const requiredConfig = ["INITIALIZATION_METHOD", "U = 0.005", "K1 = 0.5", "K2 = 0.06", "V0 = U"];
@@ -107,7 +125,7 @@ try {
       if (!latest.controllerValue?.includes("class ActiveElasticAgent")) throw new Error("controller source did not preload");
       console.log(JSON.stringify(latest, null, 2));
       console.log("Browser reached kernel ready with populated parameter, initializer, and controller editors.");
-      process.exitCode = 0;
+      succeeded = true;
       break;
     }
     if (latest?.statusState === "error") {
@@ -116,7 +134,7 @@ try {
     await sleep(100);
   }
 
-  if (process.exitCode !== 0) {
+  if (!succeeded) {
     throw new Error(`browser did not reach kernel ready: ${JSON.stringify(latest)}; exceptions=${JSON.stringify(cdp.exceptions)}`);
   }
 } catch (error) {
