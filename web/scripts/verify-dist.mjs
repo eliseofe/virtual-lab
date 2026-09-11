@@ -30,7 +30,10 @@ for (const required of [
   "forward = K1 * dot(proximal, obs.heading) + U",
 ]) if (!main.includes(required)) throw new Error(`missing startup default: ${required}`);
 
-for (const removed of ["PHYSICS_DT =", "METRIC_DT =", "NEIGHBOUR_RADIUS =", "K3 =", "WHEEL_BASE =", "V0 = U", "SPRING_K ="]) {
-  if (main.includes(removed)) throw new Error(`student bundle still exposes removed parameter: ${removed}`);
+const configMatch = main.match(/const defaultConfigSource = `([\s\S]*?)`;\n/);
+if (!configMatch) throw new Error("built main.js does not contain defaultConfigSource");
+const editableConfig = configMatch[1];
+for (const removed of ["PHYSICS_DT", "METRIC_DT", "NEIGHBOUR_RADIUS", "K3", "WHEEL_BASE", "V0 = U", "SPRING_K"]) {
+  if (editableConfig.includes(removed)) throw new Error(`student config still exposes removed parameter: ${removed}`);
 }
 console.log(`Verified coherent browser artifact ${manifest.assetDir}`);
