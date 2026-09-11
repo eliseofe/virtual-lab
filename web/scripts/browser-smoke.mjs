@@ -1,0 +1,130 @@
+import { spawn } from "node:child_process";
+
+const url = process.argv[2] ?? "http://127.0.0.1:4173/";
+const chrome = process.env.CHROME_BIN ?? "google-chrome";
+const port = 9222 + Math.floor(Math.random() * 500);
+const profile = `/tmp/vlab-chrome-${process.pid}`;
+
+const child = spawn(chrome, [
+  "--headless",
+  "--no-sandbox",
+  "--disable-gpu",
+  `--remote-debugging-port=${port}`,
+  `--user-data-dir=${profile}`,
+  url,
+], { stdio: ["ignore", "ignore", "pipe"] });
+
+let chromeLog = "";
+child.stderr.on("data", (chunk) => { chromeLog += chunk.toString(); });
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function json(path) {
+  const response = await fetch(`http://127.0.0.1:${port}${path}`);
+  if (!response.ok) throw new Error(`DevTools HTTP ${response.status}`);
+  return response.json();
+}
+
+async function waitForTarget() {
+  let lastError;
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    try {
+      const targets = await json("/json/list");
+      const target = targets.find((item) => item.type === "page" && item.url.startsWith("http"));
+      if (target?.webSocketDebuggerUrl) return target.webSocketDebuggerUrl;
+    } catch (error) { lastError = error; }
+    await sleep(100);
+  }
+  throw lastError ?? new Error("Chrome DevTools target did not appear");
+}
+
+function connect(wsUrl) {
+  const socket = new WebSocket(wsUrl);
+  let nextId = 1;
+  const pending = new Map();
+  const exceptions = [];
+  socket.addEventListener("message", (event) => {
+    const message = JSON.parse(event.data);
+    if (message.id && pending.has(message.id)) {
+      const { resolve, reject } = pending.get(message.id);
+      pending.delete(message.id);
+      if (message.error) reject(new Error(message.error.message));
+      else resolve(message.result);
+    } else if (message.method === "Runtime.exceptionThrown") {
+      exceptions.push(message.params?.exceptionDetails?.text ?? "JavaScript exception");
+    }
+  });
+  const ready = new Promise((resolve, reject) => {
+    socket.addEventListener("open", resolve, { once: true });
+    socket.addEventListener("error", reject, { once: true });
+  });
+  const send = async (method, params = {}) => {
+    await ready;
+    const id = nextId++;
+    const promise = new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+    socket.send(JSON.stringify({ id, method, params }));
+    return promise;
+  };
+  return { socket, send, exceptions };
+}
+
+async function state(send) {
+  const expression = `JSON.stringify({
+    status: document.querySelector('#worker-status')?.textContent ?? null,
+    statusState: document.querySelector('#worker-status')?.dataset.state ?? null,
+    setupFeedback: document.querySelector('#setup-feedback')?.textContent ?? null,
+    setupError: document.querySelector('#setup-error')?.textContent ?? null,
+    controllerFeedback: document.querySelector('#compile-feedback')?.textContent ?? null,
+    controllerError: document.querySelector('#compile-error')?.textContent ?? null,
+    configValue: document.querySelector('#experiment-config')?.value ?? null,
+    initializerValue: document.querySelector('#initializer-source')?.value ?? null,
+    controllerValue: document.querySelector('#controller-source')?.value ?? null,
+    agentCount: document.querySelector('#simulation-canvas') ? Number(document.querySelector('#control-updates')?.textContent ?? -1) : -1
+  })`;
+  const result = await send("Runtime.evaluate", { expression, returnByValue: true });
+  const value = result?.result?.value;
+  return value ? JSON.parse(value) : null;
+}
+
+let cdp;
+try {
+  const wsUrl = await waitForTarget();
+  cdp = connect(wsUrl);
+  await cdp.send("Runtime.enable");
+  await cdp.send("Page.enable");
+
+  let latest = null;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    latest = await state(cdp.send);
+    if (latest?.statusState === "ready" && /Kernel .* ready/.test(latest.status ?? "")) {
+      const requiredConfig = ["INITIALIZATION_METHOD", "U = 0.005", "K1 = 0.5", "K2 = 0.06", "V0 = U"];
+      for (const marker of requiredConfig) {
+        if (!latest.configValue?.includes(marker)) throw new Error(`preloaded config is missing '${marker}'`);
+      }
+      for (const marker of ["def hexagon_perturbed", "def random_uniform", "place(i, x, y, theta)"]) {
+        if (!latest.initializerValue?.includes(marker)) throw new Error(`preloaded initializer is missing '${marker}'`);
+      }
+      if (!latest.controllerValue?.includes("class ActiveElasticAgent")) throw new Error("controller source did not preload");
+      console.log(JSON.stringify(latest, null, 2));
+      console.log("Browser reached kernel ready with populated parameter, initializer, and controller editors.");
+      process.exitCode = 0;
+      break;
+    }
+    if (latest?.statusState === "error") {
+      throw new Error(`browser reported startup error: ${JSON.stringify(latest)}`);
+    }
+    await sleep(100);
+  }
+
+  if (process.exitCode !== 0) {
+    throw new Error(`browser did not reach kernel ready: ${JSON.stringify(latest)}; exceptions=${JSON.stringify(cdp.exceptions)}`);
+  }
+} catch (error) {
+  console.error(error instanceof Error ? error.stack : String(error));
+  if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
+  if (chromeLog.trim()) console.error("Chrome stderr:\n" + chromeLog);
+  process.exitCode = 1;
+} finally {
+  try { cdp?.socket?.close(); } catch {}
+  child.kill("SIGTERM");
+}
