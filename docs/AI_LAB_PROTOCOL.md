@@ -2,137 +2,157 @@
 
 ## Goal
 
-An AI research assistant is a client of the lab, not the owner of the lab architecture. The same lab must work with ChatGPT, another AI provider, a custom agent, or no AI at all.
+An AI research assistant is a client of the experiment system, not the owner of Virtual Lab architecture. The same experiment system must work with ChatGPT, Claude, another AI provider, a custom client, or no AI at all.
+
+The current architecture is defined by issue #41 and `docs/EXPERIMENT_REGISTRY_CONTRACT.md`.
 
 ## Permanent layers
 
 ```text
-Scientific portable format
+Student experiment artifacts
         ↓
-Lab domain operations
+Experiment domain operations
         ↓
-Adapters / transports
+Canonical remote Experiment Registry
+        ↓
+Authenticated adapters / clients
 ```
 
-### Scientific portable format
+The three student-editable artifacts are:
 
-Canonical versioned objects define experiments and results. These are independent of GitHub, HTTP, MCP, and AI vendors.
+- experiment configuration/parameters;
+- initialization source;
+- controller source.
 
-Initial schemas live under `schemas/` and evolve only through explicit versioning.
+The registry object is versioned by `schemas/registry-experiment.schema.json` and is independent of Supabase, MCP, GitHub, and AI vendors.
 
-### Lab domain operations
+## Canonical storage and execution boundary
 
-Conceptual API:
+The remote Experiment Registry is the canonical home of experiment source and metadata.
+
+Virtual Lab may cache experiments locally in the browser, but cached state is not an independent authority. Scientific simulation remains local in the browser/WASM worker. The registry stores source/metadata and performs authentication, authorization, organization, and synchronization; it does not execute simulations.
+
+The simulator source repository is a separate system. Experiment-domain credentials and APIs must not grant GitHub, deployment, shell, arbitrary-filesystem, or simulator-source write capability.
+
+## Identity and roles
+
+Registry identity is independent of AI-provider identity.
+
+- **Student/researcher:** owns and manages experiments.
+- **Professor/curator:** receives additional explicit experiment-domain permissions for submissions, assessment, sharing, and curation.
+- **Simulator developer:** modifies Virtual Lab itself through the separate GitHub engineering workflow.
+
+One person may hold more than one role, but the capability domains remain distinct.
+
+## Experiment domain operations
+
+The stable domain includes operations equivalent to:
 
 ```text
+who_am_i()
+list_collections()
 list_experiments()
+get_experiment(id)
 create_experiment(spec)
-get_experiment(id, revision?)
-create_revision(id, spec)
-archive_experiment(id)
-select_experiment(id)             # local UI/session concept
-run_experiment(id, revision, run_config)
-list_runs(experiment_id)
-get_run(run_id)
-export_experiment(id, revision)
-export_run(run_id)
+update_experiment(id, base_revision, spec)
+move_experiment(id, collection)
+archive_experiment(id, base_revision)
+restore_experiment(id, base_revision)
+delete_experiment(id, base_revision)
 ```
 
-The browser UI and AI adapters target the same domain semantics.
+Later professor/curation operations extend this domain explicitly.
 
-## Initial transport: GitHub adapter
+These are domain semantics, not necessarily literal function names. They must not contain model-specific scientific shortcuts such as `set_K1` or `choose_controller_type`; arbitrary valid contents of the three student artifacts remain expressible.
 
-The first AI→Lab bridge may use GitHub because AI clients can already manipulate repository text and collaborators can use their own GitHub identities.
+## Synchronization
 
-Illustrative mapping:
+Experiment updates use optimistic concurrency with an internal revision token/number.
+
+A client writes against the revision it previously read. A stale write is rejected rather than silently overwriting newer state. User-visible version history is not required for the first milestone.
+
+The intended experience is simple two-way synchronization:
+
+- AI edit → registry → mock-sim/Virtual Lab sees the new state;
+- mock-sim/Virtual Lab edit → registry → AI sees the new state.
+
+No manual package download/upload is part of the intended normal workflow.
+
+## Organization and lifecycle
+
+The minimum organization model is:
 
 ```text
-create_experiment  -> create versioned experiment files/commit
-create_revision    -> new immutable revision/commit
-list_experiments   -> enumerate experiment manifests
-archive_experiment -> update logical archive state/versioned metadata
+user namespace
+  optional collection/project
+    experiment
 ```
 
-GitHub is replaceable. Domain code depends on an `ExperimentRepository` interface rather than GitHub-specific paths/calls.
+Experiments can be created from zero, moved between a user's collections/projects, archived, restored, and—when eligible—permanently deleted.
 
-The portable experiment itself must also be importable/exportable directly from disk. GitHub is a transport and collaboration adapter, not the file format.
+Archive is reversible and hides an experiment from the normal active list. Permanent delete is intentionally destructive for the working experiment, but cannot implicitly destroy separately preserved submission/assessment/curated snapshots.
 
-## Future AI-facing adapters
+## AI-facing adapter
 
-A future local bridge or service may expose the same domain operations through MCP, HTTP, filesystem tooling, or another protocol. Replacing the transport must not change:
+The first AI-facing transport is an authenticated remote MCP adapter over the experiment domain.
 
-- experiment schemas;
-- controller semantics;
-- simulator semantics;
-- run/result schemas;
-- UI concepts.
+MCP is transport, not the scientific contract. ChatGPT is the first intended client, not an architectural dependency. Claude or another compatible client can use the same domain semantics.
 
-MCP is a plausible future AI-facing adapter, not the canonical scientific protocol.
+The student MCP surface exposes experiment authoring/organization only. It does not expose:
 
-## Lab → AI result exchange
+- simulator run/control;
+- simulator observations/results/screenshots/metrics;
+- GitHub or deployment operations;
+- arbitrary shell/filesystem access;
+- backend administrator secrets.
 
-Baseline result exchange requires no backend server or AI API.
+## Browser-facing client
 
-A compact AI-facing result bundle should contain:
+Before production Virtual Lab integration, a deliberately minimal `mock-sim` client must exercise the exact browser-side authentication, registry, organization, lifecycle, and synchronization contract intended for Virtual Lab.
 
-- experiment id/revision/hash;
-- controller/metric versions;
-- run seed and execution configuration;
-- run status;
-- summary metrics;
-- provenance/core/compiler versions;
-- optional small plot/image/replay excerpt;
-- references to larger local artifacts without requiring them to be uploaded.
+The mandatory proof uses at least two distinct authenticated registry users and covers:
 
-Bulk trajectory data remains local unless the researcher explicitly exports/shares it.
+- private namespace isolation;
+- create from zero;
+- collections/projects;
+- AI → mock-sim synchronization;
+- mock-sim → AI synchronization;
+- stale-write conflict handling;
+- archive/restore;
+- eligible permanent delete.
 
-## Workspace and multi-user future
+Issue #46 cannot begin until the owner personally accepts this mock-sim workflow.
 
-Experiments belong to workspaces, not AI accounts.
+## Pedagogical boundary
+
+For the student workflow the AI does not close the scientific loop automatically.
 
 ```text
-Workspace: Collective Motion
-  members:
-    researcher A
-    researcher B
-
-Actors/provenance:
-  researcher A via ChatGPT
-  researcher A via browser
-  researcher B via Claude
-  researcher B via browser
+student ↔ AI discussion
+        ↓
+experiment source saved to registry
+        ↓
+student opens Virtual Lab
+        ↓
+student manually runs and observes experiment
+        ↓
+student decides what to discuss/change next
 ```
 
-Each human authenticates independently to the collaboration layer. Each human may use a different AI provider/account. A ChatGPT/Claude account is never the lab identity system.
+A later explicit Lab → AI results/plots channel is separate work. It must not be introduced as an implicit side effect of experiment-source synchronization.
 
-Round 1 may collapse identity to one local actor, but schemas should reserve stable `workspace_id`, `created_by`, and actor metadata so collaboration does not require redesigning provenance.
+## Professor / community direction
 
-## Interaction philosophy
+After the student transport is proven, the same registry will support sharing, submission, professor access, and curated/public examples without granting simulator-development permissions.
 
-The AI-to-lab operation should ultimately feel like a scientific command, for example “create experiment X from this approved model specification,” rather than “edit these repository paths.” GitHub-specific mechanics remain inside the adapter.
+This allows experiments to persist beyond one machine and supports student-to-student exchange, grading/assessment, official examples, and community contributions.
 
-Likewise, lab-to-AI exchange should expose scientific run/result objects rather than requiring an AI to reverse-engineer browser internals.
+## Zero-cost direction
 
-## Long-term closed loop
+The initial target uses a lightweight remote registry/auth service while keeping all simulation compute client-side. Supabase is the preferred implementation candidate for #42, subject to verification of current free-tier limits and capabilities.
 
-```text
-paper / hypothesis
-    ↓
-human ↔ AI scientific interpretation
-    ↓
-approved experiment specification
-    ↓
-create_experiment()
-    ↓
-Virtual Lab experiment workspace
-    ↓
-run locally / native / HPC
-    ↓
-Run + Result objects
-    ↓
-get/export result
-    ↓
-human ↔ AI scientific interpretation
-```
+The laboratory protocol itself must not require a paid AI API.
 
-The transport on either side may change without changing the loop.
+## Result exchange
+
+Lab → AI results are deliberately deferred. Issue #6 defines a later explicit, user-controlled results/plots channel with provenance. Bulk trajectories remain local by default.
