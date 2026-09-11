@@ -2,7 +2,9 @@ use wasm_bindgen::prelude::*;
 use serde::Deserialize;
 
 mod controller_ir;
+mod neighbour_index;
 pub use controller_ir::IrControllerRuntime;
+pub use neighbour_index::PeriodicGridNeighbourIndex;
 
 const TAU: f64 = std::f64::consts::PI * 2.0;
 
@@ -72,6 +74,7 @@ pub trait ObservationModel {
     ) -> Observation;
 }
 pub trait NeighbourIndex {
+    fn rebuild(&mut self, _state: &[AgentPhysicalState], _arena_size: f64) {}
     fn query(
         &self,
         state: &[AgentPhysicalState],
@@ -291,7 +294,7 @@ pub struct Simulation<C: ControllerRuntime> {
     control_updates: u32,
     physics: KinematicPhysics,
     observation_model: LocalObservationModel,
-    neighbour_index: BruteForceNeighbourIndex,
+    neighbour_index: PeriodicGridNeighbourIndex,
     controller: C,
     rng: DeterministicRng,
     metrics: Vec<Box<dyn MetricRuntime>>,
@@ -316,7 +319,7 @@ impl<C: ControllerRuntime> Simulation<C> {
             control_updates: 0,
             physics: KinematicPhysics,
             observation_model: LocalObservationModel,
-            neighbour_index: BruteForceNeighbourIndex,
+            neighbour_index: PeriodicGridNeighbourIndex::default(),
             controller,
             rng,
             metrics: Vec::new(),
@@ -352,6 +355,7 @@ impl<C: ControllerRuntime> Simulation<C> {
     pub fn advance_physics_ticks(&mut self, ticks: u32) {
         for _ in 0..ticks {
             if self.physics_ticks % self.control_stride == 0 {
+                self.neighbour_index.rebuild(&self.state, self.config.arena_size);
                 let noise_scale = self.config.sensor_noise * TAU;
                 let noise_angles: Vec<f64> = (0..self.state.len())
                     .map(|_| self.rng.signed() * noise_scale)
