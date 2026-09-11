@@ -50,10 +50,13 @@
           <div class="speed-control">
             <div class="speed-heading">
               <label class="field-label" for="simulation-speed">Simulation speed</label>
-              <strong id="simulation-speed-value">20×</strong>
+              <div class="speed-readout" aria-label="Requested and achieved simulation speed">
+                <span><small>Requested</small><strong id="simulation-speed-value">20×</strong></span>
+                <span><small>Actual</small><strong id="actual-simulation-speed">—</strong></span>
+              </div>
             </div>
             <input id="simulation-speed" type="range" min="1" max="100" step="1" value="20" aria-label="Simulation execution speed multiplier">
-            <p class="muted">Execution speed only. This does not change scientific Δt, controller timing, or model parameters.</p>
+            <p class="muted">Execution speed only. Actual speed is measured from model time versus wall time and does not affect the simulation.</p>
           </div>
           <div class="stats-grid" aria-label="Run statistics">
             <div><span>Scientific time (model s)</span><strong id="scientific-time">0.000</strong></div>
@@ -126,5 +129,6 @@
     </main>
   </div>
   <script type="module" src="./main.js"></script>
+  <script type="module" src="./runtime-speed.js"></script>
 </body>
 </html>

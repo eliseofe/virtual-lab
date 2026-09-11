@@ -22,10 +22,10 @@ test("Round 1 UI exposes experiment config, initializer source, controller sourc
   for (const required of [
     'id="experiment-select"', 'id="experiment-config"', 'id="initializer-source"', 'id="apply-setup"',
     'id="simulation-canvas"', 'id="controller-source"', 'id="run"', 'id="pause"', 'id="restart"', 'id="compile"',
-    'id="simulation-speed"', 'id="simulation-speed-value"',
+    'id="simulation-speed"', 'id="simulation-speed-value"', 'id="actual-simulation-speed"',
   ]) assert.match(html, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(html, /value="20"/);
-  assert.match(html, /does not change scientific Δt/);
+  assert.match(html, /Actual speed is measured from model time versus wall time and does not affect the simulation/);
   assert.doesNotMatch(html, /id="initialization-seed"/);
   assert.doesNotMatch(html, /id="initialization-agent-count"/);
 });
