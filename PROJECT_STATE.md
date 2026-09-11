@@ -16,6 +16,16 @@ A virtual research laboratory where a PI, postdoc, student, or AI research assis
 
 The motivating metaphor is **AI as graduate student**: the human discusses a paper or hypothesis with an AI, the AI derives an explicit controller/metric/experiment specification, the researcher verifies the interpretation, and the AI uses the lab to create/run/analyze experiments. Future human researchers use their own AI accounts/providers while collaborating in the same lab workspace.
 
+## Project-wide scientific reasoning guardrail
+
+While the current work is simulator construction, implementation agents may reason and calculate about software architecture, simulator design, numerical/software implementation, UI, data flow, performance, testing, deployment, and other engineering concerns.
+
+Implementation agents must **not independently perform scientific reasoning, derivations, equilibrium calculations, model analysis, parameter inference, or other calculations about the scientific system being simulated**. Existing scientific values/behavior may be preserved mechanically when refactoring the simulator, but new scientific choices must not be invented as part of implementation.
+
+If a simulator-design or implementation decision appears to require scientific reasoning about the simulated system, stop at that boundary, state the exact scientific question that blocks implementation, and discuss it with the owner. Perform that scientific reasoning only after the owner explicitly gives the green light.
+
+This guardrail applies across issues, rounds, implementation agents, and future handoffs unless the owner explicitly authorizes a particular scientific task.
+
 ## Accepted architecture
 
 ### Scientific agent boundary
@@ -93,11 +103,13 @@ Active Elastic Model:
 
 A correct Round 1 must expose the real model/controller semantics rather than a hard-coded flock-like animation. The owner should be able to alter a scientifically meaningful controller rule and observe the corresponding change/failure after recompilation/restart.
 
+Scientific interpretation or derivation needed to implement this target is subject to the project-wide guardrail above and requires explicit owner approval before it is undertaken.
+
 ## Execution ownership
 
 The current project uses two AI execution roles:
 
-- **ChatGPT** is the primary implementation agent. It owns architecture, scientific/software implementation, automated tests, GitHub repository changes, CI/build/deployment configuration, defect repair, and redeployment.
+- **ChatGPT** is the primary implementation agent. It owns architecture, scientific/software implementation, automated tests, GitHub repository changes, CI/build/deployment configuration, defect repair, and redeployment, subject to the project-wide scientific reasoning guardrail above.
 - **Work** is the cloud-browser verification agent. It owns only issues explicitly marked `[WORK]`, with small deterministic browser checklists.
 
 For Round 1, ChatGPT owns #1, #2, and #11–#15. Work owns #16–#18. Later-round ownership is assigned when those rounds become active.
