@@ -36,16 +36,24 @@ const DESTRUCTIVE_ANNOTATIONS = {
 function json(value: unknown, status = 200, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(value), {
     status,
-    headers: { 'content-type': 'application/json', ...headers },
+    headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers },
   })
 }
 
-function unauthorized(description = 'A valid Supabase user access token is required.') {
+function unauthorized(
+  description = 'A valid Supabase user access token is required.',
+  error: 'invalid_token' | null = null,
+) {
+  const challenge = error
+    ? `Bearer error="${error}", error_description="${description}", resource_metadata="${RESOURCE_METADATA_URL}", scope="email profile"`
+    : `Bearer resource_metadata="${RESOURCE_METADATA_URL}", scope="email profile"`
+
   return json(
-    { error: 'unauthorized', error_description: description },
+    { error: error ?? 'unauthorized', error_description: description },
     401,
     {
-      'www-authenticate': `Bearer resource_metadata="${RESOURCE_METADATA_URL}", scope="email profile"`,
+      'www-authenticate': challenge,
+      'x-vlab-auth-challenge-version': '2',
     },
   )
 }
@@ -70,8 +78,9 @@ function toolError(message: string, detail?: unknown) {
 
 function bearerToken(req: Request): string | null {
   const header = req.headers.get('authorization')
-  if (!header?.startsWith('Bearer ')) return null
-  const token = header.slice('Bearer '.length).trim()
+  const match = header?.match(/^Bearer\s+(.+)$/i)
+  if (!match) return null
+  const token = match[1].trim()
   return token.length > 0 ? token : null
 }
 
@@ -385,18 +394,22 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: true,
       service: 'virtual-lab-experiment-mcp',
-      interface_version: '2',
+      interface_version: '3',
+      auth_challenge_version: '2',
       tool_count: 5,
       simulator_access: false,
     })
   }
 
+  const token = bearerToken(req)
+  if (!token) return unauthorized('Authorization bearer token is missing.')
+
   const auth = await authenticatedClient(req)
-  if (!auth) return unauthorized()
+  if (!auth) return unauthorized('The supplied access token is invalid or expired.', 'invalid_token')
 
   const server = new McpServer({
     name: 'virtual-lab-experiment-registry',
-    version: '2.0.0',
+    version: '2.0.1',
   })
   registerExperimentTools(server, auth.supabase, auth.userId, auth.email, auth.clientId)
 
