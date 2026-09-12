@@ -27,7 +27,7 @@ for (const required of [
   "CONTROL_DT = 0.1",
   "INITIAL_POSITION_NOISE = 0.0",
   "EXPERIMENT_DURATION = 25000.0",
-  "1 square = 1 distance unit",
+  "Grid: 1 unit",
   "def hexagon_perturbed(config, rng, place):",
   "def random_uniform(config, rng, place):",
   "sigma_lj = DESIRED_DISTANCE / pow(2.0, 1.0 / POTENTIAL_ALPHA)",
