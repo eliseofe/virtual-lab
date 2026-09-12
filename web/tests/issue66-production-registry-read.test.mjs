@@ -93,6 +93,16 @@ test("production registry pass is read-only, ownership-scoped, session-isolated 
   assert.match(registryUi, /Read-only integration/);
 });
 
+test("post-login registry UI hides the login form and keeps list refresh next to experiment selection", async () => {
+  const registryUi = await readFile(path.join(src, "registry-ui.js"), "utf8");
+  assert.match(registryUi, /\.registry-panel \[hidden\], \.experiment-panel \[hidden\] \{ display: none !important; \}/);
+  assert.match(registryUi, /ui\.auth\.hidden = true/);
+  assert.match(registryUi, /ui\.signOut\.hidden = false/);
+  assert.match(registryUi, /ui\.refreshRow\.hidden = false/);
+  assert.match(registryUi, /experimentSelect\.insertAdjacentElement\("afterend", refreshRow\)/);
+  assert.doesNotMatch(registryUi, /registry-actions/);
+});
+
 test("registry bootstrap is additive and cannot block the core simulator runtime-speed module", async () => {
   const runtimeSpeed = await readFile(path.join(src, "runtime-speed.js"), "utf8");
   assert.doesNotMatch(runtimeSpeed, /^import "\.\/registry-ui\.js";/);

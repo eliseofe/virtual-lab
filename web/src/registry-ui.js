@@ -41,12 +41,16 @@ function installStyles() {
   style.dataset.vlabRegistry = "";
   style.textContent = `
     .registry-panel { display: grid; gap: 10px; }
+    .registry-panel [hidden], .experiment-panel [hidden] { display: none !important; }
     .registry-heading { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-    .registry-heading strong { font-size: 12px; }
+    .registry-account { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; }
+    .registry-account strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .registry-sign-out { min-height: 28px; padding: 3px 8px; font-size: 11px; white-space: nowrap; }
     .registry-auth { display: grid; gap: 8px; }
     .registry-auth input { width: 100%; min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; color: #172127; background: #fff; }
     .registry-auth input:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
-    .registry-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .registry-refresh-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+    .registry-refresh { min-height: 30px; padding: 4px 9px; font-size: 11px; }
     .registry-message { margin: 0; min-height: 1.4em; font-size: 11.5px; line-height: 1.4; color: #64757c; }
     .registry-message[data-state="error"] { color: #9e2d29; }
     .registry-message[data-state="success"] { color: #246240; }
@@ -56,6 +60,16 @@ function installStyles() {
 }
 
 function buildPanel() {
+  const refreshRow = document.createElement("div");
+  refreshRow.className = "registry-refresh-row";
+  refreshRow.hidden = true;
+  const refresh = document.createElement("button");
+  refresh.id = "registry-refresh";
+  refresh.className = "registry-refresh";
+  refresh.textContent = "Refresh experiments";
+  refreshRow.append(refresh);
+  experimentSelect.insertAdjacentElement("afterend", refreshRow);
+
   const panel = document.createElement("section");
   panel.className = "panel registry-panel";
   panel.setAttribute("aria-label", "Experiment registry connection");
@@ -66,10 +80,19 @@ function buildPanel() {
   label.className = "field-label";
   label.textContent = "Experiment registry";
   label.style.margin = "0";
+
+  const account = document.createElement("div");
+  account.className = "registry-account";
   const identity = document.createElement("strong");
   identity.id = "registry-identity";
   identity.textContent = "Signed out";
-  heading.append(label, identity);
+  const signOut = document.createElement("button");
+  signOut.id = "registry-sign-out";
+  signOut.className = "registry-sign-out";
+  signOut.textContent = "Sign out";
+  signOut.hidden = true;
+  account.append(identity, signOut);
+  heading.append(label, account);
 
   const auth = document.createElement("div");
   auth.id = "registry-auth";
@@ -93,21 +116,7 @@ function buildPanel() {
   signIn.id = "registry-sign-in";
   signIn.className = "primary";
   signIn.textContent = "Sign in";
-
   auth.append(email, password, signIn);
-
-  const sessionActions = document.createElement("div");
-  sessionActions.id = "registry-session-actions";
-  sessionActions.className = "registry-actions";
-  sessionActions.hidden = true;
-
-  const refresh = document.createElement("button");
-  refresh.id = "registry-refresh";
-  refresh.textContent = "Refresh list";
-  const signOut = document.createElement("button");
-  signOut.id = "registry-sign-out";
-  signOut.textContent = "Sign out";
-  sessionActions.append(refresh, signOut);
 
   const message = document.createElement("p");
   message.id = "registry-message";
@@ -119,10 +128,10 @@ function buildPanel() {
   note.className = "registry-note";
   note.textContent = "Read-only integration: loading/running never writes to the registry. Local edits are not saved remotely yet.";
 
-  panel.append(heading, auth, sessionActions, message, note);
+  panel.append(heading, auth, message, note);
   experimentPanel.insertAdjacentElement("afterend", panel);
 
-  return { panel, identity, auth, email, password, signIn, sessionActions, refresh, signOut, message };
+  return { panel, identity, auth, email, password, signIn, signOut, refresh, refreshRow, message };
 }
 
 installStyles();
@@ -220,7 +229,8 @@ async function readExperiment(id) {
 function setSignedOutUi() {
   ui.identity.textContent = "Signed out";
   ui.auth.hidden = false;
-  ui.sessionActions.hidden = true;
+  ui.signOut.hidden = true;
+  ui.refreshRow.hidden = true;
   remoteExperiments = [];
   hiddenNonRunnableCount = 0;
   renderExperimentOptions();
@@ -229,7 +239,8 @@ function setSignedOutUi() {
 function setSignedInUi() {
   ui.identity.textContent = profile?.display_name || user.email || "Signed in";
   ui.auth.hidden = true;
-  ui.sessionActions.hidden = false;
+  ui.signOut.hidden = false;
+  ui.refreshRow.hidden = false;
 }
 
 async function waitForSimulatorReady() {
