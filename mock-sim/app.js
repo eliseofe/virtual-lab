@@ -34,6 +34,12 @@ function showMessage(text, kind = 'info') {
 
 function setSync(text) { els.syncState.textContent = text }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
+  }[ch]))
+}
+
 async function registryProfile() {
   const { data, error } = await supabase.from('profiles').select('id, display_name').single()
   if (error) throw error
@@ -41,7 +47,10 @@ async function registryProfile() {
 }
 
 async function loadCollections() {
-  const { data, error } = await supabase.from('experiment_collections').select('id,name,created_at,updated_at').order('name')
+  const { data, error } = await supabase
+    .from('experiment_collections')
+    .select('id,name,created_at,updated_at')
+    .order('name')
   if (error) throw error
   collections = data ?? []
 }
@@ -72,7 +81,19 @@ async function readExperiment(id) {
 }
 
 function collectionName(id) {
-  return collections.find((c) => c.id === id)?.name ?? 'Unfiled'
+  return collections.find((collection) => collection.id === id)?.name ?? 'Unfiled'
+}
+
+function renderCollectionSelect() {
+  const intended = selected?.collection_id ?? els.collectionSelect.value ?? ''
+  els.collectionSelect.innerHTML = '<option value="">Unfiled</option>'
+  for (const collection of collections) {
+    const option = document.createElement('option')
+    option.value = collection.id
+    option.textContent = collection.name
+    els.collectionSelect.append(option)
+  }
+  els.collectionSelect.value = intended
 }
 
 function renderCollections() {
@@ -88,18 +109,6 @@ function renderCollections() {
     button.classList.toggle('active', button.dataset.collection === selectedFilter)
   })
   renderCollectionSelect()
-}
-
-function renderCollectionSelect() {
-  const current = els.collectionSelect.value || selected?.collection_id || ''
-  els.collectionSelect.innerHTML = '<option value="">Unfiled</option>'
-  for (const collection of collections) {
-    const option = document.createElement('option')
-    option.value = collection.id
-    option.textContent = collection.name
-    els.collectionSelect.append(option)
-  }
-  els.collectionSelect.value = current
 }
 
 function renderExperiments() {
@@ -118,10 +127,6 @@ function renderExperiments() {
     button.innerHTML = `<strong>${escapeHtml(experiment.title)}</strong><br><span class="muted">${escapeHtml(collectionName(experiment.collection_id))} · r${experiment.revision}</span>`
     els.experiments.append(button)
   }
-}
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[ch]))
 }
 
 function renderEditor() {
@@ -172,12 +177,16 @@ async function createCollection() {
   if (!name) return
   const { error } = await supabase.from('experiment_collections').insert({ owner_id: user.id, name })
   if (error) throw error
-  await refreshWorkspace()
+  await loadCollections()
+  renderCollections()
+  showMessage(`Collection “${name}” created.`)
 }
 
 async function createExperiment() {
   if (dirty && !confirm('Discard unsaved local edits and create a new experiment?')) return
-  const initialCollection = selectedFilter !== 'all' && selectedFilter !== 'unfiled' && selectedFilter !== 'archived' ? selectedFilter : null
+  const initialCollection = selectedFilter !== 'all' && selectedFilter !== 'unfiled' && selectedFilter !== 'archived'
+    ? selectedFilter
+    : null
   const { data, error } = await supabase.from('experiments').insert({
     owner_id: user.id,
     collection_id: initialCollection,
@@ -212,6 +221,7 @@ async function saveExperiment(event) {
     updated_by_actor: 'human',
     updated_by_ai_client: null,
   }
+  if (!patch.title) throw new Error('Experiment title cannot be empty.')
   const { data, error } = await supabase.from('experiments')
     .update(patch)
     .eq('id', selected.id)
@@ -250,7 +260,11 @@ async function permanentlyDelete() {
   const name = selected.title
   if (!confirm(`Permanently delete working experiment “${name}”? This cannot be undone.`)) return
   const { data, error } = await supabase.from('experiments')
-    .delete().eq('id', selected.id).eq('revision', selected.revision).select('id').maybeSingle()
+    .delete()
+    .eq('id', selected.id)
+    .eq('revision', selected.revision)
+    .select('id')
+    .maybeSingle()
   if (error) throw error
   if (!data) throw new Error('Delete rejected because the experiment changed remotely. Refresh first.')
   selected = null
@@ -262,18 +276,17 @@ async function pollSelected() {
   if (!user || !selected) return
   try {
     const remote = await readExperiment(selected.id)
-    if (remote.revision > selected.revision) {
-      if (dirty) {
-        setSync(`Remote revision ${remote.revision} available · local edits unsaved`)
-      } else {
-        selected = remote
-        renderEditor()
-        await loadExperiments()
-        renderExperiments()
-        showMessage(`Remote update received: ${remote.title} is now revision ${remote.revision}.`)
-      }
+    if (remote.revision <= selected.revision) return
+    if (dirty) {
+      setSync(`Remote revision ${remote.revision} available · local edits unsaved`)
+      return
     }
-  } catch (error) {
+    selected = remote
+    renderEditor()
+    await loadExperiments()
+    renderExperiments()
+    showMessage(`Remote update received: ${remote.title} is now revision ${remote.revision}.`)
+  } catch {
     setSync('Sync check failed')
   }
 }
@@ -282,11 +295,20 @@ async function renderConsent() {
   if (!authorizationId || !user) return false
   const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId)
   if (error) throw error
+  if (!data) throw new Error('OAuth authorization request was not found.')
+
+  // Supabase may return an OAuthRedirect when this user already granted consent.
+  if (!('authorization_id' in data)) {
+    if (!data.redirect_url) throw new Error('OAuth authorization response did not include a redirect URL.')
+    location.assign(data.redirect_url)
+    return true
+  }
+
   els.authPanel.hidden = true
   els.workspace.hidden = true
   els.consentPanel.hidden = false
-  els.oauthClient.textContent = data.client?.name ?? data.client_name ?? 'AI client'
-  els.oauthScopes.textContent = (data.scopes ?? []).join(' ') || 'email'
+  els.oauthClient.textContent = data.client?.name ?? 'AI client'
+  els.oauthScopes.textContent = data.scope?.trim() || 'email'
   return true
 }
 
@@ -299,6 +321,7 @@ async function initializeSession() {
     els.authPanel.hidden = false
     els.consentPanel.hidden = true
     els.workspace.hidden = true
+    clearInterval(pollTimer)
     return
   }
 
@@ -323,7 +346,11 @@ async function authenticate(mode) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
   } else {
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: email.split('@')[0] } } })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { display_name: email.split('@')[0] } },
+    })
     if (error) throw error
     if (!data.session) showMessage('Account created. Confirm the email if requested, then sign in.')
   }
@@ -332,12 +359,20 @@ async function authenticate(mode) {
 
 async function run(action) {
   try { await action() }
-  catch (error) { console.error(error); showMessage(error.message ?? String(error), 'error') }
+  catch (error) {
+    console.error(error)
+    showMessage(error.message ?? String(error), 'error')
+  }
 }
 
 els.signIn.addEventListener('click', () => run(() => authenticate('signin')))
 els.signUp.addEventListener('click', () => run(() => authenticate('signup')))
-els.signOut.addEventListener('click', () => run(async () => { clearInterval(pollTimer); await supabase.auth.signOut(); selected = null; await initializeSession() }))
+els.signOut.addEventListener('click', () => run(async () => {
+  clearInterval(pollTimer)
+  await supabase.auth.signOut()
+  selected = null
+  await initializeSession()
+}))
 els.refresh.addEventListener('click', () => run(async () => {
   if (selected) {
     if (dirty && !confirm('Discard unsaved local edits and refresh from the registry?')) return
@@ -368,8 +403,13 @@ document.querySelector('.sidebar').addEventListener('click', (event) => {
   })
 })
 for (const input of [els.title, els.description, els.collectionSelect, els.configSource, els.initializerSource, els.controllerSource]) {
-  input.addEventListener('input', () => { if (selected) { dirty = true; setSync(`Local edits · base revision ${selected.revision}`) } })
-  input.addEventListener('change', () => { if (selected) { dirty = true; setSync(`Local edits · base revision ${selected.revision}`) } })
+  const markDirty = () => {
+    if (!selected) return
+    dirty = true
+    setSync(`Local edits · base revision ${selected.revision}`)
+  }
+  input.addEventListener('input', markDirty)
+  input.addEventListener('change', markDirty)
 }
 els.oauthApprove.addEventListener('click', () => run(async () => {
   const { data, error } = await supabase.auth.oauth.approveAuthorization(authorizationId)
