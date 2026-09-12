@@ -1,154 +1,245 @@
-# Frozen Project State — 10 September 2026
+# Virtual Lab — Current Project State
 
-This file records the design decisions accepted before implementation begins.
+Updated: **12 September 2026**
 
-## Project identity
+This file is the durable, context-free starting point for future ChatGPT/Work/human sessions. Read it before inferring roadmap order from older issue numbering or historical planning text.
 
-- Project: **Virtual Lab**
-- Repository: `eliseofe/virtual-lab`
-- Initial deployment: standalone static GitHub Pages site
-- Future domain: undecided; candidate `lab.` subdomains of already-owned domains
-- Relationship to existing academic website: separate application and repository; future relationship may be a simple external link and/or domain mapping
+## Immediate execution state
 
-## Long-term vision
+The current active implementation sequence is:
 
-A virtual research laboratory where a PI, postdoc, student, or AI research assistant can define reproducible experiments on self-organized multi-agent systems, run them locally or on optional future compute backends, inspect visualizations and quantitative results, and exchange portable experiment/result objects with AI systems.
+1. **#55 — AI authoring contract / simulator-native parser-compiler validation** — NEXT ACTIVE ISSUE.
+2. **#46 — connect the validated experiment registry to production Virtual Lab** — starts after #55.
+3. **#52 — keep mock-sim as a production-looking UI/graphics design sandbox** — later, after #46.
 
-The motivating metaphor is **AI as graduate student**: the human discusses a paper or hypothesis with an AI, the AI derives an explicit controller/metric/experiment specification, the researcher verifies the interpretation, and the AI uses the lab to create/run/analyze experiments. Future human researchers use their own AI accounts/providers while collaborating in the same lab workspace.
+**#45 professor/sharing/submission/curation is deferred and separate. It no longer blocks the core private-student integration path.**
 
-## Project-wide scientific reasoning guardrail
+The old AI–Lab sequence numbering (#41–#46) is historical; use the dependency statements above as the current roadmap.
 
-While the current work is simulator construction, implementation agents may reason and calculate about software architecture, simulator design, numerical/software implementation, UI, data flow, performance, testing, deployment, and other engineering concerns.
+## What is already proven
 
-Implementation agents must **not independently perform scientific reasoning, derivations, equilibrium calculations, model analysis, parameter inference, or other calculations about the scientific system being simulated**. Existing scientific values/behavior may be preserved mechanically when refactoring the simulator, but new scientific choices must not be invented as part of implementation.
+### Experiment contract / registry / MCP
 
-If a simulator-design or implementation decision appears to require scientific reasoning about the simulated system, stop at that boundary, state the exact scientific question that blocks implementation, and discuss it with the owner. Perform that scientific reasoning only after the owner explicitly gives the green light.
+The following issues are complete:
 
-This guardrail applies across issues, rounds, implementation agents, and future handoffs unless the owner explicitly authorizes a particular scientific task.
+- #41 — experiment contract and synchronization semantics;
+- #42 — canonical Supabase registry, authentication, RLS, ownership, lifecycle and revisions;
+- #43 — restricted experiment-only MCP;
+- #44 — real student workflow through AI ↔ MCP ↔ registry ↔ mock-sim;
+- #51 — isolated mock-sim GitHub Pages host;
+- #53 — Supabase OAuth configuration;
+- #54 — real Claude compact-MCP handshake.
 
-## Accepted architecture
+PR **#50** is merged into `main` at merge commit `a82252d849f6a66e6a8b77fa392bd5c22fd3171e`.
 
-### Scientific agent boundary
+### Live experiment MCP
 
-```text
-action = agent.step(observation)
-```
+Supabase project ref: `izdmmudfrmqhvlgepwes`
 
-- observation is local and simulator-constructed;
-- the agent owns private state;
-- the controller is the sole mutator of private agent state;
-- the simulator applies returned actions to physical state;
-- global state, random generators/seeds, filesystem/network, and simulator objects live outside the controller interface.
+Endpoint:
 
-### Randomness
+`https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
 
-Randomness is simulator-owned. This includes initialization, sensing noise, actuation noise, and implementation of probabilistic scientific rules in a reproducible simulator-controlled way.
+Current deployed Edge Function: **version 5**.
 
-### Separate subsystems/clocks
+The final #44 auth interoperability change replaced per-request `auth.getUser()` validation with Supabase protected-resource/JWKS middleware while preserving RLS-scoped database access. This was required because Grok repeatedly reported the connector as connected but then re-requested authorization / failed MCP initialization. After the version-5 change, the existing Grok connector successfully created an experiment without requiring connector deletion/recreation.
 
-Physics/integration, control evaluation, visualization, and metrics are distinct concerns and may use distinct frequencies. Rendering is observational and cannot influence scientific evolution. Headless execution is a rendering choice.
+The compact student-facing MCP intentionally has only five tools:
 
-### Controller language
+1. `read_workspace`
+2. `manage_collection`
+3. `create_experiment`
+4. `edit_experiment`
+5. `delete_experiment`
 
-Researchers edit recognizable Python-style controller source. The initial direction is a constrained scientific Python subset compiled before execution to stable controller IR/executable code. Python is an authoring language rather than a per-step cross-runtime interpreter call.
+This interface exposes experiment-domain operations only. It does not expose simulator execution, simulator results, simulator source/deployment modification, GitHub, arbitrary SQL, shell, arbitrary filesystem, or secrets/admin operations.
 
-### Engine
+### Mock-sim
 
-Current preferred direction: a new small Rust simulation kernel compiled to WebAssembly for browser execution, preserving a future native/HPC path. Violet is a reference implementation and MIT-licensed source of useful ideas rather than a required base.
+Hosted at:
 
-### Data and cost
+`https://eliseofe.github.io/virtual-lab-mock-sim/`
 
-Baseline operation costs €0 beyond already-owned domains/ordinary user hardware. Compute and large data remain local. GitHub/static hosting carries code/specifications and small summaries. Paid compute, databases, object stores, AI APIs, and institutional HPC are optional future adapters.
+Its purpose in #44 was deliberately non-scientific: real authentication, experiment organization, three source editors, revision-aware synchronization, lifecycle and conflict behavior, with **zero simulation execution**.
 
-### Future-proof seams
+#44 owner acceptance proved:
 
-Permanent/stable seams:
+- real OAuth from Claude and Grok;
+- two genuinely distinct authenticated registry identities;
+- symmetric private-user isolation, including guessed/exact foreign experiment IDs;
+- AI → registry → mock-sim synchronization;
+- mock-sim → registry → AI synchronization;
+- create-from-zero from both AI and mock-sim paths;
+- project/collection organization;
+- archive/restore;
+- permanent delete;
+- stale-write rejection;
+- browser refresh/newer-canonical-state protection;
+- no simulator-development capability through the student connector.
 
-- versioned Experiment format;
-- versioned Run/result format;
-- controller semantics/IR;
-- Lab domain operations;
-- `ExecutionBackend` abstraction;
-- `ExperimentRepository` abstraction.
+#44 is closed. Do not reopen it because later production syntax validation is incomplete; that is #55.
 
-Replaceable adapters:
+## Meaningful student experiment created during #44
 
-- GitHub transport/repository;
-- MCP/HTTP AI interfaces;
-- browser/native/HPC compute;
-- static hosting provider;
-- renderer;
-- optional shared storage.
+The owner discussed a real experiment conversationally with Grok and asked Grok to create it through the connector.
 
-## Near-term rounds
+Canonical registry record:
 
-### Round 1
+- title: **Encounter-Driven Information Diffusion (EDID) in a Robot Swarm**
+- experiment ID: `212854b2-ce08-452e-8cab-b27841d86cf9`
+- revision: `1`
+- lifecycle: active
+- created by AI through the Grok OAuth client
+- all three source artifacts are non-empty
+- the exact experiment is visible in mock-sim under the same user identity
 
-Polished standalone lab + Rust/WASM scientific kernel + Active Elastic Model + visible editable Python controller + Apply/recompile/restart + live visualization + multi-experiment UI foundation + deployed-browser verification.
+This is important evidence: the ordinary student discussion → AI creation → registry → browser workflow works.
 
-### Round 2
+However, **this does not yet prove the EDID sources are runnable in production Virtual Lab.** Grok was never given the simulator's authoritative syntax/language contract and no production parser/compiler validated the three strings. That newly discovered distinction is the reason #55 exists.
 
-Immediately add multiple runs/seeds, parameter sweeps, local parallelism, headless execution, independent metrics, aggregation/statistics, plots, run selection/replay, and local export/provenance.
+## #55 — next active implementation issue
 
-### Round 3
+#55 is the immediate next task.
 
-Complete AI↔Lab workflow using the GitHub adapter first, while preserving portable schemas and future MCP/HTTP adapters.
+Problem discovered during owner acceptance:
 
-## First scientific validation target
+- transport/storage works;
+- the three experiment artifacts currently reach the registry as arbitrary strings;
+- a generic AI does not inherently know the exact Virtual Lab configuration, initializer and controller syntax;
+- therefore successful creation cannot be equated with production loadability/runnability.
 
-Active Elastic Model:
+Required direction:
 
-- Ferrante, Turgut, Dorigo, Huepe, Physical Review Letters 111, 268302 (2013), DOI `10.1103/PhysRevLett.111.268302`
-- Ferrante, Turgut, Dorigo, Huepe, New Journal of Physics 15, 095011 (2013), DOI `10.1088/1367-2630/15/9/095011`
+- the production Virtual Lab implementation remains the source of truth for syntax;
+- expose a versioned machine-readable **experiment authoring contract** to connected student AIs;
+- reuse the real production parsers/compiler for validation;
+- provide structured/source-positioned diagnostics to the AI;
+- do not create a separate duplicate language definition that can drift;
+- do not run the simulator as part of validation;
+- do not give the AI simulator-run/results capability.
 
-A correct Round 1 must expose the real model/controller semantics rather than a hard-coded flock-like animation. The owner should be able to alter a scientifically meaningful controller rule and observe the corresponding change/failure after recompilation/restart.
+Existing controller parser/compiler work from completed **#13** must be reused. #13 implemented the controller source → AST → allowed-subset validation → semantic/type validation → versioned IR → executable runtime pipeline and diagnostics. #55 must first inventory the actual production validation path for **all three artifacts** (configuration, initializer, controller) and add only the missing software seams.
 
-Scientific interpretation or derivation needed to implement this target is subject to the project-wide guardrail above and requires explicit owner approval before it is undertaken.
+Scientific reasoning is not required for #55. It is a software contract/parser/compiler task.
 
-## Execution ownership
+## #46 — production registry integration after #55
 
-The current project uses two AI execution roles:
+#46 now explicitly follows #55.
 
-- **ChatGPT** is the primary implementation agent. It owns architecture, scientific/software implementation, automated tests, GitHub repository changes, CI/build/deployment configuration, defect repair, and redeployment, subject to the project-wide scientific reasoning guardrail above.
-- **Work** is the cloud-browser verification agent. It owns only issues explicitly marked `[WORK]`, with small deterministic browser checklists.
+Target production loop:
 
-For Round 1, ChatGPT owns #1, #2, and #11–#15. Work owns #16–#18. Later-round ownership is assigned when those rounds become active.
+AI/student discusses and authors experiment → real parser/compiler validates the three artifacts → canonical registry synchronizes → production Virtual Lab loads the experiment → **student manually runs/observes it** → student edits/saves in Virtual Lab → AI reads the saved state.
 
-GitHub's native assignee field is not used to represent these product agents; execution ownership is encoded in issue titles and bodies.
+The AI must still not automatically run the simulator or observe results.
 
-## Persistent issue-first development workflow — added 11 September 2026
+#46 should preserve current local Rust/WASM execution, restart/seed behavior, controller compilation and browser performance. It should wire the registry into the production Lab, not redesign the registry.
 
-GitHub issues are the durable cross-chat development record for this project.
+The existing Active Elastic experiment should be represented through the registry without changing its scientific semantics as part of transport/integration work.
 
-- Every substantive new feature, defect, behavior change, deployment-policy change, or scientific-validation task starts with a GitHub issue before implementation begins.
-- The issue records the user-observed problem or requested behavior, implementation scope, and acceptance criteria.
-- Branches and pull requests reference the relevant issue number(s).
-- Material findings discovered during implementation are added to the active issue when they are useful for future handoff or diagnosis.
-- When the implementation is merged and verified, the issue is updated with the result and closed.
-- Small mechanical follow-ups that belong to an already-active change may remain inside that issue rather than creating issue noise.
+## #45 — deferred professor/sharing/curation track
 
-The purpose is persistence across ChatGPT conversations, Work sessions, human handoffs, and future implementation agents; conversation memory alone is not the project record.
+#45 remains valid but is not on the immediate path.
 
-## Conservative deployment retention — added 11 September 2026
+Its scope is student sharing/submission, professor/curator visibility, preserved submission snapshots and curated/public examples. It remains an experiment-domain permission workflow and must not confer simulator-development capability.
 
-Git is the durable source and history. Deployed build artifacts are transient delivery products rather than archival storage.
+Current decision: implement it later unless the owner explicitly reprioritizes it.
 
-- GitHub Pages upload artifacts use explicit `retention-days: 1`.
-- Build/deployment history may remain in GitHub for operational visibility, but it is not relied upon as source recovery.
-- Large or long-lived generated artifacts should not be retained in Actions unless a future task has an explicit reproducibility reason.
-- Repository source, commits, issues, and pull requests are the persistent record.
+## #52 — later visual/UI sandbox
 
-## Closed-loop development principle
+After #46, keep mock-sim permanently as a **visual twin/design sandbox**:
 
-The closed loop is distributed explicitly across the two agents:
+- real registry/auth/synchronization;
+- production-like Virtual Lab shell and graphics/layout;
+- inert simulation area;
+- no scientific execution.
 
-```text
-ChatGPT implement/test/deploy
-  -> Work exercise deployed browser checklist
-  -> PASS: continue/close gate
-  -> FAIL: exact reproduction evidence
-  -> ChatGPT repair/redeploy
-  -> Work rerun same checklist
-```
+UI/graphics experiments should be validated there first and then deliberately ported to production.
 
-This repeats until the deployed product passes all applicable checks. Human review should focus on scientific fidelity and design judgment rather than elementary software breakage.
+## Results channel remains separate
+
+Issue #6 is future work for explicit Lab → AI plots/results/provenance after production experiment integration and quantitative result capabilities exist.
+
+Do not silently turn the student AI into an autonomous closed-loop simulator agent while implementing #55 or #46.
+
+## Production simulator state
+
+The production Virtual Lab and Active Elastic simulator are already functional enough for owner use/testing. Further scientific fidelity/validation remains separately tracked in #14 and cross-cutting validation in #2.
+
+Do not use #55/#46 as an excuse to independently derive or retune Active Elastic science.
+
+## Controller parser/compiler
+
+#13 is completed and closed as an implementation component.
+
+Implemented pipeline:
+
+`source -> parser/AST -> allowed-subset validation -> semantic/type validation -> versioned controller IR -> executable runtime`
+
+It provides categorized diagnostics and must be reused by #55.
+
+Browser-level edit/error/recovery and robustness acceptance debt remains separately visible in #17/#18.
+
+## Other open work / backlog
+
+Open issues are intentionally not all immediate work. Important groups:
+
+### Scientific / simulator correctness
+
+- #2 — scientific validation and reproducibility infrastructure;
+- #14 — Active Elastic scientific validation/fidelity;
+- #29 — runtime speed should saturate cleanly above compute capacity;
+- #31 — large-swarm neighbour-index benchmark.
+
+### Older browser/UI acceptance debt
+
+- #15 — Round-1 UI/deployment umbrella;
+- #16 — deployed desktop simulation controls;
+- #17 — controller edit / compile error / recovery;
+- #18 — responsive/reload/browser robustness.
+
+These are not prerequisites for starting #55 unless an implementation dependency is discovered.
+
+### Future quantitative / compute work
+
+- #3 — multi-run sweeps, metrics, plots, statistics and replay;
+- #4 — local result storage/provenance;
+- #6 — explicit Lab → AI results channel;
+- #8 — native/HPC execution;
+- #9 — future richer physics/heterogeneous swarms.
+
+## Scientific reasoning guardrail
+
+Implementation agents may reason about software architecture, parser/compiler design, data flow, UI, synchronization, performance, tests and deployment.
+
+They must **not independently perform scientific reasoning, derivations, equilibrium calculations, model analysis, parameter inference, or retuning of the simulated scientific system**.
+
+If a software task appears to require a new scientific choice, stop and ask the owner that specific scientific question first.
+
+Existing accepted scientific values/behavior may be preserved mechanically while refactoring or integrating transport.
+
+## Cost invariant
+
+This remains a **zero-euro incremental-cost project**.
+
+Current baseline uses:
+
+- GitHub repository / GitHub Pages;
+- Supabase free-tier project for registry/auth/MCP;
+- client-side browser simulation compute;
+- already-owned AI subscriptions/accounts used by the owner for acceptance.
+
+Do not introduce a new paid mandatory service without explicit owner approval.
+
+## Resume instructions for a context-free agent
+
+If resuming the project now:
+
+1. read this file;
+2. read **issue #55** in full;
+3. inspect the current production configuration/initializer/controller parsing/validation code before designing anything;
+4. reuse #13 controller compiler/parser rather than reimplementing it;
+5. keep scientific reasoning outside scope unless explicitly approved;
+6. implement and verify #55 first;
+7. only then proceed to #46.
+
+Do not repeat the #44 OAuth/isolation/stale-write acceptance matrix unless a regression directly requires it. Those gates are already complete and recorded in #44.
