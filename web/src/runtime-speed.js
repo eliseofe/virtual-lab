@@ -1,3 +1,5 @@
+import "./registry-ui.js";
+
 const scientificTime = document.querySelector("#scientific-time");
 const runState = document.querySelector("#run-state");
 const requestedSpeed = document.querySelector("#simulation-speed");
