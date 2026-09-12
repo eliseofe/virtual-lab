@@ -79,7 +79,7 @@ test("production runnability preflight accepts a generic valid experiment and re
   assert.ok(invalid.error);
 });
 
-test("production registry pass is read-only, ownership-scoped, session-isolated and runnable-only", async () => {
+test("production registry read path remains ownership-scoped, session-isolated and runnable-only", async () => {
   const registryUi = await readFile(path.join(src, "registry-ui.js"), "utf8");
   assert.match(registryUi, /storageKey: "vlab-production-registry-auth-v1"/);
   assert.match(registryUi, /\.from\("experiments"\)/);
@@ -87,10 +87,8 @@ test("production registry pass is read-only, ownership-scoped, session-isolated 
   assert.match(registryUi, /\.eq\("lifecycle", "active"\)/);
   assert.match(registryUi, /config_source,initializer_source,controller_source/);
   assert.match(registryUi, /productionExperimentRunnability\(experiment\)\.runnable/);
-  assert.doesNotMatch(registryUi, /\.insert\s*\(/);
-  assert.doesNotMatch(registryUi, /\.update\s*\(/);
-  assert.doesNotMatch(registryUi, /\.delete\s*\(/);
-  assert.match(registryUi, /Registry experiments are read-only in this version/);
+  assert.match(registryUi, /async function readExperiment/);
+  assert.match(registryUi, /Experiment not found for this account/);
 });
 
 test("post-login registry UI hides the login form and keeps list refresh next to experiment selection", async () => {
@@ -100,7 +98,6 @@ test("post-login registry UI hides the login form and keeps list refresh next to
   assert.match(registryUi, /ui\.signOut\.hidden = false/);
   assert.match(registryUi, /ui\.refreshRow\.hidden = false/);
   assert.match(registryUi, /experimentSelect\.insertAdjacentElement\("afterend", refreshRow\)/);
-  assert.doesNotMatch(registryUi, /registry-actions/);
 });
 
 test("registry bootstrap is additive and cannot block the core simulator runtime-speed module", async () => {
