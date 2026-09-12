@@ -18,7 +18,7 @@ test("actual runtime factor is observational and displayed beside requested spee
   assert.match(html, /id="simulation-speed-value"/);
   assert.match(html, /id="actual-simulation-speed"/);
   assert.match(html, /src="\.\/runtime-speed\.js"/);
-  assert.match(html, /Actual speed is measured from model time versus wall time/);
+  assert.match(html, /wall-clock execution speed only; simulation dynamics are unchanged/);
 
   assert.match(meter, /performance\.now\(\)/);
   assert.match(meter, /modelDelta \/ wallDeltaSeconds/);

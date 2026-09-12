@@ -24,10 +24,10 @@ test("Round 1 UI exposes experiment config, initializer source, controller sourc
     'id="simulation-canvas"', 'id="controller-source"', 'id="run"', 'id="pause"', 'id="restart"', 'id="restart-new-seed"', 'id="compile"',
     'id="simulation-speed"', 'id="simulation-speed-value"', 'id="actual-simulation-speed"', 'id="run-seed"',
   ]) assert.match(html, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(html, /Restart same seed/);
-  assert.match(html, /New seed &amp; restart/);
+  assert.match(html, /<button id="restart" disabled>Restart<\/button>/);
+  assert.match(html, /Restart with new seed/);
   assert.match(html, /value="20"/);
-  assert.match(html, /Actual speed is measured from model time versus wall time and does not affect the simulation/);
+  assert.match(html, /wall-clock execution speed only; simulation dynamics are unchanged/);
   assert.doesNotMatch(html, /id="initialization-seed"/);
   assert.doesNotMatch(html, /id="initialization-agent-count"/);
 });
@@ -120,11 +120,12 @@ test("setup and controller application use separate worker paths", async () => {
 test("worker startup failures are surfaced instead of leaving a loading status forever", async () => {
   const main = await text("src/main.js");
   assert.match(main, /worker\.addEventListener\("error"/);
-  assert.match(main, /Worker load error/);
+  assert.match(main, /Simulator error:/);
+  assert.match(main, /Simulator failed to start\./);
 });
 
 test("invalid source path preserves the current valid controller", async () => {
   const main = await text("src/main.js");
-  assert.match(main, /Compilation failed\. Current valid controller was not replaced\./);
+  assert.match(main, /Could not apply controller\. Previous controller remains active\./);
   assert.match(main, /compileController\(ui\.source\.value/);
 });
