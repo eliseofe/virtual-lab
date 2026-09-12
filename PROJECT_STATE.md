@@ -6,16 +6,15 @@ This file is the durable, context-free starting point for future ChatGPT/Work/hu
 
 ## Immediate execution order
 
-1. **#63 — AUTHORING/RUNTIME ALIGNMENT** — **NEXT ACTIVE IMPLEMENTATION ISSUE**.
-   - Eliminate the current false-positive state where MCP can say an experiment is valid while the production browser still has hidden Active-Elastic-specific setup requirements.
-   - Establish one science-neutral runtime/setup boundary shared by production and authoring validation.
-   - Use the real Grok-created `Simple Random Walk` experiment as the regression fixture.
-2. **#46 — production registry integration EPIC** — starts only after #63.
-   - #46 is now an epic, not one implementation pass.
-   - Decompose it after #63 into focused private-student production integration passes based on the then-current code.
-3. **Further simulator/scientific work chosen by the owner.** Performance work (#56) is likely important, but the owner chooses after functional integration.
+1. **#46 — production registry integration EPIC** — **NEXT ACTIVE ARCHITECTURAL STAGE**.
+   - #46 is an epic, not one implementation pass.
+   - Inspect the current production/registry boundary and decompose only the next concrete private-student integration pass(es) that are justified by the code.
+   - Keep each child issue to one coherent reasoning/implementation pass with a bounded failure surface.
+2. **Further simulator/scientific work chosen by the owner.** Performance work (#56) is likely important, but the owner chooses after functional integration.
 
-**#55 is complete and closed.** It delivered the science-free AI authoring contract and production-parser/compiler validation. Do not keep reopening #55 for every downstream runtime/integration defect; extract focused follow-up issues when the failure surface is different.
+**#55 is complete and closed.** It delivered the science-free AI authoring contract and authoritative parser/compiler validation.
+
+**#63 is complete and closed.** It aligned AI validation with the production runtime/setup boundary and removed the false-positive validity gap exposed by the genuine Grok `Simple Random Walk` acceptance fixture.
 
 **#45 professor/sharing/submission/curation is deferred and separate.** It does not block the private-student production integration path.
 
@@ -30,7 +29,7 @@ Prefer one issue per coherent implementation/reasoning pass with a narrow accept
 - Reopen only when the supposedly completed outcome itself regressed or was never actually achieved.
 - Use epics for multi-pass goals such as #46; create focused implementation issues underneath only when the next concrete pass is understood.
 
-This rule is why the post-#55 runtime mismatch is #63 rather than more #55 scope.
+This is why the post-#55 runtime mismatch became #63 rather than more #55 scope.
 
 ## What is already proven
 
@@ -45,9 +44,10 @@ Completed and accepted:
 - #51 — isolated mock-sim GitHub Pages host;
 - #53 — Supabase OAuth configuration;
 - #54 — real Claude compact-MCP handshake;
-- #55 — science-free AI authoring contract + authoritative parser/compiler validation.
+- #55 — science-free AI authoring contract + authoritative parser/compiler validation;
+- #63 — science-neutral shared runtime contract + authoring/runtime validity alignment.
 
-PR #50 merged the #44 mock/registry work. PR #61 implemented the original #55 authoring contract. PR #62 corrected #55 so the MCP contract contains **no Active Elastic scientific reference experiment or model-specific parameter requirements**.
+PR #50 merged the #44 mock/registry work. PR #61 implemented the original #55 authoring contract. PR #62 removed the invalid Active Elastic scientific reference from the student-facing contract. PR #64 implemented #63 and aligned production setup with the generic runtime contract.
 
 ### Live MCP
 
@@ -57,9 +57,11 @@ Endpoint:
 
 `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
 
-Current deployed Edge Function: **version 7**.
+Current deployed Edge Function: **version 8**.
 
-Current authoring contract: **`vlab.authoring/0.2`**.
+Current authoring contract: **`vlab.authoring/0.3`**.
+
+Current shared runtime contract: **`vlab.runtime/0.1`**.
 
 The student-facing MCP remains five tools:
 
@@ -71,47 +73,42 @@ The student-facing MCP remains five tools:
 
 Security boundary remains unchanged: no simulator run/results capability, no simulator source/deployment mutation, no GitHub, shell, arbitrary SQL/filesystem, secrets, or admin path.
 
-### Meaningful genuine authoring acceptance
+### Genuine authoring/runtime acceptance
 
-The first Active Elastic acceptance attempt was invalid as a meaningful authoring test because Grok copied the exact reference experiment that had been embedded in the MCP contract. That scientific reference was removed from the MCP in PR #62.
+The first Active Elastic acceptance attempt was invalid as a meaningful authoring test because Grok copied the exact reference experiment that had been embedded in the MCP contract. That scientific reference was removed in PR #62.
 
 The meaningful owner test is the later Grok/VU experiment:
 
 - title: **Simple Random Walk**
 - experiment ID: `75a313d5-150a-4831-b4f7-b02255a1482e`
-- created by Grok on the VU identity through MCP v7;
-- config, initializer and controller are genuinely new and non-empty;
-- `vlab.authoring/0.2` accepted the three artifacts using the science-free contract.
+- initially created by Grok through MCP v7 from the science-free `vlab.authoring/0.2` contract;
+- the first revision exposed the real #63 gap: parser/compiler validation passed while generic production runtime requirements were not yet part of the authoring validity boundary;
+- after PR #64 and MCP v8, Grok re-read `vlab.authoring/0.3`, repaired the same experiment conversationally, and saved revision **2**;
+- registry inspection confirms revision 2 was written by the AI channel and includes the complete generic `vlab.runtime/0.1` configuration requirements;
+- the v8 write path rejects source changes unless the authoritative shared validator accepts all three artifacts and runtime requirements;
+- PR #64 CI plus post-merge main build, Pages deployment, and browser smoke passed.
 
-This demonstrates that the authoring contract is useful enough for a real AI to create a new valid parser/compiler-level experiment without copying Active Elastic.
+This is the accepted #63 outcome: the previously false-positive experiment is now either rejected precisely or repairable by the student AI against the same science-neutral validity boundary used by production setup.
 
-## Why #63 exists
+## #46 — next stage
 
-Mechanical inspection of current production `web/src/main.js::compileSetup` revealed hidden first-experiment assumptions. Production setup still requires Active-Elastic-specific keys such as `U`, `OMEGA_MAX`, `K1`, `K2`, `POTENTIAL_ALPHA`, `POTENTIAL_EPSILON`, `DESIRED_DISTANCE`, `PROXIMAL_RANGE`, and `INITIAL_POSITION_NOISE`.
+#46 is an **epic** for production registry integration. Its older body is historically useful but too broad for one implementation pass and may contain stale dependency wording.
 
-Therefore `Simple Random Walk` can currently be accepted by MCP while the current browser setup would reject it before run. This is a real architectural mismatch.
+The architectural target remains:
 
-The fix is **not** to put Active Elastic science back into MCP. #63 must separate simulator/runtime-owned requirements from experiment-defined scientific parameters and keep the production browser and validator mechanically aligned.
+student AI authors validated experiment → registry → production Virtual Lab loads the same sources → student manually runs/observes → local Lab edits can be saved back safely → AI can read the updated experiment later.
 
-Important acceptance invariant for #63:
+The student AI still must not run the simulator or observe simulation results automatically; the future explicit results channel remains #6.
 
-> There must be no state where MCP reports `valid: true` but the same three sources fail production setup solely because the browser has hidden model-specific requirements unknown to the authoring contract.
+Before implementing #46 directly, inspect the current production UI/worker/registry seams and extract only the smallest justified child issue(s). Likely areas include:
 
-A genuinely required **generic simulator setting** may still cause rejection, but then the validator must reject it first with a precise science-free diagnostic that Grok/Claude can repair conversationally.
-
-## #46 after #63
-
-#46 is now an **epic** for production registry integration. Its older body is historically useful but too broad for one implementation pass and still contains stale text saying #45 is a hard prerequisite.
-
-After #63, decompose #46 into the smallest justified private-student integration passes, likely covering some sequence of:
-
-- authenticate/list/load registry experiments in production;
-- make loaded validated sources enter the normal local compile/run path;
-- save lab edits back through optimistic revision semantics;
+- authenticate/list/load private registry experiments in production;
+- make loaded validated sources enter the existing local compile/run path;
+- save Lab edits back with optimistic revision semantics;
 - remote refresh/update handling and conflict safety;
-- end-to-end AI ↔ registry ↔ production Lab round-trip.
+- final AI ↔ registry ↔ production Lab round-trip acceptance.
 
-Do not pre-commit to exact subissue boundaries before #63 exposes the final runtime interface.
+Do not assume these are the final issue boundaries until the current code is inspected.
 
 Professor/shared/curated workflows remain #45 and are not bundled into the first private-student integration pass.
 
@@ -142,10 +139,10 @@ This remains a **zero-euro incremental-cost project**. Baseline uses GitHub/GitH
 ## Resume instructions for a context-free agent
 
 1. Read this file.
-2. Read **#63** in full.
-3. Inspect the current production setup path, kernel setup requirements, and `vlab.authoring/0.2` validator before changing architecture.
-4. Keep MCP science-free.
+2. Read **#46** and its latest comments before treating its historical body as authoritative.
+3. Inspect the current production UI/worker path and registry/MCP boundary.
+4. Keep MCP science-free and preserve the current five-tool student-facing surface unless a focused issue proves a change is necessary.
 5. Preserve Active Elastic behavior mechanically; do not scientifically retune it.
-6. Complete and accept #63 before decomposing/starting #46 implementation.
-7. When #63 is complete, return to #46 and create only the next focused integration pass(es) justified by the code.
+6. Decompose #46 into the next smallest justified private-student integration issue(s) before implementation.
+7. Keep student AI unable to run simulations or observe results automatically.
 8. After functional production integration, ask the owner what simulator/scientific work is next; do not automatically start #52.
