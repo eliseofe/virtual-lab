@@ -63,7 +63,9 @@ test("production registry pass is read-only and ownership-scoped", async () => {
   assert.match(registryUi, /Read-only integration/);
 });
 
-test("production browser bootstraps the registry read client without changing the main simulator module", async () => {
+test("registry bootstrap is additive and cannot block the core simulator runtime-speed module", async () => {
   const runtimeSpeed = await readFile(path.join(src, "runtime-speed.js"), "utf8");
-  assert.match(runtimeSpeed, /^import "\.\/registry-ui\.js";/);
+  assert.doesNotMatch(runtimeSpeed, /^import "\.\/registry-ui\.js";/);
+  assert.match(runtimeSpeed, /import\("\.\/registry-ui\.js"\)\.catch/);
+  assert.match(runtimeSpeed, /Registry UI failed to load/);
 });

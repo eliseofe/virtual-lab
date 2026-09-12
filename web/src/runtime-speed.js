@@ -1,5 +1,3 @@
-import "./registry-ui.js";
-
 const scientificTime = document.querySelector("#scientific-time");
 const runState = document.querySelector("#run-state");
 const requestedSpeed = document.querySelector("#simulation-speed");
@@ -53,3 +51,9 @@ new MutationObserver(() => {
 requestedSpeed.addEventListener("input", resetMeasurement);
 
 resetMeasurement();
+
+// Registry integration is additive. A CDN/auth outage must not block the core
+// simulator or its runtime-speed controls from starting.
+import("./registry-ui.js").catch((error) => {
+  console.error("Registry UI failed to load:", error);
+});
