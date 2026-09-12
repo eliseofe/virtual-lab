@@ -8,6 +8,8 @@ import { withRequiredClaims } from 'npm:@supabase/server/middleware/required-cla
 import { withSupabaseClient } from 'npm:@supabase/server/middleware/client'
 import { z } from 'npm:zod@4.1.13'
 
+import { AUTHORING_CONTRACT, validateExperimentSources } from './authoring.js'
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
@@ -58,6 +60,15 @@ function toolError(message: string, detail?: unknown) {
   }
 }
 
+function authoringInfo(includeContract: boolean) {
+  return {
+    contract_version: AUTHORING_CONTRACT.contract_version,
+    validation_required_for_source_writes: true,
+    invalid_write_policy: AUTHORING_CONTRACT.invalid_write_policy,
+    ...(includeContract ? { contract: AUTHORING_CONTRACT } : {}),
+  }
+}
+
 function registerExperimentTools(
   server: McpServer,
   supabase: any,
@@ -72,15 +83,16 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab experiment workspace',
       description:
-        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment with all three editable sources and its current revision. This tool never writes.',
+        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment with all three editable sources and its current revision. Before authoring or changing source artifacts, set include_authoring_contract=true to retrieve the current simulator-native syntax/capability contract. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         lifecycle: z.enum(['active', 'archived', 'all']).default('active'),
         owned_only: z.boolean().default(true),
+        include_authoring_contract: z.boolean().default(false),
       },
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    async ({ experiment_id, lifecycle, owned_only }) => {
+    async ({ experiment_id, lifecycle, owned_only, include_authoring_contract }) => {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id, display_name')
@@ -89,6 +101,7 @@ function registerExperimentTools(
       if (profileError) return toolError('Could not read the authenticated profile.', profileError.message)
 
       const identity = { ...profile, email, oauth_client_id: clientId }
+      const authoring = authoringInfo(include_authoring_contract)
 
       if (experiment_id) {
         const { data: experiment, error } = await supabase
@@ -98,7 +111,7 @@ function registerExperimentTools(
           .maybeSingle()
         if (error) return toolError('Could not read experiment.', error.message)
         if (!experiment) return toolError('Experiment was not found or is not visible to this user.')
-        return toolResult({ identity, experiment })
+        return toolResult({ identity, authoring, experiment })
       }
 
       const { data: collections, error: collectionsError } = await supabase
@@ -120,7 +133,7 @@ function registerExperimentTools(
       const { data: experiments, error: experimentsError } = await query
       if (experimentsError) return toolError('Could not list experiments.', experimentsError.message)
 
-      return toolResult({ identity, collections, experiments })
+      return toolResult({ identity, authoring, collections, experiments })
     },
   )
 
@@ -179,9 +192,9 @@ function registerExperimentTools(
   server.registerTool(
     'create_experiment',
     {
-      title: 'Create a new experiment',
+      title: 'Create a new validated experiment',
       description:
-        'Create a brand-new owned experiment from zero. Supply the exact configuration, initializer, and controller source strings. Use collection_id from read_workspace to file it, or omit collection_id to leave it unfiled.',
+        'Create a brand-new owned experiment from zero. Supply the exact configuration, initializer, and controller source strings. Source artifacts are validated against the current Virtual Lab authoring contract before the write; invalid sources are rejected with structured diagnostics. Use read_workspace(include_authoring_contract=true) before authoring. Use collection_id to file it, or omit collection_id to leave it unfiled.',
       inputSchema: {
         title: z.string().min(1).max(300),
         description: z.string().default(''),
@@ -193,6 +206,11 @@ function registerExperimentTools(
       annotations: WRITE_ANNOTATIONS,
     },
     async ({ title, description, collection_id, config_source, initializer_source, controller_source }) => {
+      const validation = validateExperimentSources({ config_source, initializer_source, controller_source })
+      if (!validation.valid) {
+        return toolError('Experiment sources are not valid for the current Virtual Lab authoring contract.', validation)
+      }
+
       const { data, error } = await supabase
         .from('experiments')
         .insert({
@@ -211,7 +229,7 @@ function registerExperimentTools(
         .select('*')
         .single()
       if (error) return toolError('Could not create experiment.', error.message)
-      return toolResult(data)
+      return toolResult({ ...data, validation })
     },
   )
 
@@ -220,7 +238,7 @@ function registerExperimentTools(
     {
       title: 'Edit, move, archive, or restore an experiment',
       description:
-        'Modify an owned experiment using optimistic concurrency. Always use the latest base_revision from read_workspace. Pass only fields to change. Set collection_id to another collection UUID to move it, null to unfile it. Set lifecycle=archived to archive or lifecycle=active to restore. A stale revision is rejected.',
+        'Modify an owned experiment using optimistic concurrency. Always use the latest base_revision from read_workspace. Pass only fields to change. Any source-artifact change is validated together with the experiment current other sources before the write; invalid sources are rejected with structured diagnostics. Set collection_id to another collection UUID to move it, null to unfile it. Set lifecycle=archived to archive or lifecycle=active to restore. A stale revision is rejected.',
       inputSchema: {
         experiment_id: z.string().uuid(),
         base_revision: z.number().int().positive(),
@@ -245,6 +263,35 @@ function registerExperimentTools(
       collection_id,
       lifecycle,
     }) => {
+      const sourceChanged =
+        config_source !== undefined || initializer_source !== undefined || controller_source !== undefined
+
+      let validation: ReturnType<typeof validateExperimentSources> | null = null
+      if (sourceChanged) {
+        const { data: current, error: currentError } = await supabase
+          .from('experiments')
+          .select('config_source, initializer_source, controller_source')
+          .eq('id', experiment_id)
+          .eq('owner_id', userId)
+          .eq('revision', base_revision)
+          .maybeSingle()
+        if (currentError) return toolError('Could not read the current experiment sources for validation.', currentError.message)
+        if (!current) {
+          return toolError(
+            'Conflict: the experiment is stale, missing, or not owned by this user. Re-read it with read_workspace before editing.',
+          )
+        }
+
+        validation = validateExperimentSources({
+          config_source: config_source ?? current.config_source ?? '',
+          initializer_source: initializer_source ?? current.initializer_source ?? '',
+          controller_source: controller_source ?? current.controller_source ?? '',
+        })
+        if (!validation.valid) {
+          return toolError('Experiment sources are not valid for the current Virtual Lab authoring contract.', validation)
+        }
+      }
+
       const patch: Record<string, unknown> = {
         updated_by_actor: 'ai',
         updated_by_ai_client: aiClient,
@@ -274,7 +321,7 @@ function registerExperimentTools(
           'Conflict: the experiment is stale, missing, or not owned by this user. Re-read it with read_workspace before editing.',
         )
       }
-      return toolResult(data)
+      return toolResult(validation ? { ...data, validation } : data)
     },
   )
 
@@ -320,7 +367,7 @@ const authenticatedMcp = pipeline(
 
     const server = new McpServer({
       name: 'virtual-lab-experiment-registry',
-      version: '2.1.0',
+      version: '2.2.0',
     })
     registerExperimentTools(server, ctx.supabase, userId, email, clientId)
 
@@ -347,6 +394,8 @@ Deno.serve(async (req: Request) => {
       service: 'virtual-lab-experiment-mcp',
       interface_version: '4',
       auth_implementation: 'supabase-jwks-middleware',
+      authoring_contract_version: AUTHORING_CONTRACT.contract_version,
+      validation_mode: AUTHORING_CONTRACT.validation_mode,
       tool_count: 5,
       simulator_access: false,
     })
