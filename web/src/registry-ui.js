@@ -4,7 +4,11 @@ import {
   applyExperimentArtifacts,
   captureExperimentArtifacts,
 } from "./experiment-artifacts.js";
-import { productionExperimentRunnability } from "./experiment-validation.js";
+import {
+  productionExperimentRunnability,
+  registryArtifactsFromProductionExperiment,
+  registryExperimentRunnability,
+} from "./experiment-validation.js";
 
 const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYbJUyik9zN7WA_r4ie2P5d";
@@ -366,11 +370,18 @@ function connectedMessage() {
   return `${count} experiment${count === 1 ? "" : "s"} available${hidden}.`;
 }
 
-function assertCurrentSourcesRunnable() {
-  const artifacts = captureExperimentArtifacts();
-  const validation = productionExperimentRunnability(artifacts);
+function registryArtifactsForSave({ allowBuiltInCompatibility = false } = {}) {
+  const captured = captureExperimentArtifacts();
+  let artifacts = captured;
+  let validation = registryExperimentRunnability(artifacts);
+
+  if (!validation.runnable && allowBuiltInCompatibility && currentRemote === null) {
+    artifacts = registryArtifactsFromProductionExperiment(captured);
+    validation = registryExperimentRunnability(artifacts);
+  }
+
   if (!validation.runnable) {
-    throw new Error(`Cannot save: ${validation.error || "experiment is not compatible with the current simulator."}`);
+    throw new Error(`Cannot save: ${validation.error || "experiment does not satisfy the registry authoring contract."}`);
   }
   return artifacts;
 }
@@ -383,7 +394,7 @@ async function saveCurrentExperiment() {
     return;
   }
 
-  const artifacts = assertCurrentSourcesRunnable();
+  const artifacts = registryArtifactsForSave();
   const baseRevision = currentRemote.revision;
   setMessage(`Saving ${currentRemote.title}…`);
 
@@ -438,7 +449,7 @@ async function createNewExperiment() {
   if (!user) throw new Error("Sign in before saving.");
   const title = ui.newTitle.value.trim();
   if (!title) throw new Error("Enter a title for the new experiment.");
-  const artifacts = assertCurrentSourcesRunnable();
+  const artifacts = registryArtifactsForSave({ allowBuiltInCompatibility: true });
 
   setMessage(`Creating ${title}…`);
   const { data, error } = await supabase
@@ -460,12 +471,14 @@ async function createNewExperiment() {
     .single();
 
   if (error) throw error;
+  applyExperimentArtifacts(data);
   currentRemote = data;
   metadataRevision.textContent = `registry r${data.revision}`;
   closeSaveAsNew();
   await loadExperimentList();
   experimentSelect.value = `registry:${data.id}`;
   updateSaveUi();
+  await applyLoadedSources();
   setMessage(`${data.title} created as a private experiment.`, "success");
 }
 
