@@ -66,19 +66,19 @@ function buildPanel() {
   const refresh = document.createElement("button");
   refresh.id = "registry-refresh";
   refresh.className = "registry-refresh";
-  refresh.textContent = "Refresh experiments";
+  refresh.textContent = "Refresh";
   refreshRow.append(refresh);
   experimentSelect.insertAdjacentElement("afterend", refreshRow);
 
   const panel = document.createElement("section");
   panel.className = "panel registry-panel";
-  panel.setAttribute("aria-label", "Experiment registry connection");
+  panel.setAttribute("aria-label", "Experiment registry");
 
   const heading = document.createElement("div");
   heading.className = "registry-heading";
   const label = document.createElement("span");
   label.className = "field-label";
-  label.textContent = "Experiment registry";
+  label.textContent = "Registry";
   label.style.margin = "0";
 
   const account = document.createElement("div");
@@ -103,14 +103,14 @@ function buildPanel() {
   email.type = "email";
   email.autocomplete = "email";
   email.placeholder = "Email";
-  email.setAttribute("aria-label", "Registry email");
+  email.setAttribute("aria-label", "Email");
 
   const password = document.createElement("input");
   password.id = "registry-password";
   password.type = "password";
   password.autocomplete = "current-password";
   password.placeholder = "Password";
-  password.setAttribute("aria-label", "Registry password");
+  password.setAttribute("aria-label", "Password");
 
   const signIn = document.createElement("button");
   signIn.id = "registry-sign-in";
@@ -122,11 +122,11 @@ function buildPanel() {
   message.id = "registry-message";
   message.className = "registry-message";
   message.setAttribute("role", "status");
-  message.textContent = "Sign in to load your private registry experiments.";
+  message.textContent = "Sign in to access your experiments.";
 
   const note = document.createElement("p");
   note.className = "registry-note";
-  note.textContent = "Read-only integration: loading/running never writes to the registry. Local edits are not saved remotely yet.";
+  note.textContent = "Registry experiments are read-only in this version. Local edits are not saved.";
 
   panel.append(heading, auth, message, note);
   experimentPanel.insertAdjacentElement("afterend", panel);
@@ -159,13 +159,13 @@ function renderExperimentOptions() {
   }
 
   const group = document.createElement("optgroup");
-  group.label = `Registry · ${user.email ?? "signed in"}`;
+  group.label = "Registry";
   group.dataset.registryOptions = "";
 
   if (!remoteExperiments.length) {
     const empty = document.createElement("option");
     empty.disabled = true;
-    empty.textContent = "No runnable active private experiments";
+    empty.textContent = "No compatible experiments";
     group.append(empty);
   } else {
     for (const experiment of remoteExperiments) {
@@ -219,9 +219,9 @@ async function readExperiment(id) {
     .eq("owner_id", user.id)
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("Experiment was not found or is not visible to this account.");
+  if (!data) throw new Error("Experiment not found for this account.");
   if (!productionExperimentRunnability(data).runnable) {
-    throw new Error("Experiment is not runnable by the current production Lab and cannot be loaded.");
+    throw new Error("This experiment is not compatible with the current simulator.");
   }
   return data;
 }
@@ -248,7 +248,7 @@ async function waitForSimulatorReady() {
   while (applySetup.disabled && performance.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  if (applySetup.disabled) throw new Error("Simulator is not ready to apply the loaded experiment yet.");
+  if (applySetup.disabled) throw new Error("Simulator is not ready yet.");
 }
 
 async function applyLoadedSources() {
@@ -261,27 +261,28 @@ async function restoreBuiltIn({ apply = true } = {}) {
   currentRemote = null;
   experimentSelect.value = BUILTIN_VALUE;
   metadataRevision.textContent = BUILTIN_REVISION;
-  setMessage(user ? "Built-in experiment loaded locally." : "Sign in to load your private registry experiments.");
+  setMessage(user ? "Built-in experiment loaded." : "Sign in to access your experiments.");
   if (apply) await applyLoadedSources();
 }
 
 async function loadRemoteExperiment(id) {
-  if (!user) throw new Error("Sign in before loading a registry experiment.");
-  setMessage("Loading registry experiment…");
+  if (!user) throw new Error("Sign in to load registry experiments.");
+  setMessage("Loading experiment…");
   const experiment = await readExperiment(id);
   applyExperimentArtifacts(experiment);
   currentRemote = experiment;
   metadataRevision.textContent = `registry r${experiment.revision}`;
-  setMessage(`${experiment.title} · revision ${experiment.revision} loaded from registry. Applying to local simulator…`);
+  setMessage(`Applying ${experiment.title} · r${experiment.revision}…`);
   await applyLoadedSources();
-  setMessage(`${experiment.title} · revision ${experiment.revision} loaded. Run it locally when ready.`, "success");
+  setMessage(`${experiment.title} · r${experiment.revision} loaded.`, "success");
 }
 
 function connectedMessage() {
+  const count = remoteExperiments.length;
   const hidden = hiddenNonRunnableCount > 0
-    ? ` · ${hiddenNonRunnableCount} non-runnable active entr${hiddenNonRunnableCount === 1 ? "y" : "ies"} hidden`
+    ? ` · ${hiddenNonRunnableCount} incompatible hidden`
     : "";
-  return `Registry connected as ${user.email ?? profile?.display_name ?? user.id}${hidden}.`;
+  return `${count} experiment${count === 1 ? "" : "s"} available${hidden}.`;
 }
 
 async function initializeSession() {
@@ -304,7 +305,7 @@ async function initializeSession() {
 async function signIn() {
   const email = ui.email.value.trim();
   const password = ui.password.value;
-  if (!email || !password) throw new Error("Enter registry email and password.");
+  if (!email || !password) throw new Error("Enter email and password.");
   setMessage("Signing in…");
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
@@ -324,19 +325,18 @@ async function signOut() {
 
 async function refreshRegistry() {
   if (!user) return;
-  setMessage("Refreshing registry list…");
+  setMessage("Refreshing…");
   await loadExperimentList();
   if (currentRemote) {
     const stillVisible = remoteExperiments.some((experiment) => experiment.id === currentRemote.id);
     if (!stillVisible) {
       await restoreBuiltIn();
-      setMessage("The previously loaded registry experiment is no longer runnable, active or visible.");
+      setMessage("The previously loaded experiment is no longer available or compatible.");
       return;
     }
     experimentSelect.value = `registry:${currentRemote.id}`;
   }
-  const hidden = hiddenNonRunnableCount > 0 ? ` · ${hiddenNonRunnableCount} non-runnable hidden` : "";
-  setMessage(`Registry list refreshed · ${remoteExperiments.length} runnable active experiment${remoteExperiments.length === 1 ? "" : "s"}${hidden}.`, "success");
+  setMessage(connectedMessage(), "success");
 }
 
 async function run(action) {
