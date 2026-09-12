@@ -2,14 +2,14 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 
 import { McpServer } from 'npm:@modelcontextprotocol/sdk@1.25.3/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from 'npm:@modelcontextprotocol/sdk@1.25.3/server/webStandardStreamableHttp.js'
-import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.57.4'
+import { pipeline } from 'npm:@supabase/middleware'
+import { withOAuthProtectedResource } from 'npm:@supabase/server'
+import { withRequiredClaims } from 'npm:@supabase/server/middleware/required-claims'
+import { withSupabaseClient } from 'npm:@supabase/server/middleware/client'
 import { z } from 'npm:zod@4.1.13'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const publishableKeys = JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}')
-const SUPABASE_PUBLISHABLE_KEY = publishableKeys.default ?? Deno.env.get('SUPABASE_ANON_KEY')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
-const RESOURCE_METADATA_URL = `${MCP_RESOURCE}/.well-known/oauth-protected-resource`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
 
 const READ_ONLY_ANNOTATIONS = {
@@ -40,24 +40,6 @@ function json(value: unknown, status = 200, headers: HeadersInit = {}) {
   })
 }
 
-function unauthorized(
-  description = 'A valid Supabase user access token is required.',
-  error: 'invalid_token' | null = null,
-) {
-  const challenge = error
-    ? `Bearer error="${error}", error_description="${description}", resource_metadata="${RESOURCE_METADATA_URL}", scope="email profile"`
-    : `Bearer resource_metadata="${RESOURCE_METADATA_URL}", scope="email profile"`
-
-  return json(
-    { error: error ?? 'unauthorized', error_description: description },
-    401,
-    {
-      'www-authenticate': challenge,
-      'x-vlab-auth-challenge-version': '2',
-    },
-  )
-}
-
 function toolResult(value: unknown) {
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],
@@ -76,59 +58,9 @@ function toolError(message: string, detail?: unknown) {
   }
 }
 
-function bearerToken(req: Request): string | null {
-  const header = req.headers.get('authorization')
-  const match = header?.match(/^Bearer\s+(.+)$/i)
-  if (!match) return null
-  const token = match[1].trim()
-  return token.length > 0 ? token : null
-}
-
-function jwtClientId(token: string): string | null {
-  try {
-    const payload = token.split('.')[1]
-    if (!payload) return null
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
-    const decoded = JSON.parse(atob(padded))
-    return typeof decoded.client_id === 'string' ? decoded.client_id : null
-  } catch {
-    return null
-  }
-}
-
-async function authenticatedClient(req: Request): Promise<
-  | { supabase: SupabaseClient; userId: string; email: string | null; clientId: string | null }
-  | null
-> {
-  const token = bearerToken(req)
-  if (!token) return null
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-    global: {
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  })
-
-  const { data, error } = await supabase.auth.getUser(token)
-  if (error || !data.user) return null
-
-  return {
-    supabase,
-    userId: data.user.id,
-    email: data.user.email ?? null,
-    clientId: jwtClientId(token),
-  }
-}
-
 function registerExperimentTools(
   server: McpServer,
-  supabase: SupabaseClient,
+  supabase: any,
   userId: string,
   email: string | null,
   clientId: string | null,
@@ -378,9 +310,49 @@ function registerExperimentTools(
   )
 }
 
+const authenticatedMcp = pipeline(
+  [withRequiredClaims(), withSupabaseClient()],
+  async (req, ctx) => {
+    const claims = ctx.jwtClaims as Record<string, unknown>
+    const userId = String(claims.sub)
+    const email = typeof claims.email === 'string' ? claims.email : null
+    const clientId = typeof claims.client_id === 'string' ? claims.client_id : null
+
+    const server = new McpServer({
+      name: 'virtual-lab-experiment-registry',
+      version: '2.1.0',
+    })
+    registerExperimentTools(server, ctx.supabase, userId, email, clientId)
+
+    const transport = new WebStandardStreamableHTTPServerTransport()
+    await server.connect(transport)
+    return transport.handleRequest(req)
+  },
+)
+
+const oauthProtectedMcp = withOAuthProtectedResource(
+  {
+    resourceServer: MCP_RESOURCE,
+    authorizationServer: AUTHORIZATION_SERVER,
+  },
+  authenticatedMcp,
+)
+
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url)
 
+  if (url.pathname.endsWith('/health')) {
+    return json({
+      ok: true,
+      service: 'virtual-lab-experiment-mcp',
+      interface_version: '4',
+      auth_implementation: 'supabase-jwks-middleware',
+      tool_count: 5,
+      simulator_access: false,
+    })
+  }
+
+  // Keep the old metadata URL valid for clients that cached it during #44.
   if (url.pathname.endsWith('/.well-known/oauth-protected-resource')) {
     return json({
       resource: MCP_RESOURCE,
@@ -390,30 +362,5 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  if (url.pathname.endsWith('/health')) {
-    return json({
-      ok: true,
-      service: 'virtual-lab-experiment-mcp',
-      interface_version: '3',
-      auth_challenge_version: '2',
-      tool_count: 5,
-      simulator_access: false,
-    })
-  }
-
-  const token = bearerToken(req)
-  if (!token) return unauthorized('Authorization bearer token is missing.')
-
-  const auth = await authenticatedClient(req)
-  if (!auth) return unauthorized('The supplied access token is invalid or expired.', 'invalid_token')
-
-  const server = new McpServer({
-    name: 'virtual-lab-experiment-registry',
-    version: '2.0.1',
-  })
-  registerExperimentTools(server, auth.supabase, auth.userId, auth.email, auth.clientId)
-
-  const transport = new WebStandardStreamableHTTPServerTransport()
-  await server.connect(transport)
-  return transport.handleRequest(req)
+  return oauthProtectedMcp(req)
 })
