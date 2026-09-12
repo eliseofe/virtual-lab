@@ -1,9 +1,9 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { z } from 'zod'
+import { McpServer } from 'npm:@modelcontextprotocol/sdk@1.25.3/server/mcp.js'
+import { WebStandardStreamableHTTPServerTransport } from 'npm:@modelcontextprotocol/sdk@1.25.3/server/webStandardStreamableHttp.js'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.57.4'
+import { z } from 'npm:zod@4.1.13'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const publishableKeys = JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') ?? '{}')
