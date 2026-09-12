@@ -3,10 +3,18 @@ import {
   applyExperimentArtifacts,
   captureExperimentArtifacts,
 } from "./experiment-artifacts.js";
+import { productionExperimentRunnability } from "./experiment-validation.js";
 
 const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYbJUyik9zN7WA_r4ie2P5d";
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    // The mock simulator and production Lab share the same github.io origin.
+    // Give production its own browser session namespace so a historical mock-sim
+    // login cannot silently authenticate the real Lab.
+    storageKey: "vlab-production-registry-auth-v1",
+  },
+});
 
 const experimentSelect = document.querySelector("#experiment-select");
 const experimentPanel = experimentSelect?.closest(".experiment-panel");
@@ -25,6 +33,7 @@ let user = null;
 let profile = null;
 let remoteExperiments = [];
 let currentRemote = null;
+let hiddenNonRunnableCount = 0;
 
 function installStyles() {
   if (document.querySelector("style[data-vlab-registry]")) return;
@@ -147,7 +156,7 @@ function renderExperimentOptions() {
   if (!remoteExperiments.length) {
     const empty = document.createElement("option");
     empty.disabled = true;
-    empty.textContent = "No active private experiments";
+    empty.textContent = "No runnable active private experiments";
     group.append(empty);
   } else {
     for (const experiment of remoteExperiments) {
@@ -177,12 +186,19 @@ async function loadProfile() {
 async function loadExperimentList() {
   const { data, error } = await supabase
     .from("experiments")
-    .select("id,title,revision,updated_at")
+    .select("id,title,revision,updated_at,config_source,initializer_source,controller_source")
     .eq("owner_id", user.id)
     .eq("lifecycle", "active")
     .order("updated_at", { ascending: false });
   if (error) throw error;
-  remoteExperiments = data ?? [];
+
+  const active = data ?? [];
+  remoteExperiments = [];
+  hiddenNonRunnableCount = 0;
+  for (const experiment of active) {
+    if (productionExperimentRunnability(experiment).runnable) remoteExperiments.push(experiment);
+    else hiddenNonRunnableCount += 1;
+  }
   renderExperimentOptions();
 }
 
@@ -195,6 +211,9 @@ async function readExperiment(id) {
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("Experiment was not found or is not visible to this account.");
+  if (!productionExperimentRunnability(data).runnable) {
+    throw new Error("Experiment is not runnable by the current production Lab and cannot be loaded.");
+  }
   return data;
 }
 
@@ -203,6 +222,7 @@ function setSignedOutUi() {
   ui.auth.hidden = false;
   ui.sessionActions.hidden = true;
   remoteExperiments = [];
+  hiddenNonRunnableCount = 0;
   renderExperimentOptions();
 }
 
@@ -246,6 +266,13 @@ async function loadRemoteExperiment(id) {
   setMessage(`${experiment.title} · revision ${experiment.revision} loaded. Run it locally when ready.`, "success");
 }
 
+function connectedMessage() {
+  const hidden = hiddenNonRunnableCount > 0
+    ? ` · ${hiddenNonRunnableCount} non-runnable active entr${hiddenNonRunnableCount === 1 ? "y" : "ies"} hidden`
+    : "";
+  return `Registry connected as ${user.email ?? profile?.display_name ?? user.id}${hidden}.`;
+}
+
 async function initializeSession() {
   const { data, error } = await supabase.auth.getSession();
   if (error) throw error;
@@ -260,7 +287,7 @@ async function initializeSession() {
   await loadProfile();
   setSignedInUi();
   await loadExperimentList();
-  setMessage(`Registry connected as ${user.email ?? profile?.display_name ?? user.id}.`, "success");
+  setMessage(connectedMessage(), "success");
 }
 
 async function signIn() {
@@ -276,7 +303,7 @@ async function signIn() {
 
 async function signOut() {
   setMessage("Signing out…");
-  const { error } = await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut({ scope: "local" });
   if (error) throw error;
   user = null;
   profile = null;
@@ -292,12 +319,13 @@ async function refreshRegistry() {
     const stillVisible = remoteExperiments.some((experiment) => experiment.id === currentRemote.id);
     if (!stillVisible) {
       await restoreBuiltIn();
-      setMessage("The previously loaded registry experiment is no longer active or visible.");
+      setMessage("The previously loaded registry experiment is no longer runnable, active or visible.");
       return;
     }
     experimentSelect.value = `registry:${currentRemote.id}`;
   }
-  setMessage(`Registry list refreshed · ${remoteExperiments.length} active experiment${remoteExperiments.length === 1 ? "" : "s"}.`, "success");
+  const hidden = hiddenNonRunnableCount > 0 ? ` · ${hiddenNonRunnableCount} non-runnable hidden` : "";
+  setMessage(`Registry list refreshed · ${remoteExperiments.length} runnable active experiment${remoteExperiments.length === 1 ? "" : "s"}${hidden}.`, "success");
 }
 
 async function run(action) {
