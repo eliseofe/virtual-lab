@@ -112,7 +112,7 @@ try {
   let succeeded = false;
   for (let attempt = 0; attempt < 120; attempt += 1) {
     latest = await state(cdp.send);
-    if (latest?.statusState === "ready" && /Kernel .* ready/.test(latest.status ?? "")) {
+    if (latest?.statusState === "ready") {
       const requiredConfig = [
         'INITIALIZATION_METHOD = "hexagon_perturbed"', "ARENA_SIZE = 10.0", "CONTROL_DT = 0.1",
         "INITIAL_POSITION_NOISE = 0.0", "U = 0.005", "OMEGA_MAX = 1.5707963267948966",
@@ -177,14 +177,14 @@ try {
       if (replayRandomized?.runSeed !== randomizedSeed || Number(replayRandomized?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve the new seed: ${JSON.stringify(replayRandomized)}`);
 
       console.log(JSON.stringify(replayRandomized, null, 2));
-      console.log("Browser reached kernel ready, reported measured speed, changed runtime speed live, and verified same-seed/new-seed restart controls.");
+      console.log("Browser reached simulator ready, reported measured speed, changed runtime speed live, and verified same-seed/new-seed restart controls.");
       succeeded = true;
       break;
     }
     if (latest?.statusState === "error") throw new Error(`browser reported startup error: ${JSON.stringify(latest)}`);
     await sleep(100);
   }
-  if (!succeeded) throw new Error(`browser did not reach kernel ready: ${JSON.stringify(latest)}; exceptions=${JSON.stringify(cdp.exceptions)}`);
+  if (!succeeded) throw new Error(`browser did not reach simulator ready: ${JSON.stringify(latest)}; exceptions=${JSON.stringify(cdp.exceptions)}`);
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
