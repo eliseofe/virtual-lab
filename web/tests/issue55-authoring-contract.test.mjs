@@ -12,7 +12,6 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.resolve(here, "..");
 const repo = path.resolve(web, "..");
-const functionDir = path.join(repo, "supabase", "functions", "experiment-mcp");
 
 async function text(relative) {
   return readFile(path.join(repo, relative), "utf8");
@@ -31,7 +30,8 @@ test("issue #55 edge validator vendors the exact production compilers", async ()
 test("issue #55 contract reference example is mechanically identical to production built-in sources", async () => {
   const main = await readFile(path.join(web, "src", "main.js"), "utf8");
   const extract = (name) => {
-    const match = main.match(new RegExp(`const ${name} = \\`([\\s\\S]*?)\\`;`));
+    const pattern = "const " + name + " = `([\\s\\S]*?)`;";
+    const match = main.match(new RegExp(pattern));
     assert.ok(match, `could not extract ${name} from production main.js`);
     return match[1];
   };
