@@ -14,39 +14,78 @@ The current controller interface exposes only simulator capabilities: local head
 
 ## Science-free contract boundary
 
-The MCP authoring contract contains **no scientific model, experiment, parameter set, controller example, or reference experiment**. Its job is only to tell an AI how the Virtual Lab software interface works.
+The MCP authoring contract contains **no scientific model, reference experiment, model equation, scientific parameter set, or model-specific controller source**. Its job is only to tell an AI how the Virtual Lab software interface works.
 
 The contract may describe:
 
 - artifact/compiler versions;
 - grammar and accepted source structure;
-- simulator-owned structural requirements;
+- simulator-owned runtime requirements;
 - observation/action/intrinsic capabilities;
 - forbidden capabilities;
 - diagnostic categories;
 - execution/security boundaries.
 
-Experiment-specific parameter names and values are supplied by the student/AI conversation. The contract does not privilege the currently built-in experiment or any other scientific model.
+Experiment-specific scientific parameter names and values are supplied by the student/AI conversation. The contract does not privilege the currently built-in experiment or any other scientific model.
 
 ## Authoritative validation path
 
-Issue #55 adds a server-side **compile-without-simulation** validation path for AI-authored registry writes. It uses byte-identical vendored copies of the production configuration, initializer and controller compiler modules. CI asserts those copies remain byte-identical to production so parser/compiler changes cannot silently drift from MCP validation.
+Issue #55 established server-side **compile-without-simulation** validation for AI-authored registry writes using byte-identical vendored copies of the production configuration, initializer and controller compiler modules.
 
-Validation performs only software-authoring checks:
+Issue #63 adds one further shared software boundary: `web/src/runtime/contract.js` (`vlab.runtime/0.1`). The MCP vendors that file byte-identically and CI asserts parity, just like the three compiler modules.
+
+Validation therefore covers:
 
 - configuration parsing;
+- simulator-generic runtime requirements;
 - initializer parsing/evaluation with a deterministic simulator-owned validation seed;
+- initial-state compatibility with the declared runtime arena;
 - controller parsing/type/capability validation using the numeric parameters present in that experiment's own configuration.
 
-It does not require the parameter names of the currently built-in experiment, does not inject scientific values, and does not run the simulation.
+It does not inject model-specific scientific values and does not run the simulation.
 
 Invalid source writes are rejected. The MCP returns structured diagnostics and the AI repairs the source conversationally before retrying.
 
 ## Machine-readable contract
 
-`supabase/functions/experiment-mcp/authoring.js` exports `AUTHORING_CONTRACT` (`vlab.authoring/0.2`). `read_workspace(include_authoring_contract=true)` exposes it through the existing compact five-tool MCP.
+`supabase/functions/experiment-mcp/authoring.js` exports `AUTHORING_CONTRACT` (`vlab.authoring/0.3`). `read_workspace(include_authoring_contract=true)` exposes it through the existing compact five-tool MCP.
 
-The only current configuration field that is structurally required by the initializer implementation is `N`, a positive integer used to allocate the agent state. Additional configuration names are experiment-defined. Finite numeric values are automatically available to `python-vlab` controllers as scalar parameters.
+The science-neutral runtime contract currently requires these simulator interface fields in `config_source`:
+
+- `N` — positive integer agent count;
+- `ARENA_SIZE` — positive finite scalar;
+- `CONTROL_DT` — positive finite scalar compatible with the simulator integration step;
+- `SENSOR_NOISE` — non-negative finite scalar;
+- `EXPERIMENT_DURATION` — positive finite scalar;
+- `INTERACTION_RADIUS` — positive finite scalar used by neighbour observations;
+- `MAX_FORWARD_SPEED` — positive finite scalar actuator limit;
+- `MAX_ANGULAR_SPEED` — positive finite scalar actuator limit.
+
+The simulator-owned integration and metric steps are exposed as runtime contract constants. Additional configuration names remain experiment-defined. Finite numeric values are automatically available to `python-vlab` controllers as scalar parameters.
+
+These names describe simulator/runtime interfaces, not any specific scientific model.
+
+## Production browser alignment
+
+The production browser now consumes the same generic runtime contract for experiment setup. This removes the old generic `compileSetup` dependency on Active-Elastic-specific parameter names.
+
+The pre-#63 built-in Active Elastic source still uses its historical names. A temporary compatibility adapter exists **only in the production browser** so that the built-in experiment keeps its current behavior during this refactor. Those legacy model-specific aliases are deliberately absent from the MCP contract and runtime-contract vendor.
+
+Registry-authored experiments use the generic runtime names directly.
+
+The key invariant is:
+
+> An experiment must not be accepted as runnable by MCP and then fail production setup merely because the browser has hidden model-specific required keys unknown to the authoring contract.
+
+If a genuinely required generic runtime setting is missing, validation rejects the write first with a structured `runtime-parameter` diagnostic.
+
+## Genuine owner acceptance fixture
+
+The owner used Grok on the VU identity to create a new experiment named `Simple Random Walk` without copying Active Elastic. The science-free `vlab.authoring/0.2` contract originally accepted it.
+
+That test exposed the hidden production mismatch: the experiment omitted generic runtime settings that the current kernel ultimately needs, while the browser still expected Active-Elastic-specific aliases.
+
+Under `vlab.authoring/0.3`, the same old revision is intentionally rejected with a precise generic runtime diagnostic rather than being falsely accepted. Grok/Claude can then add the required simulator-runtime settings and retry conversationally.
 
 ## Extensibility
 
@@ -56,18 +95,14 @@ Adding a future capability still requires simulator implementation and compiler 
 
 The controller IR remains a versioned semantic boundary independent of the browser/WASM deployment target. Future native/HPC or export backends can consume the same experiment semantics without changing the student authoring model.
 
-## Production integration boundary
-
-The current production browser still contains setup wiring inherited from its first built-in experiment. Removing those experiment-specific runtime assumptions from the production loading path belongs to #46, when registry experiments are connected to the real Lab.
-
-#55 must not reproduce those assumptions inside the MCP validator. Otherwise the authoring channel would accept the built-in experiment while incorrectly rejecting other valid experiments.
-
 ## Randomness
 
-Issue #55 does not refactor RNG ownership. Today initialization and runtime stochasticity use separate deterministic implementations/streams. The planned canonical RNG/domain-separated-stream refactor is tracked by issue #57 and is intentionally not a blocker for the authoring contract.
+Issue #63 does not refactor RNG ownership. The planned canonical RNG/domain-separated-stream refactor remains #57.
 
-## Acceptance boundary
+## Issue boundaries
 
-#55 proves that a normal AI client can retrieve a science-free software contract, author genuinely new source artifacts, receive authoritative parser/compiler diagnostics, and save an experiment whose three source artifacts are valid for the supported language/capability surface.
+- **#55 complete:** science-free authoring contract + parser/compiler validation.
+- **#63:** align authoring validity with the generic production runtime/setup boundary; eliminate false-positive valid experiments.
+- **#46 after #63:** production registry authentication/list/load/save/synchronization, decomposed into focused implementation passes.
 
-#46 remains responsible for generalizing the production runtime-loading seam and connecting registry experiments to the browser simulator for manual execution.
+Scientific validation or retuning of Active Elastic is outside these software-contract issues.
