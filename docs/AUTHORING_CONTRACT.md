@@ -10,33 +10,43 @@ Virtual Lab uses three student-editable source artifacts:
 
 The controller source is not general Python. It is a deliberately constrained Python-compatible authoring language. The simulator owns the observation/action boundary and rejects unavailable host capabilities.
 
-The current controller interface exposes only the current production capabilities: local heading, neighbouring agents' relative positions, the `Motion(forward, turning)` action, and the small approved intrinsic set documented by the machine-readable contract.
+The current controller interface exposes only simulator capabilities: local heading, neighbouring agents' relative positions, the `Motion(forward, turning)` action, and the approved intrinsic set documented by the machine-readable contract.
+
+## Science-free contract boundary
+
+The MCP authoring contract contains **no scientific model, experiment, parameter set, controller example, or reference experiment**. Its job is only to tell an AI how the Virtual Lab software interface works.
+
+The contract may describe:
+
+- artifact/compiler versions;
+- grammar and accepted source structure;
+- simulator-owned structural requirements;
+- observation/action/intrinsic capabilities;
+- forbidden capabilities;
+- diagnostic categories;
+- execution/security boundaries.
+
+Experiment-specific parameter names and values are supplied by the student/AI conversation. The contract does not privilege the currently built-in experiment or any other scientific model.
 
 ## Authoritative validation path
 
-The production browser currently uses the three compiler modules above plus runtime setup checks in `web/src/main.js` before creating/resetting the WASM simulation.
+Issue #55 adds a server-side **compile-without-simulation** validation path for AI-authored registry writes. It uses byte-identical vendored copies of the production configuration, initializer and controller compiler modules. CI asserts those copies remain byte-identical to production so parser/compiler changes cannot silently drift from MCP validation.
 
-Issue #55 adds a server-side **compile-without-simulation** validation path for AI-authored registry writes. It uses byte-identical vendored copies of the three production compiler modules. CI asserts those copies remain byte-identical to production, so a compiler change cannot silently drift from MCP validation.
+Validation performs only software-authoring checks:
 
-The validator then applies the same current runtime parameter/initializer-fit checks used by the production browser. It never constructs or advances the WASM simulation.
+- configuration parsing;
+- initializer parsing/evaluation with a deterministic simulator-owned validation seed;
+- controller parsing/type/capability validation using the numeric parameters present in that experiment's own configuration.
+
+It does not require the parameter names of the currently built-in experiment, does not inject scientific values, and does not run the simulation.
 
 Invalid source writes are rejected. The MCP returns structured diagnostics and the AI repairs the source conversationally before retrying.
 
 ## Machine-readable contract
 
-`supabase/functions/experiment-mcp/authoring.js` exports `AUTHORING_CONTRACT` (`vlab.authoring/0.1`). `read_workspace(include_authoring_contract=true)` exposes it through the existing compact five-tool MCP.
+`supabase/functions/experiment-mcp/authoring.js` exports `AUTHORING_CONTRACT` (`vlab.authoring/0.2`). `read_workspace(include_authoring_contract=true)` exposes it through the existing compact five-tool MCP.
 
-The contract includes:
-
-- artifact/compiler versions;
-- accepted source shape;
-- current observation/action/intrinsic capabilities;
-- forbidden controller roots/capabilities;
-- diagnostic categories;
-- execution/security boundary;
-- the exact current built-in Active Elastic sources as a mechanically checked syntax/reference example.
-
-The reference example is not new scientific guidance. A test extracts the current built-in sources from `web/src/main.js` and requires exact equality with the contract copy.
+The only current configuration field that is structurally required by the initializer implementation is `N`, a positive integer used to allocate the agent state. Additional configuration names are experiment-defined. Finite numeric values are automatically available to `python-vlab` controllers as scalar parameters.
 
 ## Extensibility
 
@@ -46,12 +56,18 @@ Adding a future capability still requires simulator implementation and compiler 
 
 The controller IR remains a versioned semantic boundary independent of the browser/WASM deployment target. Future native/HPC or export backends can consume the same experiment semantics without changing the student authoring model.
 
+## Production integration boundary
+
+The current production browser still contains setup wiring inherited from its first built-in experiment. Removing those experiment-specific runtime assumptions from the production loading path belongs to #46, when registry experiments are connected to the real Lab.
+
+#55 must not reproduce those assumptions inside the MCP validator. Otherwise the authoring channel would accept the built-in experiment while incorrectly rejecting other valid experiments.
+
 ## Randomness
 
 Issue #55 does not refactor RNG ownership. Today initialization and runtime stochasticity use separate deterministic implementations/streams. The planned canonical RNG/domain-separated-stream refactor is tracked by issue #57 and is intentionally not a blocker for the authoring contract.
 
 ## Acceptance boundary
 
-#55 proves that a normal AI client can retrieve the contract, author all three artifacts, receive authoritative compiler diagnostics, and save only source that the current production parser/compiler accepts.
+#55 proves that a normal AI client can retrieve a science-free software contract, author genuinely new source artifacts, receive authoritative parser/compiler diagnostics, and save an experiment whose three source artifacts are valid for the supported language/capability surface.
 
-#46 remains responsible for connecting the registry to the production browser and manually running the validated experiment. Scientific-fidelity questions are separate from this software-authoring contract.
+#46 remains responsible for generalizing the production runtime-loading seam and connecting registry experiments to the browser simulator for manual execution.
