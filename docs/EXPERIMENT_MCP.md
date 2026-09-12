@@ -1,12 +1,12 @@
 # Virtual Lab Experiment MCP
 
-Status: issue #43 server/transport implementation. The production simulator is not connected by this work.
+Status: #43 transport/backend is implemented; #44 is validating the real student workflow before production Virtual Lab integration.
 
 ## Purpose
 
-`experiment-mcp` is the AI-facing adapter over the canonical experiment registry defined by #41 and deployed in #42. It exposes experiment-domain operations only. It is not a general Supabase development MCP server and it is not a simulator-development interface.
+`experiment-mcp` is the restricted AI-facing adapter over the canonical experiment registry from #42. It exposes experiment-domain operations only. It is not a general Supabase MCP server and it is not a simulator-development interface.
 
-Deployed endpoint:
+Endpoint:
 
 `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
 
@@ -14,15 +14,13 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Security model
 
-The Edge Function uses only the project's publishable key plus the caller's Supabase Auth access token.
+The Edge Function uses the project's publishable key plus the caller's Supabase Auth access token. It does not use a service-role or secret key.
 
-It deliberately does not use a service-role or secret key. The caller's bearer token is validated with Supabase Auth and then forwarded to the user-scoped Supabase client. PostgreSQL row-level security from #42 therefore remains authoritative for every experiment and collection operation.
+The bearer token is validated with Supabase Auth and forwarded to a user-scoped Supabase client, so PostgreSQL RLS remains authoritative for every collection and experiment operation. The authenticated user ID is derived from the validated token; callers cannot supply an arbitrary owner ID.
 
-The authenticated user ID is derived from the validated token. Callers cannot supply an arbitrary owner ID when creating an experiment or collection.
+OAuth `client_id`, when present, is recorded only as edit provenance and is not trusted as user identity.
 
-OAuth `client_id`, when present in a validated token, is recorded only as edit provenance. It is not trusted as user identity.
-
-## MCP transport
+## MCP transport and OAuth
 
 The function uses Streamable HTTP through the official Model Context Protocol TypeScript SDK.
 
@@ -32,33 +30,68 @@ It exposes:
 - `/.well-known/oauth-protected-resource` for protected-resource metadata;
 - the function root for MCP Streamable HTTP requests.
 
-An unauthenticated MCP request returns HTTP 401 with `WWW-Authenticate` pointing to the protected-resource metadata document.
+Unauthenticated MCP requests return HTTP 401 with `WWW-Authenticate` pointing to the protected-resource metadata document. Supabase Auth is the OAuth 2.1 authorization server.
 
-The protected-resource metadata identifies Supabase Auth as the authorization server:
+The deployed mock-sim at `https://eliseofe.github.io/virtual-lab-mock-sim/` provides the normal browser login/consent surface. Supabase OAuth 2.1 and Dynamic Client Registration are enabled.
 
-`https://izdmmudfrmqhvlgepwes.supabase.co/auth/v1`
+A real Claude Pro client has successfully completed OAuth, authenticated as a normal registry user, performed an authenticated read, and performed an authenticated write.
 
-## Exposed tools
+## Compact student-facing tool surface
 
-The adapter exposes only these experiment-registry operations:
+Real-client testing during #44 showed that normal Claude asks for first-use authorization per tool. The initial 13-operation interface was therefore consolidated into five student-oriented tools without removing domain capability.
 
-- `whoami`
-- `list_collections`
-- `create_collection`
-- `rename_collection`
-- `delete_collection`
-- `list_experiments`
-- `get_experiment`
-- `create_experiment`
-- `update_experiment`
-- `move_experiment`
-- `archive_experiment`
-- `restore_experiment`
-- `delete_experiment`
+### `read_workspace`
 
-The three arbitrary student-editable source strings are preserved unchanged: configuration, initializer, and controller source.
+The single read/discovery entry point.
 
-All working-experiment mutation operations that can race with another editor use the base revision read by the client. A stale revision produces a conflict instead of silently overwriting a newer record.
+- with no `experiment_id`: returns the authenticated identity, owned collections, and visible experiment summaries;
+- with `experiment_id`: returns the full visible experiment including configuration, initializer, controller source, and current revision;
+- can select active, archived, or all experiments;
+- can include visible non-owned experiments when requested;
+- never writes.
+
+AI clients should normally start here and re-read before revision-sensitive writes.
+
+### `manage_collection`
+
+One collection-management tool with `action=create|rename|delete`.
+
+- create requires `name`;
+- rename requires `collection_id` and `name`;
+- delete requires `collection_id`;
+- deleting a collection does not delete experiments; they become unfiled.
+
+### `create_experiment`
+
+Creates a brand-new owned experiment from zero using the three exact student-editable source strings: configuration, initializer, and controller source.
+
+### `edit_experiment`
+
+Handles all ordinary revision-protected changes to an existing owned experiment:
+
+- title/description;
+- configuration source;
+- initializer source;
+- controller source;
+- moving to another collection or unfiling;
+- archive;
+- restore.
+
+The caller must supply the current `base_revision`. A stale revision is rejected instead of silently overwriting newer state.
+
+### `delete_experiment`
+
+Permanently deletes an eligible owned working experiment at the supplied current revision. It remains a separate tool because permanent deletion deserves its own explicit safety boundary. Preserved submission/curation snapshots are independent and survive where applicable.
+
+## Tool safety annotations
+
+The MCP descriptors explicitly mark:
+
+- `read_workspace` as read-only;
+- `create_experiment` and `edit_experiment` as non-destructive writes;
+- `manage_collection` and `delete_experiment` as potentially destructive.
+
+These annotations are advisory to clients; client-side approval policy remains controlled by the AI client.
 
 ## Explicit non-capabilities
 
@@ -75,40 +108,25 @@ There is no MCP tool for:
 - retrieving Supabase project/admin secrets;
 - bypassing registry RLS.
 
-These are absent from the interface rather than forbidden by prompt text.
+These capabilities are absent from the interface rather than forbidden only by prompt text.
 
-## OAuth and the #44 boundary
+## #44 acceptance boundary
 
-Supabase Auth's OAuth 2.1 server is the intended authentication mechanism for real AI clients. On 2026-09-12 the project OAuth server was still disabled; its discovery endpoint correctly returned `feature_disabled`.
+The production Virtual Lab remains untouched until #44 passes owner acceptance.
 
-Enabling the OAuth server is an account-level Supabase Dashboard setting and is not exposed by the connected Supabase management tool used for this implementation.
+The required proof is:
 
-Supabase OAuth also requires a normal browser authorization/login/consent page. Supabase Edge Functions cannot host that page because hosted Edge Functions intentionally rewrite HTML responses to `text/plain` and apply a sandbox CSP. This was verified against the deployed project and agrees with current Supabase Routing documentation.
+1. a real restricted AI client authenticates through OAuth;
+2. AI writes are visible in mock-sim;
+3. mock-sim writes are readable by the AI;
+4. create-from-zero, collection organization, archive/restore and eligible permanent delete work;
+5. stale writes are rejected;
+6. two genuinely distinct authenticated users remain isolated;
+7. the connector exposes only the five experiment tools above and no simulator-development capability;
+8. the deployed baseline remains within the zero-cost architecture.
 
-Therefore the browser authorization surface belongs to the normal static `mock-sim` frontend in #44. This is not simulator integration: mock-sim is explicitly a transport/identity diagnostic client with no scientific execution.
-
-The first step of #44 is consequently:
-
-1. deploy the static mock-sim authorization/login surface;
-2. enable Supabase OAuth 2.1 and set its authorization path to that surface;
-3. connect a real MCP-capable AI client;
-4. complete the OAuth flow and invoke `whoami` plus experiment tools under a non-admin user token;
-5. then continue the two-user bidirectional mock-sim acceptance matrix.
-
-This ordering avoids a throwaway authorization frontend and keeps the real production Virtual Lab untouched until #46.
-
-## Deployment verification completed
-
-Using a temporary database-side HTTP probe only, then removing the probing extension:
-
-- `GET /health` returned 200 with `simulator_access: false`;
-- protected-resource metadata returned 200 and the expected authorization server;
-- an unauthenticated MCP initialize request returned 401;
-- the 401 contained a `WWW-Authenticate` protected-resource discovery pointer;
-- the Supabase OAuth discovery endpoint returned `feature_disabled`, confirming the remaining account setting precisely.
-
-The registry's user isolation, create/update/archive/delete semantics, stale-revision rejection, and preserved-snapshot behavior were already independently validated in #42.
+Only after that proof is owner-accepted may production integration proceed.
 
 ## Provider independence
 
-No ChatGPT-specific operation exists in this server. Any MCP client that implements the current Streamable HTTP and OAuth flow can use the same endpoint. ChatGPT/NYU is the preferred first educational client, not part of the domain contract.
+No provider-specific operation exists in the server. Any compatible MCP client implementing Streamable HTTP and OAuth can use the same endpoint. Claude is currently the real acceptance client because the user's NYU ChatGPT Edu workspace does not expose usable custom write-capable MCP access.
