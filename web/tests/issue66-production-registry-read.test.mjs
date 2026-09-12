@@ -90,7 +90,7 @@ test("production registry pass is read-only, ownership-scoped, session-isolated 
   assert.doesNotMatch(registryUi, /\.insert\s*\(/);
   assert.doesNotMatch(registryUi, /\.update\s*\(/);
   assert.doesNotMatch(registryUi, /\.delete\s*\(/);
-  assert.match(registryUi, /Read-only integration/);
+  assert.match(registryUi, /Registry experiments are read-only in this version/);
 });
 
 test("post-login registry UI hides the login form and keeps list refresh next to experiment selection", async () => {
