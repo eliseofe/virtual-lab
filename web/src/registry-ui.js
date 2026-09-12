@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.111.0";
 import {
+  EXPERIMENT_ARTIFACTS,
   applyExperimentArtifacts,
   captureExperimentArtifacts,
 } from "./experiment-artifacts.js";
@@ -47,10 +48,14 @@ function installStyles() {
     .registry-account strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .registry-sign-out { min-height: 28px; padding: 3px 8px; font-size: 11px; white-space: nowrap; }
     .registry-auth { display: grid; gap: 8px; }
-    .registry-auth input { width: 100%; min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; color: #172127; background: #fff; }
-    .registry-auth input:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
+    .registry-auth input, .registry-new-form input { width: 100%; min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; color: #172127; background: #fff; }
+    .registry-auth input:focus, .registry-new-form input:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
     .registry-refresh-row { display: flex; justify-content: flex-end; margin-top: 8px; }
     .registry-refresh { min-height: 30px; padding: 4px 9px; font-size: 11px; }
+    .registry-save-row { display: flex; flex-wrap: wrap; gap: 7px; }
+    .registry-save-row button { min-height: 32px; padding: 5px 10px; font-size: 11.5px; }
+    .registry-new-form { display: grid; gap: 7px; padding-top: 2px; }
+    .registry-new-actions { display: flex; gap: 7px; justify-content: flex-end; }
     .registry-message { margin: 0; min-height: 1.4em; font-size: 11.5px; line-height: 1.4; color: #64757c; }
     .registry-message[data-state="error"] { color: #9e2d29; }
     .registry-message[data-state="success"] { color: #246240; }
@@ -124,14 +129,66 @@ function buildPanel() {
   message.setAttribute("role", "status");
   message.textContent = "Sign in to access your experiments.";
 
+  const saveRow = document.createElement("div");
+  saveRow.className = "registry-save-row";
+  saveRow.hidden = true;
+  const save = document.createElement("button");
+  save.id = "registry-save";
+  save.className = "primary";
+  save.textContent = "Save";
+  save.disabled = true;
+  const saveAsNew = document.createElement("button");
+  saveAsNew.id = "registry-save-as-new";
+  saveAsNew.textContent = "Save as new…";
+  saveRow.append(save, saveAsNew);
+
+  const newForm = document.createElement("div");
+  newForm.className = "registry-new-form";
+  newForm.hidden = true;
+  const newTitle = document.createElement("input");
+  newTitle.id = "registry-new-title";
+  newTitle.type = "text";
+  newTitle.maxLength = 300;
+  newTitle.placeholder = "Experiment title";
+  newTitle.setAttribute("aria-label", "New experiment title");
+  const newActions = document.createElement("div");
+  newActions.className = "registry-new-actions";
+  const cancelNew = document.createElement("button");
+  cancelNew.id = "registry-new-cancel";
+  cancelNew.textContent = "Cancel";
+  const createNew = document.createElement("button");
+  createNew.id = "registry-new-create";
+  createNew.className = "primary";
+  createNew.textContent = "Create";
+  newActions.append(cancelNew, createNew);
+  newForm.append(newTitle, newActions);
+
   const note = document.createElement("p");
   note.className = "registry-note";
-  note.textContent = "Registry experiments are read-only in this version. Local edits are not saved.";
+  note.textContent = "Edits stay local until you save them.";
 
-  panel.append(heading, auth, message, note);
+  panel.append(heading, auth, message, saveRow, newForm, note);
   experimentPanel.insertAdjacentElement("afterend", panel);
 
-  return { panel, identity, auth, email, password, signIn, signOut, refresh, refreshRow, message };
+  return {
+    panel,
+    identity,
+    auth,
+    email,
+    password,
+    signIn,
+    signOut,
+    refresh,
+    refreshRow,
+    message,
+    saveRow,
+    save,
+    saveAsNew,
+    newForm,
+    newTitle,
+    cancelNew,
+    createNew,
+  };
 }
 
 installStyles();
@@ -148,6 +205,24 @@ function registryOptionGroup() {
 
 function removeRegistryOptions() {
   registryOptionGroup()?.remove();
+}
+
+function artifactsEqual(left, right) {
+  if (!left || !right) return false;
+  return EXPERIMENT_ARTIFACTS.every(
+    ({ registryField }) => left[registryField] === right[registryField],
+  );
+}
+
+function hasUnsavedRemoteEdits() {
+  return currentRemote !== null && !artifactsEqual(captureExperimentArtifacts(), currentRemote);
+}
+
+function updateSaveUi() {
+  ui.saveRow.hidden = !user;
+  ui.save.disabled = !user || !currentRemote || !hasUnsavedRemoteEdits();
+  ui.saveAsNew.disabled = !user;
+  if (!user) ui.newForm.hidden = true;
 }
 
 function renderExperimentOptions() {
@@ -214,7 +289,7 @@ async function loadExperimentList() {
 async function readExperiment(id) {
   const { data, error } = await supabase
     .from("experiments")
-    .select("id,owner_id,title,description,lifecycle,revision,config_source,initializer_source,controller_source,updated_at")
+    .select("id,owner_id,title,description,lifecycle,visibility,revision,config_source,initializer_source,controller_source,updated_at")
     .eq("id", id)
     .eq("owner_id", user.id)
     .maybeSingle();
@@ -234,6 +309,7 @@ function setSignedOutUi() {
   remoteExperiments = [];
   hiddenNonRunnableCount = 0;
   renderExperimentOptions();
+  updateSaveUi();
 }
 
 function setSignedInUi() {
@@ -241,6 +317,7 @@ function setSignedInUi() {
   ui.auth.hidden = true;
   ui.signOut.hidden = false;
   ui.refreshRow.hidden = false;
+  updateSaveUi();
 }
 
 async function waitForSimulatorReady() {
@@ -261,7 +338,9 @@ async function restoreBuiltIn({ apply = true } = {}) {
   currentRemote = null;
   experimentSelect.value = BUILTIN_VALUE;
   metadataRevision.textContent = BUILTIN_REVISION;
+  ui.newForm.hidden = true;
   setMessage(user ? "Built-in experiment loaded." : "Sign in to access your experiments.");
+  updateSaveUi();
   if (apply) await applyLoadedSources();
 }
 
@@ -272,7 +351,9 @@ async function loadRemoteExperiment(id) {
   applyExperimentArtifacts(experiment);
   currentRemote = experiment;
   metadataRevision.textContent = `registry r${experiment.revision}`;
+  ui.newForm.hidden = true;
   setMessage(`Applying ${experiment.title} · r${experiment.revision}…`);
+  updateSaveUi();
   await applyLoadedSources();
   setMessage(`${experiment.title} · r${experiment.revision} loaded.`, "success");
 }
@@ -283,6 +364,109 @@ function connectedMessage() {
     ? ` · ${hiddenNonRunnableCount} incompatible hidden`
     : "";
   return `${count} experiment${count === 1 ? "" : "s"} available${hidden}.`;
+}
+
+function assertCurrentSourcesRunnable() {
+  const artifacts = captureExperimentArtifacts();
+  const validation = productionExperimentRunnability(artifacts);
+  if (!validation.runnable) {
+    throw new Error(`Cannot save: ${validation.error || "experiment is not compatible with the current simulator."}`);
+  }
+  return artifacts;
+}
+
+async function saveCurrentExperiment() {
+  if (!user) throw new Error("Sign in before saving.");
+  if (!currentRemote) throw new Error("Use Save as new for the built-in experiment.");
+  if (!hasUnsavedRemoteEdits()) {
+    setMessage("No changes to save.");
+    return;
+  }
+
+  const artifacts = assertCurrentSourcesRunnable();
+  const baseRevision = currentRemote.revision;
+  setMessage(`Saving ${currentRemote.title}…`);
+
+  const { data, error } = await supabase
+    .from("experiments")
+    .update({
+      ...artifacts,
+      updated_by_actor: "human",
+      updated_by_ai_client: null,
+    })
+    .eq("id", currentRemote.id)
+    .eq("owner_id", user.id)
+    .eq("revision", baseRevision)
+    .select("id,owner_id,title,description,lifecycle,visibility,revision,config_source,initializer_source,controller_source,updated_at")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) {
+    throw new Error(
+      "Save conflict: a newer revision exists. Your local edits are still here; refresh or reload the experiment before saving.",
+    );
+  }
+
+  currentRemote = data;
+  metadataRevision.textContent = `registry r${data.revision}`;
+  await loadExperimentList();
+  experimentSelect.value = `registry:${data.id}`;
+  updateSaveUi();
+  setMessage(`${data.title} saved as r${data.revision}.`, "success");
+}
+
+function defaultCopyTitle() {
+  if (currentRemote?.title) return `${currentRemote.title} copy`;
+  const selected = experimentSelect.selectedOptions?.[0]?.textContent?.trim();
+  return selected ? `${selected} copy` : "New experiment";
+}
+
+function openSaveAsNew() {
+  if (!user) throw new Error("Sign in before saving.");
+  ui.newTitle.value = defaultCopyTitle();
+  ui.newForm.hidden = false;
+  ui.newTitle.focus();
+  ui.newTitle.select();
+}
+
+function closeSaveAsNew() {
+  ui.newForm.hidden = true;
+  ui.newTitle.value = "";
+}
+
+async function createNewExperiment() {
+  if (!user) throw new Error("Sign in before saving.");
+  const title = ui.newTitle.value.trim();
+  if (!title) throw new Error("Enter a title for the new experiment.");
+  const artifacts = assertCurrentSourcesRunnable();
+
+  setMessage(`Creating ${title}…`);
+  const { data, error } = await supabase
+    .from("experiments")
+    .insert({
+      owner_id: user.id,
+      collection_id: null,
+      title,
+      description: currentRemote?.description ?? "",
+      lifecycle: "active",
+      visibility: "private",
+      ...artifacts,
+      created_by_actor: "human",
+      created_by_ai_client: null,
+      updated_by_actor: "human",
+      updated_by_ai_client: null,
+    })
+    .select("id,owner_id,title,description,lifecycle,visibility,revision,config_source,initializer_source,controller_source,updated_at")
+    .single();
+
+  if (error) throw error;
+  currentRemote = data;
+  metadataRevision.textContent = `registry r${data.revision}`;
+  closeSaveAsNew();
+  await loadExperimentList();
+  experimentSelect.value = `registry:${data.id}`;
+  updateSaveUi();
+  setMessage(`${data.title} created as a private experiment.`, "success");
 }
 
 async function initializeSession() {
@@ -325,16 +509,33 @@ async function signOut() {
 
 async function refreshRegistry() {
   if (!user) return;
+  const previousRemote = currentRemote;
+  const dirty = hasUnsavedRemoteEdits();
   setMessage("Refreshing…");
   await loadExperimentList();
-  if (currentRemote) {
-    const stillVisible = remoteExperiments.some((experiment) => experiment.id === currentRemote.id);
-    if (!stillVisible) {
+  if (previousRemote) {
+    const fresh = remoteExperiments.find((experiment) => experiment.id === previousRemote.id);
+    if (!fresh) {
+      if (dirty) {
+        setMessage("The loaded experiment is no longer available. Your local edits are still in the editors.", "error");
+        return;
+      }
       await restoreBuiltIn();
       setMessage("The previously loaded experiment is no longer available or compatible.");
       return;
     }
-    experimentSelect.value = `registry:${currentRemote.id}`;
+    experimentSelect.value = `registry:${previousRemote.id}`;
+    if (fresh.revision > previousRemote.revision) {
+      if (dirty) {
+        setMessage(
+          `Newer registry revision r${fresh.revision} is available. Your local edits are preserved; reload before saving.`,
+          "error",
+        );
+        return;
+      }
+      await loadRemoteExperiment(previousRemote.id);
+      return;
+    }
   }
   setMessage(connectedMessage(), "success");
 }
@@ -354,6 +555,18 @@ ui.password.addEventListener("keydown", (event) => {
 });
 ui.signOut.addEventListener("click", () => run(signOut));
 ui.refresh.addEventListener("click", () => run(refreshRegistry));
+ui.save.addEventListener("click", () => run(saveCurrentExperiment));
+ui.saveAsNew.addEventListener("click", () => run(openSaveAsNew));
+ui.cancelNew.addEventListener("click", closeSaveAsNew);
+ui.createNew.addEventListener("click", () => run(createNewExperiment));
+ui.newTitle.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") run(createNewExperiment);
+  if (event.key === "Escape") closeSaveAsNew();
+});
+
+for (const descriptor of EXPERIMENT_ARTIFACTS) {
+  document.querySelector(descriptor.editorSelector)?.addEventListener("input", updateSaveUi);
+}
 
 experimentSelect.addEventListener("change", () => run(async () => {
   const value = experimentSelect.value;
