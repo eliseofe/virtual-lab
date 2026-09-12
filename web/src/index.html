@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Virtual Lab — browser-local scientific simulation and controller experiments.">
+  <meta name="description" content="Virtual Lab — browser-based simulation for swarm robotics experiments.">
   <title>Virtual Lab</title>
   <link rel="stylesheet" href="./style.css">
 </head>
@@ -12,11 +12,11 @@
     <header class="topbar">
       <div>
         <p class="eyebrow">VIRTUAL LAB</p>
-        <h1>Collective systems, executable in the browser.</h1>
+        <h1>Swarm robotics simulation</h1>
       </div>
       <div class="topbar-status">
         <span class="status-dot" aria-hidden="true"></span>
-        <span id="worker-status" data-state="loading">Loading scientific kernel…</span>
+        <span id="worker-status" data-state="loading">Starting simulator…</span>
       </div>
     </header>
 
@@ -25,47 +25,46 @@
         <section class="panel experiment-panel">
           <label class="field-label" for="experiment-select">Experiment</label>
           <select id="experiment-select" aria-label="Selected experiment">
-            <option value="kernel-probe">Self-organized flocking · 2012 MDMC + proximal control</option>
+            <option value="kernel-probe">Active Elastic — Ferrante et al. (2012)</option>
           </select>
-          <p class="muted">Student view: experimental setup and controller parameters are editable; simulator implementation details remain fixed.</p>
         </section>
 
         <section class="panel metadata-panel">
-          <div class="panel-heading"><span>Experiment revision</span><strong>0.1-dev</strong></div>
+          <div class="panel-heading"><span>Revision</span><strong>0.1-dev</strong></div>
           <dl class="metadata-grid">
-            <div><dt>Execution</dt><dd>Rust / WASM worker</dd></div>
-            <div><dt>Parameters</dt><dd>Student-facing Python-style config</dd></div>
-            <div><dt>Initialization</dt><dd>Python-style source → initializer IR</dd></div>
-            <div><dt>Controller</dt><dd>python-vlab/0.1 → controller IR</dd></div>
+            <div><dt>Runtime</dt><dd>Rust / WebAssembly</dd></div>
+            <div><dt>Configuration</dt><dd>Python-style source</dd></div>
+            <div><dt>Initialization</dt><dd>Python-style source</dd></div>
+            <div><dt>Controller</dt><dd>python-vlab/0.1</dd></div>
           </dl>
         </section>
 
         <section class="panel run-panel">
-          <div class="panel-heading"><span>Run state</span><strong id="run-state">Initializing</strong></div>
+          <div class="panel-heading"><span>Status</span><strong id="run-state">Initializing</strong></div>
           <div class="control-grid">
             <button id="run" class="primary" disabled>Run</button>
             <button id="pause" disabled>Pause</button>
-            <button id="restart" disabled>Restart same seed</button>
-            <button id="restart-new-seed" disabled>New seed &amp; restart</button>
+            <button id="restart" disabled>Restart</button>
+            <button id="restart-new-seed" disabled>Restart with new seed</button>
           </div>
-          <div class="seed-row" aria-label="Active reproducibility seed">
-            <span>Run seed</span><strong id="run-seed">2026</strong>
+          <div class="seed-row" aria-label="Simulation seed">
+            <span>Seed</span><strong id="run-seed">2026</strong>
           </div>
           <div class="speed-control">
             <div class="speed-heading">
-              <label class="field-label" for="simulation-speed">Simulation speed</label>
-              <div class="speed-readout" aria-label="Requested and achieved simulation speed">
-                <span><small>Requested</small><strong id="simulation-speed-value">20×</strong></span>
+              <label class="field-label" for="simulation-speed">Execution speed</label>
+              <div class="speed-readout" aria-label="Requested and achieved execution speed">
+                <span><small>Target</small><strong id="simulation-speed-value">20×</strong></span>
                 <span><small>Actual</small><strong id="actual-simulation-speed">—</strong></span>
               </div>
             </div>
-            <input id="simulation-speed" type="range" min="1" max="100" step="1" value="20" aria-label="Simulation execution speed multiplier">
-            <p class="muted">Execution speed only. Actual speed is measured from model time versus wall time and does not affect the simulation.</p>
+            <input id="simulation-speed" type="range" min="1" max="100" step="1" value="20" aria-label="Execution speed multiplier">
+            <p class="muted">Changes wall-clock execution speed only; simulation dynamics are unchanged.</p>
           </div>
-          <div class="stats-grid" aria-label="Run statistics">
-            <div><span>Scientific time (model s)</span><strong id="scientific-time">0.000</strong></div>
-            <div><span>Physics ticks</span><strong id="physics-ticks">0</strong></div>
-            <div><span>Control updates</span><strong id="control-updates">0</strong></div>
+          <div class="stats-grid" aria-label="Simulation statistics">
+            <div><span>Simulation time (s)</span><strong id="scientific-time">0.000</strong></div>
+            <div><span>Physics steps</span><strong id="physics-ticks">0</strong></div>
+            <div><span>Controller steps</span><strong id="control-updates">0</strong></div>
           </div>
         </section>
       </aside>
@@ -73,41 +72,41 @@
       <section class="stage-column">
         <section class="panel stage-panel">
           <div class="stage-heading">
-            <div><p class="section-kicker">LIVE SIMULATION</p><h2>Scientific state</h2></div>
-            <span class="badge">periodic square arena</span>
+            <div><p class="section-kicker">SIMULATION</p><h2>Arena</h2></div>
+            <span class="badge">periodic square boundary</span>
           </div>
           <div class="canvas-wrap">
-            <canvas id="simulation-canvas" width="960" height="600" aria-label="Live agent simulation"></canvas>
-            <div id="canvas-empty" class="canvas-empty">Waiting for first simulator snapshot…</div>
+            <canvas id="simulation-canvas" width="960" height="600" aria-label="Agent simulation"></canvas>
+            <div id="canvas-empty" class="canvas-empty">Waiting for simulation data…</div>
           </div>
-          <p class="muted stage-note">Agent position and orientation are rendered in fixed arena coordinates. Crossing an arena edge wraps periodically to the opposite edge.</p>
+          <p class="muted stage-note">Positions and headings are shown in arena coordinates. Periodic boundaries wrap across opposite edges.</p>
         </section>
 
         <section class="panel editor-panel">
           <div class="stage-heading editor-heading">
             <div>
-              <p class="section-kicker">EXPERIMENT PARAMETERS</p>
-              <h2>Student-facing configuration</h2>
-              <p class="muted">These are the experimental-setup and controller parameters available to the student. Numerical integration, rendering clocks and other simulator machinery are fixed infrastructure.</p>
+              <p class="section-kicker">CONFIGURATION</p>
+              <h2>Experiment configuration</h2>
+              <p class="muted">Parameters used by the initializer, controller, and simulator runtime.</p>
             </div>
-            <button id="apply-setup" class="primary" disabled>Apply setup &amp; restart</button>
+            <button id="apply-setup" class="primary" disabled>Apply &amp; restart</button>
           </div>
-          <textarea id="experiment-config" class="code-editor config-editor" spellcheck="false" aria-label="Experiment parameters"></textarea>
-          <div id="setup-feedback" class="feedback" data-state="idle" role="status">Setup source has not been modified.</div>
+          <textarea id="experiment-config" class="code-editor config-editor" spellcheck="false" aria-label="Experiment configuration"></textarea>
+          <div id="setup-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
           <p id="setup-error" class="error" role="alert"></p>
         </section>
 
         <section class="panel editor-panel">
           <div class="stage-heading editor-heading">
             <div>
-              <p class="section-kicker">SWARM INITIALIZATION SOURCE</p>
-              <h2>Editable initialization rule</h2>
-              <p class="muted">The selected initialization method uses the student-facing setup values to construct every agent position and initial orientation.</p>
+              <p class="section-kicker">INITIALIZATION</p>
+              <h2>Initializer</h2>
+              <p class="muted">Defines initial agent positions and headings.</p>
             </div>
           </div>
-          <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initialization source"></textarea>
+          <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initializer source"></textarea>
           <details class="ir-details">
-            <summary>Compiled initializer IR</summary>
+            <summary>Compiled IR</summary>
             <pre id="initializer-ir"></pre>
           </details>
         </section>
@@ -115,17 +114,17 @@
         <section class="panel editor-panel">
           <div class="stage-heading editor-heading">
             <div>
-              <p class="section-kicker">CONTROLLER SOURCE</p>
-              <h2>Editable local agent rule</h2>
-              <p class="muted">The controller uses the same student-facing parameter configuration. Apply compiles the controller and restarts the current experiment.</p>
+              <p class="section-kicker">CONTROLLER</p>
+              <h2>Agent controller</h2>
+              <p class="muted">Defines each agent's action from its local observation.</p>
             </div>
-            <button id="compile" class="primary" disabled>Apply controller &amp; restart</button>
+            <button id="compile" class="primary" disabled>Apply &amp; restart</button>
           </div>
           <textarea id="controller-source" class="code-editor controller-editor" spellcheck="false" aria-label="Controller source"></textarea>
-          <div id="compile-feedback" class="feedback" data-state="idle" role="status">Controller source has not been modified.</div>
+          <div id="compile-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
           <p id="compile-error" class="error" role="alert"></p>
           <details class="ir-details">
-            <summary>Compiled controller IR</summary>
+            <summary>Compiled IR</summary>
             <pre id="controller-ir"></pre>
           </details>
         </section>
