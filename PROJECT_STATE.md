@@ -10,9 +10,11 @@ The current active implementation sequence is:
 
 1. **#55 — AI authoring contract / simulator-native parser-compiler validation** — NEXT ACTIVE ISSUE.
 2. **#46 — connect the validated experiment registry to production Virtual Lab** — starts after #55.
-3. **#52 — keep mock-sim as a production-looking UI/graphics design sandbox** — later, after #46.
+3. **Further simulator/scientific work chosen by the owner** — expected to take priority over cosmetic/UI work.
 
 **#45 professor/sharing/submission/curation is deferred and separate. It no longer blocks the core private-student integration path.**
+
+**#52 mock-sim visual-twin/UI work is explicitly deprioritized. It is not the automatic next step after #46. Resume it only when the owner explicitly reprioritizes UI/graphics work after higher-value simulator work.**
 
 The old AI–Lab sequence numbering (#41–#46) is historical; use the dependency statements above as the current roadmap.
 
@@ -79,6 +81,14 @@ Its purpose in #44 was deliberately non-scientific: real authentication, experim
 
 #44 is closed. Do not reopen it because later production syntax validation is incomplete; that is #55.
 
+### Residual #44 risk / testing policy
+
+#44 was an architectural acceptance gate, not an exhaustive certification suite. During owner testing, Grok exposed a real recurring OAuth/initialization defect; that defect was fixed in MCP version 5 and the same Grok connector then successfully created a real three-artifact experiment.
+
+A few low-value repetitions were intentionally not pursued after the architecture was proven. In particular, there is no reason to keep repeating every source-field round-trip in mock-sim merely because metadata round-trips already passed: the MCP edit path applies description, configuration, initializer, and controller fields through the same revision-protected experiment update operation, and create-from-zero already persisted all three non-empty source fields successfully.
+
+Policy going forward: **move to #55 and #46; treat any newly observed authentication, synchronization, or source-field failure as a real regression and fix it when encountered. Do not manufacture additional owner chores solely to exhaustively retest #44.**
+
 ## Meaningful student experiment created during #44
 
 The owner discussed a real experiment conversationally with Grok and asked Grok to create it through the connector.
@@ -144,16 +154,18 @@ Its scope is student sharing/submission, professor/curator visibility, preserved
 
 Current decision: implement it later unless the owner explicitly reprioritizes it.
 
-## #52 — later visual/UI sandbox
+## #52 — deprioritized visual/UI sandbox
 
-After #46, keep mock-sim permanently as a **visual twin/design sandbox**:
+Keep #52 as a useful future idea, but **do not schedule it automatically after #46**.
+
+Potential future role of mock-sim:
 
 - real registry/auth/synchronization;
 - production-like Virtual Lab shell and graphics/layout;
 - inert simulation area;
 - no scientific execution.
 
-UI/graphics experiments should be validated there first and then deliberately ported to production.
+Current decision: higher-priority simulator/scientific work comes first. Resume #52 only after the owner explicitly chooses to work on graphics/UI.
 
 ## Results channel remains separate
 
@@ -240,6 +252,7 @@ If resuming the project now:
 4. reuse #13 controller compiler/parser rather than reimplementing it;
 5. keep scientific reasoning outside scope unless explicitly approved;
 6. implement and verify #55 first;
-7. only then proceed to #46.
+7. only then proceed to #46;
+8. after #46, ask the owner what simulator/scientific work is next — **do not automatically start #52**.
 
 Do not repeat the #44 OAuth/isolation/stale-write acceptance matrix unless a regression directly requires it. Those gates are already complete and recorded in #44.
