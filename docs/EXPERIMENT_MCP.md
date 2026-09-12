@@ -36,6 +36,18 @@ The deployed mock-sim at `https://eliseofe.github.io/virtual-lab-mock-sim/` prov
 
 A real Claude Pro client has successfully completed OAuth, authenticated as a normal registry user, performed an authenticated read, and performed an authenticated write.
 
+### Connector refresh interoperability
+
+During #44, Grok exposed a recurring connector state where its connector-auth action reported connected but the following MCP initialize failed as unauthenticated. The server-side challenge handling was therefore hardened without changing the endpoint or experiment API:
+
+- missing bearer credentials and invalid/expired bearer credentials are now distinguished;
+- invalid/expired tokens receive a standard `error="invalid_token"` `WWW-Authenticate` challenge so clients can trigger token refresh/re-authorization correctly;
+- auth and metadata JSON responses use `Cache-Control: no-store` so stale challenges are not cached;
+- the Bearer scheme parser is case-insensitive;
+- `/health` exposes `auth_challenge_version: 2` for deployment verification.
+
+This is an interoperability hardening only. Authentication and RLS enforcement remain unchanged.
+
 ## Compact student-facing tool surface
 
 Real-client testing during #44 showed that normal Claude asks for first-use authorization per tool. The initial 13-operation interface was therefore consolidated into five student-oriented tools without removing domain capability.
@@ -129,4 +141,4 @@ Only after that proof is owner-accepted may production integration proceed.
 
 ## Provider independence
 
-No provider-specific operation exists in the server. Any compatible MCP client implementing Streamable HTTP and OAuth can use the same endpoint. Claude is currently the real acceptance client because the user's NYU ChatGPT Edu workspace does not expose usable custom write-capable MCP access.
+No provider-specific operation exists in the server. Any compatible MCP client implementing Streamable HTTP and OAuth can use the same endpoint. Claude and Grok are being used for owner acceptance because they provide two genuinely distinct real AI-client paths.
