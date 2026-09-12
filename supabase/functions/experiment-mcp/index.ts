@@ -12,6 +12,27 @@ const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const RESOURCE_METADATA_URL = `${MCP_RESOURCE}/.well-known/oauth-protected-resource`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
 
+const READ_ONLY_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const
+
+const WRITE_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+} as const
+
+const DESTRUCTIVE_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: false,
+} as const
+
 function json(value: unknown, status = 200, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(value), {
     status,
@@ -106,89 +127,102 @@ function registerExperimentTools(
   const aiClient = clientId ?? 'mcp-client'
 
   server.registerTool(
-    'whoami',
+    'read_workspace',
     {
-      title: 'Current experiment-registry identity',
-      description: 'Return the authenticated registry identity. This has no simulator or GitHub capability.',
-      inputSchema: {},
+      title: 'Read Virtual Lab experiment workspace',
+      description:
+        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment with all three editable sources and its current revision. This tool never writes.',
+      inputSchema: {
+        experiment_id: z.string().uuid().optional(),
+        lifecycle: z.enum(['active', 'archived', 'all']).default('active'),
+        owned_only: z.boolean().default(true),
+      },
+      annotations: READ_ONLY_ANNOTATIONS,
     },
-    async () => {
-      const { data, error } = await supabase
+    async ({ experiment_id, lifecycle, owned_only }) => {
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id, display_name')
         .eq('id', userId)
         .single()
-      if (error) return toolError('Could not read the authenticated profile.', error.message)
-      return toolResult({ ...data, email, oauth_client_id: clientId })
-    },
-  )
+      if (profileError) return toolError('Could not read the authenticated profile.', profileError.message)
 
-  server.registerTool(
-    'list_collections',
-    {
-      title: 'List experiment collections',
-      description: 'List collections/projects owned by the authenticated user.',
-      inputSchema: {},
-    },
-    async () => {
-      const { data, error } = await supabase
+      const identity = { ...profile, email, oauth_client_id: clientId }
+
+      if (experiment_id) {
+        const { data: experiment, error } = await supabase
+          .from('experiments')
+          .select('*')
+          .eq('id', experiment_id)
+          .maybeSingle()
+        if (error) return toolError('Could not read experiment.', error.message)
+        if (!experiment) return toolError('Experiment was not found or is not visible to this user.')
+        return toolResult({ identity, experiment })
+      }
+
+      const { data: collections, error: collectionsError } = await supabase
         .from('experiment_collections')
         .select('id, name, created_at, updated_at')
         .order('name')
-      if (error) return toolError('Could not list collections.', error.message)
-      return toolResult(data)
+      if (collectionsError) return toolError('Could not list collections.', collectionsError.message)
+
+      let query = supabase
+        .from('experiments')
+        .select(
+          'id, owner_id, collection_id, title, description, lifecycle, visibility, revision, schema_version, interface_version, created_at, updated_at',
+        )
+        .order('updated_at', { ascending: false })
+
+      if (owned_only) query = query.eq('owner_id', userId)
+      if (lifecycle !== 'all') query = query.eq('lifecycle', lifecycle)
+
+      const { data: experiments, error: experimentsError } = await query
+      if (experimentsError) return toolError('Could not list experiments.', experimentsError.message)
+
+      return toolResult({ identity, collections, experiments })
     },
   )
 
   server.registerTool(
-    'create_collection',
+    'manage_collection',
     {
-      title: 'Create experiment collection',
-      description: 'Create a one-level collection/project for organizing the authenticated user’s experiments.',
-      inputSchema: { name: z.string().min(1).max(200) },
-    },
-    async ({ name }) => {
-      const { data, error } = await supabase
-        .from('experiment_collections')
-        .insert({ owner_id: userId, name: name.trim() })
-        .select('id, name, created_at, updated_at')
-        .single()
-      if (error) return toolError('Could not create collection.', error.message)
-      return toolResult(data)
-    },
-  )
-
-  server.registerTool(
-    'rename_collection',
-    {
-      title: 'Rename experiment collection',
-      description: 'Rename a collection owned by the authenticated user.',
+      title: 'Manage an experiment collection',
+      description:
+        'Create, rename, or delete one owned collection. For create pass action=create and name. For rename pass action=rename, collection_id, and name. For delete pass action=delete and collection_id. Deleting a collection does not delete its experiments; they become unfiled.',
       inputSchema: {
-        collection_id: z.string().uuid(),
-        name: z.string().min(1).max(200),
+        action: z.enum(['create', 'rename', 'delete']),
+        collection_id: z.string().uuid().optional(),
+        name: z.string().min(1).max(200).optional(),
       },
+      annotations: DESTRUCTIVE_ANNOTATIONS,
     },
-    async ({ collection_id, name }) => {
-      const { data, error } = await supabase
-        .from('experiment_collections')
-        .update({ name: name.trim(), updated_at: new Date().toISOString() })
-        .eq('id', collection_id)
-        .select('id, name, created_at, updated_at')
-        .maybeSingle()
-      if (error) return toolError('Could not rename collection.', error.message)
-      if (!data) return toolError('Collection was not found or is not owned by this user.')
-      return toolResult(data)
-    },
-  )
+    async ({ action, collection_id, name }) => {
+      if (action === 'create') {
+        if (!name) return toolError('Create requires name.')
+        const { data, error } = await supabase
+          .from('experiment_collections')
+          .insert({ owner_id: userId, name: name.trim() })
+          .select('id, name, created_at, updated_at')
+          .single()
+        if (error) return toolError('Could not create collection.', error.message)
+        return toolResult({ action, collection: data })
+      }
 
-  server.registerTool(
-    'delete_collection',
-    {
-      title: 'Delete experiment collection',
-      description: 'Delete an owned collection. Experiments remain and become unfiled; experiments themselves are not deleted.',
-      inputSchema: { collection_id: z.string().uuid() },
-    },
-    async ({ collection_id }) => {
+      if (!collection_id) return toolError(`${action} requires collection_id.`)
+
+      if (action === 'rename') {
+        if (!name) return toolError('Rename requires name.')
+        const { data, error } = await supabase
+          .from('experiment_collections')
+          .update({ name: name.trim(), updated_at: new Date().toISOString() })
+          .eq('id', collection_id)
+          .select('id, name, created_at, updated_at')
+          .maybeSingle()
+        if (error) return toolError('Could not rename collection.', error.message)
+        if (!data) return toolError('Collection was not found or is not owned by this user.')
+        return toolResult({ action, collection: data })
+      }
+
       const { data, error } = await supabase
         .from('experiment_collections')
         .delete()
@@ -197,60 +231,16 @@ function registerExperimentTools(
         .maybeSingle()
       if (error) return toolError('Could not delete collection.', error.message)
       if (!data) return toolError('Collection was not found or is not owned by this user.')
-      return toolResult({ deleted_collection_id: data.id })
-    },
-  )
-
-  server.registerTool(
-    'list_experiments',
-    {
-      title: 'List experiments',
-      description: 'List experiments visible to the authenticated user. By default returns owned active experiments.',
-      inputSchema: {
-        lifecycle: z.enum(['active', 'archived', 'all']).default('active'),
-        collection_id: z.string().uuid().nullable().optional(),
-        owned_only: z.boolean().default(true),
-      },
-    },
-    async ({ lifecycle, collection_id, owned_only }) => {
-      let query = supabase
-        .from('experiments')
-        .select('id, owner_id, collection_id, title, description, lifecycle, visibility, revision, schema_version, interface_version, created_at, updated_at')
-        .order('updated_at', { ascending: false })
-      if (owned_only) query = query.eq('owner_id', userId)
-      if (lifecycle !== 'all') query = query.eq('lifecycle', lifecycle)
-      if (collection_id === null) query = query.is('collection_id', null)
-      else if (collection_id !== undefined) query = query.eq('collection_id', collection_id)
-      const { data, error } = await query
-      if (error) return toolError('Could not list experiments.', error.message)
-      return toolResult(data)
-    },
-  )
-
-  server.registerTool(
-    'get_experiment',
-    {
-      title: 'Read experiment source',
-      description: 'Read one visible experiment including configuration, initialization, and controller source.',
-      inputSchema: { experiment_id: z.string().uuid() },
-    },
-    async ({ experiment_id }) => {
-      const { data, error } = await supabase
-        .from('experiments')
-        .select('*')
-        .eq('id', experiment_id)
-        .maybeSingle()
-      if (error) return toolError('Could not read experiment.', error.message)
-      if (!data) return toolError('Experiment was not found or is not visible to this user.')
-      return toolResult(data)
+      return toolResult({ action, deleted_collection_id: data.id })
     },
   )
 
   server.registerTool(
     'create_experiment',
     {
-      title: 'Create experiment',
-      description: 'Create a new experiment from scratch using the three student-editable source artifacts.',
+      title: 'Create a new experiment',
+      description:
+        'Create a brand-new owned experiment from zero. Supply the exact configuration, initializer, and controller source strings. Use collection_id from read_workspace to file it, or omit collection_id to leave it unfiled.',
       inputSchema: {
         title: z.string().min(1).max(300),
         description: z.string().default(''),
@@ -259,6 +249,7 @@ function registerExperimentTools(
         initializer_source: z.string(),
         controller_source: z.string(),
       },
+      annotations: WRITE_ANNOTATIONS,
     },
     async ({ title, description, collection_id, config_source, initializer_source, controller_source }) => {
       const { data, error } = await supabase
@@ -284,10 +275,11 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    'update_experiment',
+    'edit_experiment',
     {
-      title: 'Update experiment source or metadata',
-      description: 'Update an owned experiment using optimistic concurrency. A stale base revision is rejected.',
+      title: 'Edit, move, archive, or restore an experiment',
+      description:
+        'Modify an owned experiment using optimistic concurrency. Always use the latest base_revision from read_workspace. Pass only fields to change. Set collection_id to another collection UUID to move it, null to unfile it. Set lifecycle=archived to archive or lifecycle=active to restore. A stale revision is rejected.',
       inputSchema: {
         experiment_id: z.string().uuid(),
         base_revision: z.number().int().positive(),
@@ -296,19 +288,36 @@ function registerExperimentTools(
         config_source: z.string().optional(),
         initializer_source: z.string().optional(),
         controller_source: z.string().optional(),
+        collection_id: z.string().uuid().nullable().optional(),
+        lifecycle: z.enum(['active', 'archived']).optional(),
       },
+      annotations: WRITE_ANNOTATIONS,
     },
-    async ({ experiment_id, base_revision, title, description, config_source, initializer_source, controller_source }) => {
+    async ({
+      experiment_id,
+      base_revision,
+      title,
+      description,
+      config_source,
+      initializer_source,
+      controller_source,
+      collection_id,
+      lifecycle,
+    }) => {
       const patch: Record<string, unknown> = {
         updated_by_actor: 'ai',
         updated_by_ai_client: aiClient,
       }
+
       if (title !== undefined) patch.title = title.trim()
       if (description !== undefined) patch.description = description
       if (config_source !== undefined) patch.config_source = config_source
       if (initializer_source !== undefined) patch.initializer_source = initializer_source
       if (controller_source !== undefined) patch.controller_source = controller_source
-      if (Object.keys(patch).length === 2) return toolError('No experiment fields were supplied to update.')
+      if (collection_id !== undefined) patch.collection_id = collection_id
+      if (lifecycle !== undefined) patch.lifecycle = lifecycle
+
+      if (Object.keys(patch).length === 2) return toolError('No experiment fields were supplied to edit.')
 
       const { data, error } = await supabase
         .from('experiments')
@@ -317,89 +326,28 @@ function registerExperimentTools(
         .eq('revision', base_revision)
         .select('*')
         .maybeSingle()
-      if (error) return toolError('Could not update experiment.', error.message)
-      if (!data) return toolError('Conflict: the experiment is stale, missing, or not owned by this user. Re-read it before editing.')
+
+      if (error) return toolError('Could not edit experiment.', error.message)
+      if (!data) {
+        return toolError(
+          'Conflict: the experiment is stale, missing, or not owned by this user. Re-read it with read_workspace before editing.',
+        )
+      }
       return toolResult(data)
     },
-  )
-
-  server.registerTool(
-    'move_experiment',
-    {
-      title: 'Move experiment to collection',
-      description: 'Move an owned experiment to another owned collection, or set collection_id to null to make it unfiled.',
-      inputSchema: {
-        experiment_id: z.string().uuid(),
-        base_revision: z.number().int().positive(),
-        collection_id: z.string().uuid().nullable(),
-      },
-    },
-    async ({ experiment_id, base_revision, collection_id }) => {
-      const { data, error } = await supabase
-        .from('experiments')
-        .update({
-          collection_id,
-          updated_by_actor: 'ai',
-          updated_by_ai_client: aiClient,
-        })
-        .eq('id', experiment_id)
-        .eq('revision', base_revision)
-        .select('*')
-        .maybeSingle()
-      if (error) return toolError('Could not move experiment.', error.message)
-      if (!data) return toolError('Conflict: the experiment is stale, missing, or not owned by this user.')
-      return toolResult(data)
-    },
-  )
-
-  async function setLifecycle(experimentId: string, baseRevision: number, lifecycle: 'active' | 'archived') {
-    const { data, error } = await supabase
-      .from('experiments')
-      .update({ lifecycle, updated_by_actor: 'ai', updated_by_ai_client: aiClient })
-      .eq('id', experimentId)
-      .eq('revision', baseRevision)
-      .select('*')
-      .maybeSingle()
-    if (error) return toolError(`Could not set lifecycle to ${lifecycle}.`, error.message)
-    if (!data) return toolError('Conflict: the experiment is stale, missing, or not owned by this user.')
-    return toolResult(data)
-  }
-
-  server.registerTool(
-    'archive_experiment',
-    {
-      title: 'Archive experiment',
-      description: 'Hide an owned experiment from the normal active list without deleting it.',
-      inputSchema: {
-        experiment_id: z.string().uuid(),
-        base_revision: z.number().int().positive(),
-      },
-    },
-    ({ experiment_id, base_revision }) => setLifecycle(experiment_id, base_revision, 'archived'),
-  )
-
-  server.registerTool(
-    'restore_experiment',
-    {
-      title: 'Restore archived experiment',
-      description: 'Return an owned archived experiment to the active list.',
-      inputSchema: {
-        experiment_id: z.string().uuid(),
-        base_revision: z.number().int().positive(),
-      },
-    },
-    ({ experiment_id, base_revision }) => setLifecycle(experiment_id, base_revision, 'active'),
   )
 
   server.registerTool(
     'delete_experiment',
     {
-      title: 'Permanently delete working experiment',
-      description: 'Permanently delete an eligible owned working experiment at the specified revision. Preserved submission/curation snapshots are independent and survive.',
+      title: 'Permanently delete a working experiment',
+      description:
+        'Permanently delete an eligible owned working experiment at its latest revision. Use only when permanent deletion is explicitly intended. Preserved submission or curation snapshots are independent and survive.',
       inputSchema: {
         experiment_id: z.string().uuid(),
         base_revision: z.number().int().positive(),
       },
+      annotations: DESTRUCTIVE_ANNOTATIONS,
     },
     async ({ experiment_id, base_revision }) => {
       const { data, error } = await supabase
@@ -409,8 +357,13 @@ function registerExperimentTools(
         .eq('revision', base_revision)
         .select('id')
         .maybeSingle()
+
       if (error) return toolError('Could not permanently delete experiment.', error.message)
-      if (!data) return toolError('Conflict: the experiment is stale, missing, or not owned by this user.')
+      if (!data) {
+        return toolError(
+          'Conflict: the experiment is stale, missing, or not owned by this user. Re-read it with read_workspace before deleting.',
+        )
+      }
       return toolResult({ permanently_deleted_experiment_id: data.id })
     },
   )
@@ -429,7 +382,13 @@ Deno.serve(async (req: Request) => {
   }
 
   if (url.pathname.endsWith('/health')) {
-    return json({ ok: true, service: 'virtual-lab-experiment-mcp', simulator_access: false })
+    return json({
+      ok: true,
+      service: 'virtual-lab-experiment-mcp',
+      interface_version: '2',
+      tool_count: 5,
+      simulator_access: false,
+    })
   }
 
   const auth = await authenticatedClient(req)
@@ -437,7 +396,7 @@ Deno.serve(async (req: Request) => {
 
   const server = new McpServer({
     name: 'virtual-lab-experiment-registry',
-    version: '1.0.0',
+    version: '2.0.0',
   })
   registerExperimentTools(server, auth.supabase, auth.userId, auth.email, auth.clientId)
 
