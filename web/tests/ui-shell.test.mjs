@@ -98,11 +98,13 @@ test("run seed is simulator provenance with explicit reproducible and randomized
 
 test("hidden simulator settings stay outside the editable config namespace", async () => {
   const main = await text("src/main.js");
+  const runtime = await text("src/runtime/contract.js");
   const config = editableConfig(main);
   assert.match(main, /const INTERNAL_SEED = 2026/);
-  assert.match(main, /const INTERNAL_PHYSICS_DT = 0\.01/);
-  assert.match(main, /const INTERNAL_METRIC_DT = 0\.10/);
-  assert.doesNotMatch(config, /INTERNAL_SEED|INTERNAL_PHYSICS_DT|INTERNAL_METRIC_DT/);
+  assert.match(main, /const INTERNAL_PHYSICS_DT = RUNTIME_CONTRACT\.simulator_constants\.PHYSICS_DT/);
+  assert.match(runtime, /PHYSICS_DT: 0\.01/);
+  assert.match(runtime, /METRIC_DT: 0\.10/);
+  assert.doesNotMatch(config, /PHYSICS_DT|METRIC_DT|INTERNAL_SEED|INTERNAL_PHYSICS_DT|INTERNAL_METRIC_DT/);
 });
 
 test("setup and controller application use separate worker paths", async () => {

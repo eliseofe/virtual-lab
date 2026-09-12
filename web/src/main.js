@@ -1,12 +1,17 @@
 import { compileController } from "./controller/compiler.js";
 import { compileConfig, numericParameters } from "./config/compiler.js";
 import { compileInitializer } from "./initializer/compiler.js";
+import {
+  RUNTIME_CONTRACT,
+  simulationSetupFromRuntime,
+  validateInitialStateForRuntime,
+  validateRuntimeValues,
+} from "./runtime/contract.js";
 
 // Simulator-owned implementation settings. These are deliberately not part of
 // the student experiment parameter namespace.
 const INTERNAL_SEED = 2026;
-const INTERNAL_PHYSICS_DT = 0.01;
-const INTERNAL_METRIC_DT = 0.10;
+const INTERNAL_PHYSICS_DT = RUNTIME_CONTRACT.simulator_constants.PHYSICS_DT;
 const RUNTIME_INTERVAL_MS = 50;
 
 const defaultConfigSource = `# EXPERIMENTAL SETUP
@@ -149,67 +154,40 @@ function setFeedback(element, message, state = "idle") {
   element.dataset.state = state;
 }
 
-function requireNumber(values, name, { integer = false, positive = false, nonnegative = false } = {}) {
-  const value = values[name];
-  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${name} must be numeric.`);
-  if (integer && !Number.isInteger(value)) throw new Error(`${name} must be an integer.`);
-  if (positive && value <= 0) throw new Error(`${name} must be positive.`);
-  if (nonnegative && value < 0) throw new Error(`${name} must be non-negative.`);
-  return value;
+// Temporary compatibility adapter for the pre-#63 built-in Active Elastic
+// configuration. These aliases stay in the production browser only; they are
+// intentionally absent from the science-free MCP authoring contract. Registry
+// experiments must use the generic runtime names directly.
+function runtimeValuesForCurrentBuiltIn(values) {
+  return {
+    ...values,
+    INTERACTION_RADIUS: values.INTERACTION_RADIUS ?? values.PROXIMAL_RANGE,
+    MAX_FORWARD_SPEED: values.MAX_FORWARD_SPEED ?? values.U,
+    MAX_ANGULAR_SPEED: values.MAX_ANGULAR_SPEED ?? values.OMEGA_MAX,
+  };
 }
 
 function compileSetup({ seed = activeSeed, configSource = ui.config.value, initializerSource = ui.initializerSource.value } = {}) {
   const config = compileConfig(configSource);
-  const values = config.values;
-  const agentCount = requireNumber(values, "N", { integer: true, positive: true });
-  const arenaSize = requireNumber(values, "ARENA_SIZE", { positive: true });
-  const controlDt = requireNumber(values, "CONTROL_DT", { positive: true });
-  const sensorNoise = requireNumber(values, "SENSOR_NOISE", { nonnegative: true });
-  requireNumber(values, "EXPERIMENT_DURATION", { positive: true });
-  const maxForwardSpeed = requireNumber(values, "U", { positive: true });
-  const maxAngularSpeed = requireNumber(values, "OMEGA_MAX", { positive: true });
-  requireNumber(values, "K1");
-  requireNumber(values, "K2");
-  requireNumber(values, "POTENTIAL_ALPHA", { positive: true });
-  requireNumber(values, "POTENTIAL_EPSILON", { positive: true });
-  requireNumber(values, "DESIRED_DISTANCE", { positive: true });
-  const proximalRange = requireNumber(values, "PROXIMAL_RANGE", { positive: true });
-  requireNumber(values, "INITIAL_POSITION_NOISE", { nonnegative: true });
+  const runtime = validateRuntimeValues(runtimeValuesForCurrentBuiltIn(config.values));
 
-  const initializerConfig = { ...config, values: { ...values, SEED: seed } };
+  const initializerConfig = { ...config, values: { ...config.values, SEED: seed } };
   const initializer = compileInitializer(initializerSource, initializerConfig);
-  if (initializer.state.length !== agentCount) throw new Error(`Initializer produced ${initializer.state.length} agents, expected N=${agentCount}.`);
-  const half = arenaSize / 2;
-  const outside = initializer.state.findIndex((agent) => Math.abs(agent.x) > half || Math.abs(agent.y) > half);
-  if (outside !== -1) {
-    throw new Error(`Initial agent ${outside} does not fit inside ARENA_SIZE=${arenaSize}. Increase the arena size or reduce the initial cluster/noise.`);
-  }
+  validateInitialStateForRuntime(initializer.state, runtime);
 
   ui.initializerIr.textContent = JSON.stringify({
     version: initializer.version,
+    runtimeContract: runtime.version,
     method: initializer.method,
     seed,
     agentCount: initializer.state.length,
-    arenaSize,
+    arenaSize: runtime.arenaSize,
     firstAgents: initializer.state.slice(0, 5),
   }, null, 2);
 
   return {
     config,
-    setup: {
-      initialState: initializer.state,
-      simulation: {
-        seed,
-        physicsDt: INTERNAL_PHYSICS_DT,
-        controlDt,
-        metricDt: INTERNAL_METRIC_DT,
-        interactionRadius: proximalRange,
-        arenaSize,
-        sensorNoise,
-        maxForwardSpeed,
-        maxAngularSpeed,
-      },
-    },
+    setup: simulationSetupFromRuntime(runtime, seed, initializer.state),
   };
 }
 

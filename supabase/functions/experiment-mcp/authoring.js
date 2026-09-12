@@ -1,25 +1,29 @@
 import { compileConfig, numericParameters } from "./vendor/config-compiler.js";
 import { compileInitializer } from "./vendor/initializer-compiler.js";
 import { compileController } from "./vendor/controller-compiler.js";
+import {
+  RUNTIME_CONTRACT,
+  validateInitialStateForRuntime,
+  validateRuntimeValues,
+} from "./vendor/runtime-contract.js";
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.2",
+  contract_version: "vlab.authoring/0.3",
   experiment_interface_version: "4",
   validation_mode: "compile-without-simulation",
   invalid_write_policy: "reject",
   content_policy: {
     includes_scientific_models: false,
     includes_reference_experiments: false,
-    purpose: "Expose only simulator-owned syntax, types, capabilities, structural requirements, and diagnostics. Experiment science is authored outside the contract."
+    purpose: "Expose only simulator-owned syntax, types, capabilities, runtime requirements, and diagnostics. Experiment science is authored outside the contract."
   },
+  runtime_contract: RUNTIME_CONTRACT,
   artifacts: {
     configuration: {
       compiled_version: "vlab.config/0.2",
       syntax: "Restricted Python-like top-level NAME = value assignments. Values may be numeric/string/True/False/None literals or aliases to earlier parameters.",
-      structural_requirements: {
-        N: "positive integer required by the current initializer state allocator"
-      },
-      parameter_policy: "Additional configuration names are experiment-defined. Finite numeric values are exposed to the controller as scalar parameters; the contract does not prescribe scientific parameter names or values."
+      runtime_requirements: RUNTIME_CONTRACT.required_configuration,
+      parameter_policy: "Configuration names beyond the simulator-owned runtime requirements are experiment-defined. Finite numeric values are exposed to the controller as scalar parameters; the contract does not prescribe model-specific scientific parameter names or values."
     },
     initializer: {
       compiled_version: "vlab.initializer-state/0.2",
@@ -67,6 +71,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
   diagnostic_categories: [
     "syntax",
     "configuration",
+    "runtime-parameter",
     "initializer",
     "unsupported-capability",
     "unsupported-feature",
@@ -98,6 +103,7 @@ function errorDiagnostic(artifact, error) {
     artifact,
     category,
     compiler_category: compilerCategory,
+    parameter: typeof error?.parameter === "string" ? error.parameter : null,
     message,
     line: Number.isInteger(error?.line) ? error.line : null,
     column: Number.isInteger(error?.column) ? error.column : null
@@ -114,10 +120,19 @@ export function validateExperimentSources({ config_source, initializer_source, c
     return invalid(diagnostics);
   }
 
+  let runtime;
+  try {
+    runtime = validateRuntimeValues(config.values);
+  } catch (error) {
+    diagnostics.push(errorDiagnostic("configuration", error));
+    return invalid(diagnostics);
+  }
+
   let initializer;
   try {
     const initializerConfig = { ...config, values: { ...config.values, SEED: 0 } };
     initializer = compileInitializer(initializer_source, initializerConfig);
+    validateInitialStateForRuntime(initializer.state, runtime);
   } catch (error) {
     diagnostics.push(errorDiagnostic("initializer", error));
     return invalid(diagnostics);
@@ -141,7 +156,8 @@ export function validateExperimentSources({ config_source, initializer_source, c
       configuration: config.version,
       initializer: initializer.version,
       controller_language: controller.language,
-      controller_ir_schema: controller.schema
+      controller_ir_schema: controller.schema,
+      runtime_contract: runtime.version
     }
   };
 }
