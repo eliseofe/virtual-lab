@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use serde::Deserialize;
 
@@ -54,17 +54,6 @@ enum Statement {
     Return { value: Expression, #[serde(default)] line: Option<usize> },
 }
 
-impl Statement {
-    fn line(&self) -> Option<usize> {
-        match self {
-            Statement::Assign { line, .. }
-            | Statement::AugAssign { line, .. }
-            | Statement::ForEach { line, .. }
-            | Statement::Return { line, .. } => *line,
-        }
-    }
-}
-
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum Expression {
@@ -73,18 +62,6 @@ enum Expression {
     Unary { op: String, value: Box<Expression>, #[serde(default)] line: Option<usize> },
     Binary { op: String, left: Box<Expression>, right: Box<Expression>, #[serde(default)] line: Option<usize> },
     Call { name: String, args: Vec<Expression>, #[serde(default)] line: Option<usize> },
-}
-
-impl Expression {
-    fn line(&self) -> Option<usize> {
-        match self {
-            Expression::Const { line, .. }
-            | Expression::Load { line, .. }
-            | Expression::Unary { line, .. }
-            | Expression::Binary { line, .. }
-            | Expression::Call { line, .. } => *line,
-        }
-    }
 }
 
 fn at_line(line: Option<usize>, message: impl AsRef<str>) -> String {
@@ -193,128 +170,272 @@ fn validate_statements(
     Ok(returns)
 }
 
-fn binary(op: &str, left: Value, right: Value) -> Value {
+fn collect_local_names(body: &[Statement], out: &mut BTreeSet<String>) {
+    for statement in body {
+        match statement {
+            Statement::Assign { target, .. } | Statement::AugAssign { target, .. } => {
+                if !target.starts_with("self.") { out.insert(target.clone()); }
+            }
+            Statement::ForEach { body, .. } => collect_local_names(body, out),
+            Statement::Return { .. } => {}
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum BinaryOp { Add, Subtract, Multiply, Divide }
+
+#[derive(Debug, Clone, Copy)]
+enum Intrinsic { Vec2, Dot, Perpendicular, Norm, Pow, Motion }
+
+#[derive(Debug, Clone, Copy)]
+enum PreparedLoad {
+    Heading,
+    NeighbourRelativePosition,
+    Parameter(usize),
+    PrivateState(usize),
+    Local(usize),
+}
+
+#[derive(Debug)]
+enum PreparedExpression {
+    Const(f64),
+    Load(PreparedLoad),
+    Negate(Box<PreparedExpression>),
+    Binary { op: BinaryOp, left: Box<PreparedExpression>, right: Box<PreparedExpression> },
+    Call { intrinsic: Intrinsic, args: Vec<PreparedExpression> },
+}
+
+#[derive(Debug, Clone, Copy)]
+enum PreparedTarget { PrivateState(usize), Local(usize) }
+
+#[derive(Debug)]
+enum PreparedStatement {
+    Assign { target: PreparedTarget, value: PreparedExpression },
+    AugAssign { target: PreparedTarget, value: PreparedExpression },
+    ForEachNeighbour { body: Vec<PreparedStatement> },
+    Return { value: PreparedExpression },
+}
+
+fn prepare_expression(
+    expression: &Expression,
+    parameter_slots: &HashMap<String, usize>,
+    state_slots: &HashMap<String, usize>,
+    local_slots: &HashMap<String, usize>,
+    loop_variable: Option<&str>,
+) -> Result<PreparedExpression, String> {
+    Ok(match expression {
+        Expression::Const { value, .. } => PreparedExpression::Const(*value),
+        Expression::Load { path, line } => {
+            let load = if path == "obs.heading" {
+                PreparedLoad::Heading
+            } else if let Some(name) = path.strip_prefix("self.") {
+                PreparedLoad::PrivateState(*state_slots.get(name).ok_or_else(|| at_line(*line, "validated private state slot missing"))?)
+            } else if let Some(variable) = loop_variable {
+                if path.strip_prefix(variable) == Some(".relative_position") {
+                    PreparedLoad::NeighbourRelativePosition
+                } else if let Some(slot) = local_slots.get(path) {
+                    PreparedLoad::Local(*slot)
+                } else if let Some(slot) = parameter_slots.get(path) {
+                    PreparedLoad::Parameter(*slot)
+                } else {
+                    return Err(at_line(*line, "validated controller load could not be prepared"));
+                }
+            } else if let Some(slot) = local_slots.get(path) {
+                PreparedLoad::Local(*slot)
+            } else if let Some(slot) = parameter_slots.get(path) {
+                PreparedLoad::Parameter(*slot)
+            } else {
+                return Err(at_line(*line, "validated controller load could not be prepared"));
+            };
+            PreparedExpression::Load(load)
+        }
+        Expression::Unary { value, .. } => PreparedExpression::Negate(Box::new(prepare_expression(
+            value, parameter_slots, state_slots, local_slots, loop_variable,
+        )?)),
+        Expression::Binary { op, left, right, .. } => {
+            let op = match op.as_str() {
+                "+" => BinaryOp::Add,
+                "-" => BinaryOp::Subtract,
+                "*" => BinaryOp::Multiply,
+                "/" => BinaryOp::Divide,
+                _ => unreachable!("validated binary operator"),
+            };
+            PreparedExpression::Binary {
+                op,
+                left: Box::new(prepare_expression(left, parameter_slots, state_slots, local_slots, loop_variable)?),
+                right: Box::new(prepare_expression(right, parameter_slots, state_slots, local_slots, loop_variable)?),
+            }
+        }
+        Expression::Call { name, args, .. } => {
+            let intrinsic = match name.as_str() {
+                "Vec2" => Intrinsic::Vec2,
+                "dot" => Intrinsic::Dot,
+                "perpendicular" => Intrinsic::Perpendicular,
+                "norm" => Intrinsic::Norm,
+                "pow" => Intrinsic::Pow,
+                "Motion" => Intrinsic::Motion,
+                _ => unreachable!("validated intrinsic"),
+            };
+            PreparedExpression::Call {
+                intrinsic,
+                args: args.iter().map(|arg| prepare_expression(
+                    arg, parameter_slots, state_slots, local_slots, loop_variable,
+                )).collect::<Result<Vec<_>, _>>()?,
+            }
+        }
+    })
+}
+
+fn prepare_target(
+    target: &str,
+    state_slots: &HashMap<String, usize>,
+    local_slots: &HashMap<String, usize>,
+) -> PreparedTarget {
+    if let Some(name) = target.strip_prefix("self.") {
+        PreparedTarget::PrivateState(state_slots[name])
+    } else {
+        PreparedTarget::Local(local_slots[target])
+    }
+}
+
+fn prepare_statements(
+    body: &[Statement],
+    parameter_slots: &HashMap<String, usize>,
+    state_slots: &HashMap<String, usize>,
+    local_slots: &HashMap<String, usize>,
+    loop_variable: Option<&str>,
+) -> Result<Vec<PreparedStatement>, String> {
+    body.iter().map(|statement| Ok(match statement {
+        Statement::Assign { target, value, .. } => PreparedStatement::Assign {
+            target: prepare_target(target, state_slots, local_slots),
+            value: prepare_expression(value, parameter_slots, state_slots, local_slots, loop_variable)?,
+        },
+        Statement::AugAssign { target, value, .. } => PreparedStatement::AugAssign {
+            target: prepare_target(target, state_slots, local_slots),
+            value: prepare_expression(value, parameter_slots, state_slots, local_slots, loop_variable)?,
+        },
+        Statement::ForEach { variable, body, .. } => PreparedStatement::ForEachNeighbour {
+            body: prepare_statements(body, parameter_slots, state_slots, local_slots, Some(variable))?,
+        },
+        Statement::Return { value, .. } => PreparedStatement::Return {
+            value: prepare_expression(value, parameter_slots, state_slots, local_slots, loop_variable)?,
+        },
+    })).collect()
+}
+
+fn binary(op: BinaryOp, left: Value, right: Value) -> Value {
     match (op, left, right) {
-        ("+", Value::Scalar(a), Value::Scalar(b)) => Value::Scalar(a + b),
-        ("+", Value::Vec2(a), Value::Vec2(b)) => Value::Vec2(a + b),
-        ("-", Value::Scalar(a), Value::Scalar(b)) => Value::Scalar(a - b),
-        ("-", Value::Vec2(a), Value::Vec2(b)) => Value::Vec2(a - b),
-        ("*", Value::Scalar(a), Value::Scalar(b)) => Value::Scalar(a * b),
-        ("*", Value::Scalar(a), Value::Vec2(b)) => Value::Vec2(b * a),
-        ("*", Value::Vec2(a), Value::Scalar(b)) => Value::Vec2(a * b),
-        ("/", Value::Scalar(a), Value::Scalar(b)) => Value::Scalar(a / b),
-        ("/", Value::Vec2(a), Value::Scalar(b)) => Value::Vec2(a * (1.0 / b)),
+        (BinaryOp::Add, Value::Scalar(a), Value::Scalar(b)) => Value::Scalar(a + b),
+        (BinaryOp::Add, Value::Vec2(a), Value::Vec2(b)) => Value::Vec2(a + b),
+        (BinaryOp::Subtract, Value::Scalar(a), Value::Scalar(b)) => Value::Scalar(a - b),
+        (BinaryOp::Subtract, Value::Vec2(a), Value::Vec2(b)) => Value::Vec2(a - b),
+        (BinaryOp::Multiply, Value::Scalar(a), Value::Scalar(b)) => Value::Scalar(a * b),
+        (BinaryOp::Multiply, Value::Scalar(a), Value::Vec2(b)) => Value::Vec2(b * a),
+        (BinaryOp::Multiply, Value::Vec2(a), Value::Scalar(b)) => Value::Vec2(a * b),
+        (BinaryOp::Divide, Value::Scalar(a), Value::Scalar(b)) => Value::Scalar(a / b),
+        (BinaryOp::Divide, Value::Vec2(a), Value::Scalar(b)) => Value::Vec2(a * (1.0 / b)),
         _ => unreachable!("JS compiler preserves controller expression types"),
     }
 }
 
 fn evaluate(
-    expression: &Expression,
-    parameters: &HashMap<String, f64>,
-    state_slots: &HashMap<String, usize>,
+    expression: &PreparedExpression,
+    parameters: &[f64],
     private_state: &[f64],
-    locals: &HashMap<String, Value>,
+    locals: &[Value],
     observation: &Observation,
-    loop_binding: Option<(&str, &NeighbourObservation)>,
+    neighbour: Option<&NeighbourObservation>,
 ) -> Value {
     match expression {
-        Expression::Const { value, .. } => Value::Scalar(*value),
-        Expression::Load { path, .. } => {
-            if path == "obs.heading" { return Value::Vec2(observation.heading); }
-            if let Some(name) = path.strip_prefix("self.") {
-                return Value::Scalar(private_state[state_slots[name]]);
-            }
-            if let Some((variable, neighbour)) = loop_binding {
-                if path.strip_prefix(variable) == Some(".relative_position") { return Value::Vec2(neighbour.relative_position); }
-            }
-            if let Some(value) = locals.get(path) { return *value; }
-            if let Some(value) = parameters.get(path) { return Value::Scalar(*value); }
-            unreachable!("validated controller load")
-        }
-        Expression::Unary { value, .. } => match evaluate(value, parameters, state_slots, private_state, locals, observation, loop_binding) {
+        PreparedExpression::Const(value) => Value::Scalar(*value),
+        PreparedExpression::Load(load) => match load {
+            PreparedLoad::Heading => Value::Vec2(observation.heading),
+            PreparedLoad::NeighbourRelativePosition => Value::Vec2(neighbour.expect("prepared neighbour load inside loop").relative_position),
+            PreparedLoad::Parameter(slot) => Value::Scalar(parameters[*slot]),
+            PreparedLoad::PrivateState(slot) => Value::Scalar(private_state[*slot]),
+            PreparedLoad::Local(slot) => locals[*slot],
+        },
+        PreparedExpression::Negate(value) => match evaluate(value, parameters, private_state, locals, observation, neighbour) {
             Value::Scalar(value) => Value::Scalar(-value),
             Value::Vec2(value) => Value::Vec2(value * -1.0),
             Value::Action(_) => unreachable!("cannot negate action"),
         },
-        Expression::Binary { op, left, right, .. } => binary(
-            op,
-            evaluate(left, parameters, state_slots, private_state, locals, observation, loop_binding),
-            evaluate(right, parameters, state_slots, private_state, locals, observation, loop_binding),
+        PreparedExpression::Binary { op, left, right } => binary(
+            *op,
+            evaluate(left, parameters, private_state, locals, observation, neighbour),
+            evaluate(right, parameters, private_state, locals, observation, neighbour),
         ),
-        Expression::Call { name, args, .. } => match name.as_str() {
-            "Vec2" => {
-                let x = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
-                let y = evaluate(&args[1], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
+        PreparedExpression::Call { intrinsic, args } => match intrinsic {
+            Intrinsic::Vec2 => {
+                let x = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).scalar();
+                let y = evaluate(&args[1], parameters, private_state, locals, observation, neighbour).scalar();
                 Value::Vec2(Vec2::new(x, y))
             }
-            "dot" => {
-                let left = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).vec2();
-                let right = evaluate(&args[1], parameters, state_slots, private_state, locals, observation, loop_binding).vec2();
+            Intrinsic::Dot => {
+                let left = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).vec2();
+                let right = evaluate(&args[1], parameters, private_state, locals, observation, neighbour).vec2();
                 Value::Scalar(left.dot(right))
             }
-            "perpendicular" => {
-                let value = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).vec2();
+            Intrinsic::Perpendicular => {
+                let value = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).vec2();
                 Value::Vec2(Vec2::new(-value.y, value.x))
             }
-            "norm" => {
-                let value = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).vec2();
+            Intrinsic::Norm => {
+                let value = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).vec2();
                 Value::Scalar(value.norm_squared().sqrt())
             }
-            "pow" => {
-                let base = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
-                let exponent = evaluate(&args[1], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
+            Intrinsic::Pow => {
+                let base = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).scalar();
+                let exponent = evaluate(&args[1], parameters, private_state, locals, observation, neighbour).scalar();
                 Value::Scalar(base.powf(exponent))
             }
-            "Motion" => {
-                let forward = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
-                let turning = evaluate(&args[1], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
+            Intrinsic::Motion => {
+                let forward = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).scalar();
+                let turning = evaluate(&args[1], parameters, private_state, locals, observation, neighbour).scalar();
                 Value::Action(Action { forward, turning })
             }
-            _ => unreachable!("validated controller call"),
         },
     }
 }
 
+fn assign(target: PreparedTarget, value: Value, private_state: &mut [f64], locals: &mut [Value]) {
+    match target {
+        PreparedTarget::PrivateState(slot) => private_state[slot] = value.scalar(),
+        PreparedTarget::Local(slot) => locals[slot] = value,
+    }
+}
+
 fn execute_statements(
-    body: &[Statement],
-    parameters: &HashMap<String, f64>,
-    state_slots: &HashMap<String, usize>,
+    body: &[PreparedStatement],
+    parameters: &[f64],
     private_state: &mut [f64],
-    locals: &mut HashMap<String, Value>,
+    locals: &mut [Value],
     observation: &Observation,
-    loop_binding: Option<(&str, &NeighbourObservation)>,
+    neighbour: Option<&NeighbourObservation>,
 ) -> Option<Action> {
     for statement in body {
         match statement {
-            Statement::Assign { target, value, .. } => {
-                let result = evaluate(value, parameters, state_slots, private_state, locals, observation, loop_binding);
-                if let Some(name) = target.strip_prefix("self.") {
-                    private_state[state_slots[name]] = result.scalar();
-                } else if let Some(slot) = locals.get_mut(target) {
-                    *slot = result;
-                } else {
-                    locals.insert(target.clone(), result);
+            PreparedStatement::Assign { target, value } => {
+                let result = evaluate(value, parameters, private_state, locals, observation, neighbour);
+                assign(*target, result, private_state, locals);
+            }
+            PreparedStatement::AugAssign { target, value } => {
+                let right = evaluate(value, parameters, private_state, locals, observation, neighbour);
+                match target {
+                    PreparedTarget::PrivateState(slot) => private_state[*slot] += right.scalar(),
+                    PreparedTarget::Local(slot) => locals[*slot] = binary(BinaryOp::Add, locals[*slot], right),
                 }
             }
-            Statement::AugAssign { target, value, .. } => {
-                let right = evaluate(value, parameters, state_slots, private_state, locals, observation, loop_binding);
-                if let Some(name) = target.strip_prefix("self.") {
-                    let slot = state_slots[name];
-                    private_state[slot] += right.scalar();
-                } else {
-                    let left = locals[target];
-                    *locals.get_mut(target).expect("validated local slot") = binary("+", left, right);
-                }
-            }
-            Statement::ForEach { variable, body, .. } => {
-                for neighbour in &observation.neighbours {
+            PreparedStatement::ForEachNeighbour { body } => {
+                for current in &observation.neighbours {
                     if let Some(action) = execute_statements(
-                        body, parameters, state_slots, private_state, locals, observation, Some((variable, neighbour)),
+                        body, parameters, private_state, locals, observation, Some(current),
                     ) { return Some(action); }
                 }
             }
-            Statement::Return { value, .. } => {
-                return Some(evaluate(value, parameters, state_slots, private_state, locals, observation, loop_binding).action());
+            PreparedStatement::Return { value } => {
+                return Some(evaluate(value, parameters, private_state, locals, observation, neighbour).action());
             }
         }
     }
@@ -322,12 +443,11 @@ fn execute_statements(
 }
 
 pub struct IrControllerRuntime {
-    body: Vec<Statement>,
-    parameters: HashMap<String, f64>,
-    state_slots: HashMap<String, usize>,
+    body: Vec<PreparedStatement>,
+    parameters: Vec<f64>,
     private_initial: Vec<f64>,
     private_state: Vec<Vec<f64>>,
-    scratch_locals: HashMap<String, Value>,
+    scratch_locals: Vec<Value>,
 }
 
 impl IrControllerRuntime {
@@ -339,12 +459,14 @@ impl IrControllerRuntime {
 
         let supplied: BTreeMap<String, f64> = serde_json::from_str(parameters_json)
             .map_err(|error| format!("invalid controller parameter JSON: {error}"))?;
-        let mut parameters = HashMap::new();
+        let mut parameter_slots = HashMap::new();
+        let mut parameters = Vec::with_capacity(ir.parameters.len());
         for (name, value_type) in &ir.parameters {
             if value_type != "scalar" { return Err(format!("parameter '{name}' must be scalar")); }
             let value = supplied.get(name).copied().ok_or_else(|| format!("missing controller parameter '{name}'"))?;
             if !value.is_finite() { return Err(format!("controller parameter '{name}' must be finite")); }
-            parameters.insert(name.clone(), value);
+            parameter_slots.insert(name.clone(), parameters.len());
+            parameters.push(value);
         }
         for name in supplied.keys() {
             if !ir.parameters.contains_key(name) { return Err(format!("parameter value '{name}' was supplied but is not declared by the controller")); }
@@ -363,21 +485,22 @@ impl IrControllerRuntime {
 
         let parameter_names: HashSet<_> = ir.parameters.keys().cloned().collect();
         let state_names: HashSet<_> = state_slots.keys().cloned().collect();
-        let mut locals = HashSet::new();
-        if !validate_statements(&ir.body, &parameter_names, &state_names, &mut locals, None)? {
+        let mut validated_locals = HashSet::new();
+        if !validate_statements(&ir.body, &parameter_names, &state_names, &mut validated_locals, None)? {
             return Err("controller IR has no action return".to_owned());
         }
-        let scratch_locals = locals.into_iter()
-            .map(|name| (name, Value::Scalar(f64::NAN)))
-            .collect();
+
+        let mut local_names = BTreeSet::new();
+        collect_local_names(&ir.body, &mut local_names);
+        let local_slots: HashMap<_, _> = local_names.into_iter().enumerate().map(|(slot, name)| (name, slot)).collect();
+        let body = prepare_statements(&ir.body, &parameter_slots, &state_slots, &local_slots, None)?;
 
         Ok(Self {
-            body: ir.body,
+            body,
             parameters,
-            state_slots,
             private_initial,
             private_state: Vec::new(),
-            scratch_locals,
+            scratch_locals: vec![Value::Scalar(f64::NAN); local_slots.len()],
         })
     }
 }
@@ -385,15 +508,14 @@ impl IrControllerRuntime {
 impl ControllerRuntime for IrControllerRuntime {
     fn reset(&mut self, agent_count: usize) {
         self.private_state = vec![self.private_initial.clone(); agent_count];
-        for value in self.scratch_locals.values_mut() { *value = Value::Scalar(f64::NAN); }
+        self.scratch_locals.fill(Value::Scalar(f64::NAN));
     }
 
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action {
-        for value in self.scratch_locals.values_mut() { *value = Value::Scalar(f64::NAN); }
+        self.scratch_locals.fill(Value::Scalar(f64::NAN));
         execute_statements(
             &self.body,
             &self.parameters,
-            &self.state_slots,
             &mut self.private_state[agent_index],
             &mut self.scratch_locals,
             observation,
@@ -464,6 +586,36 @@ mod tests {
         assert_eq!(runtime.step(1, &observation).forward, 1.0);
         runtime.reset(2);
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
+    }
+
+    #[test]
+    fn prepared_slots_cover_locals_parameters_state_and_neighbour_binding() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Slots","entry":"step",
+          "parameters":{"GAIN":"scalar"},"state":[{"name":"counter","type":"scalar","initial":1.0}],
+          "body":[
+            {"kind":"assign","target":"sum","value":{"kind":"const","value":0.0}},
+            {"kind":"for_each","variable":"n","iterable":{"kind":"load","path":"obs.neighbours"},"body":[
+              {"kind":"aug_assign","target":"sum","op":"+","value":{"kind":"call","name":"norm","args":[{"kind":"load","path":"n.relative_position"}]}}
+            ]},
+            {"kind":"aug_assign","target":"self.counter","op":"+","value":{"kind":"const","value":1.0}},
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"binary","op":"+","left":{"kind":"binary","op":"*","left":{"kind":"load","path":"sum"},"right":{"kind":"load","path":"GAIN"}},"right":{"kind":"load","path":"self.counter"}},
+              {"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, r#"{"GAIN":2.0}"#);
+        runtime.reset(1);
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![
+                NeighbourObservation { relative_position: Vec2::new(3.0, 4.0) },
+                NeighbourObservation { relative_position: Vec2::new(0.0, 2.0) },
+            ],
+        };
+        assert_eq!(runtime.step(0, &observation).forward, 16.0);
+        assert_eq!(runtime.step(0, &Observation { heading: observation.heading, neighbours: vec![] }).forward, 3.0);
     }
 
     #[test]
