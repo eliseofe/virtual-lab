@@ -146,8 +146,7 @@ fn validate_statements(
                 if op != "+" { return Err(at_line(*line, format!("unsupported augmented operator '{op}'"))); }
                 validate_expression(value, parameters, state, locals, loop_variable)?;
                 if let Some(name) = target.strip_prefix("self.") {
-                    if !state.contains(name) { return Err(at_line(*line, format!("private state '{name}' is not declared")));
-                    }
+                    if !state.contains(name) { return Err(at_line(*line, format!("private state '{name}' is not declared"))); }
                 } else if !locals.contains(target) {
                     return Err(at_line(*line, format!("local '{target}' must be assigned before '+='")));
                 }
@@ -197,13 +196,19 @@ enum PreparedLoad {
     Local(usize),
 }
 
-#[derive(Debug)]
-enum PreparedExpression {
+#[derive(Debug, Clone, Copy)]
+enum EvalOp {
     Const(f64),
     Load(PreparedLoad),
-    Negate(Box<PreparedExpression>),
-    Binary { op: BinaryOp, left: Box<PreparedExpression>, right: Box<PreparedExpression> },
-    Call { intrinsic: Intrinsic, args: Vec<PreparedExpression> },
+    Negate,
+    Binary(BinaryOp),
+    Intrinsic(Intrinsic),
+}
+
+#[derive(Debug)]
+struct PreparedExpression {
+    ops: Vec<EvalOp>,
+    stack_capacity: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -217,43 +222,74 @@ enum PreparedStatement {
     Return { value: PreparedExpression },
 }
 
-fn prepare_expression(
+fn resolve_load(
+    path: &str,
+    line: Option<usize>,
+    parameter_slots: &HashMap<String, usize>,
+    state_slots: &HashMap<String, usize>,
+    local_slots: &HashMap<String, usize>,
+    loop_variable: Option<&str>,
+) -> Result<PreparedLoad, String> {
+    if path == "obs.heading" {
+        return Ok(PreparedLoad::Heading);
+    }
+    if let Some(name) = path.strip_prefix("self.") {
+        return Ok(PreparedLoad::PrivateState(*state_slots.get(name)
+            .ok_or_else(|| at_line(line, "validated private state slot missing"))?));
+    }
+    if let Some(variable) = loop_variable {
+        if path.strip_prefix(variable) == Some(".relative_position") {
+            return Ok(PreparedLoad::NeighbourRelativePosition);
+        }
+    }
+    if let Some(slot) = local_slots.get(path) {
+        return Ok(PreparedLoad::Local(*slot));
+    }
+    if let Some(slot) = parameter_slots.get(path) {
+        return Ok(PreparedLoad::Parameter(*slot));
+    }
+    Err(at_line(line, "validated controller load could not be prepared"))
+}
+
+fn emit_expression(
     expression: &Expression,
     parameter_slots: &HashMap<String, usize>,
     state_slots: &HashMap<String, usize>,
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
-) -> Result<PreparedExpression, String> {
-    Ok(match expression {
-        Expression::Const { value, .. } => PreparedExpression::Const(*value),
-        Expression::Load { path, line } => {
-            let load = if path == "obs.heading" {
-                PreparedLoad::Heading
-            } else if let Some(name) = path.strip_prefix("self.") {
-                PreparedLoad::PrivateState(*state_slots.get(name).ok_or_else(|| at_line(*line, "validated private state slot missing"))?)
-            } else if let Some(variable) = loop_variable {
-                if path.strip_prefix(variable) == Some(".relative_position") {
-                    PreparedLoad::NeighbourRelativePosition
-                } else if let Some(slot) = local_slots.get(path) {
-                    PreparedLoad::Local(*slot)
-                } else if let Some(slot) = parameter_slots.get(path) {
-                    PreparedLoad::Parameter(*slot)
-                } else {
-                    return Err(at_line(*line, "validated controller load could not be prepared"));
-                }
-            } else if let Some(slot) = local_slots.get(path) {
-                PreparedLoad::Local(*slot)
-            } else if let Some(slot) = parameter_slots.get(path) {
-                PreparedLoad::Parameter(*slot)
-            } else {
-                return Err(at_line(*line, "validated controller load could not be prepared"));
-            };
-            PreparedExpression::Load(load)
+    ops: &mut Vec<EvalOp>,
+    depth: &mut usize,
+    max_depth: &mut usize,
+) -> Result<(), String> {
+    match expression {
+        Expression::Const { value, .. } => {
+            ops.push(EvalOp::Const(*value));
+            *depth += 1;
+            *max_depth = (*max_depth).max(*depth);
         }
-        Expression::Unary { value, .. } => PreparedExpression::Negate(Box::new(prepare_expression(
-            value, parameter_slots, state_slots, local_slots, loop_variable,
-        )?)),
+        Expression::Load { path, line } => {
+            ops.push(EvalOp::Load(resolve_load(
+                path, *line, parameter_slots, state_slots, local_slots, loop_variable,
+            )?));
+            *depth += 1;
+            *max_depth = (*max_depth).max(*depth);
+        }
+        Expression::Unary { value, .. } => {
+            emit_expression(
+                value, parameter_slots, state_slots, local_slots, loop_variable,
+                ops, depth, max_depth,
+            )?;
+            ops.push(EvalOp::Negate);
+        }
         Expression::Binary { op, left, right, .. } => {
+            emit_expression(
+                left, parameter_slots, state_slots, local_slots, loop_variable,
+                ops, depth, max_depth,
+            )?;
+            emit_expression(
+                right, parameter_slots, state_slots, local_slots, loop_variable,
+                ops, depth, max_depth,
+            )?;
             let op = match op.as_str() {
                 "+" => BinaryOp::Add,
                 "-" => BinaryOp::Subtract,
@@ -261,13 +297,16 @@ fn prepare_expression(
                 "/" => BinaryOp::Divide,
                 _ => unreachable!("validated binary operator"),
             };
-            PreparedExpression::Binary {
-                op,
-                left: Box::new(prepare_expression(left, parameter_slots, state_slots, local_slots, loop_variable)?),
-                right: Box::new(prepare_expression(right, parameter_slots, state_slots, local_slots, loop_variable)?),
-            }
+            ops.push(EvalOp::Binary(op));
+            *depth -= 1;
         }
         Expression::Call { name, args, .. } => {
+            for arg in args {
+                emit_expression(
+                    arg, parameter_slots, state_slots, local_slots, loop_variable,
+                    ops, depth, max_depth,
+                )?;
+            }
             let intrinsic = match name.as_str() {
                 "Vec2" => Intrinsic::Vec2,
                 "dot" => Intrinsic::Dot,
@@ -277,14 +316,29 @@ fn prepare_expression(
                 "Motion" => Intrinsic::Motion,
                 _ => unreachable!("validated intrinsic"),
             };
-            PreparedExpression::Call {
-                intrinsic,
-                args: args.iter().map(|arg| prepare_expression(
-                    arg, parameter_slots, state_slots, local_slots, loop_variable,
-                )).collect::<Result<Vec<_>, _>>()?,
-            }
+            ops.push(EvalOp::Intrinsic(intrinsic));
+            *depth -= args.len() - 1;
         }
-    })
+    }
+    Ok(())
+}
+
+fn prepare_expression(
+    expression: &Expression,
+    parameter_slots: &HashMap<String, usize>,
+    state_slots: &HashMap<String, usize>,
+    local_slots: &HashMap<String, usize>,
+    loop_variable: Option<&str>,
+) -> Result<PreparedExpression, String> {
+    let mut ops = Vec::new();
+    let mut depth = 0;
+    let mut max_depth = 0;
+    emit_expression(
+        expression, parameter_slots, state_slots, local_slots, loop_variable,
+        &mut ops, &mut depth, &mut max_depth,
+    )?;
+    debug_assert_eq!(depth, 1);
+    Ok(PreparedExpression { ops, stack_capacity: max_depth })
 }
 
 fn prepare_target(
@@ -339,6 +393,59 @@ fn binary(op: BinaryOp, left: Value, right: Value) -> Value {
     }
 }
 
+fn push_load(
+    load: PreparedLoad,
+    parameters: &[f64],
+    private_state: &[f64],
+    locals: &[Value],
+    observation: &Observation,
+    neighbour: Option<&NeighbourObservation>,
+    stack: &mut Vec<Value>,
+) {
+    stack.push(match load {
+        PreparedLoad::Heading => Value::Vec2(observation.heading),
+        PreparedLoad::NeighbourRelativePosition => {
+            Value::Vec2(neighbour.expect("prepared neighbour load inside loop").relative_position)
+        }
+        PreparedLoad::Parameter(slot) => Value::Scalar(parameters[slot]),
+        PreparedLoad::PrivateState(slot) => Value::Scalar(private_state[slot]),
+        PreparedLoad::Local(slot) => locals[slot],
+    });
+}
+
+fn execute_intrinsic(intrinsic: Intrinsic, stack: &mut Vec<Value>) {
+    match intrinsic {
+        Intrinsic::Vec2 => {
+            let y = stack.pop().expect("validated Vec2 y").scalar();
+            let x = stack.pop().expect("validated Vec2 x").scalar();
+            stack.push(Value::Vec2(Vec2::new(x, y)));
+        }
+        Intrinsic::Dot => {
+            let right = stack.pop().expect("validated dot right").vec2();
+            let left = stack.pop().expect("validated dot left").vec2();
+            stack.push(Value::Scalar(left.dot(right)));
+        }
+        Intrinsic::Perpendicular => {
+            let value = stack.pop().expect("validated perpendicular value").vec2();
+            stack.push(Value::Vec2(Vec2::new(-value.y, value.x)));
+        }
+        Intrinsic::Norm => {
+            let value = stack.pop().expect("validated norm value").vec2();
+            stack.push(Value::Scalar(value.norm_squared().sqrt()));
+        }
+        Intrinsic::Pow => {
+            let exponent = stack.pop().expect("validated pow exponent").scalar();
+            let base = stack.pop().expect("validated pow base").scalar();
+            stack.push(Value::Scalar(base.powf(exponent)));
+        }
+        Intrinsic::Motion => {
+            let turning = stack.pop().expect("validated Motion turning").scalar();
+            let forward = stack.pop().expect("validated Motion forward").scalar();
+            stack.push(Value::Action(Action { forward, turning }));
+        }
+    }
+}
+
 fn evaluate(
     expression: &PreparedExpression,
     parameters: &[f64],
@@ -346,57 +453,43 @@ fn evaluate(
     locals: &[Value],
     observation: &Observation,
     neighbour: Option<&NeighbourObservation>,
+    stack: &mut Vec<Value>,
 ) -> Value {
-    match expression {
-        PreparedExpression::Const(value) => Value::Scalar(*value),
-        PreparedExpression::Load(load) => match load {
-            PreparedLoad::Heading => Value::Vec2(observation.heading),
-            PreparedLoad::NeighbourRelativePosition => Value::Vec2(neighbour.expect("prepared neighbour load inside loop").relative_position),
-            PreparedLoad::Parameter(slot) => Value::Scalar(parameters[*slot]),
-            PreparedLoad::PrivateState(slot) => Value::Scalar(private_state[*slot]),
-            PreparedLoad::Local(slot) => locals[*slot],
-        },
-        PreparedExpression::Negate(value) => match evaluate(value, parameters, private_state, locals, observation, neighbour) {
-            Value::Scalar(value) => Value::Scalar(-value),
-            Value::Vec2(value) => Value::Vec2(value * -1.0),
-            Value::Action(_) => unreachable!("cannot negate action"),
-        },
-        PreparedExpression::Binary { op, left, right } => binary(
-            *op,
-            evaluate(left, parameters, private_state, locals, observation, neighbour),
-            evaluate(right, parameters, private_state, locals, observation, neighbour),
-        ),
-        PreparedExpression::Call { intrinsic, args } => match intrinsic {
-            Intrinsic::Vec2 => {
-                let x = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).scalar();
-                let y = evaluate(&args[1], parameters, private_state, locals, observation, neighbour).scalar();
-                Value::Vec2(Vec2::new(x, y))
+    stack.clear();
+    debug_assert!(stack.capacity() >= expression.stack_capacity);
+    for op in &expression.ops {
+        match *op {
+            EvalOp::Const(value) => stack.push(Value::Scalar(value)),
+            EvalOp::Load(load) => {
+                push_load(load, parameters, private_state, locals, observation, neighbour, stack);
             }
-            Intrinsic::Dot => {
-                let left = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).vec2();
-                let right = evaluate(&args[1], parameters, private_state, locals, observation, neighbour).vec2();
-                Value::Scalar(left.dot(right))
+            EvalOp::Negate => {
+                let value = stack.pop().expect("validated unary operand");
+                stack.push(match value {
+                    Value::Scalar(value) => Value::Scalar(-value),
+                    Value::Vec2(value) => Value::Vec2(value * -1.0),
+                    Value::Action(_) => unreachable!("cannot negate action"),
+                });
             }
-            Intrinsic::Perpendicular => {
-                let value = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).vec2();
-                Value::Vec2(Vec2::new(-value.y, value.x))
+            EvalOp::Binary(op) => {
+                let right = stack.pop().expect("validated binary right");
+                let left = stack.pop().expect("validated binary left");
+                stack.push(binary(op, left, right));
             }
-            Intrinsic::Norm => {
-                let value = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).vec2();
-                Value::Scalar(value.norm_squared().sqrt())
-            }
-            Intrinsic::Pow => {
-                let base = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).scalar();
-                let exponent = evaluate(&args[1], parameters, private_state, locals, observation, neighbour).scalar();
-                Value::Scalar(base.powf(exponent))
-            }
-            Intrinsic::Motion => {
-                let forward = evaluate(&args[0], parameters, private_state, locals, observation, neighbour).scalar();
-                let turning = evaluate(&args[1], parameters, private_state, locals, observation, neighbour).scalar();
-                Value::Action(Action { forward, turning })
-            }
-        },
+            EvalOp::Intrinsic(intrinsic) => execute_intrinsic(intrinsic, stack),
+        }
     }
+    debug_assert_eq!(stack.len(), 1);
+    stack.pop().expect("validated expression result")
+}
+
+fn max_stack_in_statements(body: &[PreparedStatement]) -> usize {
+    body.iter().map(|statement| match statement {
+        PreparedStatement::Assign { value, .. }
+        | PreparedStatement::AugAssign { value, .. }
+        | PreparedStatement::Return { value } => value.stack_capacity,
+        PreparedStatement::ForEachNeighbour { body } => max_stack_in_statements(body),
+    }).max().unwrap_or(0)
 }
 
 fn assign(target: PreparedTarget, value: Value, private_state: &mut [f64], locals: &mut [Value]) {
@@ -413,15 +506,20 @@ fn execute_statements(
     locals: &mut [Value],
     observation: &Observation,
     neighbour: Option<&NeighbourObservation>,
+    eval_stack: &mut Vec<Value>,
 ) -> Option<Action> {
     for statement in body {
         match statement {
             PreparedStatement::Assign { target, value } => {
-                let result = evaluate(value, parameters, private_state, locals, observation, neighbour);
+                let result = evaluate(
+                    value, parameters, private_state, locals, observation, neighbour, eval_stack,
+                );
                 assign(*target, result, private_state, locals);
             }
             PreparedStatement::AugAssign { target, value } => {
-                let right = evaluate(value, parameters, private_state, locals, observation, neighbour);
+                let right = evaluate(
+                    value, parameters, private_state, locals, observation, neighbour, eval_stack,
+                );
                 match target {
                     PreparedTarget::PrivateState(slot) => private_state[*slot] += right.scalar(),
                     PreparedTarget::Local(slot) => locals[*slot] = binary(BinaryOp::Add, locals[*slot], right),
@@ -430,12 +528,14 @@ fn execute_statements(
             PreparedStatement::ForEachNeighbour { body } => {
                 for current in &observation.neighbours {
                     if let Some(action) = execute_statements(
-                        body, parameters, private_state, locals, observation, Some(current),
+                        body, parameters, private_state, locals, observation, Some(current), eval_stack,
                     ) { return Some(action); }
                 }
             }
             PreparedStatement::Return { value } => {
-                return Some(evaluate(value, parameters, private_state, locals, observation, neighbour).action());
+                return Some(evaluate(
+                    value, parameters, private_state, locals, observation, neighbour, eval_stack,
+                ).action());
             }
         }
     }
@@ -448,6 +548,7 @@ pub struct IrControllerRuntime {
     private_initial: Vec<f64>,
     private_state: Vec<Vec<f64>>,
     scratch_locals: Vec<Value>,
+    scratch_eval_stack: Vec<Value>,
 }
 
 impl IrControllerRuntime {
@@ -494,6 +595,7 @@ impl IrControllerRuntime {
         collect_local_names(&ir.body, &mut local_names);
         let local_slots: HashMap<_, _> = local_names.into_iter().enumerate().map(|(slot, name)| (name, slot)).collect();
         let body = prepare_statements(&ir.body, &parameter_slots, &state_slots, &local_slots, None)?;
+        let eval_stack_capacity = max_stack_in_statements(&body).max(1);
 
         Ok(Self {
             body,
@@ -501,6 +603,7 @@ impl IrControllerRuntime {
             private_initial,
             private_state: Vec::new(),
             scratch_locals: vec![Value::Scalar(f64::NAN); local_slots.len()],
+            scratch_eval_stack: Vec::with_capacity(eval_stack_capacity),
         })
     }
 }
@@ -509,10 +612,12 @@ impl ControllerRuntime for IrControllerRuntime {
     fn reset(&mut self, agent_count: usize) {
         self.private_state = vec![self.private_initial.clone(); agent_count];
         self.scratch_locals.fill(Value::Scalar(f64::NAN));
+        self.scratch_eval_stack.clear();
     }
 
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action {
         self.scratch_locals.fill(Value::Scalar(f64::NAN));
+        self.scratch_eval_stack.clear();
         execute_statements(
             &self.body,
             &self.parameters,
@@ -520,6 +625,7 @@ impl ControllerRuntime for IrControllerRuntime {
             &mut self.scratch_locals,
             observation,
             None,
+            &mut self.scratch_eval_stack,
         ).expect("validated controller always returns an action")
     }
 }
@@ -616,6 +722,26 @@ mod tests {
         };
         assert_eq!(runtime.step(0, &observation).forward, 16.0);
         assert_eq!(runtime.step(0, &Observation { heading: observation.heading, neighbours: vec![] }).forward, 3.0);
+    }
+
+    #[test]
+    fn stack_bytecode_preserves_nested_left_to_right_expression_order() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Order","entry":"step",
+          "parameters":{},"state":[],
+          "body":[
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"binary","op":"/",
+                "left":{"kind":"binary","op":"/","left":{"kind":"const","value":8.0},"right":{"kind":"const","value":4.0}},
+                "right":{"kind":"const","value":2.0}},
+              {"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, "{}");
+        runtime.reset(1);
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![] };
+        assert_eq!(runtime.step(0, &observation).forward, 1.0);
     }
 
     #[test]
