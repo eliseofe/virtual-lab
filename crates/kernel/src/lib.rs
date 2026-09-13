@@ -176,6 +176,28 @@ impl NeighbourIndex for BruteForceNeighbourIndex {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct LocalObservationModel;
+impl LocalObservationModel {
+    fn observe_into(
+        &self,
+        state: &[AgentPhysicalState],
+        agent_index: usize,
+        neighbours: &dyn NeighbourIndex,
+        radius: f64,
+        arena_size: f64,
+        bearing_noise: f64,
+        neighbour_indices: &mut Vec<usize>,
+        out: &mut Observation,
+    ) {
+        neighbours.query(state, agent_index, radius, arena_size, neighbour_indices);
+        let origin = state[agent_index].position;
+        out.heading = state[agent_index].heading();
+        out.neighbours.clear();
+        for &index in neighbour_indices.iter() {
+            let relative = minimum_image(state[index].position - origin, arena_size).rotate(bearing_noise);
+            out.neighbours.push(NeighbourObservation { relative_position: relative });
+        }
+    }
+}
 impl ObservationModel for LocalObservationModel {
     fn observe(
         &self,
@@ -186,16 +208,19 @@ impl ObservationModel for LocalObservationModel {
         arena_size: f64,
         bearing_noise: f64,
     ) -> Observation {
-        let mut indices = Vec::new();
-        neighbours.query(state, agent_index, radius, arena_size, &mut indices);
-        let origin = state[agent_index].position;
-        Observation {
-            heading: state[agent_index].heading(),
-            neighbours: indices.into_iter().map(|index| {
-                let relative = minimum_image(state[index].position - origin, arena_size).rotate(bearing_noise);
-                NeighbourObservation { relative_position: relative }
-            }).collect(),
-        }
+        let mut neighbour_indices = Vec::new();
+        let mut observation = Observation { heading: Vec2::ZERO, neighbours: Vec::new() };
+        self.observe_into(
+            state,
+            agent_index,
+            neighbours,
+            radius,
+            arena_size,
+            bearing_noise,
+            &mut neighbour_indices,
+            &mut observation,
+        );
+        observation
     }
 }
 
@@ -295,6 +320,8 @@ pub struct Simulation<C: ControllerRuntime> {
     physics: KinematicPhysics,
     observation_model: LocalObservationModel,
     neighbour_index: PeriodicGridNeighbourIndex,
+    observation_scratch: Observation,
+    neighbour_indices_scratch: Vec<usize>,
     controller: C,
     rng: DeterministicRng,
     metrics: Vec<Box<dyn MetricRuntime>>,
@@ -320,6 +347,8 @@ impl<C: ControllerRuntime> Simulation<C> {
             physics: KinematicPhysics,
             observation_model: LocalObservationModel,
             neighbour_index: PeriodicGridNeighbourIndex::default(),
+            observation_scratch: Observation { heading: Vec2::ZERO, neighbours: Vec::new() },
+            neighbour_indices_scratch: Vec::new(),
             controller,
             rng,
             metrics: Vec::new(),
@@ -348,6 +377,9 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.physics_ticks = 0;
         self.control_updates = 0;
         self.rng = DeterministicRng::new(self.config.seed);
+        self.observation_scratch.heading = Vec2::ZERO;
+        self.observation_scratch.neighbours.clear();
+        self.neighbour_indices_scratch.clear();
         self.controller.reset(self.state.len());
         for metric in &mut self.metrics { metric.reset(); }
     }
@@ -357,21 +389,19 @@ impl<C: ControllerRuntime> Simulation<C> {
             if self.physics_ticks % self.control_stride == 0 {
                 self.neighbour_index.rebuild(&self.state, self.config.arena_size);
                 let noise_scale = self.config.sensor_noise * TAU;
-                let noise_angles: Vec<f64> = (0..self.state.len())
-                    .map(|_| self.rng.signed() * noise_scale)
-                    .collect();
-                let observations: Vec<_> = (0..self.state.len()).map(|agent_index| {
-                    self.observation_model.observe(
+                for agent_index in 0..self.state.len() {
+                    let bearing_noise = self.rng.signed() * noise_scale;
+                    self.observation_model.observe_into(
                         &self.state,
                         agent_index,
                         &self.neighbour_index,
                         self.config.interaction_radius,
                         self.config.arena_size,
-                        noise_angles[agent_index],
-                    )
-                }).collect();
-                for (agent_index, observation) in observations.iter().enumerate() {
-                    let raw = self.controller.step(agent_index, observation);
+                        bearing_noise,
+                        &mut self.neighbour_indices_scratch,
+                        &mut self.observation_scratch,
+                    );
+                    let raw = self.controller.step(agent_index, &self.observation_scratch);
                     self.actuators[agent_index] = Action {
                         forward: raw.forward.clamp(-self.config.max_forward_speed, self.config.max_forward_speed),
                         turning: raw.turning.clamp(-self.config.max_angular_speed, self.config.max_angular_speed),
@@ -590,6 +620,27 @@ mod tests {
         assert_eq!(out, vec![1]);
         let observation = LocalObservationModel.observe(&state, 0, &BruteForceNeighbourIndex, 0.5, 10.0, 0.0);
         assert!((observation.neighbours[0].relative_position.x + 0.2).abs() < 1e-12);
+    }
+
+    #[test]
+    fn reusable_observation_path_matches_owned_observation() {
+        let state = vec![
+            AgentPhysicalState { position: Vec2::new(-4.9, 0.0), heading_angle: 0.3 },
+            AgentPhysicalState { position: Vec2::new(4.9, 0.0), heading_angle: 1.0 },
+            AgentPhysicalState { position: Vec2::new(-4.7, 0.2), heading_angle: 2.0 },
+        ];
+        let mut grid = PeriodicGridNeighbourIndex::default();
+        grid.rebuild(&state, 10.0);
+        let expected = LocalObservationModel.observe(&state, 0, &grid, 0.5, 10.0, 0.17);
+        let mut indices = vec![999];
+        let mut actual = Observation {
+            heading: Vec2::new(99.0, 99.0),
+            neighbours: vec![NeighbourObservation { relative_position: Vec2::new(99.0, 99.0) }],
+        };
+        LocalObservationModel.observe_into(&state, 0, &grid, 0.5, 10.0, 0.17, &mut indices, &mut actual);
+        assert_eq!(actual, expected);
+        LocalObservationModel.observe_into(&state, 1, &grid, 0.5, 10.0, -0.23, &mut indices, &mut actual);
+        assert_eq!(actual, LocalObservationModel.observe(&state, 1, &grid, 0.5, 10.0, -0.23));
     }
 
     struct ConstantController { action: Action }
