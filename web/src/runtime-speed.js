@@ -54,6 +54,6 @@ resetMeasurement();
 
 // Registry integration is additive. A CDN/auth outage must not block the core
 // simulator or its runtime-speed controls from starting.
-import("./registry-ui-v2.js").catch((error) => {
+import("./registry-ui-v3.js").catch((error) => {
   console.error("Registry UI failed to load:", error);
 });
