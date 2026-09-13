@@ -80,7 +80,7 @@ test("production runnability preflight accepts a generic valid experiment and re
 });
 
 test("production registry read path remains ownership-scoped, session-isolated and runnable-only", async () => {
-  const registryUi = await readFile(path.join(src, "registry-ui-v2.js"), "utf8");
+  const registryUi = await readFile(path.join(src, "registry-ui-v3.js"), "utf8");
   assert.match(registryUi, /storageKey: "vlab-production-registry-auth-v1"/);
   assert.match(registryUi, /\.from\("experiments"\)/);
   assert.match(registryUi, /\.eq\("owner_id", user\.id\)/);
@@ -88,20 +88,20 @@ test("production registry read path remains ownership-scoped, session-isolated a
   assert.match(registryUi, /config_source,initializer_source,controller_source/);
   assert.match(registryUi, /productionExperimentRunnability\(experiment\)\.runnable/);
   assert.match(registryUi, /async function readExperiment/);
-  assert.match(registryUi, /Experiment not found for this account/);
+  assert.match(registryUi, /Experiment not found in your library/);
 });
 
-test("post-login registry UI hides login controls and exposes the account-owned experiment browser", async () => {
-  const registryUi = await readFile(path.join(src, "registry-ui-v2.js"), "utf8");
+test("post-login registry UI hides login controls and exposes the account-owned experiment library", async () => {
+  const registryUi = await readFile(path.join(src, "registry-ui-v3.js"), "utf8");
   assert.match(registryUi, /ui\.auth\.hidden = true/);
   assert.match(registryUi, /ui\.signOut\.hidden = false/);
-  assert.match(registryUi, /Browse experiments/);
+  assert.match(registryUi, /Browse library/);
   assert.match(registryUi, /My experiments/);
 });
 
 test("registry bootstrap is additive and cannot block the core simulator runtime-speed module", async () => {
   const runtimeSpeed = await readFile(path.join(src, "runtime-speed.js"), "utf8");
-  assert.doesNotMatch(runtimeSpeed, /^import "\.\/registry-ui-v2\.js";/);
-  assert.match(runtimeSpeed, /import\("\.\/registry-ui-v2\.js"\)\.catch/);
+  assert.doesNotMatch(runtimeSpeed, /^import "\.\/registry-ui-v3\.js";/);
+  assert.match(runtimeSpeed, /import\("\.\/registry-ui-v3\.js"\)\.catch/);
   assert.match(runtimeSpeed, /Registry UI failed to load/);
 });
