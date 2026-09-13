@@ -11,8 +11,6 @@ import {
 // Simulator-owned implementation settings. These are deliberately not part of
 // the student experiment parameter namespace.
 const INTERNAL_SEED = 2026;
-const INTERNAL_PHYSICS_DT = RUNTIME_CONTRACT.simulator_constants.PHYSICS_DT;
-const RUNTIME_INTERVAL_MS = 50;
 
 const defaultConfigSource = `# EXPERIMENT SETUP
 # Number of agents.
@@ -135,7 +133,6 @@ ui.source.value = referenceSource;
 let wasmReady = false;
 let initialized = false;
 let running = false;
-let advancePending = false;
 let latestState = [];
 let activeArenaSize = 10.0;
 let activeSeed = INTERNAL_SEED;
@@ -145,7 +142,6 @@ let appliedInitializerSource = defaultInitializerSource;
 let appliedController = null;
 let pendingSetup = null;
 let pendingController = null;
-let runTimer = null;
 
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 
@@ -214,11 +210,6 @@ function runtimeSpeed() {
   return Number.isFinite(speed) && speed > 0 ? speed : 1;
 }
 
-function ticksPerAdvance() {
-  const wallSecondsPerRequest = RUNTIME_INTERVAL_MS / 1000;
-  return Math.max(1, Math.round((wallSecondsPerRequest * runtimeSpeed()) / INTERNAL_PHYSICS_DT));
-}
-
 function updateSpeedLabel() {
   ui.speedValue.textContent = `${runtimeSpeed()}×`;
 }
@@ -235,18 +226,20 @@ function randomSeedDifferentFromCurrent() {
   return next;
 }
 
-function setRunning(next) {
-  running = next;
+function setRunning(next, { notifyWorker = true } = {}) {
+  running = Boolean(next);
   ui.runState.textContent = running ? "Running" : "Paused";
   setControlsEnabled(initialized);
-  if (runTimer) { clearInterval(runTimer); runTimer = null; }
+  if (!initialized || !notifyWorker) return;
+
   if (running) {
-    runTimer = setInterval(() => {
-      if (!advancePending) {
-        advancePending = true;
-        worker.postMessage({ type: "advance", ticks: ticksPerAdvance() });
-      }
-    }, RUNTIME_INTERVAL_MS);
+    worker.postMessage({
+      type: "run",
+      speed: runtimeSpeed(),
+      stopAtScientificTime: appliedConfig?.values?.EXPERIMENT_DURATION ?? null,
+    });
+  } else {
+    worker.postMessage({ type: "pause" });
   }
 }
 
@@ -291,12 +284,6 @@ function updateSnapshot(message) {
   ui.time.textContent = scientificTime.toFixed(3);
   ui.physicsTicks.textContent = String(message.physicsTicks ?? 0);
   ui.controlUpdates.textContent = String(message.controlUpdates ?? 0);
-  advancePending = false;
-  const duration = appliedConfig?.values?.EXPERIMENT_DURATION;
-  if (running && Number.isFinite(duration) && scientificTime >= duration) {
-    setRunning(false);
-    ui.status.textContent = `Run complete (${duration} s)`;
-  }
 }
 
 function drawSnapshot() {
@@ -387,18 +374,23 @@ worker.addEventListener("message", (event) => {
   if (message.type === "ready") {
     ui.status.textContent = "Simulator ready";
     ui.status.dataset.state = "ready";
+    running = false;
     ui.runState.textContent = "Paused";
     setControlsEnabled(true);
     return;
   }
-  if (["snapshot", "advanced", "reset", "controller-applied", "setup-applied"].includes(message.type)) {
+  if (["snapshot", "completed", "reset", "controller-applied", "setup-applied"].includes(message.type)) {
     updateSnapshot(message);
-    if (message.type === "controller-applied") {
+    if (message.type === "completed") {
+      setRunning(false, { notifyWorker: false });
+      const duration = appliedConfig?.values?.EXPERIMENT_DURATION;
+      ui.status.textContent = Number.isFinite(duration) ? `Run complete (${duration} s)` : "Run complete";
+    } else if (message.type === "controller-applied") {
       if (pendingController) appliedController = pendingController;
       pendingController = null;
       setFeedback(ui.feedback, "Controller applied. Run restarted.", "success");
       ui.status.textContent = "Controller applied";
-      setRunning(false);
+      setRunning(false, { notifyWorker: false });
     } else if (message.type === "setup-applied") {
       if (pendingSetup) {
         appliedConfig = pendingSetup.config;
@@ -409,42 +401,42 @@ worker.addEventListener("message", (event) => {
       pendingSetup = null;
       setFeedback(ui.setupFeedback, "Configuration applied. Run restarted.", "success");
       ui.status.textContent = "Configuration applied";
-      setRunning(false);
+      setRunning(false, { notifyWorker: false });
     } else if (message.type === "reset") {
       ui.status.textContent = `Run restarted · seed ${activeSeed}`;
-      setRunning(false);
+      setRunning(false, { notifyWorker: false });
     }
     return;
   }
   if (message.type === "setup-error") {
-    advancePending = false;
     pendingSetup = null;
     ui.setupError.textContent = message.message;
     setFeedback(ui.setupFeedback, "Could not apply configuration.", "error");
     ui.status.textContent = "Configuration error";
     ui.status.dataset.state = "error";
-    setRunning(false);
+    setRunning(false, { notifyWorker: false });
     return;
   }
   if (message.type === "controller-runtime-error") {
-    advancePending = false;
     pendingController = null;
     ui.error.textContent = `Controller initialization: ${message.message}`;
     setFeedback(ui.feedback, "Could not apply controller. Previous controller remains active.", "error");
     ui.status.textContent = "Controller error";
     ui.status.dataset.state = "error";
-    setRunning(false);
+    setRunning(false, { notifyWorker: false });
     return;
   }
   if (message.type === "error") {
-    advancePending = false;
     ui.status.textContent = `Simulation error: ${message.message}`;
     ui.status.dataset.state = "error";
-    setRunning(false);
+    setRunning(false, { notifyWorker: false });
   }
 });
 
 worker.addEventListener("error", (event) => {
+  running = false;
+  setControlsEnabled(false);
+  ui.runState.textContent = "Paused";
   ui.status.textContent = `Simulator error: ${event.message || "failed to start"}`;
   ui.status.dataset.state = "error";
   ui.setupError.textContent = event.message || "Simulator failed to start.";
@@ -485,6 +477,7 @@ ui.compile.addEventListener("click", () => {
     pendingController = controller;
     ui.error.textContent = "";
     setFeedback(ui.feedback, "Applying controller…", "working");
+    setRunning(false);
     worker.postMessage({ type: "apply-controller", ir: controller.compiled, parameters: controller.parameters });
   } catch (error) {
     pendingController = null;
@@ -498,7 +491,10 @@ ui.source.addEventListener("input", () => {
   setFeedback(ui.feedback, "Changes pending. Apply & restart to use them.", "dirty");
 });
 
-ui.speed.addEventListener("input", updateSpeedLabel);
+ui.speed.addEventListener("input", () => {
+  updateSpeedLabel();
+  if (initialized) worker.postMessage({ type: "set-speed", speed: runtimeSpeed() });
+});
 updateSpeedLabel();
 updateSeedLabel();
 ui.run.addEventListener("click", () => setRunning(true));

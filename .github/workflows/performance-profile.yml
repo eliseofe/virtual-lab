@@ -10,6 +10,7 @@ on:
       - 'web/scripts/performance-profile.mjs'
       - 'web/scripts/real-workload-isolation-profile.mjs'
       - 'web/scripts/controller-cost-profile.mjs'
+      - 'web/scripts/runtime-scheduler-profile.mjs'
       - '.github/workflows/performance-profile.yml'
 
 permissions:
@@ -60,6 +61,7 @@ jobs:
           node web/scripts/performance-profile.mjs http://127.0.0.1:4173/ | tee browser-profile.json
           node web/scripts/real-workload-isolation-profile.mjs http://127.0.0.1:4173/ | tee real-isolation-profile.json
           node web/scripts/controller-cost-profile.mjs http://127.0.0.1:4173/ | tee controller-cost-profile.json
+          node web/scripts/runtime-scheduler-profile.mjs http://127.0.0.1:4173/ | tee runtime-scheduler-profile.json
 
       - name: Upload profile evidence
         uses: actions/upload-artifact@v4
@@ -71,4 +73,5 @@ jobs:
             browser-profile.json
             real-isolation-profile.json
             controller-cost-profile.json
+            runtime-scheduler-profile.json
           retention-days: 30
