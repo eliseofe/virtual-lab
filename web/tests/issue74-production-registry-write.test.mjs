@@ -13,7 +13,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const src = path.resolve(here, "../src");
 
 async function registryUiSource() {
-  return readFile(path.join(src, "registry-ui-v2.js"), "utf8");
+  return readFile(path.join(src, "registry-ui-v3.js"), "utf8");
 }
 
 test("private save uses strict registry validation and optimistic revision ownership guards", async () => {
@@ -63,7 +63,7 @@ test("save-as-new creates a distinct private human-owned registry experiment", a
   assert.match(registryUi, /allowBuiltInCompatibility: true/);
   assert.match(registryUi, /\.insert\(\{[\s\S]*owner_id: user\.id[\s\S]*visibility: "private"[\s\S]*created_by_actor: "human"[\s\S]*\}\)/);
   assert.match(registryUi, /currentRemote = data/);
-  assert.match(registryUi, /created as a private experiment/);
+  assert.match(registryUi, /created in My experiments \/ Unfiled/);
 });
 
 test("editability feedback distinguishes read-only, saved, dirty and conflict states", async () => {
