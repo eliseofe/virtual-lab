@@ -169,7 +169,8 @@ fn validate_statements(
                 if op != "+" { return Err(at_line(*line, format!("unsupported augmented operator '{op}'"))); }
                 validate_expression(value, parameters, state, locals, loop_variable)?;
                 if let Some(name) = target.strip_prefix("self.") {
-                    if !state.contains(name) { return Err(at_line(*line, format!("private state '{name}' is not declared"))); }
+                    if !state.contains(name) { return Err(at_line(*line, format!("private state '{name}' is not declared")));
+                    }
                 } else if !locals.contains(target) {
                     return Err(at_line(*line, format!("local '{target}' must be assigned before '+='")));
                 }
@@ -289,8 +290,10 @@ fn execute_statements(
                 let result = evaluate(value, parameters, state_slots, private_state, locals, observation, loop_binding);
                 if let Some(name) = target.strip_prefix("self.") {
                     private_state[state_slots[name]] = result.scalar();
+                } else if let Some(slot) = locals.get_mut(target) {
+                    *slot = result;
                 } else {
-                    *locals.get_mut(target).expect("validated local slot") = result;
+                    locals.insert(target.clone(), result);
                 }
             }
             Statement::AugAssign { target, value, .. } => {
