@@ -10,105 +10,140 @@ Repository: `eliseofe/virtual-lab`
 
 Production: `https://eliseofe.github.io/virtual-lab/`
 
-Current accepted production line before the next scheduler change:
+Current accepted production sequence:
 
 - #90 / PR #91 — prepared controller IR / pre-resolved names/operators;
 - #92 / PR #93 — reusable observation/query buffers;
 - #95 / PR #94 — controller-cost attribution profiling;
 - #96 / PR #97 — flattened controller expressions to compact stack bytecode;
-- #98 / PR #99 — reuse bearing-noise rotation per observation.
+- #98 / PR #99 — reuse bearing-noise rotation per observation;
+- **#29 / PR #103 — worker-owned simulation scheduler, independent visualization cadence.**
 
-Post-#98 main checkpoint: `37cc9517a2409d328d826af5f7f2b51e37f4d964`.
+Current production merge after #29: `f713dad722c68683bfc5822366b2e8071395b307`.
 
-Owner production phone test after this sequence: **massive visible performance improvement around N=91** for the built-in Active Elastic experiment. The performance work is therefore user-visible and materially successful. Do not restart controller/math micro-optimization from old profiling notes unless new evidence demands it.
+Owner production phone test before #29, after #90/#92/#95/#96/#98: **massive visible performance improvement around N=91** for the built-in Active Elastic experiment. The controller/kernel performance lane is therefore materially successful. Do not restart controller/math micro-optimization from old profiling notes unless fresh evidence demands it.
 
-The broader performance epic #56 remains open because other software-performance layers remain.
+#29 has now been implemented, merged and deployed. Automated production acceptance is green; the **only immediate next action is an owner visual phone check of large-swarm fluidity, especially at 1×**. Do not start another #56 optimization child before that check.
 
-## Immediate execution order — owner-approved
+The broader performance epic #56 remains open because other software-performance layers may still exist after owner acceptance of #29.
 
-1. **#29 — runtime/visualization scheduling architecture — ACTIVE NEXT.**
-   - Long-standing large-swarm visualization defect is now explicitly reported by the owner.
-   - Current browser main thread sends fixed 50 ms simulation batches to the worker; the worker computes the whole batch and returns one snapshot. The canvas may redraw at display rate but repeats the same state until the worker responds.
-   - This couples scientific execution, requested speed and visible snapshot cadence. Larger/heavier swarms can still advance model time quickly while appearing jerky/frozen.
-   - Owner-approved target architecture: **the simulation worker/runtime owns the simulation loop and target model-time/wall-time pacing; rendering is observational and independently samples the newest available state.** The UI must not clock physics by repeatedly sending batches.
-   - At 1x, if the machine has enough compute capacity, visualization should be fluid. Above compute capacity, simulation should saturate cleanly rather than creating ever-larger UI-driven batches.
-   - Physics/control timestep semantics must not change.
+## #29 — completed runtime/visualization scheduling repair
+
+### Old defect
+
+Before #29:
+
+- browser main thread owned `RUNTIME_INTERVAL_MS = 50`;
+- main computed `ticksPerAdvance()` from requested speed and sent `{type: "advance", ticks}`;
+- worker computed the whole batch and only then emitted one snapshot;
+- canvas used `requestAnimationFrame`, but repeatedly redrew the same stale state until the worker returned.
+
+This incorrectly coupled scientific execution, requested speed and visible snapshot cadence. Large/heavy swarms could advance model time quickly while appearing jerky/frozen.
+
+### Current architecture
+
+The owner-approved separation is now implemented:
+
+#### Simulation worker/runtime
+
+- owns Run/Pause/target-speed state;
+- advances fixed scientific physics/control steps continuously in **bounded adaptive work chunks**;
+- at attainable requested speeds, paces model time against wall time;
+- above compute capacity, stays busy and saturates near maximum achievable throughput instead of growing unbounded batches;
+- yields between chunks so Pause, speed changes, reset, setup and controller messages remain responsive;
+- publishes visualization snapshots independently at a bounded wall-clock cadence;
+- fixed `PHYSICS_DT`, control cadence, metric cadence, controller semantics, RNG ordering and environment-owned action application are unchanged.
+
+#### Main-thread renderer/UI
+
+- does **not** clock scientific physics execution;
+- renders on the browser animation clock via `requestAnimationFrame`;
+- draws the newest published state available;
+- can skip intermediate visual states without changing scientific trajectory;
+- remains observational: render cadence cannot affect simulation state.
+
+A direct exact-tick `advance` worker command still exists **only as a profiling/test hook** so historical raw benchmarks remain comparable. Production `main.js` is statically tested not to use it.
+
+### #29 measured evidence
+
+New browser scheduler probe uses **10,000 agents** and the actual worker-owned `run/pause/set-speed` path, with 1.2 s wall-clock windows:
+
+| Requested | Achieved | Fresh snapshot rate |
+|---:|---:|---:|
+| 1× | 0.99× | 48.3 Hz |
+| 5× | 4.88× | 48.3 Hz |
+| 20× | 8.40× | 42.5 Hz |
+| 60× | 8.46× | 42.2 Hz |
+| 240× | 8.39× | 41.5 Hz |
+
+Interpretation is purely software/performance: attainable rates are paced accurately; once compute capacity is exceeded on that CI runner, throughput saturates around ~8.4× instead of degrading as requested speed rises; visualization snapshots remain ~42–48 Hz rather than being tied to old 50 ms UI-driven batch completions.
+
+All existing exact-tick performance guardrails completed successfully, including ordered Active Elastic and disordered Simple Random Walk.
+
+PR #103 checks:
+
+- Round 1A build/test workflow: success;
+- Performance profile workflow: success.
+
+Post-merge production workflow run `34783324182`:
+
+- build: success;
+- GitHub Pages deploy: success;
+- deployed browser smoke: success.
+
+Owner visual confirmation on the actual phone/device is still required before declaring the large-swarm presentation symptom closed in practice.
+
+## Immediate execution order after owner phone check
+
+1. **Owner phone check for #29 — ACTIVE NEXT ACTION.**
+   - Test deployed production, ideally a larger swarm at `1×` first.
+   - Question is narrow: does motion now look materially fluid rather than stepping/freezing while model time continues?
+   - This is not a full UI/UX review.
+   - If the visible defect persists despite the scheduler measurements, investigate rendering/state-transfer cost next rather than reopening controller math.
 
 2. **#100 — bounded pre/post trajectory-equivalence regression check.**
    - Owner is ~92% confident that Active Elastic at `U=0.05`, same usual deterministic setup, behaves differently after the performance round: current production may split early and later rejoin whereas the pre-performance version reportedly remained one group.
-   - Do not scientifically analyze the split, forces, stability, or model. Perform only a short deterministic software-equivalence comparison between an appropriate pre-performance revision and current runtime; answer identical/divergent and first numerical divergence if any.
+   - Do not scientifically analyze the split, forces, stability, or model.
+   - Perform only a short deterministic software-equivalence comparison between an appropriate pre-performance revision and current runtime; answer identical/divergent and first numerical divergence if any.
+   - Pre-performance reference recorded in #100: `9ee2cd50c8e4ade8b60df0fafc1b4d40b6e71fdd`.
    - Do not use a new numerical integrator to mask this question.
 
 3. **#101 — large-swarm initialization ceiling.**
-   - Owner cannot reliably initialize target large swarms around 10,000+ agents (eventually 100,000), with missing-agent/setup errors depending on initializer.
-   - Runtime contract has no intentional hard maximum on N. Classify whether the blocker is initializer algorithm, initializer interpreter/runtime scalability, validation/transport/memory, or another infrastructure layer.
+   - Owner cannot reliably initialize target large swarms around `10,000+` agents, eventually `100,000`, with missing-agent/setup errors depending on initializer.
+   - Runtime contract has no intentional hard maximum on N.
+   - Classify whether the blocker is initializer algorithm, initializer interpreter/runtime scalability, validation/transport/memory, or another infrastructure layer.
    - Fix the immediate blocker so performance scaling can proceed.
    - Feed the generic lesson into #65: students should not need to reinvent fragile low-level placement; future setup/world capabilities should include scalable simulator-owned placement primitives while preserving experiment-specific semantics.
 
 4. **#102 — numerical integrator evaluation — BACKLOG ONLY.**
    - Current simulator uses fixed-step Euler.
    - Owner is open to evaluating a more accurate integrator later, but only as an explicit accuracy/performance design decision with owner scientific input where required.
-   - Never use this as the explanation/fix for #100 before the existing integrator's pre/post behavior is checked.
+   - Never use this as the explanation/fix for #100 before existing-integrator pre/post behavior is checked.
 
-5. After #29/#100/#101 checkpoints, return to #56 and choose the next performance venue from fresh measurements rather than continuing old micro-optimization threads automatically.
+5. After #29 owner acceptance plus #100/#101 checkpoints, return to #56 and choose any next performance venue from fresh measurements. Do not continue old micro-optimization threads automatically.
 
-## #29 architectural intent
+## Performance evidence and permanent guardrails
 
-The desired runtime split is now explicit:
+Two real workloads remain permanent software-performance guardrails:
 
-### Simulation worker/runtime
-
-- owns Run/Pause/target-speed state;
-- advances fixed scientific physics/control steps continuously in bounded work chunks;
-- at attainable requested speeds, paces model time against wall time;
-- above compute capacity, remains busy and saturates near maximum achievable throughput rather than growing unbounded batches;
-- yields often enough to process Pause, speed-change, reset, setup and controller messages promptly;
-- publishes visualization snapshots independently of every physics step and without building an obsolete queue.
-
-### Main-thread renderer/UI
-
-- does **not** trigger scientific physics execution on a timer;
-- renders on the browser animation clock;
-- always draws the newest published state available;
-- may drop intermediate visualization states without changing scientific trajectory;
-- remains observational: render cadence cannot alter simulator state or RNG/order semantics.
-
-For very large swarms, state-transfer/copy pressure may later require transferable/shared buffers, but that is an implementation optimization after the scheduling boundary is correct.
-
-## Performance evidence and guardrails
-
-Two real workloads remain permanent performance guardrails:
-
-1. **Ordered Active Elastic** — ordered hexagonal setup, zero position noise; dense/structured local neighbourhood workload.
+1. **Ordered Active Elastic** — ordered hexagonal setup, zero position noise; dense/structured local-neighbourhood workload.
 2. **Disordered Simple Random Walk** — random initializer; dynamically changing/disordered opposite guardrail.
 
-These are software-performance coverage cases, not invitations to scientifically retune the experiments.
+These are performance coverage cases, not invitations to scientifically retune the experiments.
 
-Important previous result:
+Important rejected optimization:
 
-- #83 direct neighbour-cell enumeration / removal of per-query x/y temporary vectors was measured and **rejected** because it regressed representative neighbour-query timings. #83 is closed `not_planned`; do not rediscover and repeat that candidate without new evidence.
+- #83 direct neighbour-cell enumeration / removal of per-query x/y temporary vectors was measured and **rejected** because representative neighbour-query timings regressed. #83 is closed `not_planned`; do not rediscover and repeat that candidate without new evidence.
 
 Post-#98 owner validation:
 
 - deployed Active Elastic around N=91 is dramatically faster than before the performance round;
 - #98 remains accepted/closed;
-- possible U=0.05 behavior concern is isolated in #100 rather than invalidating the throughput result by assumption.
-
-## Current browser/runtime facts relevant to #29
-
-Before #29 repair:
-
-- main thread uses `RUNTIME_INTERVAL_MS = 50`;
-- main thread computes `ticksPerAdvance()` from requested speed and sends `{type: "advance", ticks}`;
-- only one request is kept pending;
-- worker runs `simulation.advance_ticks(ticks)` synchronously and only then emits one state snapshot;
-- renderer uses `requestAnimationFrame`, but until a new worker snapshot arrives it redraws the same `latestState`.
-
-Therefore display refresh and scientific compute throughput are incorrectly coupled through batch completion even though WASM simulation is already in a Web Worker.
+- possible `U=0.05` behavior concern is isolated in #100 rather than invalidating throughput gains by assumption.
 
 ## Experiment registry / MCP status
 
-Production registry integration completed after the older version of this file. The active student-facing architecture is:
+Production registry integration is active. Student-facing flow:
 
 student AI authors validated experiment → registry → production Virtual Lab loads same sources → student manually runs/observes/edits → Lab can save back safely → AI can read later.
 
@@ -118,7 +153,7 @@ MCP/registry facts:
 - endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`;
 - authoring contract: `vlab.authoring/0.3`;
 - runtime contract: `vlab.runtime/0.1`;
-- student-facing MCP tools remain `read_workspace`, `manage_collection`, `create_experiment`, `edit_experiment`, `delete_experiment`;
+- student-facing MCP tools: `read_workspace`, `manage_collection`, `create_experiment`, `edit_experiment`, `delete_experiment`;
 - AI still cannot run the simulator or observe simulation results automatically; future explicit results channel remains #6.
 
 Genuine student-authored Simple Random Walk experiment:
@@ -170,11 +205,12 @@ This remains a **zero-euro incremental-cost project**. Baseline uses GitHub/GitH
 ## Resume instructions for a context-free agent
 
 1. Read this file first.
-2. Inspect current `main` and the latest comments on #56 before trusting an old chat summary.
-3. Current next active implementation is #29 under the **worker-owned simulation loop / independent renderer** architecture described above.
-4. Do not reopen controller/math micro-optimization simply because #56 is open.
-5. Preserve both real-workload performance guardrails: ordered Active Elastic and disordered Simple Random Walk.
-6. Keep #100 bounded to software equivalence; no scientific investigation unless owner explicitly authorizes it.
-7. Treat #101 as both an immediate large-N blocker and evidence for #65's future scalable setup capabilities.
-8. Do not implement #102 as a regression fix.
-9. Test/deploy/close the loop before reporting implementation completion.
+2. Inspect current `main` and latest comments on #56 before trusting an old chat summary.
+3. #29 is **implemented and deployed**; do not propose rebuilding the old scheduler solution.
+4. Immediate next action is owner visual phone confirmation of large-swarm fluidity on production.
+5. Do not reopen controller/math micro-optimization simply because #56 is open.
+6. Preserve both real-workload performance guardrails: ordered Active Elastic and disordered Simple Random Walk.
+7. Keep #100 bounded to software equivalence; no scientific investigation unless owner explicitly authorizes it.
+8. Treat #101 as both an immediate large-N blocker and evidence for #65's future scalable setup capabilities.
+9. Do not implement #102 as a regression fix.
+10. Test/deploy/close the loop before reporting future implementation completion.
