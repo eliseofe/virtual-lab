@@ -75,11 +75,27 @@
             <div><p class="section-kicker">SIMULATION</p><h2>Arena</h2></div>
             <span class="badge">periodic square boundary</span>
           </div>
+          <div class="stage-toolbar" aria-label="Arena view controls">
+            <div class="view-status" aria-label="Current arena view">
+              <span class="view-status-dot" aria-hidden="true"></span>
+              <span>View</span>
+              <strong id="camera-status" data-fit="true">Fit</strong>
+            </div>
+            <label class="glyph-control" for="agent-glyph">
+              <span>Agents</span>
+              <select id="agent-glyph" aria-label="Agent appearance">
+                <option value="directional">Directional</option>
+                <option value="arrow">Arrow</option>
+                <option value="dot">Dot</option>
+              </select>
+            </label>
+            <button id="fit-arena" type="button" disabled>Fit arena</button>
+          </div>
           <div class="canvas-wrap">
-            <canvas id="simulation-canvas" width="960" height="600" aria-label="Agent simulation"></canvas>
+            <canvas id="simulation-canvas" width="960" height="600" aria-label="Agent simulation. Drag to pan; use wheel, trackpad, or pinch to zoom."></canvas>
             <div id="canvas-empty" class="canvas-empty">Waiting for simulation data…</div>
           </div>
-          <p class="muted stage-note">Positions and headings are shown in arena coordinates. Periodic boundaries wrap across opposite edges.</p>
+          <p class="muted stage-note">Drag to pan. Wheel/trackpad or pinch to zoom. Positions and headings remain in arena coordinates; camera movement is visual only.</p>
         </section>
 
         <section class="panel editor-panel">

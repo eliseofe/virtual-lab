@@ -7,6 +7,7 @@ import {
   validateInitialStateForRuntime,
   validateRuntimeValues,
 } from "./runtime/contract.js";
+import { ArenaCamera } from "./visualization/camera.js";
 
 // Simulator-owned implementation settings. These are deliberately not part of
 // the student experiment parameter namespace.
@@ -120,6 +121,9 @@ const ui = {
   compile: document.querySelector("#compile"),
   canvas: document.querySelector("#simulation-canvas"),
   canvasEmpty: document.querySelector("#canvas-empty"),
+  cameraStatus: document.querySelector("#camera-status"),
+  fitArena: document.querySelector("#fit-arena"),
+  agentGlyph: document.querySelector("#agent-glyph"),
 };
 
 for (const [name, element] of Object.entries(ui)) {
@@ -143,11 +147,66 @@ let appliedController = null;
 let pendingSetup = null;
 let pendingController = null;
 
+const camera = new ArenaCamera();
+const activePointers = new Map();
+let pinchGesture = null;
+
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 
 function setFeedback(element, message, state = "idle") {
   element.textContent = message;
   element.dataset.state = state;
+}
+
+function updateCameraUi() {
+  const fit = camera.isFit();
+  ui.cameraStatus.textContent = camera.label();
+  ui.cameraStatus.dataset.fit = String(fit);
+  ui.fitArena.disabled = fit;
+}
+
+function resetCamera() {
+  camera.reset();
+  updateCameraUi();
+}
+
+function setActiveArenaSize(next, { resetView = false } = {}) {
+  if (!Number.isFinite(next) || next <= 0) return;
+  const changed = Math.abs(Number(next) - activeArenaSize) > 1e-9;
+  activeArenaSize = Number(next);
+  if (resetView || changed) resetCamera();
+}
+
+function canvasInteractionFrame() {
+  const ratio = window.devicePixelRatio || 1;
+  const rect = ui.canvas.getBoundingClientRect();
+  const width = Math.max(1, rect.width * ratio);
+  const height = Math.max(1, rect.height * ratio);
+  const padding = 30 * ratio;
+  return {
+    ratio,
+    rect,
+    frame: camera.frame({ width, height, arenaSize: activeArenaSize, padding }),
+  };
+}
+
+function pointerPoint(event, metrics = canvasInteractionFrame()) {
+  return {
+    x: (event.clientX - metrics.rect.left) * metrics.ratio,
+    y: (event.clientY - metrics.rect.top) * metrics.ratio,
+  };
+}
+
+function currentPinch() {
+  if (activePointers.size < 2) return null;
+  const [a, b] = [...activePointers.values()].slice(0, 2);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  return {
+    distance: Math.max(1e-9, Math.hypot(dx, dy)),
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  };
 }
 
 // Temporary compatibility adapter for the pre-#63 built-in Active Elastic
@@ -252,7 +311,7 @@ function initializeIfReady() {
     appliedConfigSource = ui.config.value;
     appliedInitializerSource = ui.initializerSource.value;
     appliedController = controller;
-    activeArenaSize = setup.simulation.arenaSize;
+    setActiveArenaSize(setup.simulation.arenaSize, { resetView: true });
     ui.setupError.textContent = "";
     ui.error.textContent = "";
     updateSeedLabel();
@@ -275,7 +334,7 @@ function updateSnapshot(message) {
     latestState = Array.from(message.state);
     ui.canvasEmpty.hidden = latestState.length > 0;
   }
-  if (Number.isFinite(message.arenaSize)) activeArenaSize = Number(message.arenaSize);
+  if (Number.isFinite(message.arenaSize)) setActiveArenaSize(Number(message.arenaSize));
   if (Number.isInteger(message.seed)) {
     activeSeed = Number(message.seed) >>> 0;
     updateSeedLabel();
@@ -284,6 +343,44 @@ function updateSnapshot(message) {
   ui.time.textContent = scientificTime.toFixed(3);
   ui.physicsTicks.textContent = String(message.physicsTicks ?? 0);
   ui.controlUpdates.textContent = String(message.controlUpdates ?? 0);
+}
+
+function drawAgent(context, glyph, x, y, heading, ratio) {
+  if (glyph === "dot") {
+    context.beginPath();
+    context.arc(x, y, 2.8 * ratio, 0, Math.PI * 2);
+    context.fill();
+    return;
+  }
+
+  if (glyph === "arrow") {
+    const forwardX = Math.cos(heading);
+    const forwardY = -Math.sin(heading);
+    const sideX = -forwardY;
+    const sideY = forwardX;
+    const tip = 7.5 * ratio;
+    const back = 4.0 * ratio;
+    const halfWidth = 4.1 * ratio;
+    const backX = x - forwardX * back;
+    const backY = y - forwardY * back;
+    context.beginPath();
+    context.moveTo(x + forwardX * tip, y + forwardY * tip);
+    context.lineTo(backX + sideX * halfWidth, backY + sideY * halfWidth);
+    context.lineTo(backX - sideX * halfWidth, backY - sideY * halfWidth);
+    context.closePath();
+    context.fill();
+    return;
+  }
+
+  const bodyRadius = 4.2 * ratio;
+  const headingLength = 11 * ratio;
+  context.beginPath();
+  context.arc(x, y, bodyRadius, 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.moveTo(x, y);
+  context.lineTo(x + Math.cos(heading) * headingLength, y - Math.sin(heading) * headingLength);
+  context.stroke();
 }
 
 function drawSnapshot() {
@@ -296,70 +393,80 @@ function drawSnapshot() {
   if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
 
   context.clearRect(0, 0, width, height);
-  context.fillStyle = "#f7f9fa";
+  context.fillStyle = "#edf2f3";
   context.fillRect(0, 0, width, height);
 
   const pad = 30 * ratio;
-  const side = Math.max(1, Math.min(width, height) - 2 * pad);
-  const left = (width - side) / 2;
-  const top = (height - side) / 2;
-  context.fillStyle = "#ffffff";
-  context.fillRect(left, top, side, side);
+  const frame = camera.frame({ width, height, arenaSize: activeArenaSize, padding: pad });
+  const halfArena = frame.arena / 2;
+  const arenaLeft = frame.toCanvasX(-halfArena);
+  const arenaRight = frame.toCanvasX(halfArena);
+  const arenaTop = frame.toCanvasY(halfArena);
+  const arenaBottom = frame.toCanvasY(-halfArena);
 
-  const arena = Math.max(activeArenaSize, 1e-9);
-  const toCanvasX = (x) => left + ((x + arena / 2) / arena) * side;
-  const toCanvasY = (y) => top + ((arena / 2 - y) / arena) * side;
+  context.fillStyle = "#ffffff";
+  context.fillRect(arenaLeft, arenaTop, arenaRight - arenaLeft, arenaBottom - arenaTop);
+
+  context.save();
+  context.beginPath();
+  context.rect(arenaLeft, arenaTop, arenaRight - arenaLeft, arenaBottom - arenaTop);
+  context.clip();
 
   // Scientific scale reference only: this visual grid is unrelated to the
-  // simulator's internal neighbour-search index. At ordinary zoom, one square
-  // is exactly one model distance unit. Very large arenas coarsen the visual
-  // grid only to avoid drawing sub-pixel lines.
-  const pixelsPerUnit = side / arena;
+  // simulator's internal neighbour-search index. Large arenas coarsen the visual
+  // grid only to avoid sub-pixel lines; zooming restores the finer scale.
+  const pixelsPerUnit = frame.pixelsPerUnit;
   const visualGridStep = Math.max(1, Math.ceil((3 * ratio) / Math.max(pixelsPerUnit, 1e-9)));
-  const halfArena = arena / 2;
-  const firstGrid = Math.ceil(-halfArena / visualGridStep) * visualGridStep;
+  const visibleMinX = Math.max(-halfArena, frame.toWorldX(0));
+  const visibleMaxX = Math.min(halfArena, frame.toWorldX(width));
+  const visibleMinY = Math.max(-halfArena, frame.toWorldY(height));
+  const visibleMaxY = Math.min(halfArena, frame.toWorldY(0));
+  const firstGridX = Math.ceil(visibleMinX / visualGridStep) * visualGridStep;
+  const firstGridY = Math.ceil(visibleMinY / visualGridStep) * visualGridStep;
+
   context.beginPath();
-  for (let value = firstGrid; value <= halfArena + 1e-9; value += visualGridStep) {
-    const x = toCanvasX(value);
-    const y = toCanvasY(value);
-    context.moveTo(x, top);
-    context.lineTo(x, top + side);
-    context.moveTo(left, y);
-    context.lineTo(left + side, y);
+  for (let value = firstGridX; value <= visibleMaxX + 1e-9; value += visualGridStep) {
+    const x = frame.toCanvasX(value);
+    context.moveTo(x, arenaTop);
+    context.lineTo(x, arenaBottom);
+  }
+  for (let value = firstGridY; value <= visibleMaxY + 1e-9; value += visualGridStep) {
+    const y = frame.toCanvasY(value);
+    context.moveTo(arenaLeft, y);
+    context.lineTo(arenaRight, y);
   }
   context.strokeStyle = "#e4e9ec";
   context.lineWidth = 1 * ratio;
   context.stroke();
 
-  context.strokeStyle = "#b8c3c8";
-  context.lineWidth = 1.5 * ratio;
-  context.strokeRect(left, top, side, side);
-  context.fillStyle = "#65747b";
-  context.font = `${11 * ratio}px system-ui, sans-serif`;
-  context.textBaseline = "top";
-  context.fillText(
-    visualGridStep === 1 ? "Grid: 1 unit" : `Grid: ${visualGridStep} units`,
-    left + 7 * ratio,
-    top + 7 * ratio,
-  );
-
   context.strokeStyle = "#1c4e63";
   context.fillStyle = "#1c4e63";
   context.lineWidth = 1.6 * ratio;
-  const bodyRadius = 4.2 * ratio;
-  const headingLength = 11 * ratio;
+  const glyph = ui.agentGlyph.value;
+  const margin = 16 * ratio;
   for (let i = 0; i + 2 < latestState.length; i += 3) {
-    const x = toCanvasX(latestState[i]);
-    const y = toCanvasY(latestState[i + 1]);
-    const heading = latestState[i + 2];
-    context.beginPath();
-    context.arc(x, y, bodyRadius, 0, Math.PI * 2);
-    context.fill();
-    context.beginPath();
-    context.moveTo(x, y);
-    context.lineTo(x + Math.cos(heading) * headingLength, y - Math.sin(heading) * headingLength);
-    context.stroke();
+    const x = frame.toCanvasX(latestState[i]);
+    const y = frame.toCanvasY(latestState[i + 1]);
+    if (x < -margin || x > width + margin || y < -margin || y > height + margin) continue;
+    drawAgent(context, glyph, x, y, latestState[i + 2], ratio);
   }
+  context.restore();
+
+  context.strokeStyle = camera.isFit() ? "#8da1aa" : "#5b7783";
+  context.lineWidth = (camera.isFit() ? 1.6 : 2.2) * ratio;
+  context.strokeRect(arenaLeft, arenaTop, arenaRight - arenaLeft, arenaBottom - arenaTop);
+
+  context.fillStyle = "#65747b";
+  context.font = `${11 * ratio}px system-ui, sans-serif`;
+  context.textBaseline = "top";
+  const labelX = Math.max(8 * ratio, Math.min(width - 90 * ratio, arenaLeft + 7 * ratio));
+  const labelY = Math.max(8 * ratio, Math.min(height - 24 * ratio, arenaTop + 7 * ratio));
+  context.fillText(
+    visualGridStep === 1 ? "Grid: 1 unit" : `Grid: ${visualGridStep} units`,
+    labelX,
+    labelY,
+  );
+
   requestAnimationFrame(drawSnapshot);
 }
 
@@ -457,7 +564,7 @@ ui.applySetup.addEventListener("click", () => {
     const { config, setup } = compileSetup({ seed: activeSeed, configSource, initializerSource });
     const controller = compileControllerFor(config);
     pendingSetup = { config, configSource, initializerSource, controller };
-    activeArenaSize = setup.simulation.arenaSize;
+    setActiveArenaSize(setup.simulation.arenaSize, { resetView: true });
     ui.setupError.textContent = "";
     ui.error.textContent = "";
     setFeedback(ui.setupFeedback, "Applying changes…", "working");
@@ -495,8 +602,67 @@ ui.speed.addEventListener("input", () => {
   updateSpeedLabel();
   if (initialized) worker.postMessage({ type: "set-speed", speed: runtimeSpeed() });
 });
+
+ui.fitArena.addEventListener("click", resetCamera);
+
+ui.canvas.addEventListener("wheel", (event) => {
+  event.preventDefault();
+  const metrics = canvasInteractionFrame();
+  const point = pointerPoint(event, metrics);
+  camera.zoomAt(Math.exp(-event.deltaY * 0.0015), point.x, point.y, metrics.frame);
+  updateCameraUi();
+}, { passive: false });
+
+ui.canvas.addEventListener("pointerdown", (event) => {
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  const metrics = canvasInteractionFrame();
+  activePointers.set(event.pointerId, pointerPoint(event, metrics));
+  ui.canvas.setPointerCapture(event.pointerId);
+  ui.canvas.dataset.dragging = "true";
+  pinchGesture = currentPinch();
+  event.preventDefault();
+});
+
+ui.canvas.addEventListener("pointermove", (event) => {
+  const previous = activePointers.get(event.pointerId);
+  if (!previous) return;
+  const metrics = canvasInteractionFrame();
+  const current = pointerPoint(event, metrics);
+
+  if (activePointers.size === 1) {
+    activePointers.set(event.pointerId, current);
+    camera.panScreen(current.x - previous.x, current.y - previous.y, metrics.frame);
+    updateCameraUi();
+    event.preventDefault();
+    return;
+  }
+
+  activePointers.set(event.pointerId, current);
+  const nextPinch = currentPinch();
+  if (pinchGesture && nextPinch) {
+    camera.zoomAt(nextPinch.distance / pinchGesture.distance, pinchGesture.x, pinchGesture.y, metrics.frame);
+    const afterZoom = canvasInteractionFrame().frame;
+    camera.panScreen(nextPinch.x - pinchGesture.x, nextPinch.y - pinchGesture.y, afterZoom);
+    updateCameraUi();
+  }
+  pinchGesture = nextPinch;
+  event.preventDefault();
+});
+
+function releasePointer(event) {
+  if (!activePointers.has(event.pointerId)) return;
+  activePointers.delete(event.pointerId);
+  pinchGesture = currentPinch();
+  if (activePointers.size === 0) ui.canvas.dataset.dragging = "false";
+}
+
+ui.canvas.addEventListener("pointerup", releasePointer);
+ui.canvas.addEventListener("pointercancel", releasePointer);
+ui.canvas.addEventListener("lostpointercapture", releasePointer);
+
 updateSpeedLabel();
 updateSeedLabel();
+updateCameraUi();
 ui.run.addEventListener("click", () => setRunning(true));
 ui.pause.addEventListener("click", () => setRunning(false));
 ui.restart.addEventListener("click", () => {
