@@ -72,15 +72,28 @@ test("renderer uses fixed arena coordinates and renders agent orientation", asyn
   assert.match(main, /requestAnimationFrame\(drawSnapshot\)/);
 });
 
-test("runtime speed changes execution throughput without becoming a scientific parameter", async () => {
+test("worker owns simulation execution while renderer only consumes snapshots", async () => {
   const main = await text("src/main.js");
+  const worker = await text("src/worker.js");
   const config = editableConfig(main);
-  assert.match(main, /const RUNTIME_INTERVAL_MS = 50/);
+
   assert.match(main, /function runtimeSpeed\(\)/);
-  assert.match(main, /function ticksPerAdvance\(\)/);
-  assert.match(main, /worker\.postMessage\(\{ type: "advance", ticks: ticksPerAdvance\(\) \}\)/);
-  assert.match(main, /ui\.speed\.addEventListener\("input", updateSpeedLabel\)/);
-  assert.doesNotMatch(config, /RUNTIME_INTERVAL_MS|runtimeSpeed|simulation-speed/);
+  assert.match(main, /type: "run"/);
+  assert.match(main, /type: "pause"/);
+  assert.match(main, /type: "set-speed", speed: runtimeSpeed\(\)/);
+  assert.doesNotMatch(main, /RUNTIME_INTERVAL_MS/);
+  assert.doesNotMatch(main, /ticksPerAdvance/);
+  assert.doesNotMatch(main, /type: "advance"/);
+  assert.doesNotMatch(main, /setInterval\(/);
+
+  assert.match(worker, /import \{ RuntimePacer \}/);
+  assert.match(worker, /function runLoop\(\)/);
+  assert.match(worker, /simulation\.advance_ticks\(ticks\)/);
+  assert.match(worker, /SNAPSHOT_INTERVAL_MS = 1000 \/ 60/);
+  assert.match(worker, /message\.type === "run"/);
+  assert.match(worker, /message\.type === "pause"/);
+  assert.match(worker, /message\.type === "set-speed"/);
+  assert.doesNotMatch(config, /runtimeSpeed|simulation-speed|SNAPSHOT_INTERVAL_MS/);
 });
 
 test("run seed is simulator provenance with explicit reproducible and randomized restart paths", async () => {
@@ -101,7 +114,6 @@ test("hidden simulator settings stay outside the editable config namespace", asy
   const runtime = await text("src/runtime/contract.js");
   const config = editableConfig(main);
   assert.match(main, /const INTERNAL_SEED = 2026/);
-  assert.match(main, /const INTERNAL_PHYSICS_DT = RUNTIME_CONTRACT\.simulator_constants\.PHYSICS_DT/);
   assert.match(runtime, /PHYSICS_DT: 0\.01/);
   assert.match(runtime, /METRIC_DT: 0\.10/);
   assert.doesNotMatch(config, /PHYSICS_DT|METRIC_DT|INTERNAL_SEED|INTERNAL_PHYSICS_DT|INTERNAL_METRIC_DT/);
