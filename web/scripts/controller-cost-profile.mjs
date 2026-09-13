@@ -148,7 +148,8 @@ def initialize(config, rng, place):
         for neighbour in obs.neighbours:
             displacement = neighbour.relative_position
             proximal += displacement
-        return Motion(dot(proximal, obs.heading), 0.0)
+        probe = dot(proximal, obs.heading)
+        return Motion(0.0 * probe, 0.0)
 `,
     },
     {
@@ -160,7 +161,8 @@ def initialize(config, rng, place):
             displacement = neighbour.relative_position
             distance = norm(displacement)
             proximal += displacement / distance
-        return Motion(dot(proximal, obs.heading), 0.0)
+        probe = dot(proximal, obs.heading)
+        return Motion(0.0 * probe, 0.0)
 `,
     },
     {
@@ -174,7 +176,8 @@ def initialize(config, rng, place):
             ratio = DESIRED_DISTANCE / distance
             magnitude = pow(ratio, POTENTIAL_ALPHA) + pow(ratio, 2.0 * POTENTIAL_ALPHA)
             proximal += magnitude * displacement / distance
-        return Motion(dot(proximal, obs.heading), 0.0)
+        probe = dot(proximal, obs.heading)
+        return Motion(0.0 * probe, 0.0)
 `,
     },
     {
@@ -189,15 +192,17 @@ def initialize(config, rng, place):
   const config = compileConfig(configSource);
   const runtimeValues = {
     ...config.values,
-    INTERACTION_RADIUS: config.values.PROXIMAL_RANGE,
-    MAX_FORWARD_SPEED: config.values.U,
-    MAX_ANGULAR_SPEED: config.values.OMEGA_MAX,
+    INTERACTION_RADIUS: config.values.INTERACTION_RADIUS ?? config.values.PROXIMAL_RANGE,
+    MAX_FORWARD_SPEED: config.values.MAX_FORWARD_SPEED ?? config.values.U,
+    MAX_ANGULAR_SPEED: config.values.MAX_ANGULAR_SPEED ?? config.values.OMEGA_MAX,
   };
   const runtime = validateRuntimeValues(runtimeValues);
-  const initializer = compileInitializer(initializerSource);
-  const initialState = initializer.initialize(config.values, 1);
-  validateInitialStateForRuntime(initialState, runtime);
-  const setup = simulationSetupFromRuntime(initialState, runtime, 1);
+  const initializerConfig = { ...config, values: { ...config.values, SEED: 1 } };
+  const initializer = compileInitializer(initializerSource, initializerConfig);
+  validateInitialStateForRuntime(initializer.state, runtime);
+  const setup = simulationSetupFromRuntime(runtime, 1, initializer.state);
+  const parameters = numericParameters(config);
+  const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
 
   const waitMessage = (worker, predicate, timeoutMs = 120000) => new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -231,14 +236,13 @@ def initialize(config, rng, place):
   const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
   const results = [];
   for (const controllerSpec of controllers) {
-    const compiled = compileController(controllerSpec.source);
-    const parameters = numericParameters(config.values, compiled.parameters);
+    const ir = compileController(controllerSpec.source, { parameters: parameterTypes });
     const samples = [];
     for (let repetition = 0; repetition < 5; repetition += 1) {
       const worker = new Worker("./worker.js", { type: "module" });
       await waitMessage(worker, (message) => message.type === "wasm-ready");
       const snapshot = waitMessage(worker, (message) => message.type === "snapshot");
-      worker.postMessage({ type: "initialize", setup, ir: compiled.ir, parameters });
+      worker.postMessage({ type: "initialize", setup, ir, parameters });
       await snapshot;
       await advanceTimed(worker, 100);
       samples.push(await advanceTimed(worker, 1000));
@@ -247,7 +251,7 @@ def initialize(config, rng, place):
     const roundtripMs = median(samples);
     results.push({
       key: controllerSpec.key,
-      agents: initialState.length,
+      agents: initializer.state.length,
       ticks: 1000,
       model_seconds: 10,
       roundtrip_ms: roundtripMs,
@@ -257,13 +261,13 @@ def initialize(config, rng, place):
   }
 
   return {
-    profile_version: 1,
+    profile_version: 2,
     mode: "controller-cost-attribution",
     user_agent: navigator.userAgent,
     hardware_concurrency: navigator.hardwareConcurrency,
     setup: {
-      agents: initialState.length,
-      interaction_radius: runtime.INTERACTION_RADIUS,
+      agents: initializer.state.length,
+      interaction_radius: runtime.interactionRadius,
       initialization: "ordered-hexagonal",
     },
     results,
