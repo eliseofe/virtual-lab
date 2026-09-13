@@ -2,7 +2,7 @@
 
 Updated: **14 September 2026**
 
-This file is the durable, context-free starting point for future ChatGPT/Work/human sessions. **Read it before inferring roadmap order from old issue numbering, old chats, or historical issue bodies.**
+This is the durable, context-free starting point for future ChatGPT/Work/human sessions. Read it before inferring roadmap order from old issue numbers or old chats.
 
 ## Current production frontier
 
@@ -10,63 +10,51 @@ Repository: `eliseofe/virtual-lab`
 
 Production: `https://eliseofe.github.io/virtual-lab/`
 
-Current accepted production sequence:
+Accepted production sequence:
 
 - #90 / PR #91 — prepared controller IR / pre-resolved names/operators;
 - #92 / PR #93 — reusable observation/query buffers;
 - #95 / PR #94 — controller-cost attribution profiling;
 - #96 / PR #97 — flattened controller expressions to compact stack bytecode;
 - #98 / PR #99 — reuse bearing-noise rotation per observation;
-- **#29 / PR #103 — worker-owned simulation scheduler, independent visualization cadence.**
+- #29 / PR #103 — worker-owned simulation scheduler and independent visualization cadence.
 
-Current production merge after #29: `f713dad722c68683bfc5822366b2e8071395b307`.
+#29 production merge: `f713dad722c68683bfc5822366b2e8071395b307`.
 
-Owner production phone test before #29, after #90/#92/#95/#96/#98: **massive visible performance improvement around N=91** for the built-in Active Elastic experiment. The controller/kernel performance lane is therefore materially successful. Do not restart controller/math micro-optimization from old profiling notes unless fresh evidence demands it.
+Owner-visible validation:
 
-#29 has now been implemented, merged and deployed. Automated production acceptance is green; the **only immediate next action is an owner visual phone check of large-swarm fluidity, especially at 1×**. Do not start another #56 optimization child before that check.
+- after the controller/kernel performance round, Active Elastic around N=91 became **massively faster** on the owner's phone;
+- after #29, the owner tested **N=1,000** and considers the formerly jerky/frozen visualization problem a **win**: motion is now sufficiently fluid;
+- the owner cannot currently push the production experiment to 10k/100k because of the separate initialization limitation tracked in #101. That does **not** invalidate #29 acceptance.
 
-The broader performance epic #56 remains open because other software-performance layers may still exist after owner acceptance of #29.
+The broader performance epic #56 remains open because further high-level performance venues may still exist. Do not restart controller/math micro-optimization from old profiling notes without fresh evidence.
 
-## #29 — completed runtime/visualization scheduling repair
+## #29 — completed and owner accepted
 
-### Old defect
+Old architecture: the browser main thread clocked the worker by sending fixed 50 ms `advance` batches. The worker returned one snapshot only after each batch, so scientific execution and visualization cadence were coupled.
 
-Before #29:
+Current architecture:
 
-- browser main thread owned `RUNTIME_INTERVAL_MS = 50`;
-- main computed `ticksPerAdvance()` from requested speed and sent `{type: "advance", ticks}`;
-- worker computed the whole batch and only then emitted one snapshot;
-- canvas used `requestAnimationFrame`, but repeatedly redrew the same stale state until the worker returned.
-
-This incorrectly coupled scientific execution, requested speed and visible snapshot cadence. Large/heavy swarms could advance model time quickly while appearing jerky/frozen.
-
-### Current architecture
-
-The owner-approved separation is now implemented:
-
-#### Simulation worker/runtime
+### Simulation worker/runtime
 
 - owns Run/Pause/target-speed state;
-- advances fixed scientific physics/control steps continuously in **bounded adaptive work chunks**;
-- at attainable requested speeds, paces model time against wall time;
-- above compute capacity, stays busy and saturates near maximum achievable throughput instead of growing unbounded batches;
+- advances fixed scientific physics/control steps continuously in bounded adaptive work chunks;
+- paces model time against wall time when the requested rate is attainable;
+- saturates cleanly above compute capacity instead of growing unbounded batches;
 - yields between chunks so Pause, speed changes, reset, setup and controller messages remain responsive;
 - publishes visualization snapshots independently at a bounded wall-clock cadence;
-- fixed `PHYSICS_DT`, control cadence, metric cadence, controller semantics, RNG ordering and environment-owned action application are unchanged.
+- preserves fixed `PHYSICS_DT`, control cadence, metric cadence, controller semantics, RNG ordering and environment-owned action application.
 
-#### Main-thread renderer/UI
+### Main-thread renderer/UI
 
-- does **not** clock scientific physics execution;
-- renders on the browser animation clock via `requestAnimationFrame`;
+- does not request scientific physics work on a timer;
+- renders via `requestAnimationFrame`;
 - draws the newest published state available;
-- can skip intermediate visual states without changing scientific trajectory;
-- remains observational: render cadence cannot affect simulation state.
+- may skip intermediate visual states without altering the scientific trajectory.
 
-A direct exact-tick `advance` worker command still exists **only as a profiling/test hook** so historical raw benchmarks remain comparable. Production `main.js` is statically tested not to use it.
+A direct exact-tick `advance` worker command remains only as a profiling/test hook; production `main.js` is statically tested not to use it.
 
-### #29 measured evidence
-
-New browser scheduler probe uses **10,000 agents** and the actual worker-owned `run/pause/set-speed` path, with 1.2 s wall-clock windows:
+Automated #29 10,000-agent scheduler evidence on CI:
 
 | Requested | Achieved | Fresh snapshot rate |
 |---:|---:|---:|
@@ -76,78 +64,93 @@ New browser scheduler probe uses **10,000 agents** and the actual worker-owned `
 | 60× | 8.46× | 42.2 Hz |
 | 240× | 8.39× | 41.5 Hz |
 
-Interpretation is purely software/performance: attainable rates are paced accurately; once compute capacity is exceeded on that CI runner, throughput saturates around ~8.4× instead of degrading as requested speed rises; visualization snapshots remain ~42–48 Hz rather than being tied to old 50 ms UI-driven batch completions.
+Post-merge build, Pages deployment and deployed-browser smoke all passed. Owner phone validation at N=1,000 also passed.
 
-All existing exact-tick performance guardrails completed successfully, including ordered Active Elastic and disordered Simple Random Walk.
+## #100 — completed clean semantic-regression check
 
-PR #103 checks:
+Owner had reported a possible behavioral difference in Active Elastic after the performance round when `U` was raised from nominal `0.005` to `0.05`.
 
-- Round 1A build/test workflow: success;
-- Performance profile workflow: success.
+Important: #100 did **not** compare U=0.005 against U=0.05. It compared **pre-performance vs current simulator, both at U=0.05**, with the same deterministic setup.
 
-Post-merge production workflow run `34783324182`:
+Compared:
 
-- build: success;
-- GitHub Pages deploy: success;
-- deployed browser smoke: success.
+- pre-performance reference: `9ee2cd50c8e4ade8b60df0fafc1b4d40b6e71fdd` (post-#92, before #95/#96/#98 runtime changes);
+- current runtime line after #29.
 
-Owner visual confirmation on the actual phone/device is still required before declaring the large-swarm presentation symptom closed in practice.
+One fixture was generated once and fed unchanged to both revisions:
 
-## Immediate execution order after owner phone check
+- N=91;
+- ordered `hexagon_perturbed` initialization;
+- zero position noise;
+- seed 2026;
+- U=0.05;
+- arena 10;
+- physics dt 0.01;
+- control dt 0.1;
+- sensor noise 0.1;
+- interaction radius 0.81;
+- same controller IR and same parameters.
 
-1. **Owner phone check for #29 — ACTIVE NEXT ACTION.**
-   - Test deployed production, ideally a larger swarm at `1×` first.
-   - Question is narrow: does motion now look materially fluid rather than stepping/freezing while model time continues?
-   - This is not a full UI/UX review.
-   - If the visible defect persists despite the scheduler measurements, investigate rendering/state-transfer cost next rather than reopening controller math.
+Both versions advanced **1,000 physics ticks = 10 model seconds**. After every tick, every agent `x`, `y`, and `heading` was compared by exact IEEE-754 bit pattern.
 
-2. **#100 — bounded pre/post trajectory-equivalence regression check.**
-   - Owner is ~92% confident that Active Elastic at `U=0.05`, same usual deterministic setup, behaves differently after the performance round: current production may split early and later rejoin whereas the pre-performance version reportedly remained one group.
-   - Do not scientifically analyze the split, forces, stability, or model.
-   - Perform only a short deterministic software-equivalence comparison between an appropriate pre-performance revision and current runtime; answer identical/divergent and first numerical divergence if any.
-   - Pre-performance reference recorded in #100: `9ee2cd50c8e4ade8b60df0fafc1b4d40b6e71fdd`.
-   - Do not use a new numerical integrator to mask this question.
+Result from workflow run `34783864144`:
 
-3. **#101 — large-swarm initialization ceiling.**
-   - Owner cannot reliably initialize target large swarms around `10,000+` agents, eventually `100,000`, with missing-agent/setup errors depending on initializer.
-   - Runtime contract has no intentional hard maximum on N.
-   - Classify whether the blocker is initializer algorithm, initializer interpreter/runtime scalability, validation/transport/memory, or another infrastructure layer.
-   - Fix the immediate blocker so performance scaling can proceed.
-   - Feed the generic lesson into #65: students should not need to reinvent fragile low-level placement; future setup/world capabilities should include scalable simulator-owned placement primitives while preserving experiment-specific semantics.
+`RESULT=IDENTICAL ticks=1000 comparison=bitwise-state`
 
-4. **#102 — numerical integrator evaluation — BACKLOG ONLY.**
-   - Current simulator uses fixed-step Euler.
-   - Owner is open to evaluating a more accurate integrator later, but only as an explicit accuracy/performance design decision with owner scientific input where required.
-   - Never use this as the explanation/fix for #100 before existing-integrator pre/post behavior is checked.
+Therefore no numerical trajectory regression was demonstrated from the performance-round runtime changes in this controlled U=0.05 case. Per the scientific guardrail, stop there: do not investigate the split/rejoin scientifically, do not retune parameters, and do not change integrators to explain it.
 
-5. After #29 owner acceptance plus #100/#101 checkpoints, return to #56 and choose any next performance venue from fresh measurements. Do not continue old micro-optimization threads automatically.
+Test scaffolding PR #104 was intentionally closed **unmerged** after evidence was recorded in #100 and #56.
 
-## Performance evidence and permanent guardrails
+## Open documented items
 
-Two real workloads remain permanent software-performance guardrails:
+### #101 — large-swarm initialization ceiling
+
+Owner cannot reliably initialize target swarms around 10,000+ agents, eventually 100,000, for some initializer choices. Errors manifest as missing/unplaced agents.
+
+Known boundary:
+
+- runtime contract has no deliberate hard maximum on N;
+- likely causes include initializer algorithm/geometry, initializer interpreter/runtime scalability, validation/transport/memory, or another setup infrastructure layer.
+
+Immediate goal when activated: classify the actual blocker and unblock scalable initialization. Broader architectural consequence belongs with #65: students should not have to reinvent fragile low-level placement; future setup/world capabilities should offer scalable simulator-owned placement primitives while preserving experiment-specific semantics.
+
+#101 is important and blocks owner testing at 10k/100k, but it is **not automatically the next task** unless roadmap priority makes large-N testing the immediate need.
+
+### #102 — numerical integrator evaluation — backlog only
+
+Current simulator uses fixed-step Euler. Owner is open to evaluating more accurate alternatives later, but only as an explicit accuracy/performance design decision with owner scientific input where required.
+
+Do not use a new integrator to explain or patch #100; #100 is already closed cleanly.
+
+### #56 — performance epic
+
+Two high-level performance lanes are now accepted:
+
+1. controller/kernel execution — large owner-visible improvement at N≈91;
+2. browser scheduling/render-cadence architecture — #29 accepted at N=1,000 and supported by automated 10k measurements.
+
+Next #56 work should choose a **new high-level venue from fresh measurements**. Do not continue arithmetic/controller micro-optimization merely because individual hotspots exist.
+
+## Permanent performance guardrails
 
 1. **Ordered Active Elastic** — ordered hexagonal setup, zero position noise; dense/structured local-neighbourhood workload.
 2. **Disordered Simple Random Walk** — random initializer; dynamically changing/disordered opposite guardrail.
 
-These are performance coverage cases, not invitations to scientifically retune the experiments.
+These are software-performance coverage cases, not invitations to scientifically retune experiments.
 
-Important rejected optimization:
+Rejected optimization to remember:
 
-- #83 direct neighbour-cell enumeration / removal of per-query x/y temporary vectors was measured and **rejected** because representative neighbour-query timings regressed. #83 is closed `not_planned`; do not rediscover and repeat that candidate without new evidence.
-
-Post-#98 owner validation:
-
-- deployed Active Elastic around N=91 is dramatically faster than before the performance round;
-- #98 remains accepted/closed;
-- possible `U=0.05` behavior concern is isolated in #100 rather than invalidating throughput gains by assumption.
+- #83 direct neighbour-cell enumeration / removal of per-query x/y temporary vectors was measured and rejected because representative neighbour-query timings regressed. #83 is closed `not_planned`; do not repeat it without new evidence.
 
 ## Experiment registry / MCP status
 
-Production registry integration is active. Student-facing flow:
+Production registry integration is active.
+
+Student-facing flow:
 
 student AI authors validated experiment → registry → production Virtual Lab loads same sources → student manually runs/observes/edits → Lab can save back safely → AI can read later.
 
-MCP/registry facts:
+Facts:
 
 - Supabase project ref: `izdmmudfrmqhvlgepwes`;
 - endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`;
@@ -156,14 +159,10 @@ MCP/registry facts:
 - student-facing MCP tools: `read_workspace`, `manage_collection`, `create_experiment`, `edit_experiment`, `delete_experiment`;
 - AI still cannot run the simulator or observe simulation results automatically; future explicit results channel remains #6.
 
-Genuine student-authored Simple Random Walk experiment:
+Real workload registry references:
 
-- ID `75a313d5-150a-4831-b4f7-b02255a1482e`;
-- used as the disordered real-workload performance guardrail.
-
-Ordered Active Elastic registry snapshot used in profiling:
-
-- ID `b57a9113-32d5-4c82-928b-22ceec2c4a2b`.
+- Simple Random Walk: `75a313d5-150a-4831-b4f7-b02255a1482e`;
+- ordered Active Elastic snapshot: `b57a9113-32d5-4c82-928b-22ceec2c4a2b`.
 
 ## Scientific guardrail
 
@@ -171,11 +170,9 @@ Implementation work may reason about software architecture, parser/compiler desi
 
 Do **not** independently perform scientific reasoning, derivations, equilibrium calculations, model analysis, parameter inference, scientific retuning, or decide scientific/numerical-model choices.
 
-If a software decision appears to require a new scientific choice, stop and ask the owner that specific question. Existing accepted scientific values/behavior may be preserved mechanically during refactoring.
+If a software decision requires a new scientific choice, stop and ask the owner that specific question. Existing accepted scientific values/behavior may be preserved mechanically during refactoring.
 
-For #100 specifically, test software equivalence only. For #102, numerical-method selection requires owner involvement before any scientific choice is made.
-
-## Important architecture constraints
+## Architecture constraints
 
 - Agent input = local observation; output = action.
 - Agent internal state remains private/stateful.
@@ -189,7 +186,6 @@ For #100 specifically, test software equivalence only. For #102, numerical-metho
 
 ## Other backlog
 
-- #56 — performance epic, still open.
 - #57 — canonical deterministic RNG with domain-separated streams.
 - #58 — extensible capability registry / feature-request path.
 - #65 — first-class world/environment/setup capability architecture.
@@ -200,17 +196,17 @@ For #100 specifically, test software equivalence only. For #102, numerical-metho
 
 ## Cost invariant
 
-This remains a **zero-euro incremental-cost project**. Baseline uses GitHub/GitHub Pages, the existing Supabase free-tier project, client-side browser compute, and already-owned AI subscriptions/accounts.
+This remains a zero-euro incremental-cost project: GitHub/GitHub Pages, existing Supabase free-tier project, client-side browser compute, and already-owned AI subscriptions/accounts.
 
 ## Resume instructions for a context-free agent
 
 1. Read this file first.
 2. Inspect current `main` and latest comments on #56 before trusting an old chat summary.
-3. #29 is **implemented and deployed**; do not propose rebuilding the old scheduler solution.
-4. Immediate next action is owner visual phone confirmation of large-swarm fluidity on production.
+3. #29 is implemented, deployed and owner accepted; do not propose rebuilding the old scheduler solution.
+4. #100 is completed: pre/post at U=0.05 was bit-for-bit identical for 1,000 ticks; do not reopen without genuinely new evidence.
 5. Do not reopen controller/math micro-optimization simply because #56 is open.
-6. Preserve both real-workload performance guardrails: ordered Active Elastic and disordered Simple Random Walk.
-7. Keep #100 bounded to software equivalence; no scientific investigation unless owner explicitly authorizes it.
-8. Treat #101 as both an immediate large-N blocker and evidence for #65's future scalable setup capabilities.
-9. Do not implement #102 as a regression fix.
+6. Preserve both real-workload performance guardrails.
+7. #101 is the documented large-N initialization blocker but is not automatically the next task.
+8. #102 remains backlog and requires owner scientific involvement before numerical-method choices.
+9. The next performance task, when chosen, should be a new high-level venue based on fresh measurements.
 10. Test/deploy/close the loop before reporting future implementation completion.
