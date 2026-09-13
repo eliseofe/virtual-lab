@@ -49,17 +49,8 @@ impl PeriodicGridNeighbourIndex {
         )
     }
 
-    fn axis_cells(&self, center: usize, span: usize, out: &mut Vec<usize>) {
-        out.clear();
-        let count = self.cells_per_axis;
-        if span >= count / 2 {
-            out.extend(0..count);
-            return;
-        }
-        let count_signed = count as isize;
-        for offset in -(span as isize)..=(span as isize) {
-            out.push((center as isize + offset).rem_euclid(count_signed) as usize);
-        }
+    fn wrapped_axis_cell(&self, center: usize, offset: isize) -> usize {
+        (center as isize + offset).rem_euclid(self.cells_per_axis as isize) as usize
     }
 
     #[cfg(test)]
@@ -93,22 +84,33 @@ impl NeighbourIndex for PeriodicGridNeighbourIndex {
         let (center_x, center_y) = self.cell_of(&state[agent_index]);
         let span = (radius / self.cell_size).ceil() as usize;
         let radius2 = radius * radius;
+        let count = self.cells_per_axis;
 
-        let mut x_cells = Vec::new();
-        let mut y_cells = Vec::new();
-        self.axis_cells(center_x, span, &mut x_cells);
-        self.axis_cells(center_y, span, &mut y_cells);
-
-        for &cell_y in &y_cells {
-            for &cell_x in &x_cells {
-                if let Some(candidates) = self.buckets.get(&(cell_x, cell_y)) {
-                    for &candidate_index in candidates {
-                        if candidate_index == agent_index { continue; }
-                        let displacement = minimum_image(state[candidate_index].position - origin, arena_size);
-                        if displacement.norm_squared() <= radius2 {
-                            out.push(candidate_index);
-                        }
+        let mut visit_cell = |cell_x: usize, cell_y: usize| {
+            if let Some(candidates) = self.buckets.get(&(cell_x, cell_y)) {
+                for &candidate_index in candidates {
+                    if candidate_index == agent_index { continue; }
+                    let displacement = minimum_image(state[candidate_index].position - origin, arena_size);
+                    if displacement.norm_squared() <= radius2 {
+                        out.push(candidate_index);
                     }
+                }
+            }
+        };
+
+        if span >= count / 2 {
+            for cell_y in 0..count {
+                for cell_x in 0..count {
+                    visit_cell(cell_x, cell_y);
+                }
+            }
+        } else {
+            let signed_span = span as isize;
+            for offset_y in -signed_span..=signed_span {
+                let cell_y = self.wrapped_axis_cell(center_y, offset_y);
+                for offset_x in -signed_span..=signed_span {
+                    let cell_x = self.wrapped_axis_cell(center_x, offset_x);
+                    visit_cell(cell_x, cell_y);
                 }
             }
         }
