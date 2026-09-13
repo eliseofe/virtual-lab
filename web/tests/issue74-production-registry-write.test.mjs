@@ -12,8 +12,12 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = path.resolve(here, "../src");
 
+async function registryUiSource() {
+  return readFile(path.join(src, "registry-ui-v2.js"), "utf8");
+}
+
 test("private save uses strict registry validation and optimistic revision ownership guards", async () => {
-  const registryUi = await readFile(path.join(src, "registry-ui.js"), "utf8");
+  const registryUi = await registryUiSource();
   assert.match(registryUi, /function registryArtifactsForSave/);
   assert.match(registryUi, /registryExperimentRunnability\(artifacts\)/);
   assert.match(registryUi, /async function saveCurrentExperiment\(\)/);
@@ -22,7 +26,7 @@ test("private save uses strict registry validation and optimistic revision owner
   assert.match(registryUi, /\.eq\("owner_id", user\.id\)/);
   assert.match(registryUi, /\.eq\("revision", baseRevision\)/);
   assert.match(registryUi, /Save conflict: a newer revision exists/);
-  assert.match(registryUi, /metadataRevision\.textContent = `registry r\$\{data\.revision\}`/);
+  assert.match(registryUi, /conflictRevision = fresh\?\.revision/);
 });
 
 test("strict registry validation does not inherit production-only legacy aliases", () => {
@@ -53,7 +57,7 @@ PROXIMAL_RANGE = 1.0
 });
 
 test("save-as-new creates a distinct private human-owned registry experiment", async () => {
-  const registryUi = await readFile(path.join(src, "registry-ui.js"), "utf8");
+  const registryUi = await registryUiSource();
   assert.match(registryUi, /Save as new…/);
   assert.match(registryUi, /async function createNewExperiment\(\)/);
   assert.match(registryUi, /allowBuiltInCompatibility: true/);
@@ -62,22 +66,33 @@ test("save-as-new creates a distinct private human-owned registry experiment", a
   assert.match(registryUi, /created as a private experiment/);
 });
 
-test("anonymous state exposes no persistence controls and built-in save requires save-as-new", async () => {
-  const registryUi = await readFile(path.join(src, "registry-ui.js"), "utf8");
+test("editability feedback distinguishes read-only, saved, dirty and conflict states", async () => {
+  const registryUi = await registryUiSource();
+  assert.match(registryUi, /Built-in · Read-only/);
+  assert.match(registryUi, /Your experiment · Editable/);
+  assert.match(registryUi, /Saved · r\$\{currentRemote\.revision\}/);
+  assert.match(registryUi, /Unsaved changes/);
+  assert.match(registryUi, /Newer revision r\$\{conflictRevision\} available/);
+  assert.match(registryUi, /ui\.save\.hidden = !owned/);
+  assert.match(registryUi, /ui\.save\.disabled = !owned \|\| !dirty \|\| conflictRevision !== null/);
+});
+
+test("anonymous state exposes no persistence controls and built-in can only be copied after sign-in", async () => {
+  const registryUi = await registryUiSource();
   assert.match(registryUi, /ui\.saveRow\.hidden = !user/);
-  assert.match(registryUi, /Use Save as new for the built-in experiment/);
   assert.match(registryUi, /Sign in before saving/);
+  assert.match(registryUi, /The built-in experiment cannot be overwritten/);
 });
 
 test("refresh detects newer remote revisions without discarding local edits", async () => {
-  const registryUi = await readFile(path.join(src, "registry-ui.js"), "utf8");
+  const registryUi = await registryUiSource();
   assert.match(registryUi, /const dirty = hasUnsavedRemoteEdits\(\)/);
   assert.match(registryUi, /fresh\.revision > previousRemote\.revision/);
-  assert.match(registryUi, /Your local edits are preserved; reload before saving/);
+  assert.match(registryUi, /Your local edits are preserved/);
 });
 
 test("write-back remains artifact-descriptor driven", async () => {
-  const registryUi = await readFile(path.join(src, "registry-ui.js"), "utf8");
+  const registryUi = await registryUiSource();
   assert.match(registryUi, /EXPERIMENT_ARTIFACTS/);
   assert.match(registryUi, /captureExperimentArtifacts\(\)/);
   assert.doesNotMatch(registryUi, /document\.querySelector\("#experiment-config"\)\.value/);
