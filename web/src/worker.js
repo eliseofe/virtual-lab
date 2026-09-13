@@ -214,6 +214,33 @@ self.addEventListener("message", (event) => {
       emitSnapshot("advanced");
       return;
     }
+    // #111 profiling-only hook. It separates kernel advance time from snapshot
+    // materialization. Production main.js never sends profile-advance.
+    if (message.type === "profile-advance") {
+      stopLoop();
+      const ticks = Math.max(0, Math.trunc(Number(message.ticks ?? 0)));
+      const includeState = message.includeState === true;
+      const advanceStarted = performance.now();
+      simulation.advance_ticks(ticks);
+      const advanceFinished = performance.now();
+      let state = null;
+      let snapshotMs = 0;
+      if (includeState) {
+        const snapshotStarted = performance.now();
+        state = simulation.snapshot_state();
+        snapshotMs = performance.now() - snapshotStarted;
+      }
+      self.postMessage({
+        type: "profile-advanced",
+        ticks,
+        advanceMs: advanceFinished - advanceStarted,
+        snapshotMs,
+        scientificTime: simulation.scientific_time(),
+        stateLength: state?.length ?? 0,
+        state,
+      });
+      return;
+    }
     if (message.type === "apply-setup") {
       stopLoop();
       const setup = simulationValues(message.setup);
