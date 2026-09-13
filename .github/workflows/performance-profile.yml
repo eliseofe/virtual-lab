@@ -1,0 +1,67 @@
+name: Performance profile #56
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'crates/kernel/**'
+      - 'web/src/**'
+      - 'web/scripts/performance-profile.mjs'
+      - '.github/workflows/performance-profile.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust with WASM target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: Record runner environment
+        run: |
+          uname -a | tee runner-environment.txt
+          lscpu | tee -a runner-environment.txt
+
+      - name: Run native kernel profile
+        run: cargo run --release -p vlab-kernel --example perf_profile | tee native-profile.txt
+
+      - name: Build browser kernel
+        working-directory: crates/kernel
+        run: wasm-pack build --release --target web --out-dir ../../web/public/wasm --out-name vlab_kernel
+
+      - name: Build static browser artifact
+        run: node web/scripts/build.mjs
+
+      - name: Run browser/WASM profile
+        run: |
+          python3 -m http.server 4173 --directory web/dist >/tmp/vlab-profile-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/build-manifest.json >/dev/null; then break; fi
+            sleep 0.2
+          done
+          node web/scripts/performance-profile.mjs http://127.0.0.1:4173/ | tee browser-profile.json
+
+      - name: Upload profile evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-profile-${{ github.sha }}
+          path: |
+            runner-environment.txt
+            native-profile.txt
+            browser-profile.json
+          retention-days: 30
