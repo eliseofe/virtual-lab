@@ -1,0 +1,67 @@
+name: Issue 100 trajectory equivalence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/scripts/issue100-fixture.mjs'
+      - 'tools/issue100_trajectory.rs'
+      - 'tools/issue100_compare.py'
+      - '.github/workflows/issue100-trajectory-equivalence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current candidate
+        uses: actions/checkout@v6
+
+      - name: Generate one shared deterministic fixture
+        run: node web/scripts/issue100-fixture.mjs /tmp/issue100
+
+      - name: Checkout pre-performance reference
+        uses: actions/checkout@v6
+        with:
+          ref: 9ee2cd50c8e4ade8b60df0fafc1b4d40b6e71fdd
+          path: old
+
+      - name: Install identical trajectory probe into both revisions
+        run: |
+          cp tools/issue100_trajectory.rs crates/kernel/examples/issue100_trajectory.rs
+          cp tools/issue100_trajectory.rs old/crates/kernel/examples/issue100_trajectory.rs
+
+      - name: Run current trajectory for 1000 physics ticks
+        run: |
+          cargo run --release -p vlab-kernel --example issue100_trajectory -- \
+            /tmp/issue100/initial-state.json \
+            /tmp/issue100/controller-ir.json \
+            /tmp/issue100/parameters.json \
+            1000 > /tmp/current-trajectory.txt
+
+      - name: Run pre-performance trajectory for 1000 physics ticks
+        working-directory: old
+        run: |
+          cargo run --release -p vlab-kernel --example issue100_trajectory -- \
+            /tmp/issue100/initial-state.json \
+            /tmp/issue100/controller-ir.json \
+            /tmp/issue100/parameters.json \
+            1000 > /tmp/old-trajectory.txt
+
+      - name: Compare every state component bit-for-bit
+        run: |
+          python3 tools/issue100_compare.py /tmp/old-trajectory.txt /tmp/current-trajectory.txt | tee /tmp/issue100-summary.txt
+          cat /tmp/issue100/metadata.json
+
+      - name: Upload bounded regression evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue100-trajectory-equivalence-${{ github.sha }}
+          path: |
+            /tmp/issue100-summary.txt
+            /tmp/issue100/metadata.json
+            /tmp/old-trajectory.txt
+            /tmp/current-trajectory.txt
+          retention-days: 30
