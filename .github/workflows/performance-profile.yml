@@ -8,6 +8,7 @@ on:
       - 'crates/kernel/**'
       - 'web/src/**'
       - 'web/scripts/performance-profile.mjs'
+      - 'web/scripts/real-workload-isolation-profile.mjs'
       - '.github/workflows/performance-profile.yml'
 
 permissions:
@@ -55,6 +56,7 @@ jobs:
             sleep 0.2
           done
           node web/scripts/performance-profile.mjs http://127.0.0.1:4173/ | tee browser-profile.json
+          node web/scripts/real-workload-isolation-profile.mjs http://127.0.0.1:4173/ | tee real-isolation-profile.json
 
       - name: Upload profile evidence
         uses: actions/upload-artifact@v4
@@ -64,4 +66,5 @@ jobs:
             runner-environment.txt
             native-profile.txt
             browser-profile.json
+            real-isolation-profile.json
           retention-days: 30
