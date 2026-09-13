@@ -112,7 +112,7 @@ fn validate_expression(
                 return Err(at_line(*line, format!("private state '{name}' is not declared")));
             }
             if let Some(variable) = loop_variable {
-                if path == &format!("{variable}.relative_position") { return Ok(()); }
+                if path.strip_prefix(variable) == Some(".relative_position") { return Ok(()); }
             }
             if path.contains('.') {
                 return Err(at_line(*line, format!("observation field '{path}' is unavailable")));
@@ -169,7 +169,8 @@ fn validate_statements(
                 if op != "+" { return Err(at_line(*line, format!("unsupported augmented operator '{op}'"))); }
                 validate_expression(value, parameters, state, locals, loop_variable)?;
                 if let Some(name) = target.strip_prefix("self.") {
-                    if !state.contains(name) { return Err(at_line(*line, format!("private state '{name}' is not declared"))); }
+                    if !state.contains(name) { return Err(at_line(*line, format!("private state '{name}' is not declared")));
+                    }
                 } else if !locals.contains(target) {
                     return Err(at_line(*line, format!("local '{target}' must be assigned before '+='")));
                 }
@@ -224,7 +225,7 @@ fn evaluate(
                 return Value::Scalar(private_state[state_slots[name]]);
             }
             if let Some((variable, neighbour)) = loop_binding {
-                if path == &format!("{variable}.relative_position") { return Value::Vec2(neighbour.relative_position); }
+                if path.strip_prefix(variable) == Some(".relative_position") { return Value::Vec2(neighbour.relative_position); }
             }
             if let Some(value) = locals.get(path) { return *value; }
             if let Some(value) = parameters.get(path) { return Value::Scalar(*value); }
@@ -240,21 +241,37 @@ fn evaluate(
             evaluate(left, parameters, state_slots, private_state, locals, observation, loop_binding),
             evaluate(right, parameters, state_slots, private_state, locals, observation, loop_binding),
         ),
-        Expression::Call { name, args, .. } => {
-            let values: Vec<_> = args.iter().map(|arg| evaluate(arg, parameters, state_slots, private_state, locals, observation, loop_binding)).collect();
-            match name.as_str() {
-                "Vec2" => Value::Vec2(Vec2::new(values[0].scalar(), values[1].scalar())),
-                "dot" => Value::Scalar(values[0].vec2().dot(values[1].vec2())),
-                "perpendicular" => {
-                    let value = values[0].vec2();
-                    Value::Vec2(Vec2::new(-value.y, value.x))
-                }
-                "norm" => Value::Scalar(values[0].vec2().norm_squared().sqrt()),
-                "pow" => Value::Scalar(values[0].scalar().powf(values[1].scalar())),
-                "Motion" => Value::Action(Action { forward: values[0].scalar(), turning: values[1].scalar() }),
-                _ => unreachable!("validated controller call"),
+        Expression::Call { name, args, .. } => match name.as_str() {
+            "Vec2" => {
+                let x = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
+                let y = evaluate(&args[1], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
+                Value::Vec2(Vec2::new(x, y))
             }
-        }
+            "dot" => {
+                let left = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).vec2();
+                let right = evaluate(&args[1], parameters, state_slots, private_state, locals, observation, loop_binding).vec2();
+                Value::Scalar(left.dot(right))
+            }
+            "perpendicular" => {
+                let value = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).vec2();
+                Value::Vec2(Vec2::new(-value.y, value.x))
+            }
+            "norm" => {
+                let value = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).vec2();
+                Value::Scalar(value.norm_squared().sqrt())
+            }
+            "pow" => {
+                let base = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
+                let exponent = evaluate(&args[1], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
+                Value::Scalar(base.powf(exponent))
+            }
+            "Motion" => {
+                let forward = evaluate(&args[0], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
+                let turning = evaluate(&args[1], parameters, state_slots, private_state, locals, observation, loop_binding).scalar();
+                Value::Action(Action { forward, turning })
+            }
+            _ => unreachable!("validated controller call"),
+        },
     }
 }
 
@@ -273,6 +290,8 @@ fn execute_statements(
                 let result = evaluate(value, parameters, state_slots, private_state, locals, observation, loop_binding);
                 if let Some(name) = target.strip_prefix("self.") {
                     private_state[state_slots[name]] = result.scalar();
+                } else if let Some(slot) = locals.get_mut(target) {
+                    *slot = result;
                 } else {
                     locals.insert(target.clone(), result);
                 }
@@ -284,7 +303,7 @@ fn execute_statements(
                     private_state[slot] += right.scalar();
                 } else {
                     let left = locals[target];
-                    locals.insert(target.clone(), binary("+", left, right));
+                    *locals.get_mut(target).expect("validated local slot") = binary("+", left, right);
                 }
             }
             Statement::ForEach { variable, body, .. } => {
@@ -308,6 +327,7 @@ pub struct IrControllerRuntime {
     state_slots: HashMap<String, usize>,
     private_initial: Vec<f64>,
     private_state: Vec<Vec<f64>>,
+    scratch_locals: HashMap<String, Value>,
 }
 
 impl IrControllerRuntime {
@@ -347,24 +367,35 @@ impl IrControllerRuntime {
         if !validate_statements(&ir.body, &parameter_names, &state_names, &mut locals, None)? {
             return Err("controller IR has no action return".to_owned());
         }
+        let scratch_locals = locals.into_iter()
+            .map(|name| (name, Value::Scalar(f64::NAN)))
+            .collect();
 
-        Ok(Self { body: ir.body, parameters, state_slots, private_initial, private_state: Vec::new() })
+        Ok(Self {
+            body: ir.body,
+            parameters,
+            state_slots,
+            private_initial,
+            private_state: Vec::new(),
+            scratch_locals,
+        })
     }
 }
 
 impl ControllerRuntime for IrControllerRuntime {
     fn reset(&mut self, agent_count: usize) {
         self.private_state = vec![self.private_initial.clone(); agent_count];
+        for value in self.scratch_locals.values_mut() { *value = Value::Scalar(f64::NAN); }
     }
 
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action {
-        let mut locals = HashMap::new();
+        for value in self.scratch_locals.values_mut() { *value = Value::Scalar(f64::NAN); }
         execute_statements(
             &self.body,
             &self.parameters,
             &self.state_slots,
             &mut self.private_state[agent_index],
-            &mut locals,
+            &mut self.scratch_locals,
             observation,
             None,
         ).expect("validated controller always returns an action")
@@ -407,6 +438,12 @@ mod tests {
         let action = runtime.step(0, &observation);
         assert!((action.forward - 9.0).abs() < 1e-12);
         assert_eq!(action.turning, 0.0);
+        let second = runtime.step(0, &Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![NeighbourObservation { relative_position: Vec2::new(1.0, 0.0) }],
+        });
+        assert!((second.forward - 4.0).abs() < 1e-12);
+        assert_eq!(second.turning, 0.0);
     }
 
     #[test]
