@@ -3,6 +3,9 @@ name: Round 1A build and Pages probe
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
   pull_request:
     branches: [main]
   workflow_dispatch:
