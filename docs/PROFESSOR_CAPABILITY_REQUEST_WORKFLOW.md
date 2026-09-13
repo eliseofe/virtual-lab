@@ -40,6 +40,80 @@ capability missing + student
 
 There is no `requestable vs forbidden` classifier for missing experiment capabilities in the first version. For a professor, a missing experiment capability is requestable by default. For a student, missing capabilities are not requestable yet. Student requests may be revisited later.
 
+## What a capability request is
+
+A capability request is a first-class Supabase registry/domain row, not a GitHub issue and not free-form chat state.
+
+It should have a stable request ID and retain enough provenance to reconnect the request to the paper/experiment that exposed the gap. The first useful schema should contain, at minimum:
+
+- request ID and timestamps;
+- authenticated requester identity and role;
+- originating experiment/draft ID and revision when available;
+- capability domain, for example `world-builder`, `observation`, `action`, `intrinsic`, or another future typed extension point;
+- concise requested capability name/summary;
+- short motivation/context produced from the experiment discussion;
+- lifecycle status;
+- optional professor/developer notes;
+- optional linked GitHub issue/PR once development begins;
+- implemented contract/capability version and completion timestamp once available.
+
+Do not expose GitHub credentials or repository-development operations through this row or through the professor MCP.
+
+## Capability-request lifecycle
+
+Keep the initial state machine small:
+
+```text
+requested
+   |\
+   | \-> declined
+   v
+approved
+   v
+in_progress
+   v
+implemented
+```
+
+`approved` means "approved for development / queued". It does not itself execute repository work.
+
+If implementation reveals that a request must be reformulated, notes can be attached and the request can remain approved/in progress rather than inventing a complex workflow immediately.
+
+## Professor-mode request inbox
+
+Professor mode in the production Virtual Lab should include a simple, polished capability-request viewer/inbox. The professor should not need to ask an AI chat to enumerate raw Supabase rows every time.
+
+The initial viewer should support:
+
+- list requests, newest first, with status filters;
+- clearly show originating experiment/draft and capability domain;
+- open a request to read its description/context and linked experiment;
+- `Approve for development` and `Decline` actions while status is `requested`;
+- show `approved`, `in progress`, and `implemented` state visibly;
+- show linked GitHub issue/PR and implemented capability/contract version once the development side has supplied them;
+- optionally jump back to/revalidate the originating experiment after implementation.
+
+The viewer is an experiment/product administration surface backed by Supabase. It must not embed GitHub credentials or turn the professor browser into a simulator-development client.
+
+## Development handoff from ChatGPT
+
+The development side is separate from Grok/Claude's Experiment MCP.
+
+A normal owner workflow should be possible from this ChatGPT development interface:
+
+1. owner says to inspect capability requests, or to take a particular/next approved request;
+2. ChatGPT reads the approved Supabase request through the developer-side Supabase connection;
+3. ChatGPT creates or links the corresponding GitHub engineering issue when implementation actually begins;
+4. the Supabase request status is changed to `in_progress` and stores the GitHub issue link;
+5. implementation proceeds through the normal repository/PR/test/deploy workflow;
+6. only after the capability is deployed and advertised by the active authoring/runtime contract does ChatGPT mark the request `implemented`;
+7. the request row records the relevant PR/issue and implemented contract/capability version;
+8. Professor mode then shows the completed state automatically from Supabase.
+
+This means the Professor UI can initiate the human decision by approving/queuing a request, while actual simulator development remains in the engineering interface. No manual copying of request details into chat should be required.
+
+A convenience command such as "implement the next approved capability request" should eventually be enough for the owner in the developer chat once the Supabase developer connection and request schema exist.
+
 ## What counts as an experiment capability
 
 The professor may request any capability needed to express an experiment through the Virtual Lab model, including future classes such as:
@@ -60,11 +134,13 @@ Intended workflow once professor identity and capability requests are implemente
 2. The AI reads the current authoring/capability contract through MCP.
 3. Supported portions are authored normally.
 4. If a required experiment capability is missing, validation identifies the missing capability/domain.
-5. Because the authenticated role is professor, the experiment intent is preserved as a non-runnable draft if necessary and a durable capability request is created automatically or through one simple professor-domain action.
-6. Simulator-development work happens separately through the normal repository engineering workflow.
-7. Once the new capability is implemented and deployed, the versioned authoring contract advertises it.
-8. The existing draft is revalidated; the AI can then complete/use the experiment without changing its basic workflow.
-9. An accepted professor-owned experiment may later be promoted into the public Showcase/curated collection under the professor/curator workflow.
+5. Because the authenticated role is professor, the experiment intent is preserved as a non-runnable draft if necessary and a durable Supabase capability request is created.
+6. The request appears in the Professor-mode inbox as `requested`.
+7. The professor approves or declines it. Approval moves it to `approved`; it does not grant Grok/Claude development privileges.
+8. The development workflow later takes an approved request, links a GitHub issue, and marks it `in_progress`.
+9. Once the new capability is implemented, tested and deployed, the versioned authoring contract advertises it and the request is marked `implemented`.
+10. The originating draft is revalidated; the AI can then complete/use the experiment without changing its basic workflow.
+11. An accepted professor-owned experiment may later be promoted into the public Showcase/curated collection under the professor/curator workflow.
 
 This loop lets papers drive simulator development empirically: each paper either maps to current capabilities or produces a concrete missing-capability request.
 
@@ -72,10 +148,14 @@ This loop lets papers drive simulator development empirically: each paper either
 
 If a paper requires a continuous environmental gradient and the active contract has no gradient world-builder capability:
 
-- professor identity: preserve the draft and create a request for the missing world/setup capability;
+- professor identity: preserve the draft and create a Supabase request for the missing world/setup capability;
+- the request appears in Professor mode;
+- professor chooses `Approve for development`;
+- later the developer-side ChatGPT workflow takes that approved request and implements it through GitHub;
+- after deployment, the request becomes `implemented` and the draft can be revalidated;
 - student identity: report that the experiment cannot currently be expressed and do not create a request.
 
-The AI does not decide whether gradients are a good feature. The authenticated role determines whether the missing capability can enter the request queue.
+The AI does not decide whether gradients are a good feature. The authenticated role determines whether the missing capability can enter the request queue; the professor decides whether the queued request should actually be developed.
 
 ## Related issues
 
