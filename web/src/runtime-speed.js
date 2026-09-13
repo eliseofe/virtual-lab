@@ -1,3 +1,5 @@
+import { RuntimeRateMeter, formatRuntimeFactor } from "./runtime/rate-meter.js";
+
 const scientificTime = document.querySelector("#scientific-time");
 const runState = document.querySelector("#run-state");
 const requestedSpeed = document.querySelector("#simulation-speed");
@@ -7,48 +9,47 @@ if (!scientificTime || !runState || !requestedSpeed || !actualSpeed) {
   throw new Error("Runtime speed meter UI mismatch.");
 }
 
-let lastWallMs = null;
-let lastModelSeconds = null;
-let smoothedFactor = null;
+const meter = new RuntimeRateMeter({ minElapsedMs: 250 });
+
+function currentModelSeconds() {
+  const value = Number(scientificTime.textContent);
+  return Number.isFinite(value) ? value : null;
+}
 
 function resetMeasurement() {
-  lastWallMs = null;
-  lastModelSeconds = null;
-  smoothedFactor = null;
+  meter.reset();
+  actualSpeed.textContent = "—";
+}
+
+function startMeasurement() {
+  const modelSeconds = currentModelSeconds();
+  if (modelSeconds === null) {
+    resetMeasurement();
+    return;
+  }
+  meter.start(performance.now(), modelSeconds);
   actualSpeed.textContent = "—";
 }
 
 function sampleMeasurement() {
   if (runState.textContent !== "Running") return;
 
-  const modelSeconds = Number(scientificTime.textContent);
-  if (!Number.isFinite(modelSeconds)) return;
+  const modelSeconds = currentModelSeconds();
+  if (modelSeconds === null) return;
 
-  const wallMs = performance.now();
-  if (lastWallMs !== null && lastModelSeconds !== null) {
-    const modelDelta = modelSeconds - lastModelSeconds;
-    const wallDeltaSeconds = (wallMs - lastWallMs) / 1000;
-
-    if (modelDelta < 0) {
-      resetMeasurement();
-    } else if (modelDelta > 0 && wallDeltaSeconds > 0) {
-      const instantaneousFactor = modelDelta / wallDeltaSeconds;
-      smoothedFactor = smoothedFactor === null
-        ? instantaneousFactor
-        : smoothedFactor * 0.75 + instantaneousFactor * 0.25;
-      actualSpeed.textContent = `${smoothedFactor.toFixed(smoothedFactor >= 10 ? 1 : 2)}×`;
-    }
-  }
-
-  lastWallMs = wallMs;
-  lastModelSeconds = modelSeconds;
+  const factor = meter.sample(performance.now(), modelSeconds);
+  if (factor !== null) actualSpeed.textContent = formatRuntimeFactor(factor);
 }
 
 new MutationObserver(sampleMeasurement).observe(scientificTime, { childList: true, characterData: true, subtree: true });
 new MutationObserver(() => {
-  if (runState.textContent !== "Running") resetMeasurement();
+  if (runState.textContent === "Running") startMeasurement();
+  else resetMeasurement();
 }).observe(runState, { childList: true, characterData: true, subtree: true });
-requestedSpeed.addEventListener("input", resetMeasurement);
+requestedSpeed.addEventListener("input", () => {
+  if (runState.textContent === "Running") startMeasurement();
+  else resetMeasurement();
+});
 
 resetMeasurement();
 
