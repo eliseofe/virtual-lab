@@ -49,6 +49,7 @@ jobs:
 
       - name: Run browser/WASM profile
         run: |
+          set -o pipefail
           python3 -m http.server 4173 --directory web/dist >/tmp/vlab-profile-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
