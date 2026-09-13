@@ -197,10 +197,21 @@ self.addEventListener("message", (event) => {
     }
     if (message.type === "pause") {
       stopLoop();
+      emitSnapshot("paused");
       return;
     }
     if (message.type === "set-speed") {
       setTargetSpeed(message.speed);
+      return;
+    }
+    // Profiling/test hook only. Production main.js is statically tested never
+    // to send this message; it exists so raw exact-tick benchmarks remain
+    // comparable across scheduler refactors without making the UI clock physics.
+    if (message.type === "advance") {
+      stopLoop();
+      const ticks = Math.max(0, Math.trunc(Number(message.ticks ?? 0)));
+      simulation.advance_ticks(ticks);
+      emitSnapshot("advanced");
       return;
     }
     if (message.type === "apply-setup") {
