@@ -192,8 +192,14 @@ impl LocalObservationModel {
         let origin = state[agent_index].position;
         out.heading = state[agent_index].heading();
         out.neighbours.clear();
+        if neighbour_indices.is_empty() { return; }
+        let (sin, cos) = bearing_noise.sin_cos();
         for &index in neighbour_indices.iter() {
-            let relative = minimum_image(state[index].position - origin, arena_size).rotate(bearing_noise);
+            let relative = minimum_image(state[index].position - origin, arena_size);
+            let relative = Vec2::new(
+                cos * relative.x - sin * relative.y,
+                sin * relative.x + cos * relative.y,
+            );
             out.neighbours.push(NeighbourObservation { relative_position: relative });
         }
     }
@@ -620,6 +626,26 @@ mod tests {
         assert_eq!(out, vec![1]);
         let observation = LocalObservationModel.observe(&state, 0, &BruteForceNeighbourIndex, 0.5, 10.0, 0.0);
         assert!((observation.neighbours[0].relative_position.x + 0.2).abs() < 1e-12);
+    }
+
+    #[test]
+    fn precomputed_bearing_rotation_matches_vec2_rotate_exactly() {
+        let vectors = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.25, -0.75),
+            Vec2::new(-4.9, 3.2),
+        ];
+        for angle in [0.0, 0.17, -0.23, std::f64::consts::PI, -2.7] {
+            let (sin, cos) = angle.sin_cos();
+            for vector in vectors {
+                let expected = vector.rotate(angle);
+                let actual = Vec2::new(
+                    cos * vector.x - sin * vector.y,
+                    sin * vector.x + cos * vector.y,
+                );
+                assert_eq!(actual, expected);
+            }
+        }
     }
 
     #[test]
