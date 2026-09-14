@@ -2,193 +2,92 @@
 
 Updated: **14 September 2026**
 
-This file is the authoritative **current roadmap / execution frontier** for Virtual Lab. It exists so a context-free ChatGPT/Work/human session can recover the project's strategic state without reconstructing it from issue chronology.
-
-For detailed accepted technical state and evidence, read `PROJECT_STATE.md` after this file. For the newly approved Experiment → Study → Research Document architecture, read `docs/RESEARCH_MODEL.md`. For execution-boundary rules, read `docs/EXECUTION_GRANULARITY.md`. For a concrete implementation, then read the relevant active issue/design document.
+This file is the authoritative current roadmap / execution frontier for Virtual Lab. Read `AGENTS.md` first. For detailed technical state/evidence read `PROJECT_STATE.md`; for execution-unit rules read `docs/EXECUTION_GRANULARITY.md`.
 
 ## Current strategic objective
 
-The near-term objective remains the **Professor paper-to-experiment capability-request loop**:
+The near-term product objective remains the **Professor paper-to-experiment capability-request loop** documented in `docs/PROFESSOR_CAPABILITY_REQUEST_WORKFLOW.md`:
 
-`paper + professor AI (for example Grok/Claude) → experiment draft → missing capability detected → durable Supabase capability request → Professor inbox → approve/decline → ChatGPT/GitHub implementation → deployed capability → request marked implemented → draft revalidates/runs`
+`paper + professor AI → experiment draft → missing capability → Supabase capability request → Professor inbox → approve/decline → ChatGPT/GitHub implementation → deployed capability → request implemented → draft revalidates/runs`
 
-The approved design is in `docs/PROFESSOR_CAPABILITY_REQUEST_WORKFLOW.md`.
+Before extending that workflow, finish the approved Experiment-artifact architectural prerequisite without teaching new AI workflows a representation already known to be temporary.
 
-However, on 14 September 2026 the owner approved an architectural prerequisite that should be completed **before extending professor/AI authoring**: remove the known fixed-three-artifact limitation from the Experiment data and UI architecture. Do not teach new AI workflows a representation that is already known to be temporary.
+## Current gates and sequencing
 
-Do **not** infer project priority from the numerically latest issue, latest commit, or most recently completed technical task.
+### #115 owner acceptance
 
-## Current owner acceptance gate
+#115 collection assignment/moves is implemented, merged, deployed and automated-smoke green. It remains open only for owner live acceptance. This acceptance may occur when convenient and does not imply unfinished engineering.
 
-The owner accepted the normal production private-student workflow on **14 September 2026**:
+### #117 — completed
 
-- #74 — production write-back / revision and conflict safety: **accepted and closed**;
-- #76 — scalable experiment browser / collections / ownership presentation: **accepted and closed**.
+#117 generic Experiment artifact persistence/contract is complete:
 
-During that acceptance pass, the owner identified one narrow missing library-management feature: an experiment should be assignable to a collection when using `Save as new…`, and an existing owned experiment should be movable between collections. This is #115.
+- isolated PR #122 merged as `6b31bd5626b5af31804ff7fbaa19ec01c719177f`;
+- production database migrated to canonical ordered typed artifacts with bounded legacy mirrors;
+- MCP v5 deployed as Supabase Edge Function version 9;
+- existing experiment IDs/revisions/ownership/collections/RLS and scientific semantics preserved;
+- synthetic fourth-artifact tests pass;
+- main workflow `34832435383` passed build, Pages deploy and deployed-browser smoke.
 
-#115 is implemented, merged, deployed and automated-smoke green. It remains open **only for owner live acceptance**. When the owner reports acceptance, record it, close #115, and update durable state. Do not confuse this remaining acceptance step with unfinished engineering.
+A minimal real-client Grok read-only sanity check is useful before the next checkpoint: read `Simple Random Walk` and report artifact IDs; expected `configuration`, `initialization`, `controller`.
 
-## Immediate approved engineering sequence
+### #118 — waiting for explicit continuation
 
-Two newly approved focused issues generalize the Experiment artifact architecture. They are justified independently of all later Study/paper features.
+#118 artifact-driven Experiment workspace/UI is approved but **must not start merely because it was pre-approved**.
 
-1. **#117 — generic Experiment artifact persistence/contract**
-   - remove structural dependence on exactly `config_source`, `initializer_source`, `controller_source`;
-   - mechanically preserve all current experiment content, IDs, revisions, ownership, collections, RLS and scientific semantics;
-   - make artifact persistence/contract extensible without adding a new privileged column for every future artifact.
+Per the owner's execution-granularity rule, #117 was a substantial checkpoint and is now complete. Stop here and ask whether to continue with #118. If the owner says yes, implement/test/deploy/verify #118 as its own substantial delivery unit.
 
-2. **#118 — artifact-driven Experiment workspace/UI**
-   - depends on #117;
-   - make rendering/load/save/dirty behavior follow artifact descriptors/data rather than exactly three pre-existing editor branches;
-   - current users should still see the same logical three artifacts: Configuration, Initialization, Controller;
-   - no Study UI or new science is introduced by this issue.
+The superseded combined PR #121 is closed unmerged. Its branch is implementation history only and must not be merged wholesale.
 
-These are both approved, but they are **separate substantial execution checkpoints**. Approval of both does not authorize treating them as one delivery unit. Complete #117 through implementation, tests, deployment, verification and repository-state update; report that clean checkpoint; then **stop and ask the owner whether to continue with #118**. Only after an explicit continuation should #118 be implemented/deployed. This is the mandatory rule in `docs/EXECUTION_GRANULARITY.md`.
+## Execution granularity — mandatory
 
-They may proceed while #115 waits for the owner's short live acceptance because they do not depend on the unresolved acceptance result, but #115 must still be closed promptly once the owner tests it.
+Approval breadth is not execution breadth.
 
-## Next major product stage after #117/#118
+When the owner says `go ahead`, `proceed`, or equivalent across several tickets, treat that as permission for the sequence, not an obligation to batch all approved work.
 
-Resume the Professor paper-to-experiment capability-request loop using the generalized artifact contract:
+Default to one substantial independently deployable/testable ticket at a time:
 
-1. add authenticated `professor` / `curator` role support while preserving ordinary student behavior;
-2. add durable Supabase capability-request records and role-dependent missing-capability behavior;
-3. add the Professor-mode request inbox with `Approve for development` / `Decline`;
-4. implement the developer handoff so an approved request can be taken by ChatGPT, linked to a GitHub engineering issue, implemented/tested/deployed, and marked `implemented` only after the active capability contract advertises it;
-5. revalidate the originating experiment/draft after implementation.
+1. implement;
+2. test;
+3. deploy when applicable;
+4. verify actual behavior;
+5. update repository state/issue;
+6. report a clean checkpoint;
+7. stop and ask whether to continue to the next substantial ticket unless the owner's current message explicitly says to complete the entire sequence without intermediate stops.
 
-Broader sharing, grading/submission, Showcase/public curation, and community workflows remain related but are not prerequisites for the first capability-request loop.
+Small/trivial adjacent tickets may be batched. If scope turns out larger than expected, split at the next safe boundary. Full rule: `docs/EXECUTION_GRANULARITY.md`.
 
-## Newly approved research architecture
+## After #118
 
-The owner and assistant converged on a broader research model documented in `docs/RESEARCH_MODEL.md`.
+Resume the Professor capability-request loop:
 
-Core semantics:
+1. authenticated `professor` / `curator` role support while preserving student behavior;
+2. durable Supabase capability-request records and role-dependent missing-capability behavior;
+3. Professor request inbox with Approve / Decline;
+4. developer handoff: approved request → ChatGPT → linked GitHub implementation issue → test/deploy → mark implemented only when active capability contract advertises it;
+5. revalidate originating experiment/draft.
 
-- **Experiment** = one runnable model / single-run definition with versioned, extensible artifacts;
-- **Study** = a named reproducible investigation over a pinned Experiment revision, with protocol/runs/results/plots;
-- **Research Note** = durable scientific memory such as hypothesis, observation, interpretation, discussion, decision or caveat, carrying explicit references to relevant Studies/results;
-- **Research Document** = a paper/report/thesis-chapter scope that references any number of Studies, Notes and selected outputs, and can therefore span several Experiments.
+Broader sharing/Showcase, Study execution, Research Notes/Documents, results-to-AI and paper synthesis remain related future epics/backlog rather than prerequisites for the first capability-request loop.
 
-Important approved constraints:
+## Parallel / opportunistic work
 
-- Study granularity is not enforced: one conference paper may use one broad Study; a journal/thesis may use many;
-- first Study implementation should expose one pinned Experiment revision per Study and never silently follow later Experiment edits;
-- future multi-Experiment/reality-gap Studies are possible and the persistence design must not make them an irreversible redesign, but they are not required initially;
-- Collections continue to organize Experiments; Studies do not create a second nested collection hierarchy;
-- the Experiment page gains a Studies area; opening a Study should open a separate normal browser tab/workspace, leaving the Experiment laboratory open;
-- raw/bulk data remains local-first; persistent definitions and compact provenance use stable IDs;
-- plot specifications and generated plot/results are distinct objects;
-- AI/provider integrations remain adapters, not the research model.
+Useful work may proceed while an owner-only acceptance step is unavailable, but that is opportunistic progress, not implicit roadmap reprioritization. Do not infer priority from the latest issue, commit or technical thread.
 
-### Future epics
+Performance (#56/#111 follow-up), native/HPC (#8), deterministic RNG (#57), world/environment architecture (#65), numerical-integrator evaluation (#102), Study/results work (#3/#6), and Research Notes/Documents/synthesis (#119/#120) remain parallel/future lanes unless explicitly promoted here.
 
-These are approved architecture, not immediate monolithic implementation tasks:
+## Source precedence
 
-- **#3 — Study epic:** Study object/workspace, protocol, multi-run execution, metrics, aggregation, plots and replay. Decompose into focused child issues when activated.
-- **#119 — Research Notes / Research Documents epic:** structured scientific memory and paper/report/thesis organization.
-- **#6 — selected results/plots → AI epic:** explicit user-controlled compact result channel; bulk data remains local.
-- **#120 — AI research synthesis epic:** reconstruct selected scientific context and produce report/paper seeds; future Overleaf/document output is an adapter.
+When sources disagree:
 
-Do not implement any of these epics as one pass merely because their design is documented.
+1. explicit current owner instruction;
+2. `PROJECT_CONTROL.md` for priority/sequencing;
+3. `PROJECT_STATE.md` for accepted technical state/evidence;
+4. current design documents;
+5. active issue scope;
+6. older issues/chats as history only.
 
-## Parallel / opportunistic work rule
-
-The owner often cannot immediately perform a phone/browser/visual acceptance step. In that situation, useful roadmap work may proceed in parallel **without changing strategic priority**.
-
-Interpret this correctly:
-
-- doing a needed technical task while the owner cannot test is **opportunistic progress**, not a roadmap reprioritization;
-- the strategic objective remains the same unless this file is explicitly updated;
-- do not promote the newest completed side task into the project's main next step merely because it is recent;
-- choose opportunistic tasks that are already justified by the roadmap, do not require unresolved owner scientific/design decisions, and can be closed-loop tested without the owner;
-- once the owner becomes available for a blocked acceptance gate, return to that gate unless the owner explicitly changes the priority.
-
-Example: #111 performance attribution was valid parallel engineering work. Its recency does not make another performance optimization the main product priority.
-
-## Parallel technical lanes / backlog
-
-These are legitimate future or opportunistic lanes, but **not the current strategic frontier** unless explicitly promoted here:
-
-- #56 performance epic: if activated, next performance work must first attribute N≈5,000 worker cost internally before choosing an optimization;
-- #3 Study/quantitative experiment epic: multi-run/headless execution, protocols/sweeps, metrics, statistics, plots and replay;
-- #6 explicit selected Study results/plots → AI channel;
-- #119 Research Notes / Research Documents;
-- #120 AI research synthesis / paper-report seed workflow;
-- #57 deterministic RNG architecture;
-- #65 first-class world/environment/setup architecture;
-- #8 native/HPC backend when a measured browser ceiling justifies it;
-- #102 numerical-integrator evaluation, which requires owner scientific input.
-
-A future professor-authored paper may itself expose missing capabilities such as #65-style world primitives. The capability-request loop is intended to make such needs explicit rather than requiring the whole future simulator feature set to be built in advance.
-
-## Roadmap maintenance protocol
-
-This section is mandatory project process, not commentary.
-
-### When this file must be updated
-
-Update `PROJECT_CONTROL.md` whenever any of these changes:
-
-- the current strategic objective;
-- a dependency/gate on the strategic objective;
-- an item moves between `waiting for owner`, `active`, `accepted/done`, or `backlog` in a way that affects sequencing;
-- owner feedback changes which milestone should happen next;
-- a new architectural decision changes the intended product loop.
-
-Do **not** update strategic priority merely because a side task happened to be completed most recently.
-
-### Execution granularity
-
-The execution unit is governed by `docs/EXECUTION_GRANULARITY.md`. In particular, broad approval of several roadmap tickets is not a requirement to batch them. Substantial tickets default to one-at-a-time completion and checkpointing. A context-free session must not collapse separately approved substantial tickets into one PR/deployment merely because doing so is technically convenient.
-
-### When `PROJECT_STATE.md` must be updated
-
-Update `PROJECT_STATE.md` after substantial implementation/diagnostic work that future sessions need as technical ground truth, especially:
-
-- deployed/merged behavior;
-- owner acceptance results;
-- performance evidence;
-- contracts, interfaces, security boundaries or architecture decisions;
-- rejected approaches that should not be retried without new evidence.
-
-`PROJECT_STATE.md` is the detailed technical state/history. `PROJECT_CONTROL.md` is the current sequencing and priority authority.
-
-### Issue hygiene
-
-When implementation is complete but owner acceptance is still required, the issue must say exactly that. When owner acceptance occurs, close/update the issue and reflect the changed gate here if it affects sequencing.
-
-Epic bodies describe approved architecture and decomposition rules; they are not permission to implement the entire epic in one pass. When an epic becomes active, inspect current state and create the smallest coherent child issue(s) that can be independently tested/deployed/accepted.
-
-Old issue bodies may contain superseded sequencing statements. They remain useful history but must not override this file's current roadmap.
-
-### Conflict resolution for future sessions
-
-If sources appear to disagree:
-
-1. explicit current owner instruction wins;
-2. `PROJECT_CONTROL.md` governs current priority, gates and sequencing;
-3. `PROJECT_STATE.md` governs accepted technical state/evidence;
-4. current design documents govern approved architecture for their domain;
-5. active issue bodies govern bounded implementation scope;
-6. old issue chronology and old chats are historical evidence, not automatic priority.
-
-If a contradiction still matters after applying that order, surface the contradiction instead of silently guessing.
-
-## Context-free resume procedure
-
-A new session should be able to align in one pass:
-
-1. read `AGENTS.md`;
-2. read this file completely;
-3. read `docs/EXECUTION_GRANULARITY.md`;
-4. read `PROJECT_STATE.md` for detailed current state;
-5. if working on research-object architecture, read `docs/RESEARCH_MODEL.md`;
-6. read only the relevant active issue/design document for the current objective or gate;
-7. before proposing work, state internally the current strategic objective, current gate, whether the proposed task is strategic or opportunistic, and the correct execution unit;
-8. never equate “most recent issue/commit” with “next roadmap priority.”
+Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**Strategic priority:** obtain owner live acceptance of already-deployed #115 when convenient; complete **#117 only** as the current substantial engineering checkpoint; then stop and ask whether to continue with #118. After #117/#118, resume the Professor paper-to-experiment capability-request loop. Study/Research-Document/results-to-AI/paper-synthesis work is documented as future epics (#3/#119/#6/#120), not yet monolithic implementation.
+**#117 is complete. #115 awaits only owner live acceptance. The next substantial engineering checkpoint is #118, but it must not begin until the owner explicitly says to continue; after #118, resume the Professor paper-to-experiment capability-request loop.**
