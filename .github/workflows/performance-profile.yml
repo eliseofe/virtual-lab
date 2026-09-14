@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'crates/kernel/**'
+      - 'benchmarks/neighbour_search_matrix.json'
       - 'web/src/**'
       - 'web/scripts/performance-profile.mjs'
       - 'web/scripts/real-workload-isolation-profile.mjs'
@@ -49,6 +50,11 @@ jobs:
           set -o pipefail
           cargo run --release -p vlab-kernel --example neighbour_density_profile | tee neighbour-density-profile.txt
 
+      - name: Run neighbour-strategy contract smoke
+        run: |
+          set -o pipefail
+          cargo run --release -p vlab-kernel --example neighbour_strategy_benchmark | tee neighbour-strategy-profile.txt
+
       - name: Build browser kernel
         working-directory: crates/kernel
         run: wasm-pack build --release --target web --out-dir ../../web/public/wasm --out-name vlab_kernel
@@ -80,6 +86,7 @@ jobs:
             runner-environment.txt
             native-profile.txt
             neighbour-density-profile.txt
+            neighbour-strategy-profile.txt
             browser-profile.json
             real-isolation-profile.json
             controller-cost-profile.json
