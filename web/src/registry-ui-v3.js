@@ -31,6 +31,7 @@ const BUILTIN_VALUE = experimentSelect.value;
 const BUILTIN_TITLE = experimentSelect.selectedOptions?.[0]?.textContent?.trim() || "Built-in experiment";
 const BUILTIN_REVISION = metadataRevision.textContent;
 const builtinArtifacts = captureExperimentArtifacts();
+const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 
 let user = null;
 let profile = null;
@@ -88,11 +89,12 @@ function installStyles() {
 
     .experiment-browser { width: min(920px, calc(100vw - 32px)); max-height: min(740px, calc(100vh - 32px)); border: 0; border-radius: 16px; padding: 0; box-shadow: 0 18px 70px rgba(16,35,44,.28); color: #172127; }
     .experiment-browser::backdrop { background: rgba(16,27,33,.42); }
-    .experiment-browser-shell { display: grid; grid-template-rows: auto auto 1fr; max-height: inherit; min-height: 500px; background: #fff; }
+    .experiment-browser-shell { display: grid; grid-template-rows: auto 1fr; max-height: inherit; min-height: 500px; background: #fff; }
     .experiment-browser-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 17px 18px 12px; border-bottom: 1px solid #e6ecef; }
     .experiment-browser-head h2 { margin: 0; font-size: 17px; }
     .experiment-browser-head-actions { display: flex; gap: 7px; }
     .experiment-browser-tabs { display: flex; gap: 6px; padding: 12px 18px 0; }
+    .experiment-browser-tabs[hidden] { display: none !important; }
     .experiment-browser-tab[aria-selected="true"] { background: #1d5166; border-color: #1d5166; color: #fff; }
     .experiment-browser-body { display: grid; grid-template-columns: 190px 1fr; min-height: 0; padding: 12px 18px 18px; gap: 14px; }
     .experiment-browser-filters { display: grid; align-content: start; gap: 6px; padding-right: 12px; border-right: 1px solid #e6ecef; overflow: auto; }
@@ -150,13 +152,13 @@ function selectedCollectionId(select) {
 }
 
 function currentLocationLabel() {
-  if (!currentRemote) return "Built-in library";
-  return `My experiments / ${collectionName(currentRemote.collection_id)}`;
+  if (!currentRemote) return "Built-in";
+  return currentRemote.collection_id ? `Collection · ${collectionName(currentRemote.collection_id)}` : "No collection";
 }
 
 function buildCurrentExperimentUi() {
-  experimentLabel.textContent = "Quick switch";
-  experimentSelect.setAttribute("aria-label", "Quick switch within the current collection");
+  experimentLabel.textContent = "Experiment";
+  experimentSelect.setAttribute("aria-label", "Switch experiment");
 
   const current = document.createElement("div");
   current.className = "experiment-current";
@@ -168,7 +170,7 @@ function buildCurrentExperimentUi() {
   title.textContent = BUILTIN_TITLE;
   const browse = document.createElement("button");
   browse.className = "experiment-browse";
-  browse.textContent = "Browse library";
+  browse.textContent = "Find experiment";
   main.append(title, browse);
 
   const meta = document.createElement("div");
@@ -179,7 +181,7 @@ function buildCurrentExperimentUi() {
   origin.textContent = "Built-in · Read-only";
   const location = document.createElement("span");
   location.className = "experiment-location";
-  location.textContent = "Built-in library";
+  location.textContent = "Built-in";
   meta.append(origin, location);
 
   current.append(main, meta);
@@ -355,6 +357,7 @@ function buildBrowser() {
   mineTab.dataset.source = "mine";
   mineTab.textContent = "My experiments";
   tabs.append(builtinTab, mineTab);
+  tabs.hidden = true;
 
   const body = document.createElement("div");
   body.className = "experiment-browser-body";
@@ -375,8 +378,8 @@ function buildBrowser() {
   const search = document.createElement("input");
   search.className = "experiment-browser-search";
   search.type = "search";
-  search.placeholder = "Search all my experiments";
-  search.setAttribute("aria-label", "Search all my experiments");
+  search.placeholder = "Search experiments";
+  search.setAttribute("aria-label", "Search experiments");
   searchRow.append(search);
 
   const count = document.createElement("p");
@@ -431,38 +434,72 @@ function experimentsInCollection(collectionId) {
   });
 }
 
+function workspaceStorageKey() {
+  return user ? `${WORKSPACE_KEY_PREFIX}${user.id}` : null;
+}
+
+function rememberCurrentWorkspace() {
+  const key = workspaceStorageKey();
+  if (!key) return;
+  const value = currentRemote ? `registry:${currentRemote.id}` : BUILTIN_VALUE;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn("Could not persist the current Virtual Lab experiment.", error);
+  }
+}
+
+function rememberedWorkspaceValue() {
+  const key = workspaceStorageKey();
+  if (!key) return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch (error) {
+    console.warn("Could not restore the previous Virtual Lab experiment.", error);
+    return null;
+  }
+}
+
+function clearRememberedWorkspace() {
+  const key = workspaceStorageKey();
+  if (!key) return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch (error) {
+    console.warn("Could not clear the previous Virtual Lab experiment.", error);
+  }
+}
+
 function setQuickSwitchOptions() {
   experimentSelect.replaceChildren();
 
-  if (!currentRemote) {
-    const option = document.createElement("option");
-    option.value = BUILTIN_VALUE;
-    option.textContent = BUILTIN_TITLE;
-    experimentSelect.append(option);
-    experimentSelect.value = BUILTIN_VALUE;
-    currentUi.quickHint.textContent = "Showing the Built-in library. Use Browse library to open your private experiments.";
-    return;
+  const builtin = document.createElement("option");
+  builtin.value = BUILTIN_VALUE;
+  builtin.textContent = BUILTIN_TITLE;
+  experimentSelect.append(builtin);
+
+  const experiments = [...remoteExperiments];
+  if (currentRemote && !experiments.some((experiment) => experiment.id === currentRemote.id)) {
+    experiments.unshift(currentRemote);
   }
 
-  const location = collectionName(currentRemote.collection_id);
-  const group = document.createElement("optgroup");
-  group.label = location;
-
-  const scoped = experimentsInCollection(currentRemote.collection_id);
-  const visible = scoped.some((experiment) => experiment.id === currentRemote.id)
-    ? scoped
-    : [currentRemote, ...scoped];
-
-  for (const experiment of visible) {
-    const option = document.createElement("option");
-    option.value = `registry:${experiment.id}`;
-    option.textContent = `${experiment.title} · r${experiment.revision}`;
-    group.append(option);
+  if (user && experiments.length) {
+    const group = document.createElement("optgroup");
+    group.label = "Your experiments";
+    for (const experiment of experiments) {
+      const option = document.createElement("option");
+      option.value = `registry:${experiment.id}`;
+      const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";
+      option.textContent = `${experiment.title} · r${experiment.revision} · ${location}`;
+      group.append(option);
+    }
+    experimentSelect.append(group);
   }
 
-  experimentSelect.append(group);
-  experimentSelect.value = `registry:${currentRemote.id}`;
-  currentUi.quickHint.textContent = `Showing ${location}. Quick switch stays in this collection; use Browse library to change collection or search everything.`;
+  experimentSelect.value = currentRemote ? `registry:${currentRemote.id}` : BUILTIN_VALUE;
+  currentUi.quickHint.textContent = user
+    ? "Switch directly here, or use Find experiment to search everything. Collections are optional organization."
+    : "The built-in experiment is available now. Sign in to add your private experiments to this switcher.";
 }
 
 function updateMoveButton() {
@@ -487,7 +524,7 @@ function updateCurrentUi() {
     currentUi.title.textContent = BUILTIN_TITLE;
     currentUi.origin.dataset.kind = "readonly";
     currentUi.origin.textContent = "Built-in · Read-only";
-    currentUi.location.textContent = "Built-in library";
+    currentUi.location.textContent = "Built-in";
     metadataRevision.textContent = BUILTIN_REVISION;
   }
 
@@ -516,11 +553,13 @@ function updateCurrentUi() {
   } else if (dirty) {
     ui.saveState.dataset.state = "dirty";
     ui.saveState.textContent = "Unsaved changes";
-    ui.note.textContent = `Save changes before moving this experiment. Saving updates ${currentLocationLabel()} as a new revision.`;
+    ui.note.textContent = `Save changes before moving this experiment. Saving creates a new revision; collection is only organization.`;
   } else {
     ui.saveState.dataset.state = "saved";
     ui.saveState.textContent = `Saved · r${currentRemote.revision}`;
-    ui.note.textContent = `This experiment belongs to your account and is stored in ${currentLocationLabel()}.`;
+    ui.note.textContent = currentRemote.collection_id
+      ? `This experiment belongs to your account. ${currentLocationLabel()}.`
+      : "This experiment belongs to your account. It does not need a collection.";
   }
 
   setQuickSwitchOptions();
@@ -566,7 +605,8 @@ function experimentResult(experiment) {
   const meta = document.createElement("span");
   meta.className = "experiment-result-meta";
   const updated = formatUpdated(experiment.updated_at);
-  meta.textContent = `Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`;
+  const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";
+  meta.textContent = `Your experiment · ${location} · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`;
   result.append(title, meta);
   result.addEventListener("click", () => run(async () => {
     if (currentRemote?.id !== experiment.id && !(await confirmDiscardIfNeeded())) return;
@@ -601,90 +641,86 @@ function experimentGroup(label, experiments, { showEmpty = false } = {}) {
   return section;
 }
 
+function builtInResult() {
+  const button = document.createElement("button");
+  button.className = "experiment-result";
+  const title = document.createElement("strong");
+  title.textContent = BUILTIN_TITLE;
+  const meta = document.createElement("span");
+  meta.className = "experiment-result-meta";
+  meta.textContent = "Built-in · Read-only";
+  button.append(title, meta);
+  button.addEventListener("click", () => run(async () => {
+    if (!(await confirmDiscardIfNeeded())) return;
+    await restoreBuiltIn();
+    browser.dialog.close();
+  }));
+  return button;
+}
+
 function renderBrowser() {
-  browser.builtinTab.setAttribute("aria-selected", String(browserSource === "builtin"));
-  browser.mineTab.setAttribute("aria-selected", String(browserSource === "mine"));
-  browser.mineTab.disabled = !user;
-  browser.searchRow.hidden = browserSource !== "mine";
+  browser.builtinTab.hidden = true;
+  browser.mineTab.hidden = true;
+  browser.searchRow.hidden = false;
   browser.filters.replaceChildren();
   browser.results.replaceChildren();
 
-  if (browserSource === "builtin") {
-    browser.contextTitle.textContent = "Built-in library";
-    browser.contextHelp.textContent = user
-      ? "Available to everyone. You can edit and run it locally, or save a private copy to My experiments."
-      : "Available to everyone. You can edit and run it locally; sign in if you want to keep a private copy.";
-    browser.count.textContent = "1 experiment";
-    const group = experimentGroup("Built-in", [{
-      id: "builtin",
-      title: BUILTIN_TITLE,
-      revision: BUILTIN_REVISION,
-      updated_at: null,
-    }]);
-    const result = group.querySelector(".experiment-result");
-    result.replaceWith((() => {
-      const button = document.createElement("button");
-      button.className = "experiment-result";
-      const title = document.createElement("strong");
-      title.textContent = BUILTIN_TITLE;
-      const meta = document.createElement("span");
-      meta.className = "experiment-result-meta";
-      meta.textContent = "Read-only source";
-      button.append(title, meta);
-      button.addEventListener("click", () => run(async () => {
-        if (!(await confirmDiscardIfNeeded())) return;
-        await restoreBuiltIn();
-        browser.dialog.close();
-      }));
-      return button;
-    })());
-    browser.results.append(group);
-    return;
-  }
-
   browser.filters.append(filterButton("All experiments", "all"));
-  browser.filters.append(filterButton("Unfiled", "unfiled"));
-  for (const collection of collections) browser.filters.append(filterButton(collection.name, collection.id));
+  if (user) {
+    browser.filters.append(filterButton("No collection", "unfiled"));
+    for (const collection of collections) browser.filters.append(filterButton(collection.name, collection.id));
+  }
 
   const search = browserSearch.trim().toLocaleLowerCase();
-  const allFiltered = remoteExperiments.filter((experiment) => !search || experiment.title.toLocaleLowerCase().includes(search));
+  const builtinMatches = browserCollection === "all" && (!search || BUILTIN_TITLE.toLocaleLowerCase().includes(search));
+  const filtered = remoteExperiments.filter((experiment) => {
+    const matchesSearch = !search || experiment.title.toLocaleLowerCase().includes(search);
+    if (!matchesSearch) return false;
+    if (browserCollection === "all") return true;
+    if (browserCollection === "unfiled") return !experiment.collection_id;
+    return experiment.collection_id === browserCollection;
+  });
 
-  if (browserCollection === "all") {
-    browser.contextTitle.textContent = search ? `Search results for “${browserSearch.trim()}”` : "All my experiments";
-    browser.contextHelp.textContent = search
-      ? "Searching your whole private library. Results stay grouped by collection."
-      : "Your private library, grouped by where each experiment is stored.";
-    const locations = 1 + collections.length;
-    browser.count.textContent = `${allFiltered.length} experiment${allFiltered.length === 1 ? "" : "s"} · ${locations} location${locations === 1 ? "" : "s"}`;
+  browser.contextTitle.textContent = "Experiments";
+  browser.contextHelp.textContent = user
+    ? "Search the built-in source and all of your runnable experiments in one place. Collections are optional filters."
+    : "Search the built-in experiments. Sign in to include your private experiments.";
 
-    const groups = [
-      { id: "unfiled", label: "Unfiled" },
-      ...collections.map((collection) => ({ id: collection.id, label: collection.name })),
-    ];
-    let appended = 0;
-    for (const groupInfo of groups) {
-      const experiments = filteredExperimentsForCollection(groupInfo.id, search);
-      const section = experimentGroup(groupInfo.label, experiments, { showEmpty: !search });
-      if (section) {
-        browser.results.append(section);
-        appended += 1;
-      }
-    }
-    if (!appended) {
-      const empty = document.createElement("p");
-      empty.className = "experiment-browser-empty";
-      empty.textContent = "No experiments match this search.";
-      browser.results.append(empty);
-    }
-    return;
+  const total = filtered.length + (builtinMatches ? 1 : 0);
+  browser.count.textContent = `${total} experiment${total === 1 ? "" : "s"}`;
+
+  if (builtinMatches) {
+    const section = document.createElement("section");
+    section.className = "experiment-group";
+    const head = document.createElement("div");
+    head.className = "experiment-group-head";
+    const name = document.createElement("strong");
+    name.textContent = "Built-in";
+    const count = document.createElement("span");
+    count.textContent = "1 experiment";
+    head.append(name, count);
+    const items = document.createElement("div");
+    items.className = "experiment-group-items";
+    items.append(builtInResult());
+    section.append(head, items);
+    browser.results.append(section);
   }
 
-  const label = browserCollection === "unfiled" ? "Unfiled" : collectionName(browserCollection);
-  const filtered = filteredExperimentsForCollection(browserCollection, search);
-  browser.contextTitle.textContent = `My experiments / ${label}`;
-  browser.contextHelp.textContent = "Showing only this collection. Use All experiments to browse the whole library.";
-  browser.count.textContent = `${filtered.length} experiment${filtered.length === 1 ? "" : "s"}`;
-  browser.results.append(experimentGroup(label, filtered, { showEmpty: true }));
+  if (filtered.length) {
+    const label = browserCollection === "all"
+      ? "Your experiments"
+      : browserCollection === "unfiled"
+        ? "No collection"
+        : collectionName(browserCollection);
+    browser.results.append(experimentGroup(label, filtered));
+  }
+
+  if (!total) {
+    const empty = document.createElement("p");
+    empty.className = "experiment-browser-empty";
+    empty.textContent = search ? "No experiments match this search." : "No experiments are available here.";
+    browser.results.append(empty);
+  }
 }
 
 async function loadProfile() {
@@ -765,6 +801,7 @@ async function restoreBuiltIn({ apply = true } = {}) {
   conflictRevision = null;
   ui.newForm.hidden = true;
   updateCurrentUi();
+  rememberCurrentWorkspace();
   setMessage(user ? "Built-in experiment loaded." : "Built-in experiment loaded. Sign in to open your private library.");
   if (apply) await applyLoadedSources();
 }
@@ -778,6 +815,7 @@ async function loadRemoteExperiment(id) {
   conflictRevision = null;
   ui.newForm.hidden = true;
   updateCurrentUi();
+  rememberCurrentWorkspace();
   await applyLoadedSources();
   setMessage(`${experiment.title} · revision ${experiment.revision} loaded.`, "success");
 }
@@ -936,9 +974,10 @@ async function createNewExperiment() {
   closeSaveAsNew();
   await Promise.all([loadCollections(), loadExperimentList()]);
   updateCurrentUi();
+  rememberCurrentWorkspace();
   renderBrowser();
   await applyLoadedSources();
-  setMessage(`${data.title} created in My experiments / ${collectionName(data.collection_id)}.`, "success");
+  setMessage(`${data.title} created${data.collection_id ? ` in ${collectionName(data.collection_id)}` : " without a collection"}.`, "success");
 }
 
 function setSignedOutUi() {
@@ -961,6 +1000,23 @@ function setSignedInUi() {
   updateCurrentUi();
 }
 
+async function restoreRememberedWorkspace() {
+  if (!user || currentRemote) return false;
+  const remembered = rememberedWorkspaceValue();
+  if (!remembered || remembered === BUILTIN_VALUE) return false;
+  if (!remembered.startsWith("registry:")) {
+    clearRememberedWorkspace();
+    return false;
+  }
+  const id = remembered.slice("registry:".length);
+  if (!remoteExperiments.some((experiment) => experiment.id === id)) {
+    clearRememberedWorkspace();
+    return false;
+  }
+  await loadRemoteExperiment(id);
+  return true;
+}
+
 async function initializeSession() {
   const { data, error } = await supabase.auth.getSession();
   if (error) throw error;
@@ -974,6 +1030,7 @@ async function initializeSession() {
 
   await loadProfile();
   await Promise.all([loadCollections(), loadExperimentList()]);
+  await restoreRememberedWorkspace();
   setSignedInUi();
   renderBrowser();
   setMessage(connectedMessage(), "success");
@@ -1039,12 +1096,12 @@ async function refreshRegistry() {
 }
 
 function openBrowser() {
-  browserSource = currentRemote ? "mine" : "builtin";
-  browserCollection = currentRemote ? (currentRemote.collection_id || "unfiled") : "all";
+  browserCollection = "all";
   browserSearch = "";
   browser.search.value = "";
   renderBrowser();
   browser.dialog.showModal();
+  browser.search.focus({ preventScroll: true });
 }
 
 async function run(action) {
@@ -1059,6 +1116,14 @@ async function run(action) {
 currentUi.browse.addEventListener("click", openBrowser);
 experimentSelect.addEventListener("change", () => run(async () => {
   const value = experimentSelect.value;
+  if (value === BUILTIN_VALUE) {
+    if (currentRemote && !(await confirmDiscardIfNeeded())) {
+      setQuickSwitchOptions();
+      return;
+    }
+    if (currentRemote) await restoreBuiltIn();
+    return;
+  }
   if (!value.startsWith("registry:")) return;
   const id = value.slice("registry:".length);
   if (currentRemote?.id === id) return;
