@@ -10,7 +10,7 @@ The near-term product objective remains the **Professor paper-to-experiment capa
 
 `paper + professor AI → experiment draft → missing capability → Supabase capability request → Professor inbox → approve/decline → ChatGPT/GitHub implementation → deployed capability → request implemented → draft revalidates/runs`
 
-The Experiment-artifact prerequisite is engineering-complete through #117/#118. The lifecycle/capability model is documented under #124 and #125 is deployed. The first Professor-loop implementation checkpoint, #133 / #58.1, is now also complete and deployed.
+The Experiment-artifact prerequisite is engineering-complete through #117/#118. The lifecycle/capability model is documented under #124 and #125 is deployed. The first two Professor-loop implementation checkpoints are now complete and deployed: #133 / #58.1 establishes the role boundary, and #135 / #58.2 establishes durable role-dependent capability-request creation.
 
 Owner live acceptance of #115/#118 may be batched later when the owner has time. It does **not** block independently verifiable backend/contract checkpoints.
 
@@ -37,7 +37,7 @@ Do not prescribe a trivial fixed script. A useful user-driven pass can naturally
 2. optional passive artifact expansion and Lab preservation/display/editing;
 3. executable intent boundary — an unregistered optional artifact must produce `unsupported-capability`, never inferred execution;
 4. #115 collection assignment/moves;
-5. later Professor-only request/inbox behavior once those checkpoints exist.
+5. Professor-only capability request/inbox behavior once the inbox checkpoint exists.
 
 Do **not** duplicate ordinary owner acceptance in a Student session. Student-specific negative authorization boundaries belong in automated security/regression tests.
 
@@ -53,32 +53,71 @@ All ordinary Experiment/collection/authoring behavior remains one shared impleme
 
 PR #134 merged as `064980a68de397b7c9d88f5321886d94b7d2338a`.
 
-Production now has:
+Production has:
 
 - server-controlled `profiles.role` with `student | professor`, default `student`;
 - exactly one existing owner/test account bootstrapped as Professor and the other as Student, without committing account-identifying data;
 - authenticated users unable to update their own role while retaining allowed `display_name` updates;
 - `read_workspace` identity exposing the role;
-- the same five existing MCP tools and implementation paths for both roles;
-- Experiment MCP **ACTIVE version 11**, server 2.4.0 / health interface 6;
-- main workflow `34860428856` successful after merge/Pages deployment.
+- the same five ordinary MCP tools and implementation paths for both roles.
 
-No Professor-only action exists yet. No simulator/scientific behavior changed.
+#133 originally deployed Experiment MCP version 11. #135 subsequently redeployed the same shared role foundation as current MCP **ACTIVE version 13** while adding only the explicit Professor request boundary described below.
 
-### Next substantial checkpoint — #58.2, not started
+No simulator/scientific behavior changed.
 
-The next logical independently deployable checkpoint is durable **capability-request records plus Professor-only request creation / Student rejection** for unsupported capability intent.
+### #135 / #58.2 — durable capability requests — completed/deployed
 
-It should preserve the originating intent/draft/provenance, use the server-controlled role boundary from #133, and add no GitHub/developer privileges to the research AI.
+PR #138 merged as `f14210124150eb220b40999007b515d296cde589`.
 
-Per `docs/EXECUTION_GRANULARITY.md`, **do not start #58.2 automatically from recency or broad prior approval**. Start it only after the owner explicitly continues from the completed #133 checkpoint.
+Production now has first-class `public.capability_requests` rows for unsupported Professor experiment needs. A request durably preserves:
+
+- requester and role snapshot;
+- optional originating Experiment ID/revision;
+- draft title/description/artifacts when the intent is not currently runnable;
+- capability domain/name/context and optional artifact type/lifecycle hook;
+- lifecycle state and reserved future Professor/developer/GitHub/deployment provenance fields.
+
+Security boundary:
+
+- RLS is enabled;
+- Professor may create/read only their own initial `requested` rows;
+- Student cannot create capability requests and receives no `request_capability` MCP tool;
+- authenticated users have no request UPDATE/DELETE path yet;
+- inbox transitions are intentionally deferred to #58.3.
+
+MCP behavior:
+
+- the same five shared Experiment/collection tools remain one implementation for both roles;
+- Professor gets one additional `request_capability` tool;
+- unsupported-capability diagnostics tell Professor that the intent can be preserved/requested, while Student remains unsupported with no request action;
+- the request path preserves unsupported drafts without weakening normal Experiment validation;
+- no GitHub/repository/shell/deployment/admin/simulator-source capability is exposed.
+
+Current Experiment MCP is **ACTIVE Edge Function version 13**, server 2.5.0 / health interface 7, capability-request interface `vlab.capability-request/1`.
+
+Verification:
+
+- branch CI `34862760429`: success;
+- live Professor RLS insert/read probe: success and rolled back;
+- live Student insert probe: denied by RLS and rolled back;
+- Supabase security advisor showed no new finding for `capability_requests`;
+- main workflow `34863015099`: build, GitHub Pages deploy and deployed-browser smoke all success.
+
+No owner test is required at this checkpoint. No simulator/scientific behavior changed.
+
+### Next substantial checkpoint — #58.3, not started
+
+The next independently deployable checkpoint is the **Professor request inbox with Approve / Decline** over the durable #135 records.
+
+It should add Professor-only request discovery/triage and lifecycle transitions while keeping developer/GitHub handoff separate. It must not automatically implement requests or give the research AI repository/deployment privileges.
+
+Per `docs/EXECUTION_GRANULARITY.md`, **do not start #58.3 automatically**. Start it only after the owner explicitly continues from the completed #135 checkpoint.
 
 Later #58 checkpoints remain:
 
-1. Professor request inbox with Approve / Decline;
-2. approved request → developer/ChatGPT + linked GitHub implementation issue;
-3. mark implemented only after the active capability contract advertises the deployed capability;
-4. revalidate the originating experiment/draft.
+1. approved request → developer/ChatGPT + linked GitHub implementation issue;
+2. mark implemented only after the active capability contract advertises the deployed capability;
+3. revalidate the originating experiment/draft.
 
 ## Artifact lifecycle / optional executable architecture — epic #124
 
@@ -98,7 +137,7 @@ Unknown/code-looking optional artifacts never gain execution by inference.
 
 ### #125 — capability metadata in AI authoring contract — completed/deployed
 
-PR #132 merged as `eaae0dc0a19ef1e5124ca0753f48c89cb3406147`. #125 initially deployed the Experiment MCP as Edge Function version 10; #133 subsequently deployed version 11 while preserving this artifact capability contract.
+PR #132 merged as `eaae0dc0a19ef1e5124ca0753f48c89cb3406147`. #125 initially deployed the Experiment MCP as Edge Function version 10; later #133/#135 versions preserve this artifact capability contract.
 
 Production advertises:
 
@@ -154,4 +193,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#133 / #58.1 is complete and deployed: Professor is a server-controlled strict superset of Student, MCP v11 exposes the role, and shared Student behavior remains one code path. #115/#118 await later consolidated owner acceptance. The next substantial Professor-loop checkpoint is #58.2 (durable capability requests + role-dependent creation), but it must not start until explicit continuation from this checkpoint.**
+**#133 / #58.1 and #135 / #58.2 are complete and deployed: Professor remains a strict superset of Student, durable RLS-protected capability requests exist, Professor gets one explicit request action while Student does not, and current MCP v13 is ACTIVE. #115/#118 await later consolidated owner acceptance. The next substantial Professor-loop checkpoint is #58.3 (Professor inbox + Approve/Decline) and must wait for explicit continuation.**
