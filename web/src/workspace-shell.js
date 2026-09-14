@@ -14,6 +14,14 @@ function movePanel(panel) {
   utilityContent.append(panel);
 }
 
+function setHidden(element, hidden) {
+  if (element.hidden !== hidden) element.hidden = hidden;
+}
+
+function setText(element, text) {
+  if (element.textContent !== text) element.textContent = text;
+}
+
 function syncUtilityPanels() {
   const accountPanel = document.querySelector(".registry-panel");
   const professorPanel = document.querySelector(".professor-panel");
@@ -21,15 +29,16 @@ function syncUtilityPanels() {
   movePanel(accountPanel);
   movePanel(professorPanel);
 
-  utilityLoading.hidden = Boolean(accountPanel);
+  setHidden(utilityLoading, Boolean(accountPanel));
 
   const professorAvailable = Boolean(professorPanel && !professorPanel.hidden);
-  professorButton.hidden = !professorAvailable;
+  setHidden(professorButton, !professorAvailable);
 
   const pendingCount = professorPanel?.querySelector(".professor-pending-count")?.textContent?.trim();
-  professorButton.textContent = professorAvailable && pendingCount && pendingCount !== "0"
+  const professorLabel = professorAvailable && pendingCount && pendingCount !== "0"
     ? `Professor · ${pendingCount}`
     : "Professor";
+  setText(professorButton, professorLabel);
 }
 
 function openUtilities(target = "account") {
