@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-lab.invalid/schemas/registry-experiment/1",
+  "title": "Virtual Lab Registry Experiment",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "interface_version",
+    "experiment_id",
+    "owner_id",
+    "title",
+    "lifecycle",
+    "revision",
+    "artifacts",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "vlab.registry-experiment/1"},
+    "interface_version": {"const": "vlab.student-artifacts/1"},
+    "experiment_id": {"type": "string", "minLength": 1},
+    "owner_id": {"type": "string", "minLength": 1},
+    "owner_display_name": {"type": ["string", "null"]},
+    "collection_id": {"type": ["string", "null"]},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "lifecycle": {"enum": ["active", "archived"]},
+    "visibility": {"enum": ["private", "shared", "public"], "default": "private"},
+    "revision": {"type": "integer", "minimum": 1},
+    "artifacts": {
+      "type": "object",
+      "required": ["config_source", "initializer_source", "controller_source"],
+      "properties": {
+        "config_source": {"type": "string"},
+        "initializer_source": {"type": "string"},
+        "controller_source": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "created_by": {
+      "type": ["object", "null"],
+      "properties": {
+        "user_id": {"type": ["string", "null"]},
+        "actor_type": {"enum": ["human", "ai"]},
+        "ai_client": {"type": ["string", "null"]}
+      },
+      "required": ["actor_type"],
+      "additionalProperties": false
+    },
+    "updated_by": {
+      "type": ["object", "null"],
+      "properties": {
+        "user_id": {"type": ["string", "null"]},
+        "actor_type": {"enum": ["human", "ai"]},
+        "ai_client": {"type": ["string", "null"]}
+      },
+      "required": ["actor_type"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
