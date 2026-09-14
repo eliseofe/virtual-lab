@@ -10,9 +10,10 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Production Lab: `https://eliseofe.github.io/virtual-lab/`
 - Supabase project: `izdmmudfrmqhvlgepwes`
 - Experiment MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
-- Experiment MCP: **ACTIVE Edge Function version 11**
-- MCP server version: **2.4.0**
-- MCP health interface version: **6**
+- Experiment MCP: **ACTIVE Edge Function version 13**
+- MCP server version: **2.5.0**
+- MCP health interface version: **7**
+- Capability-request interface: **`vlab.capability-request/1`**
 
 Important recent merge SHAs:
 
@@ -25,6 +26,7 @@ Important recent merge SHAs:
 - #118 artifact-driven Experiment workspace/UI: `ec3993b07faf12be063863ee609e86e7fa31668b`
 - #125 artifact capability/lifecycle metadata: `eaae0dc0a19ef1e5124ca0753f48c89cb3406147`
 - #133 Professor role foundation: `064980a68de397b7c9d88f5321886d94b7d2338a`
+- #135 durable capability requests: `f14210124150eb220b40999007b515d296cde589`
 
 ## Owner-visible acceptance state
 
@@ -35,9 +37,9 @@ Engineering-complete but awaiting a later consolidated owner live pass:
 - **#115** — collection choice during Save as new and clean owned-experiment moves between collections/Unfiled;
 - **#118** — artifact-driven Experiment workspace while retaining ordinary Configuration / Initialization / Controller behavior.
 
-The owner explicitly prefers a self-directed combined test rather than many synthetic micro-tests. Normal Student functionality may be accepted while signed in as **Professor**, because Professor is now intentionally a strict permission superset using the same shared code path. Student-only negative authorization boundaries should be verified automatically rather than by duplicating owner testing.
+The owner explicitly prefers a self-directed combined test rather than many synthetic micro-tests. Normal Student functionality may be accepted while signed in as **Professor**, because Professor is intentionally a strict permission superset using the same shared code path. Student-only negative authorization boundaries should be verified automatically rather than by duplicating owner testing.
 
-A useful later combined pass can naturally cover ordinary create/load/edit/save/run, optional passive artifacts, unsupported executable-artifact intent, collection moves, and later Professor-only request workflow once implemented.
+#133 and #135 are backend/contract checkpoints with live authorization probes and do not require immediate owner testing. A useful later combined pass can naturally cover ordinary create/load/edit/save/run, optional passive artifacts, unsupported executable-artifact intent, collection moves, and the Professor request/inbox workflow after the inbox checkpoint exists.
 
 ## #117 / #118 — generic Experiment artifacts
 
@@ -102,36 +104,29 @@ Issue #133 was implemented in PR #134 and merged as `064980a68de397b7c9d88f53218
 
 `professor` is a strict permission superset of `student`.
 
-All ordinary Experiment, collection and AI-authoring capabilities use the **same implementation path** for both roles. Future Professor-only operations must branch only at explicit authorization boundaries.
+All ordinary Experiment, collection and AI-authoring capabilities use the **same implementation path** for both roles. Professor-only operations branch only at explicit authorization boundaries.
 
 ### Database / authorization
 
 Migration `20260914150356_professor_role_superset` is live.
 
-`public.profiles` now has server-controlled:
+`public.profiles` has server-controlled:
 
 - `role text not null default 'student'`;
 - CHECK allowing only `student | professor`.
 
-Authenticated users no longer have table-wide UPDATE on `profiles`; they retain column UPDATE only on `display_name`. Live privilege verification:
+Authenticated users do not have table-wide UPDATE on `profiles`; they retain column UPDATE only on `display_name`. Live privilege verification:
 
 - authenticated UPDATE on `role`: **false**;
 - authenticated UPDATE on `display_name`: **true**.
 
-Thus a normal authenticated user cannot self-promote through PostgREST even though the existing self-profile RLS policy still permits writes to their own row.
-
-Current live bootstrap has exactly:
-
-- 1 Professor account;
-- 1 Student account.
-
-The existing owner/test Gmail account is Professor and the other account remains Student. Account-identifying addresses are not committed to the repository.
+Current live bootstrap has exactly one Professor account and one Student account. Account-identifying addresses are not committed to the repository.
 
 ### MCP
 
-`read_workspace` now selects `id, display_name, role` and returns role inside the existing authenticated identity object.
+`read_workspace` selects `id, display_name, role` and returns role inside the authenticated identity object.
 
-The exact same five tools remain registered once each for both roles:
+The same five ordinary tools remain registered once each for both roles:
 
 - `read_workspace`
 - `manage_collection`
@@ -139,26 +134,118 @@ The exact same five tools remain registered once each for both roles:
 - `edit_experiment`
 - `delete_experiment`
 
-There is no Professor-only MCP action yet and no duplicated Student/Professor implementation.
-
-Experiment MCP was deployed as **Edge Function version 11**, status ACTIVE, with `verify_jwt=false` intentionally preserved because the function uses its existing custom Supabase OAuth/JWKS middleware.
+#133 initially deployed this role-aware MCP as Edge Function version 11. #135 later preserved the shared tool implementations and added one explicit Professor-only request tool.
 
 ### Verification evidence
 
 Focused #133 tests verify server-controlled roles and the single shared tool path.
 
-The first PR CI attempt failed only because an old #117 test hard-coded MCP interface version 5. The new #133 tests themselves passed. The stale assertion was generalized to accept the current numeric interface version; corrected PR CI run `34860322972` passed.
-
-After merge, main production workflow `34860428856` passed, including the normal build/Pages path.
-
-Live post-deploy checks confirm:
-
-- MCP version 11 ACTIVE;
-- one Professor and one Student profile;
-- role self-update privilege false;
-- display-name update privilege true.
+Corrected PR CI run `34860322972` passed. After merge, main workflow `34860428856` passed.
 
 No simulator, artifact execution, scientific semantics, storage ownership, Experiment RLS or revision behavior was intentionally changed by #133.
+
+## #135 / #58.2 — durable Professor capability requests — completed/deployed
+
+Issue #135 was implemented in PR #138 and merged as `f14210124150eb220b40999007b515d296cde589`.
+
+### Durable request model
+
+Migration `20260914153000_capability_requests.sql` is live and creates `public.capability_requests` as the durable record for unsupported Professor experiment intent.
+
+A row preserves:
+
+- stable UUID and timestamps;
+- requester ID and `requester_role` snapshot;
+- optional originating Experiment ID and revision;
+- preserved `draft_title`, `draft_description`, and ordered `draft_artifacts` when the requested intent is not currently runnable;
+- `capability_domain`, `capability_name`, free-form context;
+- optional requested artifact type and lifecycle hook (`setup | initialize | control | finalize`);
+- lifecycle state `requested | approved | declined | in_progress | implemented`;
+- reserved Professor/developer notes, GitHub issue/PR linkage, implemented contract/capability versions and completion timestamp.
+
+The origin Experiment ID is intentionally provenance text/UUID rather than a cascading FK so a future working-Experiment deletion cannot erase what the request referred to.
+
+Unsupported draft artifacts are preserved in the request row without being accepted as a valid/runnable Experiment. Normal Experiment validation remains unchanged.
+
+### RLS and lifecycle boundary
+
+`capability_requests` has RLS enabled.
+
+Authenticated grants in this checkpoint are only `SELECT` and `INSERT`; there is no authenticated UPDATE or DELETE path yet.
+
+Policies require:
+
+- current profile role = Professor;
+- requester ID = current authenticated user;
+- requester-role snapshot = Professor;
+- newly inserted status = `requested`;
+- future privileged fields such as developer notes, GitHub links and implementation versions are null on initial insert;
+- any supplied origin Experiment is visible through the existing Experiment RLS boundary.
+
+This means:
+
+- Professor can create/read their own initial requests;
+- Student cannot create a request or see Professor requests;
+- Approve/Decline and later lifecycle transitions are not possible yet and belong to #58.3+.
+
+Live production RLS probes were executed inside explicit transactions and rolled back:
+
+- Professor insert/read: **allowed**, one probe row visible;
+- Student insert while attempting a Professor row: **denied** with RLS authorization failure;
+- Student select: zero request rows visible;
+- no probe rows remain.
+
+A Supabase security-advisor run after DDL showed no new `capability_requests` finding. Existing unrelated advisories remained unchanged.
+
+### MCP role-dependent request behavior
+
+Current Experiment MCP is **ACTIVE Edge Function version 13**, server `2.5.0`, health interface `7`, capability-request interface `vlab.capability-request/1`.
+
+The five ordinary tools remain the same single shared implementation for Student and Professor.
+
+Professor additionally receives exactly one tool:
+
+- `request_capability`
+
+Student does not receive this tool.
+
+`read_workspace` authoring metadata and unsupported-capability validation responses now advertise role-dependent behavior:
+
+- Professor: `requestable=true`, action `request_capability`, preserve draft;
+- Student: `requestable=false`, no action, reason `student-role`.
+
+The request tool may preserve either a visible originating Experiment/revision or a draft title/description/artifact collection. When an origin is supplied it checks the visible current revision before capturing it. It does **not** validate the preserved unsupported draft as runnable, because the point of the request is that current capability is missing.
+
+The MCP still has no GitHub, repository, shell, deployment, arbitrary SQL/filesystem, simulator-source or Supabase-admin capability. `simulator_access` remains false.
+
+### Deployment / verification evidence
+
+Focused #135 tests cover:
+
+- durable request schema and lifecycle fields;
+- Professor-only initial insert and no authenticated update/delete path;
+- single shared implementation of all five ordinary tools;
+- Professor-only request tool and Student no-action metadata;
+- draft/origin preservation without weakening Experiment validation;
+- MCP 2.5.0/interface 7 contract.
+
+PR branch workflow `34862760429` passed Rust kernel tests, Python-like compiler tests, browser/WASM build and artifact coherence.
+
+Production migration was first run transactionally and rolled back, then applied for real. Live Professor/Student RLS probes passed as described above.
+
+PR #138 merged to main as `f14210124150eb220b40999007b515d296cde589`. Main workflow `34863015099` passed:
+
+- build;
+- Rust scientific-kernel probe;
+- Python-like compiler probe;
+- browser/WASM build;
+- coherent browser artifact;
+- GitHub Pages deploy;
+- deployed-browser smoke: **kernel ready with populated editors**.
+
+MCP deployment note: version 12 briefly became ACTIVE, but a packaging transcription mismatch was detected in an unchanged initializer-compiler error string before checkpoint completion. It was immediately superseded. Version **13** was redeployed from the exact repository dependency content and is the accepted current deployment. No simulator calculation or execution semantic changed in either package; the mismatch was an error message only.
+
+No owner test is required for #135 before proceeding to a separately authorized next checkpoint.
 
 ## Private experiment production path
 
@@ -182,17 +269,18 @@ The approved flow remains:
 
 `paper + professor AI → experiment draft → unsupported capability → durable Supabase request → Professor inbox → approve/decline → ChatGPT/GitHub implementation → deployed capability → request implemented → draft revalidates/runs`
 
-#133 provides the first required role/authorization foundation.
+Completed foundations:
 
-The next substantial checkpoint is **#58.2: durable capability-request persistence plus role-dependent creation behavior**:
+- #133 / #58.1: server-controlled Professor role as strict Student superset;
+- #135 / #58.2: durable RLS-protected capability requests and Professor-only request creation.
 
-- Professor may preserve unsupported capability intent/draft and create a request;
-- Student receives the existing unsupported rejection and cannot create Professor requests;
-- no GitHub/shell/deployment/simulator-development privileges are exposed to research AI.
+The next substantial checkpoint is **#58.3: Professor request inbox with Approve / Decline**.
 
-Per `docs/EXECUTION_GRANULARITY.md`, #58.2 is **not started** and requires explicit continuation after the #133 checkpoint.
+It should expose request discovery/triage and controlled lifecycle transitions to Professor without yet giving the research AI GitHub/repository/deployment privileges or automatically implementing anything.
 
-Later checkpoints: Professor inbox Approve/Decline; developer/GitHub handoff; deployed-contract verification; request completion + draft revalidation.
+Per `docs/EXECUTION_GRANULARITY.md`, #58.3 is **not started** and requires explicit continuation after the #135 checkpoint.
+
+Later checkpoints: developer/GitHub handoff; deployed-contract verification; request completion + draft revalidation.
 
 ## Performance lane
 
