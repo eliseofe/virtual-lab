@@ -2,127 +2,127 @@
 
 Updated: **15 September 2026**
 
-This file is the authoritative roadmap / execution frontier for Virtual Lab. Read `AGENTS.md` first. `PROJECT_STATE.md` contains detailed technical evidence; when old frontier wording in historical sections conflicts with this file, **this file wins**. Execution-unit rules are in `docs/EXECUTION_GRANULARITY.md`.
+This file is the authoritative current roadmap / execution frontier for Virtual Lab. Read `AGENTS.md` first. For detailed technical state/evidence read `PROJECT_STATE.md`; for the completed UI/UX sequence read `docs/UI_UX_REDESIGN_CLOSEOUT_2026-09-15.md`; for execution-unit rules read `docs/EXECUTION_GRANULARITY.md`.
 
-## Strategic status
+## Current strategic status
 
-The #147 UI/UX redesign is complete, deployed and browser-verified. Final production workflow `34901925055` passed build, GitHub Pages deployment, functional simulator smoke and the real 390×844 responsive/focus smoke.
+The #147 UI/UX redesign is complete, deployed and browser-verified. The accepted Lab workflow is:
 
-A full backlog audit on 15 September 2026 retired stale Round-1/integration umbrellas and reorganized remaining work into durable parent epics plus bounded children. Historical issues #1, #14–#18, #46, #52 and #58 are closed and must not be used as roadmap anchors.
+`find/resume Experiment → run/observe → edit one artifact → apply/restart → save → organize only when explicitly needed`
 
-There is no single monolithic "next issue". The owner has promoted several **near-term lanes**, but execution still follows one substantial bounded child at a time.
+The backlog was audited on 15 Sep 2026. Historical Round-1/integration shells #1, #14–#18, #46, #52 and completed capability epic #58 are closed. Remaining work is organized around focused parents/children rather than issue recency.
 
-## Near-term lanes
+## Active performance frontier — #56 / #165 → #168
 
-### 1. Access / sharing / curation — parent #45
+The owner promoted simulator performance back to active work, specifically the strong dependence on neighbour density / interaction radius.
 
-#45 is now the parent for production identity, sharing, submission, curator workflows and Showcase.
+### #165 measurement result
 
-Current children:
-- **#162 — production Virtual Lab OAuth/login surface + enrollment policy.** The legacy OAuth proof still displays `mock-sim` / diagnostic branding and exposes generic account creation. Current Supabase baseline has exactly two accounts, both owner/test identities; there are no unknown accounts as of this audit. The owner still needs to choose between controlled enrollment (invite/approval/allowlist; preferred initial direction) and open signup plus explicit monitoring before admission semantics change.
-- **#149 / #45.2 — optional first-paper refinement + Showcase decision.** Paper-loop success does not require Showcase; the working Experiment may remain private.
+#165 added a deterministic N=5,000 profiler and compared the current periodic grid (`ceil(sqrt(N))` cells per axis) with half-resolution, double-resolution and radius-matched internal geometries. All alternatives were checked against the brute-force neighbour oracle and returned identical sorted neighbour sets.
 
-The standalone mock-sim visual-twin idea (#52) is retired. Do not maintain a second visual product merely for styling.
+Authoritative PR evidence: #167 performance workflow `34905824329`, artifact `10371728802`; normal PR workflow `34905824660` is green. The profiler workflow was also hardened with `pipefail` so a failing `cargo run | tee` cannot be misreported as success.
 
-### 2. Performance — parent #56
+Key result: the current one-cell-per-agent grid introduces a material avoidable penalty when the query radius spans many small grid cells. The radius-matched candidate kept normal queries at 9 visited cells and was about 2–4× faster in the diagnostic query sweep across all seven measured density/radius cases. Dense experiments still retain unavoidable cost proportional to the actual returned-neighbour count and controller work.
 
-#56 is an active measurement-driven performance epic. Earlier optimization work produced major gains, but performance remains strongly dependent on neighbour density/state.
+Detailed evidence: `docs/PERFORMANCE_NEIGHBOUR_DENSITY_2026-09-15.md`.
 
-Current child:
-- **#165 / #56.11 — profile neighbour-density dependence and spatial-index resolution strategy.** Measure bucket occupancy, candidate enumeration, exact neighbour count, observation/controller cost and total throughput; benchmark internal-only grid-resolution policies while preserving exact periodic neighbour semantics and deterministic ordering.
+### Next performance child
 
-No scientific retuning and no student-visible hash/grid tuning parameter.
+**#168 — implement radius-aware periodic grid resolution without changing neighbour semantics.**
 
-### 3. Studies / results / AI research workflow — parents #3, #6, #119
+#168 is the recommended next implementation checkpoint after #165 is merged/closed. It must preserve exact periodic membership, sorted deterministic order, the brute-force oracle, and all scientific parameters. Internal grid/hash resolution remains simulator infrastructure and must not become a user-visible experiment parameter.
 
-Research hierarchy:
-- **#3 — Studies** parent.
-  - **#127 / #3.1** — fresh/resume/checkpoint/teardown provenance.
-  - **#4 / #3.2** — local result storage, portable bundles and provenance.
-- **#6 — selected Study results → AI handoff** parent.
-  - **#166 / #6.1** — define the first explicit result/plot/provenance handoff contract and its boundary with #3/#4.
-- **#119 — Research Notes and Research Documents** parent.
-  - **#120 / #119.1** — AI research synthesis from Studies, Notes and selected results.
+Do not silently bundle later performance ideas into #168.
 
-Large raw trajectories remain local-first. AI receives only explicitly selected artifacts/data with provenance and never gains simulator execution through the result-handoff channel.
+## Near-term parallel product/research lanes
 
-### 4. Owner acceptance — parents #115 and #118
+- **#45 / #162:** production Virtual Lab OAuth/login surface and explicit enrollment policy. Current Supabase baseline has only the owner Professor + Student test identities; no unknown accounts were present at audit time.
+- **#3 / #4:** Studies and local result/provenance infrastructure.
+- **#6 / #166:** first explicit selected Study-result → AI handoff contract.
+- **#119 / #120:** Research Notes/Documents and later AI synthesis; important near-future work after stable Study/result identities.
+- **#115 / #163:** owner acceptance for collection creation/rename/assignment/moves.
+- **#118 / #164:** owner acceptance for artifact-driven authoring workspace.
+- **#149:** optional first-paper refinement / optional Showcase decision.
 
-Engineering is deployed; these parents remain open only for coherent post-redesign acceptance.
+## Parallel research-AI capability requests — not engineering work
 
-- **#163 / #115.A** — verify collection create/rename, assignment, moves, Save as new, No collection and dirty/conflict safety entirely from the Lab UI. Normal collection management must not require Grok/MCP.
-- **#164 / #118.A** — verify artifact tabs/workbench, Apply changes & restart, invalid-edit recovery, persistence/conflict behavior, optional passive artifact handling and Technical details disclosure.
+Two Grok requests for the informed-robot aggregation experiment are durable but remain **requested only**:
 
-If an acceptance child passes, close the child and its parent. If it exposes a defect, create one focused engineering child under that parent.
+- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`, lifecycle hook `control`;
+- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — `initialization / heterogeneous_agent_state`, lifecycle hook `initialize`.
 
-## Living simulator architecture
+Neither has Professor approval, developer handoff, GitHub implementation issue, or implementation authorization.
 
-These issues are intentionally open because they define durable extension domains, not because their entire scope should be implemented now:
+#57 is the likely generic architecture discussion vehicle if the RNG request is later approved, but request existence does not authorize coding.
 
-- **#2 — scientific validation/reproducibility guardrails.** Living correctness umbrella; focused implementation issues carry concrete tests.
-- **#57 — canonical deterministic domain-separated RNG.** Near-term candidate because a Grok RNG capability request exists, but that request is still unapproved and therefore does not authorize implementation.
-- **#65 — world/environment capabilities.** Living epic. First generic scalar Environment capability #143/#144 is deployed, but the domain is intentionally broader.
-- **#124 — artifact capability registry/lifecycle.** #125 completed; #126 remains blocked until a concrete owner-approved optional executable artifact exists.
+## Living architecture / infrastructure parents
 
-Future lanes remain #8 native/HPC, #9 richer physics/heterogeneity and #102 numerical-integrator evaluation.
+- **#2:** scientific validation/reproducibility guardrails. Keep open as a living correctness umbrella; concrete tests belong in the implementation child that needs them.
+- **#65:** world/environment capabilities and sensor queries. Keep open as a living architecture epic; concrete capabilities get focused children.
+- **#124:** artifact capability registry/run lifecycle. #126 remains blocked until a concrete owner-approved optional executable artifact exists; #127 is future Study run semantics.
+- **#57:** canonical deterministic domain-separated RNG architecture; relevant but not yet authorized.
+- **#8/#9/#102:** future native/HPC, richer physics/heterogeneity, and numerical-integrator evaluation.
 
-## Pending Professor/Grok requests — not engineering instructions
+## Professor capability-request loop — durable boundary
 
-Two durable requests remain `requested` and unapproved:
+Standing flow:
 
-- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — controller / `stochasticity.rng`;
-- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — initialization / `heterogeneous_agent_state`.
+`paper + research AI → Experiment draft → missing capability → durable request → Professor approve/decline → developer design discussion → explicit owner implementation approval → trusted developer handoff → capability implementation/deploy → deployed-contract verification → request implemented → research AI resumes preserved draft`
 
-Standing capability flow:
+Responsibility boundary:
 
-`paper + research AI → draft → missing capability → durable request → Professor approve/decline → developer design discussion → explicit owner implementation approval → trusted developer handoff → implementation/deploy → live-contract verification → implemented → research AI resumes`
+- research AI **asks and uses**;
+- Professor **decides**;
+- developer-side ChatGPT **implements and certifies**.
 
-Professor approval alone never starts coding. Research AI never receives GitHub/repository/shell/deployment/admin/simulator-source privileges.
+Professor approval alone never starts engineering. Research AI never receives GitHub/repository/shell/deployment/admin/simulator-source privileges.
 
-## Issue hierarchy convention
-
-Use a small number of durable epics/parents and bounded executable children.
-
-- `EPIC` / `LIVING EPIC`: durable product or architecture lane; never execute monolithically.
-- numbered child (`#56.11`, `#45.1`, `#3.2`, etc.): one coherent design/implementation/measurement unit.
-- `ACCEPTANCE PARENT`: engineering complete; stays open only until explicit owner acceptance child passes.
-- historical/superseded umbrellas: close rather than leaving them as roadmap noise.
-- #145 is intentionally permanent infrastructure for success-only completion reports.
-
-Do not create a giant "epic of epics". This `PROJECT_CONTROL.md` is the portfolio-level view.
+Current deployed capability-loop foundation includes #133, #135, #139, #141 and the first generic paper-driven capability #143 / PR #144. The first real Professor/Grok capability loop is accepted as a successful end-to-end round. Generic static scalar Environment + `obs.environmental_scalar` are deployed and usable. Showcase promotion remains optional Professor curation, not a paper-loop completion condition.
 
 ## Scientific / architecture guardrail
 
-Developer-side ChatGPT must not independently invent or derive the scientific model being simulated. Scientific equivalence, paper-specific equations/parameters, controller logic, retuning and model analysis belong to the Professor/research-AI discussion unless the owner explicitly authorizes scientific reasoning.
+While building the simulator, developer-side ChatGPT must not independently invent or derive the scientific model being simulated. Scientific equivalence, paper-specific equations/parameters, controller logic, retuning and model analysis belong to the Professor/research-AI discussion unless the owner explicitly authorizes scientific reasoning.
 
-For paper-driven capabilities apply `docs/CAPABILITY_GENERALIZATION_GATE.md`. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, scientific timing/integration semantics and rendering as an observer unless explicitly approved otherwise.
+Software performance work may measure and optimize simulator infrastructure while preserving exact scientific semantics. Query radius is scientific input; using that already-declared value only to choose internal index geometry is an implementation concern, not permission to change the radius.
 
-## Execution granularity
+For paper-driven capabilities, apply `docs/CAPABILITY_GENERALIZATION_GATE.md`. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, scientific timing/integration semantics, and rendering as an observer unless explicitly approved otherwise.
 
-Default to one substantial independently testable/deployable child at a time:
+## Execution granularity — mandatory
 
-1. implement or perform the bounded design/measurement;
+Approval breadth is not execution breadth. Default to one substantial independently deployable/testable ticket at a time:
+
+1. implement or measure;
 2. test;
 3. deploy when applicable;
 4. verify actual behavior;
-5. update durable state/issue;
+5. update repository state/issue;
 6. report a clean checkpoint;
-7. stop unless the owner explicitly requests a broader sequence.
+7. stop unless the owner's current message explicitly requests a broader sequence.
 
-## Success reporting
+Full rule: `docs/EXECUTION_GRANULARITY.md`.
 
-#145 is the permanent success-only completion stream for ChatGPT-managed `eliseofe/*` work. Discussion, failures, retries and partial work do not generate success reports; verified terminal success does.
+## Success-only durable reporting
+
+GitHub issue #145 is the central success-report stream for ChatGPT-managed `eliseofe/*` work.
+
+- pure discussion: no report;
+- failed/retrying/partial work: no success report;
+- verified terminal success: append one `[SUCCESS REPORT]` comment; the notifier reposts it mentioning `@eliseofe`.
 
 ## Source precedence
 
 When sources disagree:
+
 1. explicit current owner instruction;
-2. `PROJECT_CONTROL.md`;
-3. current design documents / closeout docs;
-4. `PROJECT_STATE.md` technical evidence;
-5. active child issue;
-6. older issues/chats as history only.
+2. `PROJECT_CONTROL.md` for priority/sequencing;
+3. current dedicated closeout/performance design documents;
+4. `PROJECT_STATE.md` for accepted technical state/evidence;
+5. current design documents;
+6. active issue scope;
+7. older issues/chats as history only.
+
+Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**Backlog normalized. Near-term lanes are #162 access/enrollment, #165 neighbour-density performance profiling, #166 selected-result→AI contract, plus owner acceptance #163/#164 when convenient. #57 is relevant to the pending RNG request but no Grok request is approved or authorized for implementation.**
+**#165 measured a real avoidable neighbour-index penalty and recommends #168 as the next performance implementation child once #167 is merged and #165 is closed; no production neighbour semantics have changed yet. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
