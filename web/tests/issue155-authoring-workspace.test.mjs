@@ -49,7 +49,7 @@ test("issue #155 keeps additional artifacts inside the same single-active worksp
   assert.ok(host > workbenchStart && host < workbenchEnd, "additional artifact host must be inside authoring workbench");
   assert.match(workbench, /generic-artifact-panel/);
   assert.match(workbench, /data-experiment-artifact-editor/);
-  assert.match(workbench, /dataAuthoringArtifactPane/);
+  assert.match(workbench, /authoringArtifactPane/);
   assert.match(workbench, /pane\.hidden = pane !== nextPane/);
 });
 
