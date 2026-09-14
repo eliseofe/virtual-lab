@@ -19,10 +19,10 @@ test("#133 profile role is server controlled and defaults to student", () => {
   assert.match(migration, /grant update \(display_name\) on table public\.profiles to authenticated/i);
 });
 
-test("#133 MCP identity exposes role without creating a second professor tool path", () => {
+test("#133 shared Student behavior remains one implementation as Professor-only tools are added later", () => {
   assert.match(mcp, /\.select\('id, display_name, role'\)/);
-  assert.match(mcp, /version: '2\.4\.0'/);
-  assert.match(mcp, /interface_version: '6'/);
+  assert.match(mcp, /version: '2\.5\.0'/);
+  assert.match(mcp, /interface_version: '7'/);
 
   for (const tool of [
     "read_workspace",
@@ -35,5 +35,6 @@ test("#133 MCP identity exposes role without creating a second professor tool pa
     assert.equal(matches.length, 1, `${tool} must remain one shared implementation`);
   }
 
-  assert.equal((mcp.match(/server\.registerTool\(/g) ?? []).length, 5);
+  assert.match(mcp, /if \(profile\.role === 'professor'\) \{/);
+  assert.equal((mcp.match(/server\.registerTool\(/g) ?? []).length, 6);
 });
