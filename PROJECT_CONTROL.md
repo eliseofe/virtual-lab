@@ -4,7 +4,7 @@ Updated: **14 September 2026**
 
 This file is the authoritative **current roadmap / execution frontier** for Virtual Lab. It exists so a context-free ChatGPT/Work/human session can recover the project's strategic state without reconstructing it from issue chronology.
 
-For detailed accepted technical state and evidence, read `PROJECT_STATE.md` after this file. For the newly approved Experiment → Study → Research Document architecture, read `docs/RESEARCH_MODEL.md`. For a concrete implementation, then read the relevant active issue/design document.
+For detailed accepted technical state and evidence, read `PROJECT_STATE.md` after this file. For the newly approved Experiment → Study → Research Document architecture, read `docs/RESEARCH_MODEL.md`. For execution-boundary rules, read `docs/EXECUTION_GRANULARITY.md`. For a concrete implementation, then read the relevant active issue/design document.
 
 ## Current strategic objective
 
@@ -44,7 +44,9 @@ Two newly approved focused issues generalize the Experiment artifact architectur
    - current users should still see the same logical three artifacts: Configuration, Initialization, Controller;
    - no Study UI or new science is introduced by this issue.
 
-These are the next approved implementation passes. They may proceed while #115 waits for the owner's short live acceptance because they do not depend on the unresolved acceptance result, but #115 must still be closed promptly once the owner tests it.
+These are both approved, but they are **separate substantial execution checkpoints**. Approval of both does not authorize treating them as one delivery unit. Complete #117 through implementation, tests, deployment, verification and repository-state update; report that clean checkpoint; then **stop and ask the owner whether to continue with #118**. Only after an explicit continuation should #118 be implemented/deployed. This is the mandatory rule in `docs/EXECUTION_GRANULARITY.md`.
+
+They may proceed while #115 waits for the owner's short live acceptance because they do not depend on the unresolved acceptance result, but #115 must still be closed promptly once the owner tests it.
 
 ## Next major product stage after #117/#118
 
@@ -137,6 +139,10 @@ Update `PROJECT_CONTROL.md` whenever any of these changes:
 
 Do **not** update strategic priority merely because a side task happened to be completed most recently.
 
+### Execution granularity
+
+The execution unit is governed by `docs/EXECUTION_GRANULARITY.md`. In particular, broad approval of several roadmap tickets is not a requirement to batch them. Substantial tickets default to one-at-a-time completion and checkpointing. A context-free session must not collapse separately approved substantial tickets into one PR/deployment merely because doing so is technically convenient.
+
 ### When `PROJECT_STATE.md` must be updated
 
 Update `PROJECT_STATE.md` after substantial implementation/diagnostic work that future sessions need as technical ground truth, especially:
@@ -176,12 +182,13 @@ A new session should be able to align in one pass:
 
 1. read `AGENTS.md`;
 2. read this file completely;
-3. read `PROJECT_STATE.md` for detailed current state;
-4. if working on research-object architecture, read `docs/RESEARCH_MODEL.md`;
-5. read only the relevant active issue/design document for the current objective or gate;
-6. before proposing work, state internally the current strategic objective, current gate, and whether the proposed task is strategic or opportunistic;
-7. never equate “most recent issue/commit” with “next roadmap priority.”
+3. read `docs/EXECUTION_GRANULARITY.md`;
+4. read `PROJECT_STATE.md` for detailed current state;
+5. if working on research-object architecture, read `docs/RESEARCH_MODEL.md`;
+6. read only the relevant active issue/design document for the current objective or gate;
+7. before proposing work, state internally the current strategic objective, current gate, whether the proposed task is strategic or opportunistic, and the correct execution unit;
+8. never equate “most recent issue/commit” with “next roadmap priority.”
 
 ## Current one-line status
 
-**Strategic priority:** obtain owner live acceptance of already-deployed #115 when convenient; immediate approved engineering is #117 → #118 to remove the fixed-three-artifact architecture; then resume the Professor paper-to-experiment capability-request loop. Study/Research-Document/results-to-AI/paper-synthesis work is documented as future epics (#3/#119/#6/#120), not yet monolithic implementation.
+**Strategic priority:** obtain owner live acceptance of already-deployed #115 when convenient; complete **#117 only** as the current substantial engineering checkpoint; then stop and ask whether to continue with #118. After #117/#118, resume the Professor paper-to-experiment capability-request loop. Study/Research-Document/results-to-AI/paper-synthesis work is documented as future epics (#3/#119/#6/#120), not yet monolithic implementation.
