@@ -235,7 +235,6 @@ try {
   cdp = connect(wsUrl);
   await cdp.send("Runtime.enable");
   await cdp.send("Page.enable");
-  await cdp.send("Emulation.enable");
 
   await waitReady(cdp.send);
   const desktop = await structure(cdp.send);
