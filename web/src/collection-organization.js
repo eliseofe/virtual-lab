@@ -217,6 +217,24 @@ function normalizeCollectionLanguage() {
   }
 }
 
+function suppressNoCollectionOutsideOrganization() {
+  const location = document.querySelector(".experiment-location");
+  if (location) setHidden(location, location.textContent?.trim() === "No collection");
+
+  const experimentSelect = document.querySelector("#experiment-select");
+  for (const option of experimentSelect?.querySelectorAll("option") ?? []) {
+    const label = option.textContent ?? "";
+    if (label.endsWith(" · No collection")) setText(option, label.slice(0, -" · No collection".length));
+  }
+
+  for (const meta of document.querySelectorAll(".experiment-result-meta")) {
+    const label = meta.textContent ?? "";
+    if (label.includes("Your experiment · No collection ·")) {
+      setText(meta, label.replace("Your experiment · No collection ·", "Your experiment ·"));
+    }
+  }
+}
+
 function simplifyExperimentBrowser() {
   const filters = document.querySelector(".experiment-browser-filters");
   if (filters) {
@@ -245,6 +263,7 @@ function relocateMoveControl() {
 function syncPresentation() {
   ensureOrganizeButton();
   normalizeCollectionLanguage();
+  suppressNoCollectionOutsideOrganization();
   simplifyExperimentBrowser();
   relocateMoveControl();
 }
