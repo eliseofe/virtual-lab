@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://virtual-lab.invalid/schemas/registry-experiment/1",
+  "$id": "https://virtual-lab.invalid/schemas/registry-experiment/2",
   "title": "Virtual Lab Registry Experiment",
   "type": "object",
   "required": [
@@ -16,8 +16,8 @@
     "updated_at"
   ],
   "properties": {
-    "schema_version": {"const": "vlab.registry-experiment/1"},
-    "interface_version": {"const": "vlab.student-artifacts/1"},
+    "schema_version": {"const": "vlab.registry-experiment/2"},
+    "interface_version": {"const": "vlab.experiment-artifacts/2"},
     "experiment_id": {"type": "string", "minLength": 1},
     "owner_id": {"type": "string", "minLength": 1},
     "owner_display_name": {"type": ["string", "null"]},
@@ -28,14 +28,9 @@
     "visibility": {"enum": ["private", "shared", "public"], "default": "private"},
     "revision": {"type": "integer", "minimum": 1},
     "artifacts": {
-      "type": "object",
-      "required": ["config_source", "initializer_source", "controller_source"],
-      "properties": {
-        "config_source": {"type": "string"},
-        "initializer_source": {"type": "string"},
-        "controller_source": {"type": "string"}
-      },
-      "additionalProperties": false
+      "type": "array",
+      "minItems": 3,
+      "items": {"$ref": "#/$defs/artifact"}
     },
     "created_at": {"type": "string", "format": "date-time"},
     "updated_at": {"type": "string", "format": "date-time"},
@@ -57,6 +52,21 @@
         "ai_client": {"type": ["string", "null"]}
       },
       "required": ["actor_type"],
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["id", "type", "label", "format", "order", "content"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "format": {"type": "string", "minLength": 1},
+        "order": {"type": "number"},
+        "content": {"type": "string"}
+      },
       "additionalProperties": false
     }
   },
