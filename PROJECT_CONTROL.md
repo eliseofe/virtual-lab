@@ -1,6 +1,6 @@
 # Virtual Lab — Project Control
 
-Updated: **14 September 2026**
+Updated: **15 September 2026**
 
 This file is the authoritative current roadmap / execution frontier for Virtual Lab. Read `AGENTS.md` first. For detailed technical state/evidence read `PROJECT_STATE.md`; for execution-unit rules read `docs/EXECUTION_GRANULARITY.md`.
 
@@ -10,7 +10,7 @@ The first real Professor/research-AI paper-driven capability loop is accepted as
 
 The active product frontier is **#147 — Full Virtual Lab UI/UX audit and interaction redesign**. #148 completed the interaction audit and established the simulation-first architecture.
 
-The first substantial implementation child is now complete and deployed:
+The first substantial implementation child is complete and deployed:
 
 - **#150 / PR #151 + fix PR #152 — simulation-first workspace shell**;
 - final main SHA `9f75ed7f9e2530e8c5681a30f3126b2f4b2a2bdd`;
@@ -23,7 +23,7 @@ The first substantial implementation child is now complete and deployed:
 
 The initial #150 production smoke exposed a self-triggering `MutationObserver` in the new presentation adapter; that incomplete run was cancelled after the idempotent fix landed in PR #152. The fixed production run above is the authoritative verification.
 
-The second substantial implementation child is also complete and deployed:
+The second substantial implementation child is complete and deployed:
 
 - **#153 / PR #154 — workspace continuity + unified Experiment switching**;
 - merge `dfb70a3882176cd28a11fb3f891952eccc28d865`;
@@ -34,17 +34,43 @@ The second substantial implementation child is also complete and deployed:
 - dirty-edit discard protection and existing save/revision/conflict/move semantics remain intact;
 - no Experiment content, scientific/controller semantics, simulator, Supabase schema/data, MCP contract, capability request/lifecycle or Showcase policy changed.
 
+The third substantial implementation child is complete and deployed:
+
+- **#155 / PR #156 — authoring + persistence workspace**;
+- merge `694fd544563ff01fe87f061c9240c74d31873eb1`;
+- PR workflow `34898283071`: full Rust/Node tests and static browser artifact **success**;
+- independent performance workflow `34898283150`: first attempt hit the known browser-profile harness startup race (`Chrome did not publish DevToolsActivePort`); unchanged rerun **success**;
+- production workflow `34898683292`: build, GitHub Pages deploy and deployed-browser smoke all **success**;
+- Configuration / Initialization / Controller now share one single-active artifact workbench; supported additional text artifacts join the same tab surface;
+- one visible **Apply changes & restart** action delegates to the existing setup/controller validation and runtime paths rather than changing execution semantics;
+- existing Save / Save as new / dirty / revision-conflict controls are colocated with authoring while retaining registry ownership/write behavior;
+- compiled initializer/controller IR is under **Technical details** by default;
+- #150 stage hierarchy and #153 switching/restore behavior remain intact;
+- no Experiment content, simulator/scientific semantics, Supabase schema/data/RLS, MCP/authoring contract, capability request/lifecycle, collection persistence or Showcase policy changed.
+
 ### Next substantial UI child
 
-The next #147 checkpoint is **editor/workspace organization** from #148: replace the long stack of always-open Configuration / Initialization / Controller surfaces with a coherent workbench/tab model while keeping the arena and runtime controls primary. Treat deeper collection-management cleanup and visual/responsive polish as later children rather than silently bundling them.
+The next #147 checkpoint is **D. Collections / organization redesign** from #148:
 
-Do **not** start that next child inside the #153 completion unit. Create/execute it as a separate substantial ticket under `docs/EXECUTION_GRANULARITY.md`.
+- make collection operations explicitly secondary;
+- use **No collection** semantics instead of presenting Unfiled as a peer primary category;
+- separate create/move/organization from the find/open/run flow;
+- preserve the already-deployed #115 collection functionality underneath.
+
+Acceptance for that future child: a user can ignore collections entirely and still find/open/run every accessible Experiment, while organization remains available when explicitly requested.
+
+Do **not** start that child inside the #155 completion unit. Responsive/accessibility/regression hardening remains the later **E** child.
 
 ## Parallel experiment-authoring activity
 
 Research-AI/Professor sessions may continue authoring/refining Experiments while UI/UX work proceeds. UI work must not infer or modify paper/controller science from incidental feedback and must avoid collisions with stored Experiment revisions, MCP/Supabase authoring state, or capability work unless explicitly scoped by the owner.
 
-The user's current Claude/Grok controller observations are context only and do not authorize simulator/controller changes.
+Two recent Grok capability requests for the informed-robot aggregation experiment are durable but remain **requested only** and are not an active engineering instruction:
+
+- `controller / stochasticity.rng` — request `7492c39d-fdd0-4f29-9661-63dbc6461bf5`;
+- `initialization / heterogeneous_agent_state` — request `49368c8e-dff7-4ce0-9072-bc3f4b37ada2`.
+
+They require normal Professor review/design discussion and explicit implementation approval before developer work begins. Do not treat their existence or issue recency as authorization.
 
 ## Owner acceptance that remains deferred
 
@@ -117,4 +143,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#150 is deployed and browser-verified: the Lab now has the first simulation-first workspace shell. #147 remains the active redesign epic. The next substantial child is workspace continuity + one unified Experiment switcher; do not start it in the #150 completion unit. Experiment-authoring sessions may proceed independently and must not be modified by UI work.**
+**#150, #153 and #155 are deployed and browser-verified. #147 remains the active redesign epic. The next substantial child is D: Collections / organization redesign; do not start it inside the #155 completion unit. The two recent Grok capability requests remain requested/unapproved and are not an engineering instruction.**
