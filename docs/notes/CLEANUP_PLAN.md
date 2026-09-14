@@ -1,1 +1,0 @@
-Remove README2.md, STOP.md, and issue-143-final-status.md; retain only README.md and the dated scalar-capability completion note.
