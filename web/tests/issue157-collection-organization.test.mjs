@@ -40,11 +40,14 @@ test("issue #157 reuses existing move semantics instead of writing experiments d
   assert.doesNotMatch(organization, /collection_id\s*:/);
 });
 
-test("issue #157 makes No collection organization-only language", async () => {
+test("issue #157 confines no-collection language to organization contexts", async () => {
   const [, organization] = await sources();
   assert.match(organization, /setText\(emptyOption, "No collection"\)/);
   assert.match(organization, /Collection \(optional\)/);
   assert.match(organization, /replaceAll\("Unfiled", "No collection"\)/);
+  assert.match(organization, /location\.textContent\?\.trim\(\) === "No collection"/);
+  assert.match(organization, /label\.endsWith\(" · No collection"\)/);
+  assert.match(organization, /Your experiment · No collection ·/);
 });
 
 test("issue #157 collection management is bounded to the existing collection table", async () => {
