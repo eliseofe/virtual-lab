@@ -48,18 +48,32 @@ The third substantial implementation child is complete and deployed:
 - #150 stage hierarchy and #153 switching/restore behavior remain intact;
 - no Experiment content, simulator/scientific semantics, Supabase schema/data/RLS, MCP/authoring contract, capability request/lifecycle, collection persistence or Showcase policy changed.
 
+The fourth substantial implementation child is complete and deployed:
+
+- **#157 / PR #158 — collections / organization redesign**;
+- merge `f82eb392a3cf60d5a71ffab76c92b7da8cc4d5c2`;
+- PR workflow `34899773685`: full Rust/Node tests and static browser artifact **success**;
+- independent performance workflow `34899773675`: **success**;
+- production workflow `34899902650`: build, GitHub Pages deploy and deployed-browser smoke all **success**;
+- the primary Experiment finder no longer exposes collection filters or requires collection navigation;
+- collection membership remains secondary metadata only; absence-of-collection labeling is suppressed from primary switch/search/current-experiment chrome;
+- one explicit **Organize** surface now owns optional organization work;
+- the existing authoritative #115 move control is relocated into that surface, preserving its dirty/revision/conflict semantics rather than duplicating Experiment write logic;
+- collection creation and rename use the existing `experiment_collections` table and existing owner RLS; no schema/RLS change was made;
+- Save as new still supports optional collection assignment and normal Experiment persistence behavior;
+- the presentation observer is explicitly idempotent to avoid the #150 self-triggering observer failure class;
+- no Experiment source content, simulator/scientific semantics, MCP/authoring contract, capability request/lifecycle, Professor handoff state or Showcase policy changed.
+
 ### Next substantial UI child
 
-The next #147 checkpoint is **D. Collections / organization redesign** from #148:
+The final planned #147 implementation checkpoint from #148 is **E. Responsive / accessibility / regression hardening**:
 
-- make collection operations explicitly secondary;
-- use **No collection** semantics instead of presenting Unfiled as a peer primary category;
-- separate create/move/organization from the find/open/run flow;
-- preserve the already-deployed #115 collection functionality underneath.
+- audit narrow-screen sheets/dialogs and scientific-flow ordering;
+- audit keyboard/focus behavior and practical touch targets;
+- harden loading/empty/error/auth states;
+- encode the redesign invariants in structural/browser regressions so future additive modules cannot silently reintroduce sidebar-first/admin-first behavior.
 
-Acceptance for that future child: a user can ignore collections entirely and still find/open/run every accessible Experiment, while organization remains available when explicitly requested.
-
-Do **not** start that child inside the #155 completion unit. Responsive/accessibility/regression hardening remains the later **E** child.
+Do **not** start E inside the #157 completion unit. It must be a separate substantial deployable checkpoint under `docs/EXECUTION_GRANULARITY.md`.
 
 ## Parallel experiment-authoring activity
 
@@ -143,4 +157,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#150, #153 and #155 are deployed and browser-verified. #147 remains the active redesign epic. The next substantial child is D: Collections / organization redesign; do not start it inside the #155 completion unit. The two recent Grok capability requests remain requested/unapproved and are not an engineering instruction.**
+**#150, #153, #155 and #157 are deployed and browser-verified. #147 remains the active redesign epic. The final planned implementation child is E: responsive/accessibility/regression hardening; do not start it inside the #157 completion unit. The two recent Grok capability requests remain requested/unapproved and are not an engineering instruction.**
