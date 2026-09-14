@@ -17,7 +17,7 @@ test("save-as-new exposes owned collection choice and defaults owned copies to t
   assert.match(source, /populateCollectionSelect\(ui\.newCollection, ownsCurrent \? currentRemote\.collection_id : null\)/);
   assert.match(source, /const collectionId = selectedCollectionId\(ui\.newCollection\)/);
   assert.match(source, /collection_id: collectionId/);
-  assert.match(source, /created in My experiments \/ \$\{collectionName\(data\.collection_id\)\}/);
+  assert.match(source, /data\.collection_id \? ` in \$\{collectionName\(data\.collection_id\)\}` : " without a collection"/);
 });
 
 test("owned experiments can move collections with optimistic ownership and revision guards", async () => {

@@ -99,7 +99,7 @@ test("post-login registry UI hides login controls and exposes the account-owned 
   const registryUi = await readFile(path.join(src, "registry-ui-v3.js"), "utf8");
   assert.match(registryUi, /ui\.auth\.hidden = true/);
   assert.match(registryUi, /ui\.signOut\.hidden = false/);
-  assert.match(registryUi, /Browse library/);
+  assert.match(registryUi, /Find experiment/);
   assert.match(registryUi, /My experiments/);
 });
 
