@@ -16,6 +16,51 @@ export const RUNTIME_CONTRACT = Object.freeze({
     MAX_FORWARD_SPEED: "positive finite scalar actuator limit",
     MAX_ANGULAR_SPEED: "positive finite scalar actuator limit",
   }),
+  artifact_capabilities: Object.freeze({
+    version: "vlab.artifact-capabilities/0.1",
+    lifecycle_hooks: Object.freeze(["setup", "initialize", "control", "finalize"]),
+    required_core: Object.freeze([
+      Object.freeze({
+        id: "configuration",
+        type: "configuration",
+        format: "python-vlab",
+        required: true,
+        behavior: "declarative",
+        execution_hook: null,
+      }),
+      Object.freeze({
+        id: "initialization",
+        type: "initialization",
+        format: "python-vlab",
+        required: true,
+        behavior: "executable",
+        execution_hook: "initialize",
+        execution_scope: "run",
+        cadence: "once-per-fresh-run",
+      }),
+      Object.freeze({
+        id: "controller",
+        type: "controller",
+        format: "python-vlab",
+        required: true,
+        behavior: "executable",
+        execution_hook: "control",
+        execution_scope: "agent",
+        cadence: "CONTROL_DT",
+      }),
+    ]),
+    optional_passive: Object.freeze({
+      allowed: true,
+      generic_browser_formats: Object.freeze(["python-vlab", "text/plain", "text/markdown", "markdown"]),
+      execution_policy: "Optional artifacts are passive unless an executable artifact type is explicitly registered by this capability contract.",
+      presentation_policy: "Formats without a browser adapter fail explicitly rather than being silently dropped.",
+    }),
+    optional_executable: Object.freeze({
+      registered_types: Object.freeze([]),
+      execution_policy: "No optional executable artifact type is currently registered. Arbitrary source text is never executed by inference.",
+      unsupported_request: "unsupported-capability",
+    }),
+  }),
 });
 
 export class RuntimeContractError extends Error {
