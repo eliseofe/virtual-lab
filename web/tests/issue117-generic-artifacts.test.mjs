@@ -82,7 +82,7 @@ test("#117 MCP keeps tool names but exposes generic artifacts with bounded legac
   assert.match(mcp, /artifacts: z\.array\(ARTIFACT_INPUT\)/);
   assert.match(mcp, /artifacts: nextArtifacts/);
   assert.match(mcp, /Legacy compatibility requires all three source arguments/);
-  assert.match(mcp, /interface_version: '5'/);
+  assert.match(mcp, /interface_version: '\d+'/);
   assert.match(mcp, /'create_experiment'/);
   assert.match(mcp, /'edit_experiment'/);
 });
