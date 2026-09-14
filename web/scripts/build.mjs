@@ -49,6 +49,7 @@ index = index
   .replace('href="./style.css"', `href="./${assetDirName}/style.css"`)
   .replace('src="./main.js"', `src="./${assetDirName}/main.js"`)
   .replace('src="./runtime-speed.js"', `src="./${assetDirName}/runtime-speed.js"`)
+  .replace('src="./workspace-shell.js"', `src="./${assetDirName}/workspace-shell.js"`)
   .replace("<head>", `<head>\n  <meta name="vlab-build" content="${token}">`);
 await writeFile(path.join(dist, "index.html"), index);
 await writeFile(path.join(dist, "build-manifest.json"), JSON.stringify({ token, assetDir: assetDirName }, null, 2));

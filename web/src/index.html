@@ -14,142 +14,176 @@
         <p class="eyebrow">VIRTUAL LAB</p>
         <h1>Swarm robotics simulation</h1>
       </div>
-      <div class="topbar-status">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span id="worker-status" data-state="loading">Starting simulator…</span>
+      <div class="topbar-actions">
+        <div class="topbar-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="worker-status" data-state="loading">Starting simulator…</span>
+        </div>
+        <div class="utility-launchers" aria-label="Workspace utilities">
+          <button id="account-menu" type="button">Account</button>
+          <button id="professor-menu" type="button" hidden>Professor</button>
+        </div>
       </div>
     </header>
 
     <main class="workspace">
-      <aside class="sidebar" aria-label="Experiment workspace">
-        <section class="panel experiment-panel">
-          <label class="field-label" for="experiment-select">Experiment</label>
-          <select id="experiment-select" aria-label="Selected experiment">
-            <option value="kernel-probe">Active Elastic — Ferrante et al. (2012)</option>
-          </select>
-        </section>
+      <section class="panel experiment-panel">
+        <label class="field-label" for="experiment-select">Experiment</label>
+        <select id="experiment-select" aria-label="Selected experiment">
+          <option value="kernel-probe">Active Elastic — Ferrante et al. (2012)</option>
+        </select>
+      </section>
 
-        <section class="panel metadata-panel">
-          <div class="panel-heading"><span>Revision</span><strong>0.1-dev</strong></div>
-          <dl class="metadata-grid">
-            <div><dt>Runtime</dt><dd>Rust / WebAssembly</dd></div>
-            <div><dt>Configuration</dt><dd>Python-style source</dd></div>
-            <div><dt>Initialization</dt><dd>Python-style source</dd></div>
-            <div><dt>Controller</dt><dd>python-vlab/0.1</dd></div>
-          </dl>
-        </section>
+      <section class="panel stage-panel">
+        <div class="stage-heading">
+          <div>
+            <p class="section-kicker">SIMULATION</p>
+            <h2>Arena</h2>
+          </div>
+          <span class="badge">periodic square boundary</span>
+        </div>
 
-        <section class="panel run-panel">
-          <div class="panel-heading"><span>Status</span><strong id="run-state">Initializing</strong></div>
+        <section class="stage-runtime run-panel" aria-label="Simulation controls">
+          <div class="runtime-heading">
+            <div class="runtime-state">
+              <span>Status</span>
+              <strong id="run-state">Initializing</strong>
+            </div>
+            <div class="seed-row" aria-label="Simulation seed">
+              <span>Seed</span><strong id="run-seed">2026</strong>
+            </div>
+          </div>
+
           <div class="control-grid">
             <button id="run" class="primary" disabled>Run</button>
             <button id="pause" disabled>Pause</button>
             <button id="restart" disabled>Restart</button>
             <button id="restart-new-seed" disabled>Restart with new seed</button>
           </div>
-          <div class="seed-row" aria-label="Simulation seed">
-            <span>Seed</span><strong id="run-seed">2026</strong>
-          </div>
-          <div class="speed-control">
-            <div class="speed-heading">
-              <label class="field-label" for="simulation-speed">Execution speed</label>
-              <div class="speed-readout" aria-label="Requested and achieved execution speed">
-                <span><small>Target</small><strong id="simulation-speed-value">20×</strong></span>
-                <span><small>Actual</small><strong id="actual-simulation-speed">—</strong></span>
+
+          <div class="runtime-secondary">
+            <div class="speed-control">
+              <div class="speed-heading">
+                <label class="field-label" for="simulation-speed">Execution speed</label>
+                <div class="speed-readout" aria-label="Requested and achieved execution speed">
+                  <span><small>Target</small><strong id="simulation-speed-value">20×</strong></span>
+                  <span><small>Actual</small><strong id="actual-simulation-speed">—</strong></span>
+                </div>
               </div>
+              <input id="simulation-speed" type="range" min="1" max="100" step="1" value="20" aria-label="Execution speed multiplier">
+              <p class="muted">Changes wall-clock execution speed only; simulation dynamics are unchanged.</p>
             </div>
-            <input id="simulation-speed" type="range" min="1" max="100" step="1" value="20" aria-label="Execution speed multiplier">
-            <p class="muted">Changes wall-clock execution speed only; simulation dynamics are unchanged.</p>
-          </div>
-          <div class="stats-grid" aria-label="Simulation statistics">
-            <div><span>Simulation time (s)</span><strong id="scientific-time">0.000</strong></div>
-            <div><span>Physics steps</span><strong id="physics-ticks">0</strong></div>
-            <div><span>Controller steps</span><strong id="control-updates">0</strong></div>
-          </div>
-        </section>
-      </aside>
 
-      <section class="stage-column">
-        <section class="panel stage-panel">
-          <div class="stage-heading">
-            <div><p class="section-kicker">SIMULATION</p><h2>Arena</h2></div>
-            <span class="badge">periodic square boundary</span>
-          </div>
-          <div class="stage-toolbar" aria-label="Arena view controls">
-            <div class="view-status" aria-label="Current arena view">
-              <span class="view-status-dot" aria-hidden="true"></span>
-              <span>View</span>
-              <strong id="camera-status" data-fit="true">Fit</strong>
-            </div>
-            <label class="glyph-control" for="agent-glyph">
-              <span>Agents</span>
-              <select id="agent-glyph" aria-label="Agent appearance">
-                <option value="directional">Directional</option>
-                <option value="arrow">Arrow</option>
-                <option value="dot">Dot</option>
-              </select>
-            </label>
-            <button id="fit-arena" type="button" disabled>Fit arena</button>
-          </div>
-          <div class="canvas-wrap">
-            <canvas id="simulation-canvas" width="960" height="600" aria-label="Agent simulation. Drag to pan; use wheel, trackpad, or pinch to zoom."></canvas>
-            <div id="canvas-empty" class="canvas-empty">Waiting for simulation data…</div>
-          </div>
-          <p class="muted stage-note">Drag to pan. Wheel/trackpad or pinch to zoom. Positions and headings remain in arena coordinates; camera movement is visual only.</p>
-        </section>
-
-        <section class="panel editor-panel">
-          <div class="stage-heading editor-heading">
-            <div>
-              <p class="section-kicker">CONFIGURATION</p>
-              <h2>Experiment configuration</h2>
-              <p class="muted">Parameters used by the initializer, controller, and simulator runtime.</p>
-            </div>
-            <button id="apply-setup" class="primary" disabled>Apply &amp; restart</button>
-          </div>
-          <textarea id="experiment-config" class="code-editor config-editor" spellcheck="false" aria-label="Experiment configuration"></textarea>
-          <div id="setup-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
-          <p id="setup-error" class="error" role="alert"></p>
-        </section>
-
-        <section class="panel editor-panel">
-          <div class="stage-heading editor-heading">
-            <div>
-              <p class="section-kicker">INITIALIZATION</p>
-              <h2>Initializer</h2>
-              <p class="muted">Defines initial agent positions and headings.</p>
+            <div class="stats-grid" aria-label="Simulation statistics">
+              <div><span>Simulation time (s)</span><strong id="scientific-time">0.000</strong></div>
+              <div><span>Physics steps</span><strong id="physics-ticks">0</strong></div>
+              <div><span>Controller steps</span><strong id="control-updates">0</strong></div>
             </div>
           </div>
-          <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initializer source"></textarea>
-          <details class="ir-details">
-            <summary>Compiled IR</summary>
-            <pre id="initializer-ir"></pre>
-          </details>
         </section>
 
-        <section class="panel editor-panel">
-          <div class="stage-heading editor-heading">
-            <div>
-              <p class="section-kicker">CONTROLLER</p>
-              <h2>Agent controller</h2>
-              <p class="muted">Defines each agent's action from its local observation.</p>
-            </div>
-            <button id="compile" class="primary" disabled>Apply &amp; restart</button>
+        <div class="stage-toolbar" aria-label="Arena view controls">
+          <div class="view-status" aria-label="Current arena view">
+            <span class="view-status-dot" aria-hidden="true"></span>
+            <span>View</span>
+            <strong id="camera-status" data-fit="true">Fit</strong>
           </div>
-          <textarea id="controller-source" class="code-editor controller-editor" spellcheck="false" aria-label="Controller source"></textarea>
-          <div id="compile-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
-          <p id="compile-error" class="error" role="alert"></p>
-          <details class="ir-details">
-            <summary>Compiled IR</summary>
-            <pre id="controller-ir"></pre>
-          </details>
-        </section>
+          <label class="glyph-control" for="agent-glyph">
+            <span>Agents</span>
+            <select id="agent-glyph" aria-label="Agent appearance">
+              <option value="directional">Directional</option>
+              <option value="arrow">Arrow</option>
+              <option value="dot">Dot</option>
+            </select>
+          </label>
+          <button id="fit-arena" type="button" disabled>Fit arena</button>
+        </div>
 
-        <div id="additional-experiment-artifacts" aria-label="Additional experiment artifacts"></div>
+        <div class="canvas-wrap">
+          <canvas id="simulation-canvas" width="960" height="600" aria-label="Agent simulation. Drag to pan; use wheel, trackpad, or pinch to zoom."></canvas>
+          <div id="canvas-empty" class="canvas-empty">Waiting for simulation data…</div>
+        </div>
+        <p class="muted stage-note">Drag to pan. Wheel/trackpad or pinch to zoom. Positions and headings remain in arena coordinates; camera movement is visual only.</p>
       </section>
+
+      <section class="panel editor-panel">
+        <div class="stage-heading editor-heading">
+          <div>
+            <p class="section-kicker">CONFIGURATION</p>
+            <h2>Experiment configuration</h2>
+            <p class="muted">Parameters used by the initializer, controller, and simulator runtime.</p>
+          </div>
+          <button id="apply-setup" class="primary" disabled>Apply &amp; restart</button>
+        </div>
+        <textarea id="experiment-config" class="code-editor config-editor" spellcheck="false" aria-label="Experiment configuration"></textarea>
+        <div id="setup-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
+        <p id="setup-error" class="error" role="alert"></p>
+      </section>
+
+      <section class="panel editor-panel">
+        <div class="stage-heading editor-heading">
+          <div>
+            <p class="section-kicker">INITIALIZATION</p>
+            <h2>Initializer</h2>
+            <p class="muted">Defines initial agent positions and headings.</p>
+          </div>
+        </div>
+        <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initializer source"></textarea>
+        <details class="ir-details">
+          <summary>Compiled IR</summary>
+          <pre id="initializer-ir"></pre>
+        </details>
+      </section>
+
+      <section class="panel editor-panel">
+        <div class="stage-heading editor-heading">
+          <div>
+            <p class="section-kicker">CONTROLLER</p>
+            <h2>Agent controller</h2>
+            <p class="muted">Defines each agent's action from its local observation.</p>
+          </div>
+          <button id="compile" class="primary" disabled>Apply &amp; restart</button>
+        </div>
+        <textarea id="controller-source" class="code-editor controller-editor" spellcheck="false" aria-label="Controller source"></textarea>
+        <div id="compile-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
+        <p id="compile-error" class="error" role="alert"></p>
+        <details class="ir-details">
+          <summary>Compiled IR</summary>
+          <pre id="controller-ir"></pre>
+        </details>
+      </section>
+
+      <div id="additional-experiment-artifacts" aria-label="Additional experiment artifacts"></div>
+
+      <details class="panel metadata-panel technical-panel">
+        <summary class="panel-heading technical-summary"><span>Technical details</span><strong>0.1-dev</strong></summary>
+        <dl class="metadata-grid">
+          <div><dt>Runtime</dt><dd>Rust / WebAssembly</dd></div>
+          <div><dt>Configuration</dt><dd>Python-style source</dd></div>
+          <div><dt>Initialization</dt><dd>Python-style source</dd></div>
+          <div><dt>Controller</dt><dd>python-vlab/0.1</dd></div>
+        </dl>
+      </details>
     </main>
   </div>
+
+  <dialog id="workspace-utilities" class="utility-dialog" aria-label="Account and Professor utilities">
+    <div class="utility-dialog-shell">
+      <div class="utility-dialog-head">
+        <div>
+          <p class="section-kicker">WORKSPACE</p>
+          <h2>Account &amp; Professor</h2>
+        </div>
+        <button id="utility-close" type="button">Close</button>
+      </div>
+      <div id="workspace-utility-content" class="utility-content">
+        <p id="utility-loading" class="muted">Loading account controls…</p>
+      </div>
+    </div>
+  </dialog>
+
   <script type="module" src="./main.js"></script>
   <script type="module" src="./runtime-speed.js"></script>
+  <script type="module" src="./workspace-shell.js"></script>
 </body>
 </html>
