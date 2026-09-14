@@ -364,7 +364,7 @@ function rebuildEnvironmentGridImage() {
   for (let i = 0; i < environmentGrid.values.length; i += 1) {
     const value = environmentGrid.values[i];
     const normalized = Number.isFinite(value) && span > 0 ? (value - min) / span : 0.5;
-    const shade = Math.round(245 - normalized * 90);
+    const shade = Math.round(255 * (1 - normalized));
     image.data[i * 4] = shade;
     image.data[i * 4 + 1] = shade;
     image.data[i * 4 + 2] = shade;
@@ -444,7 +444,7 @@ function drawSnapshot() {
   if (environmentGridImage) {
     context.save();
     context.imageSmoothingEnabled = true;
-    context.globalAlpha = 0.72;
+    context.globalAlpha = 1.0;
     context.drawImage(environmentGridImage, arenaLeft, arenaTop, arenaRight - arenaLeft, arenaBottom - arenaTop);
     context.restore();
   }
