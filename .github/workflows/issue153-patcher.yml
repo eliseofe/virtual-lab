@@ -1,0 +1,42 @@
+name: One-shot issue 153 patch runner
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/issue153-patcher.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-feature-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/issue-153-workspace-continuity
+      - name: Apply branch patch payload
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/issue153-self-patch.yml').read_text()
+          marker = "      - name: Patch unified switcher and workspace continuity\n        run: |\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("\n      - name: Test browser source", start)
+          payload = textwrap.dedent(workflow[start:end])
+          Path('/tmp/issue153-patch.sh').write_text(payload + "\n")
+          PY
+          bash /tmp/issue153-patch.sh
+      - name: Test browser source
+        run: node --test web/tests/*.test.mjs
+      - name: Remove staging files and commit implementation
+        run: |
+          rm -f .github/workflows/issue153-self-patch.yml .github/issue153-trigger
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add web/src/registry-ui-v3.js web/tests/issue153-workspace-continuity.test.mjs .github/workflows/issue153-self-patch.yml .github/issue153-trigger
+          git commit -m "UI/UX: restore workspace and unify experiment switching (#153)"
+          git push origin HEAD:feature/issue-153-workspace-continuity
