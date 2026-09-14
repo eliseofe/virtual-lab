@@ -54,8 +54,8 @@ function installStyles() {
     .registry-account strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .registry-sign-out { min-height: 28px; padding: 3px 8px; font-size: 11px; white-space: nowrap; }
     .registry-auth { display: grid; gap: 8px; }
-    .registry-auth input, .registry-new-form input, .experiment-browser-search { width: 100%; min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; color: #172127; background: #fff; }
-    .registry-auth input:focus, .registry-new-form input:focus, .experiment-browser-search:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
+    .registry-auth input, .registry-new-form input, .registry-new-form select, .registry-move-select, .experiment-browser-search { width: 100%; min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; color: #172127; background: #fff; }
+    .registry-auth input:focus, .registry-new-form input:focus, .registry-new-form select:focus, .registry-move-select:focus, .experiment-browser-search:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
     .registry-message { margin: 0; min-height: 1.4em; font-size: 11.5px; line-height: 1.4; color: #64757c; }
     .registry-message[data-state="error"] { color: #9e2d29; }
     .registry-message[data-state="success"] { color: #246240; }
@@ -68,7 +68,10 @@ function installStyles() {
     .registry-save-state[data-state="conflict"] { color: #9e2d29; }
     .registry-save-state[data-state="saved"] { color: #246240; }
     .registry-new-form { display: grid; gap: 7px; padding-top: 2px; }
+    .registry-new-field, .registry-move-field { display: grid; gap: 4px; color: #52656d; font-size: 10.5px; font-weight: 650; }
     .registry-new-actions { display: flex; gap: 7px; justify-content: flex-end; }
+    .registry-move-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; align-items: end; }
+    .registry-move-row button { min-height: 38px; padding: 7px 10px; }
 
     .experiment-current { display: grid; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e5ebee; }
     .experiment-current-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -124,6 +127,25 @@ function installStyles() {
 function collectionName(id) {
   if (!id) return "Unfiled";
   return collections.find((collection) => collection.id === id)?.name || "Unfiled";
+}
+
+function populateCollectionSelect(select, selectedId = null) {
+  select.replaceChildren();
+  const unfiled = document.createElement("option");
+  unfiled.value = "";
+  unfiled.textContent = "Unfiled";
+  select.append(unfiled);
+  for (const collection of collections) {
+    const option = document.createElement("option");
+    option.value = collection.id;
+    option.textContent = collection.name;
+    select.append(option);
+  }
+  select.value = selectedId || "";
+}
+
+function selectedCollectionId(select) {
+  return select.value || null;
 }
 
 function currentLocationLabel() {
@@ -226,16 +248,40 @@ function buildAccountPanel() {
   const saveAsNew = document.createElement("button");
   saveAsNew.textContent = "Save as new…";
   saveActions.append(save, saveAsNew);
-  saveRow.append(saveState, saveActions);
+
+  const moveRow = document.createElement("div");
+  moveRow.className = "registry-move-row";
+  moveRow.hidden = true;
+  const moveField = document.createElement("label");
+  moveField.className = "registry-move-field";
+  moveField.append("Collection");
+  const moveCollection = document.createElement("select");
+  moveCollection.className = "registry-move-select";
+  moveCollection.setAttribute("aria-label", "Move current experiment to collection");
+  moveField.append(moveCollection);
+  const move = document.createElement("button");
+  move.textContent = "Move";
+  moveRow.append(moveField, move);
+  saveRow.append(saveState, saveActions, moveRow);
 
   const newForm = document.createElement("div");
   newForm.className = "registry-new-form";
   newForm.hidden = true;
+  const newTitleField = document.createElement("label");
+  newTitleField.className = "registry-new-field";
+  newTitleField.append("Title");
   const newTitle = document.createElement("input");
   newTitle.type = "text";
   newTitle.maxLength = 300;
   newTitle.placeholder = "New experiment title";
   newTitle.setAttribute("aria-label", "New experiment title");
+  newTitleField.append(newTitle);
+  const newCollectionField = document.createElement("label");
+  newCollectionField.className = "registry-new-field";
+  newCollectionField.append("Collection");
+  const newCollection = document.createElement("select");
+  newCollection.setAttribute("aria-label", "New experiment collection");
+  newCollectionField.append(newCollection);
   const newActions = document.createElement("div");
   newActions.className = "registry-new-actions";
   const cancelNew = document.createElement("button");
@@ -244,7 +290,7 @@ function buildAccountPanel() {
   createNew.className = "primary";
   createNew.textContent = "Create private copy";
   newActions.append(cancelNew, createNew);
-  newForm.append(newTitle, newActions);
+  newForm.append(newTitleField, newCollectionField, newActions);
 
   const note = document.createElement("p");
   note.className = "registry-note";
@@ -265,8 +311,12 @@ function buildAccountPanel() {
     saveState,
     save,
     saveAsNew,
+    moveRow,
+    moveCollection,
+    move,
     newForm,
     newTitle,
+    newCollection,
     cancelNew,
     createNew,
     note,
@@ -415,6 +465,14 @@ function setQuickSwitchOptions() {
   currentUi.quickHint.textContent = `Showing ${location}. Quick switch stays in this collection; use Browse library to change collection or search everything.`;
 }
 
+function updateMoveButton() {
+  const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
+  const dirty = hasUnsavedRemoteEdits();
+  const target = selectedCollectionId(ui.moveCollection);
+  const current = currentRemote?.collection_id || null;
+  ui.move.disabled = !owned || dirty || conflictRevision !== null || target === current;
+}
+
 function updateCurrentUi() {
   const dirty = hasUnsavedRemoteEdits();
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
@@ -437,13 +495,16 @@ function updateCurrentUi() {
   ui.saveAsNew.hidden = !user;
   ui.save.hidden = !owned;
   ui.save.disabled = !owned || !dirty || conflictRevision !== null;
+  ui.moveRow.hidden = !owned;
+  if (owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
+  updateMoveButton();
 
   if (!user) {
     ui.note.textContent = "You can edit and run the built-in experiment locally. Sign in to save a private copy or open your own library.";
   } else if (!currentRemote) {
     ui.saveState.dataset.state = "readonly";
     ui.saveState.textContent = "Read-only source";
-    ui.note.textContent = "The built-in experiment cannot be overwritten. Save as new creates a private copy in My experiments / Unfiled.";
+    ui.note.textContent = "The built-in experiment cannot be overwritten. Save as new lets you choose where its private copy is stored.";
   } else if (!owned) {
     ui.saveState.dataset.state = "readonly";
     ui.saveState.textContent = "Read-only source";
@@ -451,11 +512,11 @@ function updateCurrentUi() {
   } else if (conflictRevision !== null) {
     ui.saveState.dataset.state = "conflict";
     ui.saveState.textContent = `Newer revision r${conflictRevision} available`;
-    ui.note.textContent = "Your local edits are still here. Reload the experiment before saving to this same record.";
+    ui.note.textContent = "Your local edits are still here. Reload the experiment before saving or moving this same record.";
   } else if (dirty) {
     ui.saveState.dataset.state = "dirty";
     ui.saveState.textContent = "Unsaved changes";
-    ui.note.textContent = `Save changes updates this experiment in ${currentLocationLabel()} as a new revision.`;
+    ui.note.textContent = `Save changes before moving this experiment. Saving updates ${currentLocationLabel()} as a new revision.`;
   } else {
     ui.saveState.dataset.state = "saved";
     ui.saveState.textContent = `Saved · r${currentRemote.revision}`;
@@ -781,6 +842,47 @@ async function saveCurrentExperiment() {
   setMessage(`${data.title} saved as revision ${data.revision}.`, "success");
 }
 
+async function moveCurrentExperiment() {
+  if (!user) throw new Error("Sign in before moving an experiment.");
+  if (!currentRemote || currentRemote.owner_id !== user.id) throw new Error("Only your own experiment can be moved.");
+  if (conflictRevision !== null) throw new Error("A newer revision exists. Reload the experiment before moving it.");
+  if (hasUnsavedRemoteEdits()) throw new Error("Save or discard source edits before moving this experiment.");
+
+  const targetCollectionId = selectedCollectionId(ui.moveCollection);
+  const currentCollectionId = currentRemote.collection_id || null;
+  if (targetCollectionId === currentCollectionId) {
+    setMessage(`Already stored in My experiments / ${collectionName(currentCollectionId)}.`);
+    return;
+  }
+
+  const baseRevision = currentRemote.revision;
+  const targetName = collectionName(targetCollectionId);
+  setMessage(`Moving ${currentRemote.title} to ${targetName}…`);
+  const { data, error } = await supabase
+    .from("experiments")
+    .update({ collection_id: targetCollectionId, updated_by_actor: "human", updated_by_ai_client: null })
+    .eq("id", currentRemote.id)
+    .eq("owner_id", user.id)
+    .eq("revision", baseRevision)
+    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,config_source,initializer_source,controller_source,updated_at")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) {
+    const { data: fresh } = await supabase.from("experiments").select("revision").eq("id", currentRemote.id).eq("owner_id", user.id).maybeSingle();
+    conflictRevision = fresh?.revision ?? baseRevision + 1;
+    updateCurrentUi();
+    throw new Error("Move conflict: a newer revision exists. Reload the experiment before moving it.");
+  }
+
+  currentRemote = data;
+  conflictRevision = null;
+  await loadExperimentList();
+  updateCurrentUi();
+  renderBrowser();
+  setMessage(`${data.title} moved to My experiments / ${collectionName(data.collection_id)} as revision ${data.revision}.`, "success");
+}
+
 function defaultCopyTitle() {
   return currentRemote?.title ? `${currentRemote.title} copy` : `${BUILTIN_TITLE} copy`;
 }
@@ -788,6 +890,8 @@ function defaultCopyTitle() {
 function openSaveAsNew() {
   if (!user) throw new Error("Sign in before saving.");
   ui.newTitle.value = defaultCopyTitle();
+  const ownsCurrent = Boolean(currentRemote && currentRemote.owner_id === user.id);
+  populateCollectionSelect(ui.newCollection, ownsCurrent ? currentRemote.collection_id : null);
   ui.newForm.hidden = false;
   ui.newTitle.focus();
   ui.newTitle.select();
@@ -796,12 +900,14 @@ function openSaveAsNew() {
 function closeSaveAsNew() {
   ui.newForm.hidden = true;
   ui.newTitle.value = "";
+  ui.newCollection.replaceChildren();
 }
 
 async function createNewExperiment() {
   if (!user) throw new Error("Sign in before saving.");
   const title = ui.newTitle.value.trim();
   if (!title) throw new Error("Enter a title for the new experiment.");
+  const collectionId = selectedCollectionId(ui.newCollection);
   const artifacts = registryArtifactsForSave({ allowBuiltInCompatibility: true });
 
   setMessage(`Creating ${title}…`);
@@ -809,7 +915,7 @@ async function createNewExperiment() {
     .from("experiments")
     .insert({
       owner_id: user.id,
-      collection_id: null,
+      collection_id: collectionId,
       title,
       description: currentRemote?.description ?? "",
       lifecycle: "active",
@@ -832,7 +938,7 @@ async function createNewExperiment() {
   updateCurrentUi();
   renderBrowser();
   await applyLoadedSources();
-  setMessage(`${data.title} created in My experiments / Unfiled.`, "success");
+  setMessage(`${data.title} created in My experiments / ${collectionName(data.collection_id)}.`, "success");
 }
 
 function setSignedOutUi() {
@@ -996,6 +1102,8 @@ ui.password.addEventListener("keydown", (event) => {
 ui.signOut.addEventListener("click", () => run(signOut));
 ui.save.addEventListener("click", () => run(saveCurrentExperiment));
 ui.saveAsNew.addEventListener("click", () => run(openSaveAsNew));
+ui.moveCollection.addEventListener("change", updateMoveButton);
+ui.move.addEventListener("click", () => run(moveCurrentExperiment));
 ui.cancelNew.addEventListener("click", closeSaveAsNew);
 ui.createNew.addEventListener("click", () => run(createNewExperiment));
 ui.newTitle.addEventListener("keydown", (event) => {
