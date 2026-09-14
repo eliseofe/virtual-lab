@@ -47,6 +47,7 @@ await cp(publicDir, assetDir, { recursive: true });
 let index = await readFile(path.join(src, "index.html"), "utf8");
 index = index
   .replace('href="./style.css"', `href="./${assetDirName}/style.css"`)
+  .replace('href="./ux-hardening.css"', `href="./${assetDirName}/ux-hardening.css"`)
   .replace('src="./main.js"', `src="./${assetDirName}/main.js"`)
   .replace('src="./runtime-speed.js"', `src="./${assetDirName}/runtime-speed.js"`)
   .replace('src="./workspace-shell.js"', `src="./${assetDirName}/workspace-shell.js"`)

@@ -1,5 +1,6 @@
 import "./authoring-workspace.js";
 import "./collection-organization.js";
+import "./ux-hardening.js";
 
 const utilityDialog = document.querySelector("#workspace-utilities");
 const utilityContent = document.querySelector("#workspace-utility-content");
@@ -54,7 +55,7 @@ function openUtilities(target = "account") {
 
   panel?.scrollIntoView({ block: "start" });
   const focusTarget = panel?.querySelector(
-    "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)",
+    "button:not(:disabled):not([hidden]), input:not(:disabled):not([hidden]), select:not(:disabled):not([hidden]), textarea:not(:disabled):not([hidden])",
   );
   focusTarget?.focus({ preventScroll: true });
 }
