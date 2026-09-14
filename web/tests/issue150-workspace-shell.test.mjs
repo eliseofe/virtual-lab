@@ -59,3 +59,13 @@ test("issue #150 mobile hierarchy keeps simulation ahead of admin utilities", as
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.control-grid\s*\{\s*grid-template-columns:\s*1fr 1fr;/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*?\.control-grid button\s*\{\s*min-height:\s*44px;/);
 });
+
+test("issue #150 utility observer does not rewrite the mutations it watches", async () => {
+  const shell = await readFile(shellUrl, "utf8");
+
+  assert.match(shell, /function setHidden\(element, hidden\)/);
+  assert.match(shell, /if \(element\.hidden !== hidden\) element\.hidden = hidden;/);
+  assert.match(shell, /function setText\(element, text\)/);
+  assert.match(shell, /if \(element\.textContent !== text\) element\.textContent = text;/);
+  assert.match(shell, /attributeFilter:\s*\["hidden"\]/);
+});
