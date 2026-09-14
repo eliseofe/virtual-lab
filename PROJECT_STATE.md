@@ -10,6 +10,7 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Production Lab: `https://eliseofe.github.io/virtual-lab/`
 - Supabase project: `izdmmudfrmqhvlgepwes`
 - Experiment MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
+- Experiment MCP current Edge Function version: **10**
 
 Important recent merge SHAs:
 
@@ -20,6 +21,7 @@ Important recent merge SHAs:
 - #115 collection assignment/moves: `5048793c75602faba3d99809693fca1e622642be`
 - #117 generic Experiment artifact persistence/MCP contract: `6b31bd5626b5af31804ff7fbaa19ec01c719177f`
 - #118 artifact-driven Experiment workspace/UI: `ec3993b07faf12be063863ee609e86e7fa31668b`
+- #125 artifact capability/lifecycle metadata: `eaae0dc0a19ef1e5124ca0753f48c89cb3406147`
 
 ## Owner-visible acceptance state
 
@@ -31,7 +33,7 @@ Accepted and closed:
 - #106 achieved real-time-factor meter;
 - #109 phone camera/visualization behavior.
 
-Two current production items are engineering-complete but still await the owner's short live acceptance:
+Two current production items are engineering-complete but still await the owner's later consolidated live acceptance:
 
 ### #115 collection assignment/moves
 
@@ -40,9 +42,14 @@ Two current production items are engineering-complete but still await the owner'
 
 ### #118 artifact-driven Experiment workspace/UI
 
-The visible experience should still look intentionally familiar: Configuration, Initialization and Controller remain the three normal core editor panels. The owner should confirm ordinary experiment load/edit/save/save-as-new/run/library behavior still works after the internal artifact refactor.
+The visible experience should still look intentionally familiar: Configuration, Initialization and Controller remain the three normal core editor panels. Ordinary experiment load/edit/save/save-as-new/run/library behavior should remain unchanged after the internal artifact refactor.
 
-A tiny optional #117 real-client check can be done in the same acceptance pass: in a **fresh** Grok session ask it to read `Simple Random Walk` and list only the artifact IDs. Expected: `configuration`, `initialization`, `controller`.
+When the owner has time, acceptance should be **user-driven**, not a trivial fixed script. A useful combined pass can naturally test:
+
+- normal three-core-artifact create/load/edit/save/run behavior;
+- Grok adding one or more optional passive artifacts and the Lab preserving/displaying/editing them;
+- Grok requesting an unregistered optional executable artifact, which must be surfaced as unsupported rather than executed by inference;
+- #115 collection assignment and moves.
 
 Do not reopen accepted work without genuinely new evidence.
 
@@ -82,9 +89,7 @@ The production migration then completed with revision-bump suppression during me
 
 All five rows report schema/interface v2, currently have three core artifacts, and each legacy source mirror equals the corresponding canonical artifact content. Existing collection/RLS behavior was not changed.
 
-### MCP v5
-
-The Experiment MCP is deployed as Supabase Edge Function **version 9** with interface version **5**.
+### MCP v5 / current deployment
 
 The five student-facing tool names remain:
 
@@ -95,6 +100,8 @@ The five student-facing tool names remain:
 - `delete_experiment`.
 
 Canonical create/edit scientific content is now `artifacts[]`. During the bounded migration window, old clients may still use the three legacy source arguments; supplying both forms is rejected.
+
+#117 initially deployed this MCP as Supabase Edge Function version 9. #125 subsequently redeployed the same Experiment MCP as **version 10** to add artifact capability/lifecycle metadata to the AI-visible authoring contract. #125 did not change storage or simulator runtime semantics.
 
 The structural security boundary is unchanged: the Experiment MCP has no GitHub, repository, shell, deployment, simulator-source, arbitrary SQL/filesystem or Supabase-admin capability. AI still cannot run the simulator or automatically observe simulation results.
 
@@ -197,6 +204,52 @@ After merge, production workflow `34833493231` passed:
 
 No additional #118 engineering defect is currently known. The remaining step is owner live acceptance of normal production behavior.
 
+## #124 / #125 — artifact capability registry and lifecycle contract
+
+Canonical design: `docs/ARTIFACT_EXECUTION_LIFECYCLE.md`.
+
+The agreed model distinguishes:
+
+1. **required core artifacts** — currently exactly `configuration`, `initialization`, `controller`;
+2. **optional passive artifacts** — stored/displayed but never executed;
+3. **optional executable artifacts** — executable only when their type is explicitly registered by the active versioned capability contract with a supported format/compiler, lifecycle hook and scope/cadence.
+
+Lifecycle vocabulary is:
+
+`setup → initialize → control → finalize`
+
+Unknown optional artifacts, including code-looking text, never gain execution semantics by inference.
+
+### #125 deployed contract metadata
+
+Issue #125 is completed and deployed via PR #132, merge `eaae0dc0a19ef1e5124ca0753f48c89cb3406147`.
+
+`read_workspace(include_authoring_contract=true)` now exposes `vlab.artifact-capabilities/0.1` and tells AI clients:
+
+- the required core artifact IDs and current semantics;
+- the lifecycle vocabulary;
+- optional passive artifacts are allowed;
+- there are currently **zero registered optional executable artifact types**;
+- arbitrary extra code/text is not executable by inference;
+- unsupported executable intent is `unsupported-capability`.
+
+Verification:
+
+- normal PR workflow `34839672637`: success;
+- performance workflow `34839672492`: first attempt hit a transient existing profile-harness import race; identical retry passed fully;
+- main workflow `34840135027`: success;
+- current `experiment-mcp` Edge Function: **ACTIVE version 10**.
+
+No storage/schema, simulator dispatch, Rust/WASM or scientific/runtime semantics changed.
+
+### #126 future runtime dispatcher
+
+#126 is intentionally blocked until the owner approves a **concrete first optional executable artifact capability**. Do not invent one solely to exercise the framework. A future implementation must dispatch only registered artifact types at declared lifecycle phases and preserve current required-core semantics.
+
+### #127 Study fresh/reset/resume/checkpoint semantics
+
+#127 is a future focused child of Study epic #3. Default Study run start is fresh reconstruction from the pinned Experiment revision. Resume/checkpoint is explicit Study protocol/orchestration with provenance; it is not hidden Experiment initialization. There is no arbitrary reset hook initially.
+
 ## Private-student production path
 
 The production Virtual Lab remains a real client of the canonical Supabase experiment registry while scientific execution remains local in browser/WASM.
@@ -221,6 +274,8 @@ After owner acceptance of the current #115/#118 production gate, resume the appr
 
 `paper + professor AI → experiment draft → unsupported capability detected → durable Supabase request → Professor inbox → approve/decline → ChatGPT/GitHub implementation → deployed capability → request implemented → draft revalidates/runs`
 
+The #124/#125 capability vocabulary now gives that future flow a clean way to distinguish passive extension from unsupported executable intent.
+
 Per `docs/EXECUTION_GRANULARITY.md`, do not implement that whole loop as one pass. Inspect #58/current code and create or select the next smallest substantial independently deployable/testable checkpoint.
 
 Broader Study / Research Note / Research Document / results-to-AI work remains approved architecture/backlog, not the immediate monolithic implementation target.
@@ -230,6 +285,8 @@ Broader Study / Research Note / Research Document / results-to-AI work remains a
 #111 was diagnostic only. Its evidence indicates that at N≈5,000 the measured bottleneck on CI is worker-side simulator/neighbour/observation/controller compute, not Canvas rendering or snapshot transfer. Do not automatically continue performance work from recency; it is a parallel backlog lane unless promoted by `PROJECT_CONTROL.md`.
 
 The #118 performance regression workflow passed, but that is only a software-regression guard; it is not new scientific/performance optimization evidence and does not change the performance roadmap.
+
+The first #125 performance-profile attempt failed on a transient existing browser-profile module-resolution race and the identical rerun passed; no simulator/performance code was changed in response.
 
 ## Scientific guardrail
 
