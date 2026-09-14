@@ -7,7 +7,8 @@ Before doing project work, recover the current state from the repository rather 
 1. Read `PROJECT_CONTROL.md` completely. It is the authority for **current strategic priority, sequencing, gates, and opportunistic-work rules**.
 2. Read `docs/EXECUTION_GRANULARITY.md`. It is the mandatory rule for how broad owner approval is converted into bounded implementation passes.
 3. Read `PROJECT_STATE.md` for accepted technical state, evidence, architecture and recent implementation history.
-4. Read the active issue(s) and relevant design document(s) for the specific task.
+4. Before implementing any new paper-driven simulator capability, read and apply `docs/CAPABILITY_GENERALIZATION_GATE.md`.
+5. Read the active issue(s) and relevant design document(s) for the specific task.
 
 Do not infer the roadmap from the newest issue number, newest commit, most recently closed ticket, or whichever technical thread was discussed last.
 
@@ -18,6 +19,14 @@ Approval breadth is not execution breadth. When the owner approves several ticke
 Default to **one substantial, independently deployable/testable ticket at a time**. Complete its implementation, tests, deployment when applicable, verification, issue/state updates and clean report; then stop and ask whether to continue to the next substantial ticket, unless the owner explicitly instructs in the current message to complete the whole multi-ticket sequence without intermediate stops.
 
 Small/trivial adjacent tickets may be batched when the combined work remains one clear low-risk unit. If scope turns out larger than expected, split at the next safe boundary. Do not combine substantial tickets merely because they are related or already approved. See `docs/EXECUTION_GRANULARITY.md` for the full rule.
+
+## Capability generalization / refactor gate
+
+For every new paper-driven simulator capability, explicitly check whether the requested change fits existing abstractions cleanly or is creating paper-specific semantics, duplicate execution/representation paths, growing special-case conditionals, or repeated pressure on the same provisional abstraction.
+
+If a material trigger is present, **stop before implementation and bring the owner a refactor/generalization proposal**. Do not wait for the owner to discover structural problems from strange UI/runtime behavior.
+
+Even when individual requests look clean, perform the periodic architecture audit defined in `docs/CAPABILITY_GENERALIZATION_GATE.md`. The gate concerns software structure only; scientific generalization or model reasoning still requires explicit owner involvement.
 
 ## Strategic vs opportunistic work
 
