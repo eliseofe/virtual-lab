@@ -7,9 +7,16 @@ import {
   validateRuntimeValues,
 } from "./vendor/runtime-contract.js";
 
+export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
+  Object.freeze({ id: "configuration", type: "configuration", label: "Configuration", format: "python-vlab", order: 10 }),
+  Object.freeze({ id: "initialization", type: "initialization", label: "Initialization", format: "python-vlab", order: 20 }),
+  Object.freeze({ id: "controller", type: "controller", label: "Controller", format: "python-vlab", order: 30 }),
+]);
+
 export const AUTHORING_CONTRACT = Object.freeze({
   contract_version: "vlab.authoring/0.3",
-  experiment_interface_version: "4",
+  experiment_interface_version: "5",
+  experiment_artifact_interface: "vlab.experiment-artifacts/2",
   validation_mode: "compile-without-simulation",
   invalid_write_policy: "reject",
   content_policy: {
@@ -25,7 +32,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
       runtime_requirements: RUNTIME_CONTRACT.required_configuration,
       parameter_policy: "Configuration names beyond the simulator-owned runtime requirements are experiment-defined. Finite numeric values are exposed to the controller as scalar parameters; the contract does not prescribe model-specific scientific parameter names or values."
     },
-    initializer: {
+    initialization: {
       compiled_version: "vlab.initializer-state/0.2",
       syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and approved intrinsics.",
       entry: "initialize(config, rng, place)",
@@ -55,6 +62,12 @@ export const AUTHORING_CONTRACT = Object.freeze({
       },
       forbidden_roots: ["random", "rng", "seed", "world", "simulator", "environment", "agents", "filesystem", "network"]
     }
+  },
+  artifact_collection: {
+    representation: "ordered typed artifact array",
+    required_core_ids: CORE_EXPERIMENT_ARTIFACTS.map(({ id }) => id),
+    required_fields: ["id", "type", "label", "format", "order", "content"],
+    compatibility_note: "Legacy config_source/initializer_source/controller_source arguments may be accepted temporarily by the MCP, but artifacts are the canonical experiment representation."
   },
   capability_model: {
     observations: [
@@ -88,9 +101,68 @@ export const AUTHORING_CONTRACT = Object.freeze({
   }
 });
 
+export function artifactsFromLegacySources({ config_source = "", initializer_source = "", controller_source = "" }) {
+  const contents = {
+    configuration: config_source,
+    initialization: initializer_source,
+    controller: controller_source,
+  };
+  return CORE_EXPERIMENT_ARTIFACTS.map((descriptor) => ({
+    ...descriptor,
+    content: contents[descriptor.id],
+  }));
+}
+
+export function sourcesFromArtifacts(artifacts) {
+  if (!Array.isArray(artifacts)) throw new Error("Experiment artifacts must be an array.");
+  const byId = new Map();
+  for (const artifact of artifacts) {
+    if (!artifact || typeof artifact !== "object") throw new Error("Each experiment artifact must be an object.");
+    const { id, type, label, format, order, content } = artifact;
+    if (typeof id !== "string" || !id.trim()) throw new Error("Each experiment artifact requires a non-empty id.");
+    if (byId.has(id)) throw new Error(`Duplicate experiment artifact id '${id}'.`);
+    if (typeof type !== "string" || !type.trim()) throw new Error(`Artifact '${id}' requires a non-empty type.`);
+    if (typeof label !== "string" || !label.trim()) throw new Error(`Artifact '${id}' requires a non-empty label.`);
+    if (typeof format !== "string" || !format.trim()) throw new Error(`Artifact '${id}' requires a non-empty format.`);
+    if (typeof order !== "number" || !Number.isFinite(order)) throw new Error(`Artifact '${id}' requires a finite numeric order.`);
+    if (typeof content !== "string") throw new Error(`Artifact '${id}' content must be a string.`);
+    byId.set(id, artifact);
+  }
+
+  for (const descriptor of CORE_EXPERIMENT_ARTIFACTS) {
+    const artifact = byId.get(descriptor.id);
+    if (!artifact) throw new Error(`Experiment is missing required artifact '${descriptor.id}'.`);
+    if (artifact.type !== descriptor.type) {
+      throw new Error(`Artifact '${descriptor.id}' must have type '${descriptor.type}'.`);
+    }
+  }
+
+  return {
+    config_source: byId.get("configuration").content,
+    initializer_source: byId.get("initialization").content,
+    controller_source: byId.get("controller").content,
+  };
+}
+
+export function mergeLegacySourcesIntoArtifacts(artifacts, changes = {}) {
+  const current = Array.isArray(artifacts) ? artifacts : artifactsFromLegacySources(changes);
+  const replacements = {
+    configuration: changes.config_source,
+    initialization: changes.initializer_source,
+    controller: changes.controller_source,
+  };
+  return current.map((artifact) => (
+    replacements[artifact.id] === undefined
+      ? { ...artifact }
+      : { ...artifact, content: replacements[artifact.id] }
+  ));
+}
+
 function errorDiagnostic(artifact, error) {
   const message = error instanceof Error ? error.message : String(error);
   const compilerCategory = typeof error?.category === "string" ? error.category : null;
+  // Preserve the established external diagnostic name `initializer` even though
+  // the canonical generic artifact id is `initialization`.
   let category = compilerCategory ?? (artifact === "initializer" ? "initializer" : "syntax");
   if (
     category === "unsupported-feature" ||
@@ -108,6 +180,16 @@ function errorDiagnostic(artifact, error) {
     line: Number.isInteger(error?.line) ? error.line : null,
     column: Number.isInteger(error?.column) ? error.column : null
   };
+}
+
+export function validateExperimentArtifacts(artifacts) {
+  let sources;
+  try {
+    sources = sourcesFromArtifacts(artifacts);
+  } catch (error) {
+    return invalid([{ artifact: "artifacts", category: "syntax", compiler_category: null, parameter: null, message: error instanceof Error ? error.message : String(error), line: null, column: null }]);
+  }
+  return validateExperimentSources(sources);
 }
 
 export function validateExperimentSources({ config_source, initializer_source, controller_source }) {
