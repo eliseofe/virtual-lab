@@ -34,7 +34,7 @@ struct Scenario {
     distribution: Distribution,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 enum Distribution {
     UniformGrid,
