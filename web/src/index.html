@@ -106,54 +106,67 @@
         <p class="muted stage-note">Drag to pan. Wheel/trackpad or pinch to zoom. Positions and headings remain in arena coordinates; camera movement is visual only.</p>
       </section>
 
-      <section class="panel editor-panel">
-        <div class="stage-heading editor-heading">
+      <section id="authoring-workbench" class="panel editor-panel" aria-label="Experiment authoring workspace">
+        <div class="authoring-workbench-head">
           <div>
-            <p class="section-kicker">CONFIGURATION</p>
-            <h2>Experiment configuration</h2>
-            <p class="muted">Parameters used by the initializer, controller, and simulator runtime.</p>
+            <p class="section-kicker">AUTHORING</p>
+            <h2>Experiment source</h2>
+            <p class="muted">Edit one artifact at a time. Runtime changes are applied together and restart the current run.</p>
           </div>
-          <button id="apply-setup" class="primary" disabled>Apply &amp; restart</button>
-        </div>
-        <textarea id="experiment-config" class="code-editor config-editor" spellcheck="false" aria-label="Experiment configuration"></textarea>
-        <div id="setup-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
-        <p id="setup-error" class="error" role="alert"></p>
-      </section>
-
-      <section class="panel editor-panel">
-        <div class="stage-heading editor-heading">
-          <div>
-            <p class="section-kicker">INITIALIZATION</p>
-            <h2>Initializer</h2>
-            <p class="muted">Defines initial agent positions and headings.</p>
+          <div class="authoring-workbench-actions">
+            <span id="authoring-runtime-state" class="authoring-runtime-state" data-state="clean">Runtime sources applied</span>
+            <button id="apply-workspace" class="primary" type="button" disabled>Apply changes &amp; restart</button>
           </div>
         </div>
-        <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initializer source"></textarea>
-        <details class="ir-details">
-          <summary>Compiled IR</summary>
-          <pre id="initializer-ir"></pre>
-        </details>
-      </section>
 
-      <section class="panel editor-panel">
-        <div class="stage-heading editor-heading">
-          <div>
-            <p class="section-kicker">CONTROLLER</p>
-            <h2>Agent controller</h2>
-            <p class="muted">Defines each agent's action from its local observation.</p>
-          </div>
-          <button id="compile" class="primary" disabled>Apply &amp; restart</button>
+        <div id="authoring-tabs" class="authoring-tabs" role="tablist" aria-label="Experiment artifacts">
+          <button class="authoring-tab" type="button" role="tab" data-artifact-id="configuration" aria-controls="authoring-pane-configuration" aria-selected="true">Configuration</button>
+          <button class="authoring-tab" type="button" role="tab" data-artifact-id="initialization" aria-controls="authoring-pane-initialization" aria-selected="false" tabindex="-1">Initialization</button>
+          <button class="authoring-tab" type="button" role="tab" data-artifact-id="controller" aria-controls="authoring-pane-controller" aria-selected="false" tabindex="-1">Controller</button>
         </div>
-        <textarea id="controller-source" class="code-editor controller-editor" spellcheck="false" aria-label="Controller source"></textarea>
-        <div id="compile-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
-        <p id="compile-error" class="error" role="alert"></p>
-        <details class="ir-details">
-          <summary>Compiled IR</summary>
-          <pre id="controller-ir"></pre>
-        </details>
-      </section>
 
-      <div id="additional-experiment-artifacts" aria-label="Additional experiment artifacts"></div>
+        <div class="authoring-body">
+          <section id="authoring-pane-configuration" class="authoring-pane" role="tabpanel" data-authoring-artifact-pane="configuration">
+            <div class="authoring-pane-head">
+              <h3>Configuration</h3>
+              <p class="muted">Parameters used by the initializer, controller, and simulator runtime.</p>
+            </div>
+            <textarea id="experiment-config" class="code-editor config-editor" spellcheck="false" aria-label="Experiment configuration"></textarea>
+            <div id="setup-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
+            <p id="setup-error" class="error" role="alert"></p>
+            <button id="apply-setup" class="primary" type="button" disabled hidden tabindex="-1" aria-hidden="true">Apply &amp; restart</button>
+          </section>
+
+          <section id="authoring-pane-initialization" class="authoring-pane" role="tabpanel" data-authoring-artifact-pane="initialization" hidden>
+            <div class="authoring-pane-head">
+              <h3>Initialization</h3>
+              <p class="muted">Defines initial agent positions, headings, and supported environment setup.</p>
+            </div>
+            <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initializer source"></textarea>
+          </section>
+
+          <section id="authoring-pane-controller" class="authoring-pane" role="tabpanel" data-authoring-artifact-pane="controller" hidden>
+            <div class="authoring-pane-head">
+              <h3>Controller</h3>
+              <p class="muted">Defines each agent's action from its local observation.</p>
+            </div>
+            <textarea id="controller-source" class="code-editor controller-editor" spellcheck="false" aria-label="Controller source"></textarea>
+            <div id="compile-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
+            <p id="compile-error" class="error" role="alert"></p>
+            <button id="compile" class="primary" type="button" disabled hidden tabindex="-1" aria-hidden="true">Apply &amp; restart</button>
+          </section>
+
+          <div id="additional-experiment-artifacts" aria-label="Additional experiment artifacts"></div>
+        </div>
+
+        <section id="authoring-persistence" class="authoring-persistence" aria-label="Experiment persistence" hidden>
+          <div class="authoring-persistence-head">
+            <strong>Save &amp; persistence</strong>
+            <p id="authoring-persistence-message" class="authoring-persistence-message" data-state="idle"></p>
+          </div>
+          <div id="authoring-persistence-slot"></div>
+        </section>
+      </section>
 
       <details class="panel metadata-panel technical-panel">
         <summary class="panel-heading technical-summary"><span>Technical details</span><strong>0.1-dev</strong></summary>
@@ -163,6 +176,16 @@
           <div><dt>Initialization</dt><dd>Python-style source</dd></div>
           <div><dt>Controller</dt><dd>python-vlab/0.1</dd></div>
         </dl>
+        <div class="technical-ir-grid">
+          <details class="ir-details">
+            <summary>Initializer compiled IR</summary>
+            <pre id="initializer-ir"></pre>
+          </details>
+          <details class="ir-details">
+            <summary>Controller compiled IR</summary>
+            <pre id="controller-ir"></pre>
+          </details>
+        </div>
       </details>
     </main>
   </div>
