@@ -8,7 +8,12 @@ import { withRequiredClaims } from 'npm:@supabase/server/middleware/required-cla
 import { withSupabaseClient } from 'npm:@supabase/server/middleware/client'
 import { z } from 'npm:zod@4.1.13'
 
-import { AUTHORING_CONTRACT, validateExperimentSources } from './authoring.js'
+import {
+  AUTHORING_CONTRACT,
+  artifactsFromLegacySources,
+  mergeLegacySourcesIntoArtifacts,
+  validateExperimentArtifacts,
+} from './authoring.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
@@ -34,6 +39,15 @@ const DESTRUCTIVE_ANNOTATIONS = {
   idempotentHint: false,
   openWorldHint: false,
 } as const
+
+const ARTIFACT_INPUT = z.object({
+  id: z.string().min(1).max(200),
+  type: z.string().min(1).max(200),
+  label: z.string().min(1).max(300),
+  format: z.string().min(1).max(200),
+  order: z.number().finite(),
+  content: z.string(),
+})
 
 function json(value: unknown, status = 200, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(value), {
@@ -63,10 +77,22 @@ function toolError(message: string, detail?: unknown) {
 function authoringInfo(includeContract: boolean) {
   return {
     contract_version: AUTHORING_CONTRACT.contract_version,
+    experiment_interface_version: AUTHORING_CONTRACT.experiment_interface_version,
+    experiment_artifact_interface: AUTHORING_CONTRACT.experiment_artifact_interface,
     validation_required_for_source_writes: true,
     invalid_write_policy: AUTHORING_CONTRACT.invalid_write_policy,
     ...(includeContract ? { contract: AUTHORING_CONTRACT } : {}),
   }
+}
+
+function legacySourceArgumentsPresent(values: {
+  config_source?: string
+  initializer_source?: string
+  controller_source?: string
+}) {
+  return values.config_source !== undefined
+    || values.initializer_source !== undefined
+    || values.controller_source !== undefined
 }
 
 function registerExperimentTools(
@@ -83,7 +109,7 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab experiment workspace',
       description:
-        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment with all three editable sources and its current revision. Before authoring or changing source artifacts, set include_authoring_contract=true to retrieve the current simulator-native syntax/capability contract. This tool never writes.',
+        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment and its ordered typed artifacts at the current revision. The artifacts array is canonical. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         lifecycle: z.enum(['active', 'archived', 'all']).default('active'),
@@ -194,21 +220,35 @@ function registerExperimentTools(
     {
       title: 'Create a new validated experiment',
       description:
-        'Create a brand-new owned experiment from zero. Supply the exact configuration, initializer, and controller source strings. Source artifacts are validated against the current Virtual Lab authoring contract before the write; invalid sources are rejected with structured diagnostics. Use read_workspace(include_authoring_contract=true) before authoring. Use collection_id to file it, or omit collection_id to leave it unfiled.',
+        'Create a brand-new owned experiment from an ordered typed artifacts array. Read the authoring contract first and preserve each artifact id/type/format. The artifacts array is canonical and validated before writing. During the v1→v2 transition only, an older client may instead supply all three legacy source arguments; they are converted to canonical artifacts. Do not supply both forms. Use collection_id to file the experiment or omit it for Unfiled.',
       inputSchema: {
         title: z.string().min(1).max(300),
         description: z.string().default(''),
         collection_id: z.string().uuid().nullable().optional(),
-        config_source: z.string(),
-        initializer_source: z.string(),
-        controller_source: z.string(),
+        artifacts: z.array(ARTIFACT_INPUT).min(3).optional(),
+        config_source: z.string().optional(),
+        initializer_source: z.string().optional(),
+        controller_source: z.string().optional(),
       },
       annotations: WRITE_ANNOTATIONS,
     },
-    async ({ title, description, collection_id, config_source, initializer_source, controller_source }) => {
-      const validation = validateExperimentSources({ config_source, initializer_source, controller_source })
+    async ({ title, description, collection_id, artifacts, config_source, initializer_source, controller_source }) => {
+      const hasLegacy = legacySourceArgumentsPresent({ config_source, initializer_source, controller_source })
+      if (artifacts !== undefined && hasLegacy) {
+        return toolError('Supply canonical artifacts or the legacy three-source compatibility form, not both.')
+      }
+
+      let nextArtifacts = artifacts
+      if (nextArtifacts === undefined) {
+        if (config_source === undefined || initializer_source === undefined || controller_source === undefined) {
+          return toolError('Create requires artifacts. Legacy compatibility requires all three source arguments.')
+        }
+        nextArtifacts = artifactsFromLegacySources({ config_source, initializer_source, controller_source })
+      }
+
+      const validation = validateExperimentArtifacts(nextArtifacts)
       if (!validation.valid) {
-        return toolError('Experiment sources are not valid for the current Virtual Lab authoring contract.', validation)
+        return toolError('Experiment artifacts are not valid for the current Virtual Lab authoring contract.', validation)
       }
 
       const { data, error } = await supabase
@@ -218,9 +258,7 @@ function registerExperimentTools(
           collection_id: collection_id ?? null,
           title: title.trim(),
           description,
-          config_source,
-          initializer_source,
-          controller_source,
+          artifacts: nextArtifacts,
           created_by_actor: 'ai',
           created_by_ai_client: aiClient,
           updated_by_actor: 'ai',
@@ -238,12 +276,13 @@ function registerExperimentTools(
     {
       title: 'Edit, move, archive, or restore an experiment',
       description:
-        'Modify an owned experiment using optimistic concurrency. Always use the latest base_revision from read_workspace. Pass only fields to change. Any source-artifact change is validated together with the experiment current other sources before the write; invalid sources are rejected with structured diagnostics. Set collection_id to another collection UUID to move it, null to unfile it. Set lifecycle=archived to archive or lifecycle=active to restore. A stale revision is rejected.',
+        'Modify an owned experiment using optimistic concurrency. Always use the latest base_revision from read_workspace. To change scientific source, pass the complete canonical artifacts array. During the transition an older client may instead pass one or more legacy source arguments; they are merged into the canonical artifacts. Do not supply both forms. Artifact changes are validated as a complete experiment before writing. Set collection_id to move/unfile, or lifecycle to archive/restore. A stale revision is rejected.',
       inputSchema: {
         experiment_id: z.string().uuid(),
         base_revision: z.number().int().positive(),
         title: z.string().min(1).max(300).optional(),
         description: z.string().optional(),
+        artifacts: z.array(ARTIFACT_INPUT).min(3).optional(),
         config_source: z.string().optional(),
         initializer_source: z.string().optional(),
         controller_source: z.string().optional(),
@@ -257,38 +296,47 @@ function registerExperimentTools(
       base_revision,
       title,
       description,
+      artifacts,
       config_source,
       initializer_source,
       controller_source,
       collection_id,
       lifecycle,
     }) => {
-      const sourceChanged =
-        config_source !== undefined || initializer_source !== undefined || controller_source !== undefined
+      const hasLegacy = legacySourceArgumentsPresent({ config_source, initializer_source, controller_source })
+      if (artifacts !== undefined && hasLegacy) {
+        return toolError('Supply canonical artifacts or legacy source compatibility arguments, not both.')
+      }
+      const artifactChanged = artifacts !== undefined || hasLegacy
 
-      let validation: ReturnType<typeof validateExperimentSources> | null = null
-      if (sourceChanged) {
+      let validation: ReturnType<typeof validateExperimentArtifacts> | null = null
+      let nextArtifacts = artifacts
+      if (artifactChanged) {
         const { data: current, error: currentError } = await supabase
           .from('experiments')
-          .select('config_source, initializer_source, controller_source')
+          .select('artifacts')
           .eq('id', experiment_id)
           .eq('owner_id', userId)
           .eq('revision', base_revision)
           .maybeSingle()
-        if (currentError) return toolError('Could not read the current experiment sources for validation.', currentError.message)
+        if (currentError) return toolError('Could not read the current experiment artifacts for validation.', currentError.message)
         if (!current) {
           return toolError(
             'Conflict: the experiment is stale, missing, or not owned by this user. Re-read it with read_workspace before editing.',
           )
         }
 
-        validation = validateExperimentSources({
-          config_source: config_source ?? current.config_source ?? '',
-          initializer_source: initializer_source ?? current.initializer_source ?? '',
-          controller_source: controller_source ?? current.controller_source ?? '',
-        })
+        if (nextArtifacts === undefined) {
+          nextArtifacts = mergeLegacySourcesIntoArtifacts(current.artifacts, {
+            config_source,
+            initializer_source,
+            controller_source,
+          })
+        }
+
+        validation = validateExperimentArtifacts(nextArtifacts)
         if (!validation.valid) {
-          return toolError('Experiment sources are not valid for the current Virtual Lab authoring contract.', validation)
+          return toolError('Experiment artifacts are not valid for the current Virtual Lab authoring contract.', validation)
         }
       }
 
@@ -299,9 +347,7 @@ function registerExperimentTools(
 
       if (title !== undefined) patch.title = title.trim()
       if (description !== undefined) patch.description = description
-      if (config_source !== undefined) patch.config_source = config_source
-      if (initializer_source !== undefined) patch.initializer_source = initializer_source
-      if (controller_source !== undefined) patch.controller_source = controller_source
+      if (artifactChanged) patch.artifacts = nextArtifacts
       if (collection_id !== undefined) patch.collection_id = collection_id
       if (lifecycle !== undefined) patch.lifecycle = lifecycle
 
@@ -311,6 +357,7 @@ function registerExperimentTools(
         .from('experiments')
         .update(patch)
         .eq('id', experiment_id)
+        .eq('owner_id', userId)
         .eq('revision', base_revision)
         .select('*')
         .maybeSingle()
@@ -342,6 +389,7 @@ function registerExperimentTools(
         .from('experiments')
         .delete()
         .eq('id', experiment_id)
+        .eq('owner_id', userId)
         .eq('revision', base_revision)
         .select('id')
         .maybeSingle()
@@ -367,7 +415,7 @@ const authenticatedMcp = pipeline(
 
     const server = new McpServer({
       name: 'virtual-lab-experiment-registry',
-      version: '2.2.0',
+      version: '2.3.0',
     })
     registerExperimentTools(server, ctx.supabase, userId, email, clientId)
 
@@ -392,7 +440,8 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: true,
       service: 'virtual-lab-experiment-mcp',
-      interface_version: '4',
+      interface_version: '5',
+      experiment_artifact_interface: AUTHORING_CONTRACT.experiment_artifact_interface,
       auth_implementation: 'supabase-jwks-middleware',
       authoring_contract_version: AUTHORING_CONTRACT.contract_version,
       validation_mode: AUTHORING_CONTRACT.validation_mode,
