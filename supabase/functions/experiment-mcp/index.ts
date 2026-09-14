@@ -121,7 +121,7 @@ function registerExperimentTools(
     async ({ experiment_id, lifecycle, owned_only, include_authoring_contract }) => {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, display_name')
+        .select('id, display_name, role')
         .eq('id', userId)
         .single()
       if (profileError) return toolError('Could not read the authenticated profile.', profileError.message)
@@ -415,7 +415,7 @@ const authenticatedMcp = pipeline(
 
     const server = new McpServer({
       name: 'virtual-lab-experiment-registry',
-      version: '2.3.0',
+      version: '2.4.0',
     })
     registerExperimentTools(server, ctx.supabase, userId, email, clientId)
 
@@ -440,7 +440,7 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: true,
       service: 'virtual-lab-experiment-mcp',
-      interface_version: '5',
+      interface_version: '6',
       experiment_artifact_interface: AUTHORING_CONTRACT.experiment_artifact_interface,
       auth_implementation: 'supabase-jwks-middleware',
       authoring_contract_version: AUTHORING_CONTRACT.contract_version,
@@ -450,7 +450,6 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  // Keep the old metadata URL valid for clients that cached it during #44.
   if (url.pathname.endsWith('/.well-known/oauth-protected-resource')) {
     return json({
       resource: MCP_RESOURCE,
