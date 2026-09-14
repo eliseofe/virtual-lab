@@ -20,7 +20,7 @@ The owner promoted simulator performance back to active work, specifically the s
 
 #165 added a deterministic N=5,000 profiler and compared the current periodic grid (`ceil(sqrt(N))` cells per axis) with half-resolution, double-resolution and radius-matched internal geometries. All alternatives were checked against the brute-force neighbour oracle and returned identical sorted neighbour sets.
 
-Authoritative PR evidence: #167 performance workflow `34905824329`, artifact `10371728802`.
+Authoritative PR evidence: #167 performance workflow `34905824329`, artifact `10371728802`; normal PR workflow `34905824660` is green. The profiler workflow was also hardened with `pipefail` so a failing `cargo run | tee` cannot be misreported as success.
 
 Key result: the current one-cell-per-agent grid introduces a material avoidable penalty when the query radius spans many small grid cells. The radius-matched candidate kept normal queries at 9 visited cells and was about 2–4× faster in the diagnostic query sweep across all seven measured density/radius cases. Dense experiments still retain unavoidable cost proportional to the actual returned-neighbour count and controller work.
 
