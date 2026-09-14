@@ -61,9 +61,9 @@ test("save-as-new creates a distinct private human-owned registry experiment", a
   assert.match(registryUi, /Save as new…/);
   assert.match(registryUi, /async function createNewExperiment\(\)/);
   assert.match(registryUi, /allowBuiltInCompatibility: true/);
-  assert.match(registryUi, /\.insert\(\{[\s\S]*owner_id: user\.id[\s\S]*visibility: "private"[\s\S]*created_by_actor: "human"[\s\S]*\}\)/);
+  assert.match(registryUi, /\.insert\(\{[\s\S]*owner_id: user\.id[\s\S]*collection_id: collectionId[\s\S]*visibility: "private"[\s\S]*created_by_actor: "human"[\s\S]*\}\)/);
   assert.match(registryUi, /currentRemote = data/);
-  assert.match(registryUi, /created in My experiments \/ Unfiled/);
+  assert.match(registryUi, /created in My experiments \/ \$\{collectionName\(data\.collection_id\)\}/);
 });
 
 test("editability feedback distinguishes read-only, saved, dirty and conflict states", async () => {
