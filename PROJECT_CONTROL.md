@@ -10,11 +10,13 @@ The near-term product objective remains the **Professor paper-to-experiment capa
 
 `paper + professor AI → experiment draft → missing capability → Supabase capability request → Professor inbox → approve/decline → ChatGPT/GitHub implementation → deployed capability → request implemented → draft revalidates/runs`
 
-The Experiment-artifact architectural prerequisite is now engineering-complete through #117 and #118. Do not start the Professor loop automatically from recency: first obtain the owner's pending live acceptance of the current private-experiment/library flow and artifact refactor when the owner is available.
+The Experiment-artifact architectural prerequisite is engineering-complete through #117 and #118. The lifecycle/capability contract needed to reason safely about optional artifacts is now also documented under epic #124, with #125 completed/deployed.
+
+Do not infer the next implementation task from recency. Owner live acceptance of the current production flow may be batched later when the owner has time.
 
 ## Current owner acceptance gate
 
-The owner can now test the relevant current production state in one consolidated pass.
+The owner prefers one consolidated, user-driven acceptance pass rather than micromanaged synthetic checks.
 
 ### #115 — collection assignment/moves
 
@@ -30,11 +32,10 @@ The owner can now test the relevant current production state in one consolidated
 - PR #122 merged as `6b31bd5626b5af31804ff7fbaa19ec01c719177f`;
 - canonical ordered typed Experiment artifacts are persisted in Supabase;
 - bounded legacy mirrors remain synchronized for compatibility;
-- MCP v5 is deployed as Supabase Edge Function version 9;
 - production migration preserved existing IDs, revisions, ownership, collections, RLS and scientific semantics;
 - main workflow `34832435383` passed build, Pages deploy and deployed-browser smoke.
 
-A minimal real-client sanity check may be included in the owner's consolidated acceptance: in a fresh Grok session, read `Simple Random Walk` and report artifact IDs. Expected: `configuration`, `initialization`, `controller`.
+The MCP was initially deployed as Edge Function version 9 for #117 and was subsequently redeployed as version 10 by #125 to expose artifact capability/lifecycle metadata. Storage/runtime semantics were unchanged by #125.
 
 ### #118 — artifact-driven Experiment workspace/UI — engineering complete, owner acceptance pending
 
@@ -51,7 +52,57 @@ A minimal real-client sanity check may be included in the owner's consolidated a
 - PR performance-regression workflow `34833362464` passed;
 - main production workflow `34833493231` passed build, Pages deploy and deployed-browser smoke (`kernel ready with populated editors`).
 
-Issue #118 remains open only for owner live acceptance. No additional #118 engineering is currently known to be pending.
+Issue #118 remains open only for owner live acceptance. No additional #118 engineering defect is currently known to be pending.
+
+### Consolidated Grok/Lab acceptance when the owner has time
+
+Do not prescribe a trivial fixed script. The useful acceptance is user-driven and should naturally exercise:
+
+1. ordinary Experiment create/load/edit/save/run behavior with the three required core artifacts;
+2. optional passive artifact expansion — Grok may add a fourth/fifth supported passive artifact and the Lab should preserve/display/edit it;
+3. executable intent boundary — if Grok asks for an unregistered optional artifact to execute, the contract must report `unsupported-capability` rather than infer execution;
+4. #115 collection assignment/move behavior.
+
+Current production intentionally has **zero registered optional executable artifact types**. Therefore a user request for a runnable fourth artifact must not execute today.
+
+## Artifact lifecycle / optional executable architecture — epic #124
+
+Canonical design: `docs/ARTIFACT_EXECUTION_LIFECYCLE.md`.
+
+Experiment artifacts are classified as:
+
+1. **required core** — currently exactly `configuration`, `initialization`, `controller`;
+2. **optional passive** — persisted/displayed, never executed;
+3. **optional executable** — executable only if its type is explicitly registered by the active versioned capability contract with format/compiler, lifecycle hook, scope/cadence and validation.
+
+Lifecycle vocabulary:
+
+`setup → initialize → control → finalize`
+
+Unknown/code-looking optional artifacts never gain execution by inference.
+
+### #125 — capability metadata in AI authoring contract — completed/deployed
+
+PR #132 merged as `eaae0dc0a19ef1e5124ca0753f48c89cb3406147`. Experiment MCP is active as Supabase Edge Function **version 10**.
+
+Production now exposes `vlab.artifact-capabilities/0.1` through `read_workspace(include_authoring_contract=true)` and advertises:
+
+- required core artifact IDs;
+- lifecycle vocabulary;
+- current semantics of configuration / initialization / controller;
+- optional passive representation;
+- zero registered optional executable artifact types;
+- unsupported executable intent as `unsupported-capability`.
+
+No schema, simulator dispatch, Rust/WASM or scientific/runtime semantics changed.
+
+### #126 — runtime dispatcher for registered optional executable artifacts — blocked
+
+Do **not** implement #126 merely because the generic hook architecture exists. It requires a concrete owner-approved first optional executable artifact capability. When such a real use case is selected, implement the smallest typed/versioned capability and preserve current core semantics.
+
+### #127 — Study fresh/reset/resume/checkpoint semantics — future Study child
+
+Default Study run start is fresh reconstruction from the pinned Experiment revision. Resume/checkpoint is an explicit Study protocol/orchestration choice with provenance; it is not hidden Experiment initialization and there is no arbitrary reset script.
 
 ## Execution granularity — mandatory
 
@@ -83,6 +134,8 @@ Resume the Professor capability-request loop, still one substantial independentl
 
 Before implementing that sequence, inspect #58 and the current code/design state and decompose the next substantial checkpoint rather than treating the entire loop as one ticket.
 
+The #124/#125 capability vocabulary is intended to support this flow: unsupported executable artifact intent can be represented as a missing capability rather than silently approximated.
+
 Broader sharing/Showcase, Study execution, Research Notes/Documents, results-to-AI and paper synthesis remain related future epics/backlog rather than prerequisites for the first capability-request loop.
 
 ## Parallel / opportunistic work
@@ -106,4 +159,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#117 and #118 engineering are complete and deployed. #115 and #118 await owner live acceptance, which can be done together; the optional minimal Grok read-only check can validate #117 in the same pass. Do not start the next substantial Professor-loop implementation checkpoint until the owner explicitly continues after this acceptance boundary.**
+**#117/#118 are engineering-complete and deployed; #125 is completed/deployed and MCP version 10 now advertises the artifact lifecycle/capability contract. #115/#118 await a later consolidated owner acceptance pass. #126 is intentionally blocked until a concrete optional executable artifact capability is owner-approved; #127 belongs to future Study implementation.**
