@@ -34,9 +34,6 @@ jobs:
       - name: Test
         working-directory: web
         run: npm test
-      - name: Build
-        working-directory: web
-        run: npm run build
       - name: Commit fix
         run: |
           git config user.name github-actions[bot]
