@@ -20,13 +20,13 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import textwrap
 
           workflow = Path('.github/workflows/issue153-self-patch.yml').read_text()
           marker = "      - name: Patch unified switcher and workspace continuity\n        run: |\n"
           start = workflow.index(marker) + len(marker)
           end = workflow.index("\n      - name: Test browser source", start)
-          payload = textwrap.dedent(workflow[start:end])
+          raw = workflow[start:end]
+          payload = "\n".join(line[10:] if line.startswith("          ") else line for line in raw.splitlines())
           Path('/tmp/issue153-patch.sh').write_text(payload + "\n")
           PY
           bash /tmp/issue153-patch.sh
