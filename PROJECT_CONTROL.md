@@ -26,13 +26,32 @@ Key result: the current one-cell-per-agent grid introduces a material avoidable 
 
 Detailed evidence: `docs/PERFORMANCE_NEIGHBOUR_DENSITY_2026-09-15.md`.
 
-### Current performance child
+### #168 is now a serious architecture investigation, not a radius-coupled implementation
 
-**#168 — implement radius-aware periodic grid resolution without changing neighbour semantics.**
+The original #25 design rule remains authoritative: **scientific radii and spatial-index geometry are separate concerns, and one built index architecture must support arbitrary simultaneous radii without experiment-author tuning.**
 
-#168 is the recommended next implementation checkpoint. It must preserve exact periodic membership, sorted deterministic order, the brute-force oracle, and all scientific parameters. Internal grid/hash resolution remains simulator infrastructure and must not become a user-visible experiment parameter.
+The narrow proposal to implement a production grid configured from one query radius is superseded. #165 proved that the current single-level resolution is inefficient in some regimes; it did not prove that production should couple itself to one scientific radius.
 
-#168 has not been started. Do not silently bundle later performance ideas into it.
+Authoritative investigation document:
+
+`docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
+
+#168 now compares exact strategies under one correctness contract:
+
+- brute force — oracle / small-N baseline;
+- current single-level periodic grid — production baseline;
+- radius-matched single grid — Violet-like performance reference, not assumed general target;
+- ARGoS-style coverage stamping;
+- multi-resolution / hierarchical periodic grids;
+- adaptive tree / BVH-family indexing.
+
+The multi-resolution strategy is currently the strongest architectural hypothesis, but **there is no declared winner**. Every strategy must return the exact same periodic neighbour set and deterministic ordering as brute force, including when several different radii are queried during the same control update.
+
+The investigation should eventually support a common internal strategy interface. If evidence shows different strategies dominate different workload regions, production may keep several exact implementations with an ordinary-user `auto` policy and an expert benchmarking override. Strategy/version must be provenance; strategy choice must never change scientific semantics.
+
+Once Studies/results exist, the complete scalability matrix should become a persistent Virtual Lab Study covering N, density, one/multiple radii, spatial heterogeneity, rebuild/query decomposition, memory and end-to-end throughput. Publication/novelty claims require a separate literature review; that review is explicitly deferred.
+
+No candidate implementation is authorized merely by the existence of #168. Proceed by focused child issues under normal execution granularity.
 
 ## Near-term parallel product/research lanes
 
@@ -83,7 +102,7 @@ Current deployed capability-loop foundation includes #133, #135, #139, #141 and 
 
 While building the simulator, developer-side ChatGPT must not independently invent or derive the scientific model being simulated. Scientific equivalence, paper-specific equations/parameters, controller logic, retuning and model analysis belong to the Professor/research-AI discussion unless the owner explicitly authorizes scientific reasoning.
 
-Software performance work may measure and optimize simulator infrastructure while preserving exact scientific semantics. Query radius is scientific input; using that already-declared value only to choose internal index geometry is an implementation concern, not permission to change the radius.
+Software performance work may measure and optimize simulator infrastructure while preserving exact scientific semantics. Query radii are scientific inputs; neighbour-index strategies may read already-declared query scales only to route exact infrastructure work, but no scientific radius may silently become the one global index-definition parameter.
 
 For paper-driven capabilities, apply `docs/CAPABILITY_GENERALIZATION_GATE.md`. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, scientific timing/integration semantics, and rendering as an observer unless explicitly approved otherwise.
 
@@ -115,14 +134,15 @@ When sources disagree:
 
 1. explicit current owner instruction;
 2. `PROJECT_CONTROL.md` for priority/sequencing;
-3. current dedicated closeout/performance design documents;
-4. `PROJECT_STATE.md` for accepted technical state/evidence;
-5. current design documents;
-6. active issue scope;
-7. older issues/chats as history only.
+3. `docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md` for neighbour-search architecture/investigation state;
+4. current dedicated closeout/performance design documents;
+5. `PROJECT_STATE.md` for accepted technical state/evidence;
+6. current design documents;
+7. active issue scope;
+8. older issues/chats as history only.
 
 Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#165 is complete: it measured a real avoidable neighbour-index penalty without changing production semantics. #168 is the next recommended performance implementation child and has not been started. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
+**#165 is complete and proved a real avoidable single-grid-resolution penalty. #168 is now the serious exact-neighbour architecture investigation: ARGoS-style stamping, multi-resolution grids and adaptive tree/BVH strategies will be compared against current/brute-force/radius-matched baselines before any new production default is chosen. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
