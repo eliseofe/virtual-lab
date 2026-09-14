@@ -34,9 +34,13 @@ test("owned experiments can move collections with optimistic ownership and revis
 
 test("moving never implicitly persists dirty source edits", async () => {
   const source = await registryUiSource();
-  assert.match(source, /if \(hasUnsavedRemoteEdits\(\)\) throw new Error\("Save or discard source edits before moving this experiment\."\)/);
+  const start = source.indexOf("async function moveCurrentExperiment()");
+  const end = source.indexOf("function defaultCopyTitle()", start);
+  assert.ok(start >= 0 && end > start);
+  const moveSource = source.slice(start, end);
+  assert.match(moveSource, /if \(hasUnsavedRemoteEdits\(\)\) throw new Error\("Save or discard source edits before moving this experiment\."\)/);
   assert.match(source, /ui\.move\.disabled = !owned \|\| dirty \|\| conflictRevision !== null \|\| target === current/);
-  assert.doesNotMatch(source, /moveCurrentExperiment[\s\S]*registryArtifactsForSave/);
+  assert.doesNotMatch(moveSource, /registryArtifactsForSave/);
 });
 
 test("collection selectors only use collections loaded through the signed-in account RLS path", async () => {
