@@ -38,6 +38,7 @@ Important recent merge SHAs:
 - #150 simulation-first workspace shell (final fix): `9f75ed7f9e2530e8c5681a30f3126b2f4b2a2bdd`
 - #153 workspace continuity + unified Experiment switcher: `dfb70a3882176cd28a11fb3f891952eccc28d865`
 - #155 authoring + persistence workspace: `694fd544563ff01fe87f061c9240c74d31873eb1`
+- #157 collections / organization redesign: `f82eb392a3cf60d5a71ffab76c92b7da8cc4d5c2`
 
 ## Owner-visible acceptance state
 
@@ -45,7 +46,7 @@ Accepted and closed include #74, #76, #29, #106 and #109.
 
 Engineering-complete but awaiting a later consolidated owner live pass:
 
-- **#115** — collection choice during Save as new and clean owned-experiment moves between collections/Unfiled;
+- **#115** — collection choice during Save as new and clean owned-experiment moves between collections/No collection;
 - **#118** — artifact-driven Experiment workspace while retaining ordinary Configuration / Initialization / Controller behavior.
 
 Professor is intentionally a strict permission superset using the same ordinary Experiment code path. Student-specific negative authorization boundaries are verified automatically.
@@ -54,13 +55,16 @@ The first real Professor/Grok capability-request loop on the Karagüzel et al. 2
 
 Showcase promotion is a separate optional Professor/curator decision, not a success condition for paper-driven Experiment authoring. The working Experiment may be refined/promoted later or remain private.
 
-Epic #147 remains the active UI/UX redesign frontier and #148 is the completed interaction audit. Three substantial redesign children are now deployed:
+Epic #147 remains the active UI/UX redesign frontier and #148 is the completed interaction audit. Four substantial redesign children are now deployed:
 
 - #150 made the workspace simulation-first;
 - #153 added workspace continuity plus one unified Experiment switcher/finder;
-- #155 replaced the permanent editor stack with one authoring/persistence workbench.
+- #155 replaced the permanent editor stack with one authoring/persistence workbench;
+- #157 removed collections from primary navigation and moved optional organization into one explicit secondary surface.
 
-#155 production verification is workflow `34898683292`: build, GitHub Pages deploy and deployed-browser smoke all succeeded. PR workflow `34898283071` passed the full Rust/Node suite and static browser build. Independent performance workflow `34898283150` first hit the known `Chrome did not publish DevToolsActivePort` harness startup race and then passed unchanged on rerun. #115/#118 owner acceptance remains deferred behind the redesign. The next substantial #147 child is **D. Collections / organization redesign**; responsive/accessibility/regression hardening remains later child **E**.
+#157 merged in PR #158 as `f82eb392a3cf60d5a71ffab76c92b7da8cc4d5c2`. PR workflow `34899773685` passed the full Rust/Node suite and static browser build; independent performance workflow `34899773675` passed. Production workflow `34899902650` completed build, GitHub Pages deployment and deployed-browser smoke successfully. The Experiment finder no longer exposes collection filters, collection absence is not primary-navigation state, the existing #115 move/concurrency path is reused inside **Organize**, and collection create/rename use the existing owner-scoped `experiment_collections` RLS without schema changes. The presentation observer uses idempotent DOM writes to avoid the #150 self-triggering observer failure class.
+
+#115/#118 owner acceptance remains deferred behind the redesign. The final planned #147 implementation child is **E. Responsive / accessibility / regression hardening**.
 
 ## Canonical Experiment artifact state — #117/#118
 
@@ -301,6 +305,6 @@ Preserve simulator-owned RNG, controller information boundaries, environment-own
 
 ## Current frontier
 
-The active execution frontier is **#147 UI/UX redesign**. #150, #153 and #155 are deployed and browser-verified. The next substantial child is **D. Collections / organization redesign** from #148; do not start it inside the #155 completion unit. Later child **E** owns responsive/accessibility/regression hardening.
+The active execution frontier is **#147 UI/UX redesign**. #150, #153, #155 and #157 are deployed and browser-verified. The final planned implementation child from #148 is **E. Responsive / accessibility / regression hardening**; do not start it inside the #157 completion unit.
 
 The two recent informed-robot capability requests remain `requested` and unapproved; they are parallel research-AI inputs, not current developer work. The reusable capability completion/revalidation gate remains future infrastructure. #115/#118 owner acceptance and optional #149 paper-experiment refinement/Showcase curation remain deferred coherent follow-up work.
