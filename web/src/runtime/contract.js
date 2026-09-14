@@ -1,4 +1,4 @@
-export const RUNTIME_CONTRACT_VERSION = "vlab.runtime/0.1";
+export const RUNTIME_CONTRACT_VERSION = "vlab.runtime/0.2";
 
 export const RUNTIME_CONTRACT = Object.freeze({
   version: RUNTIME_CONTRACT_VERSION,
@@ -16,8 +16,21 @@ export const RUNTIME_CONTRACT = Object.freeze({
     MAX_FORWARD_SPEED: "positive finite scalar actuator limit",
     MAX_ANGULAR_SPEED: "positive finite scalar actuator limit",
   }),
+  environment_capabilities: Object.freeze({
+    version: "vlab.environment-capabilities/0.1",
+    static_scalar_field: Object.freeze({
+      supported: true,
+      definition_location: "initialization",
+      entry: "environmental_scalar(x, y, config)",
+      semantics: "Pure deterministic scalar field over world position. The Experiment defines the field; the simulator samples it locally and does not infer a gradient.",
+      observation: "obs.environmental_scalar",
+      observation_type: "scalar",
+      rendering: "The browser visualizes samples from the same simulator-owned field evaluator used for sensing.",
+      controller_boundary: "The controller receives the sampled scalar only; global position, the field function and spatial gradient are not exposed.",
+    }),
+  }),
   artifact_capabilities: Object.freeze({
-    version: "vlab.artifact-capabilities/0.1",
+    version: "vlab.artifact-capabilities/0.2",
     lifecycle_hooks: Object.freeze(["setup", "initialize", "control", "finalize"]),
     required_core: Object.freeze([
       Object.freeze({
@@ -37,6 +50,7 @@ export const RUNTIME_CONTRACT = Object.freeze({
         execution_hook: "initialize",
         execution_scope: "run",
         cadence: "once-per-fresh-run",
+        capabilities: Object.freeze(["agent-placement", "static-environment-scalar-definition"]),
       }),
       Object.freeze({
         id: "controller",
@@ -57,7 +71,7 @@ export const RUNTIME_CONTRACT = Object.freeze({
     }),
     optional_executable: Object.freeze({
       registered_types: Object.freeze([]),
-      execution_policy: "No optional executable artifact type is currently registered. Arbitrary source text is never executed by inference.",
+      execution_policy: "No optional executable artifact type is currently registered. The static scalar Environment is a capability of the required Initialization artifact, not a fourth artifact.",
       unsupported_request: "unsupported-capability",
     }),
   }),
@@ -156,9 +170,10 @@ export function validateInitialStateForRuntime(state, runtime) {
   return state;
 }
 
-export function simulationSetupFromRuntime(runtime, seed, initialState) {
+export function simulationSetupFromRuntime(runtime, seed, initialState, environment = null) {
   return {
     initialState,
+    environment,
     simulation: {
       seed,
       physicsDt: runtime.physicsDt,
