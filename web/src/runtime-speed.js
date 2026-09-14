@@ -54,11 +54,15 @@ requestedSpeed.addEventListener("input", () => {
 resetMeasurement();
 
 // Registry integration is additive. A CDN/auth outage must not block the core
-// simulator or its runtime-speed controls from starting. The Professor inbox is
-// a second additive layer and may fail independently without disabling the
-// ordinary Experiment registry.
+// simulator or its runtime-speed controls from starting. Professor surfaces are
+// additional layers and may fail independently without disabling the ordinary
+// Experiment registry or simulator.
 import("./registry-ui-v3.js").then(() => {
-  import("./professor-inbox.js").catch((error) => {
+  import("./professor-inbox.js").then(() => {
+    import("./professor-development-links.js").catch((error) => {
+      console.error("Professor development links failed to load:", error);
+    });
+  }).catch((error) => {
     console.error("Professor inbox failed to load:", error);
   });
 }).catch((error) => {
