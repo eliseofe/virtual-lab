@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "seed": 9917,
+  "full_tournament_axes": {
+    "agent_counts": [100, 1000, 5000, 10000, 25000],
+    "densities": [0.25, 1.0, 4.0, 16.0],
+    "radius_sets": [
+      [1.0],
+      [0.25, 1.0, 4.0],
+      [0.1, 1.0, 10.0]
+    ],
+    "distributions": [
+      "uniform-grid",
+      "clustered",
+      "boundary-bands"
+    ]
+  },
+  "ci_smoke_scenarios": [
+    {
+      "id": "uniform-single-small",
+      "agents": 64,
+      "arena_size": 8.0,
+      "radii": [1.0],
+      "distribution": { "kind": "uniform-grid" }
+    },
+    {
+      "id": "uniform-multi-radius",
+      "agents": 256,
+      "arena_size": 16.0,
+      "radii": [0.25, 1.0, 4.0],
+      "distribution": { "kind": "uniform-grid" }
+    },
+    {
+      "id": "uniform-wide-radius-ratio",
+      "agents": 324,
+      "arena_size": 18.0,
+      "radii": [0.1, 1.0, 8.0],
+      "distribution": { "kind": "uniform-grid" }
+    },
+    {
+      "id": "clustered-multi-radius",
+      "agents": 400,
+      "arena_size": 20.0,
+      "radii": [0.25, 1.0, 4.0],
+      "distribution": {
+        "kind": "clustered",
+        "cluster_fraction": 0.8,
+        "cluster_span_fraction": 0.2
+      }
+    },
+    {
+      "id": "periodic-boundary-bands",
+      "agents": 192,
+      "arena_size": 12.0,
+      "radii": [0.15, 0.5, 2.0],
+      "distribution": {
+        "kind": "boundary-bands",
+        "band_offset_fraction": 0.01
+      }
+    }
+  ]
+}
