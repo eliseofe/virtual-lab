@@ -23,15 +23,22 @@ The first substantial implementation child is now complete and deployed:
 
 The initial #150 production smoke exposed a self-triggering `MutationObserver` in the new presentation adapter; that incomplete run was cancelled after the idempotent fix landed in PR #152. The fixed production run above is the authoritative verification.
 
+The second substantial implementation child is also complete and deployed:
+
+- **#153 / PR #154 — workspace continuity + unified Experiment switching**;
+- merge `dfb70a3882176cd28a11fb3f891952eccc28d865`;
+- production workflow `34895522534`: build, GitHub Pages deploy and deployed-browser smoke all **success** after one external GitHub OIDC-token timeout was retried unchanged;
+- authenticated workspace state remembers the last accessible owned Experiment and restores it after refresh;
+- Built-in and owned runnable Experiments share one direct switcher and one searchable finder;
+- collections are optional metadata/filters rather than a prerequisite for finding or opening an Experiment;
+- dirty-edit discard protection and existing save/revision/conflict/move semantics remain intact;
+- no Experiment content, scientific/controller semantics, simulator, Supabase schema/data, MCP contract, capability request/lifecycle or Showcase policy changed.
+
 ### Next substantial UI child
 
-The next #147 implementation checkpoint is **workspace continuity + unified experiment switching** from #148:
+The next #147 checkpoint is **editor/workspace organization** from #148: replace the long stack of always-open Configuration / Initialization / Controller surfaces with a coherent workbench/tab model while keeping the arena and runtime controls primary. Treat deeper collection-management cleanup and visual/responsive polish as later children rather than silently bundling them.
 
-- signed-in refresh/reopen should restore the last accessible working Experiment instead of falling back to Showcase/built-in;
-- one searchable switcher should cover Recent / My experiments / Showcase without requiring source or collection preselection;
-- collections remain secondary organization, not a prerequisite for finding/running an Experiment.
-
-Do **not** start this next child inside the #150 completion unit. Create/execute it as a separate substantial ticket under `docs/EXECUTION_GRANULARITY.md`.
+Do **not** start that next child inside the #153 completion unit. Create/execute it as a separate substantial ticket under `docs/EXECUTION_GRANULARITY.md`.
 
 ## Parallel experiment-authoring activity
 

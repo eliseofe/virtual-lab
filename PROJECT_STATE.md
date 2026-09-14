@@ -35,6 +35,8 @@ Important recent merge SHAs:
 - #139 Professor inbox/triage: `c4c9e435d430d6d4e316124f13e9777c73246a33`
 - #141 trusted developer handoff: `5a0016f3949d0a8f40418b0e612c7576366c6612`
 - #143 generic scalar Environment / local scalar observation: `7b4861e90dc00633f811cd5d882617b74301c765`
+- #150 simulation-first workspace shell (final fix): `9f75ed7f9e2530e8c5681a30f3126b2f4b2a2bdd`
+- #153 workspace continuity + unified Experiment switcher: `dfb70a3882176cd28a11fb3f891952eccc28d865`
 
 ## Owner-visible acceptance state
 
@@ -51,7 +53,7 @@ The first real Professor/Grok capability-request loop on the Karagüzel et al. 2
 
 Showcase promotion is a separate optional Professor/curator decision, not a success condition for paper-driven Experiment authoring. The working Experiment may be refined/promoted later or remain private.
 
-The current owner-visible blocker is the Lab UI/UX. Epic #147 is now the active redesign frontier; #148 contains the completed audit/proposed simulation-first interaction architecture. Further owner feature testing is paused until the redesign materially improves the primary workflow. #115/#118 owner acceptance is therefore still deferred behind #147.
+The current owner-visible blocker remains the Lab UI/UX. Epic #147 is the active redesign frontier and #148 is the completed interaction audit. Two substantial redesign children are now deployed: #150 made the workspace simulation-first, and #153 added workspace continuity plus one unified Experiment switcher/finder. Production verification for #153 is workflow `34895522534` (build/deploy/deployed-browser smoke success); its initial deploy attempt hit an external GitHub OIDC-token timeout and succeeded on an unchanged retry. #115/#118 owner acceptance remains deferred behind the redesign. The next substantial UI child is editor/workspace organization; deeper collection-management cleanup and visual/responsive polish remain later children.
 
 ## Canonical Experiment artifact state — #117/#118
 
