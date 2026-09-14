@@ -4,7 +4,15 @@ Updated: **14 September 2026**
 
 This file is the authoritative current roadmap / execution frontier for Virtual Lab. Read `AGENTS.md` first. For detailed technical state/evidence read `PROJECT_STATE.md`; for execution-unit rules read `docs/EXECUTION_GRANULARITY.md`.
 
-## Current strategic objective
+## Current strategic objective — UI/UX redesign blocker
+
+The first real Professor/Grok paper-driven capability loop is accepted as a **successful end-to-end round**. Generic static scalar Environment + `obs.environmental_scalar` are deployed, Grok resumed the Experiment, the owner iterated the paper-specific setup, and the resulting Experiment runs successfully. Showcase promotion is optional Professor curation and is **not** required for this loop to count as complete.
+
+The immediate product blocker is now **#147 — Full Virtual Lab UI/UX audit and interaction redesign**. #148 completed the audit/proposed interaction architecture. Further owner feature testing is intentionally paused until the Lab has a materially improved simulation-first workspace. The next implementation work must be split into substantial independently deployable children of #147 under `docs/EXECUTION_GRANULARITY.md`; do not execute the whole epic as one ticket.
+
+#115/#118 owner acceptance and optional first-paper refinement/Showcase decision (#149) remain deferred behind the redesign unless the owner explicitly reprioritizes them.
+
+## Previous strategic objective — Professor paper loop
 
 The near-term product objective is the **Professor paper-to-experiment capability-request loop** documented in `docs/PROFESSOR_CAPABILITY_REQUEST_WORKFLOW.md`:
 
@@ -209,4 +217,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**The first real Professor/Grok capability loop has reached `implemented`: generic static scalar Environment + `obs.environmental_scalar` are deployed, MCP v14 advertises them, and the preserved flocking draft is intact. Immediate next step: return to Grok and have it re-read the live contract and complete the paper experiment using the paper's actual scalar field/modulation. The reusable completion gate remains future infrastructure; #115/#118 and the broader UI/UX audit remain queued for later acceptance.**
+**The first real Professor/Grok paper loop is a win. UI/UX is now the blocking frontier: #147 is the redesign epic and #148 contains the completed simulation-first interaction audit. Next: review/accept that architecture, then execute one substantial #147 child at a time. Showcase promotion is optional Professor curation; #149 is parked behind the redesign.**

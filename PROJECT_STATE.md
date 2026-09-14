@@ -47,9 +47,11 @@ Engineering-complete but awaiting a later consolidated owner live pass:
 
 Professor is intentionally a strict permission superset using the same ordinary Experiment code path. Student-specific negative authorization boundaries are verified automatically.
 
-The first real Professor/Grok capability-request loop is now being tested end-to-end with the Karagüzel et al. 2023 collective-gradient-perception paper. Request creation, Professor note/approval, developer discussion/handoff, generic capability implementation, deployment and `implemented` provenance have all occurred. The immediate live acceptance step is now back in Grok: it should re-read the live contract and complete the preserved experiment using the paper's actual scalar field and controller modulation.
+The first real Professor/Grok capability-request loop on the Karagüzel et al. 2023 collective-gradient-perception paper is now accepted by the owner as a **successful end-to-end round**. Request creation, Professor note/approval, developer discussion/handoff, generic capability implementation/deployment, Grok continuation and live Experiment testing have all occurred. A renderer-only scalar-field contrast correction was also deployed and accepted; scientific values/sensing/controller semantics were unchanged.
 
-A broader Lab UI/UX audit is parked until the functional loop has settled. The owner prefers the assistant to identify coherent visual/usability improvements rather than requiring point-by-point feedback.
+Showcase promotion is a separate optional Professor/curator decision, not a success condition for paper-driven Experiment authoring. The working Experiment may be refined/promoted later or remain private.
+
+The current owner-visible blocker is the Lab UI/UX. Epic #147 is now the active redesign frontier; #148 contains the completed audit/proposed simulation-first interaction architecture. Further owner feature testing is paused until the redesign materially improves the primary workflow. #115/#118 owner acceptance is therefore still deferred behind #147.
 
 ## Canonical Experiment artifact state — #117/#118
 
