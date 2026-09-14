@@ -46,3 +46,15 @@ Every future neighbour-index optimization should continue to be checked against 
 The design follows the separation used by ARGoS: positional indexing is simulator infrastructure while range-and-bearing entities keep their own communication ranges, with exact geometric checks determining actual communication. See `ilpincy/argos3`, especially `src/plugins/simulator/media/rab_medium.cpp` and `src/core/simulator/space/positional_indices/`.
 
 Violet remains a useful reference, but its proximity chunks are mechanically tied to a proximity radius. Virtual Lab deliberately uses the ARGoS-style separation because experiments may have several simultaneous scientific radii.
+
+## Active architecture investigation — #168
+
+The contract above remains authoritative, but #165 showed that the current **single-level resolution rule** can be inefficient when a scientific radius spans many small cells. That finding does not authorize coupling production index geometry to one radius.
+
+The serious comparative investigation is documented permanently in:
+
+`docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
+
+#168 now compares exact alternatives including ARGoS-style coverage stamping, multi-resolution periodic grids, adaptive tree/BVH-family indexing, the current grid, brute force, and a radius-matched single-grid performance reference.
+
+No candidate may replace production until it preserves this document's exact arbitrary-multi-radius contract and wins on evidence.
