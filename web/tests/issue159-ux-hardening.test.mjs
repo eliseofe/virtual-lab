@@ -46,7 +46,7 @@ assert.match(hardening, /aria-haspopup/);
 assert.match(hardening, /aria-expanded/);
 assert.match(hardening, /requestAnimationFrame/);
 assert.match(hardening, /trigger\.focus\(\{ preventScroll: true \}\)/);
-assert.match(hardening, /observer\.observe\(document\.body, \{ childList: true, subtree: true \}\)/);
+assert.ok(hardening.includes("discoveryObserver.observe(document.body, { childList: true, subtree: true });"), "discovery observer must only watch structural child insertion");
 assert.ok(!hardening.includes("attributes: true, subtree: true"), "discovery observer must not recreate the self-triggering attribute loop class");
 assert.match(workspaceShell, /button:not\(:disabled\):not\(\[hidden\]\)/);
 
