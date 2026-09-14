@@ -1,0 +1,391 @@
+name: Issue 153 browser-only patch
+
+on:
+  push:
+    branches: [feature/issue-153-workspace-continuity]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/issue-153-workspace-continuity
+      - name: Patch unified switcher and workspace continuity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('web/src/registry-ui-v3.js')
+          text = path.read_text()
+
+          def once(old, new, label):
+              global text
+              if text.count(old) != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, got {text.count(old)}')
+              text = text.replace(old, new, 1)
+
+          once(
+              'const builtinArtifacts = captureExperimentArtifacts();\n',
+              'const builtinArtifacts = captureExperimentArtifacts();\nconst WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";\n',
+              'workspace key',
+          )
+
+          once(
+              '.experiment-browser-shell { display: grid; grid-template-rows: auto auto 1fr;',
+              '.experiment-browser-shell { display: grid; grid-template-rows: auto 1fr;',
+              'browser rows',
+          )
+          once(
+              '.experiment-browser-tabs { display: flex; gap: 6px; padding: 12px 18px 0; }',
+              '.experiment-browser-tabs { display: flex; gap: 6px; padding: 12px 18px 0; }\n    .experiment-browser-tabs[hidden] { display: none !important; }',
+              'hidden tabs style',
+          )
+
+          once(
+              'function currentLocationLabel() {\n  if (!currentRemote) return "Built-in library";\n  return `My experiments / ${collectionName(currentRemote.collection_id)}`;\n}',
+              'function currentLocationLabel() {\n  if (!currentRemote) return "Built-in";\n  return currentRemote.collection_id ? `Collection · ${collectionName(currentRemote.collection_id)}` : "No collection";\n}',
+              'location label',
+          )
+
+          once(
+              '  experimentLabel.textContent = "Quick switch";\n  experimentSelect.setAttribute("aria-label", "Quick switch within the current collection");',
+              '  experimentLabel.textContent = "Experiment";\n  experimentSelect.setAttribute("aria-label", "Switch experiment");',
+              'switcher label',
+          )
+          once('  browse.textContent = "Browse library";', '  browse.textContent = "Find experiment";', 'browse label')
+          once('  location.textContent = "Built-in library";', '  location.textContent = "Built-in";', 'builtin location')
+
+          once(
+              '  tabs.append(builtinTab, mineTab);',
+              '  tabs.append(builtinTab, mineTab);\n  tabs.hidden = true;',
+              'hide source tabs',
+          )
+          once(
+              '  search.placeholder = "Search all my experiments";\n  search.setAttribute("aria-label", "Search all my experiments");',
+              '  search.placeholder = "Search experiments";\n  search.setAttribute("aria-label", "Search experiments");',
+              'search label',
+          )
+
+          pattern = re.compile(r'function setQuickSwitchOptions\(\) \{.*?\n\}\n\nfunction updateMoveButton', re.S)
+          replacement = '''function workspaceStorageKey() {
+  return user ? `${WORKSPACE_KEY_PREFIX}${user.id}` : null;
+}
+
+function rememberCurrentWorkspace() {
+  const key = workspaceStorageKey();
+  if (!key) return;
+  const value = currentRemote ? `registry:${currentRemote.id}` : BUILTIN_VALUE;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn("Could not persist the current Virtual Lab experiment.", error);
+  }
+}
+
+function rememberedWorkspaceValue() {
+  const key = workspaceStorageKey();
+  if (!key) return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch (error) {
+    console.warn("Could not restore the previous Virtual Lab experiment.", error);
+    return null;
+  }
+}
+
+function clearRememberedWorkspace() {
+  const key = workspaceStorageKey();
+  if (!key) return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch (error) {
+    console.warn("Could not clear the previous Virtual Lab experiment.", error);
+  }
+}
+
+function setQuickSwitchOptions() {
+  experimentSelect.replaceChildren();
+
+  const builtin = document.createElement("option");
+  builtin.value = BUILTIN_VALUE;
+  builtin.textContent = BUILTIN_TITLE;
+  experimentSelect.append(builtin);
+
+  const experiments = [...remoteExperiments];
+  if (currentRemote && !experiments.some((experiment) => experiment.id === currentRemote.id)) {
+    experiments.unshift(currentRemote);
+  }
+
+  if (user && experiments.length) {
+    const group = document.createElement("optgroup");
+    group.label = "Your experiments";
+    for (const experiment of experiments) {
+      const option = document.createElement("option");
+      option.value = `registry:${experiment.id}`;
+      const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";
+      option.textContent = `${experiment.title} · r${experiment.revision} · ${location}`;
+      group.append(option);
+    }
+    experimentSelect.append(group);
+  }
+
+  experimentSelect.value = currentRemote ? `registry:${currentRemote.id}` : BUILTIN_VALUE;
+  currentUi.quickHint.textContent = user
+    ? "Switch directly here, or use Find experiment to search everything. Collections are optional organization."
+    : "The built-in experiment is available now. Sign in to add your private experiments to this switcher.";
+}
+
+function updateMoveButton'''
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'setQuickSwitchOptions: expected one function, got {count}')
+
+          once(
+              '    currentUi.location.textContent = "Built-in library";',
+              '    currentUi.location.textContent = "Built-in";',
+              'current builtin label',
+          )
+          once(
+              '    ui.note.textContent = `Save changes before moving this experiment. Saving updates ${currentLocationLabel()} as a new revision.`;',
+              '    ui.note.textContent = `Save changes before moving this experiment. Saving creates a new revision; collection is only organization.`;',
+              'dirty note',
+          )
+          once(
+              '    ui.note.textContent = `This experiment belongs to your account and is stored in ${currentLocationLabel()}.`;',
+              '    ui.note.textContent = currentRemote.collection_id\n      ? `This experiment belongs to your account. ${currentLocationLabel()}.`\n      : "This experiment belongs to your account. It does not need a collection.";',
+              'saved note',
+          )
+
+          once(
+              '  meta.textContent = `Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`;',
+              '  const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";\n  meta.textContent = `Your experiment · ${location} · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`;',
+              'result metadata',
+          )
+
+          render_pattern = re.compile(r'function renderBrowser\(\) \{.*?\n\}\n\nasync function loadProfile', re.S)
+          render_replacement = '''function builtInResult() {
+  const button = document.createElement("button");
+  button.className = "experiment-result";
+  const title = document.createElement("strong");
+  title.textContent = BUILTIN_TITLE;
+  const meta = document.createElement("span");
+  meta.className = "experiment-result-meta";
+  meta.textContent = "Built-in · Read-only";
+  button.append(title, meta);
+  button.addEventListener("click", () => run(async () => {
+    if (!(await confirmDiscardIfNeeded())) return;
+    await restoreBuiltIn();
+    browser.dialog.close();
+  }));
+  return button;
+}
+
+function renderBrowser() {
+  browser.builtinTab.hidden = true;
+  browser.mineTab.hidden = true;
+  browser.searchRow.hidden = false;
+  browser.filters.replaceChildren();
+  browser.results.replaceChildren();
+
+  browser.filters.append(filterButton("All experiments", "all"));
+  if (user) {
+    browser.filters.append(filterButton("No collection", "unfiled"));
+    for (const collection of collections) browser.filters.append(filterButton(collection.name, collection.id));
+  }
+
+  const search = browserSearch.trim().toLocaleLowerCase();
+  const builtinMatches = browserCollection === "all" && (!search || BUILTIN_TITLE.toLocaleLowerCase().includes(search));
+  const filtered = remoteExperiments.filter((experiment) => {
+    const matchesSearch = !search || experiment.title.toLocaleLowerCase().includes(search);
+    if (!matchesSearch) return false;
+    if (browserCollection === "all") return true;
+    if (browserCollection === "unfiled") return !experiment.collection_id;
+    return experiment.collection_id === browserCollection;
+  });
+
+  browser.contextTitle.textContent = "Experiments";
+  browser.contextHelp.textContent = user
+    ? "Search the built-in source and all of your runnable experiments in one place. Collections are optional filters."
+    : "Search the built-in experiments. Sign in to include your private experiments.";
+
+  const total = filtered.length + (builtinMatches ? 1 : 0);
+  browser.count.textContent = `${total} experiment${total === 1 ? "" : "s"}`;
+
+  if (builtinMatches) {
+    const section = document.createElement("section");
+    section.className = "experiment-group";
+    const head = document.createElement("div");
+    head.className = "experiment-group-head";
+    const name = document.createElement("strong");
+    name.textContent = "Built-in";
+    const count = document.createElement("span");
+    count.textContent = "1 experiment";
+    head.append(name, count);
+    const items = document.createElement("div");
+    items.className = "experiment-group-items";
+    items.append(builtInResult());
+    section.append(head, items);
+    browser.results.append(section);
+  }
+
+  if (filtered.length) {
+    const label = browserCollection === "all"
+      ? "Your experiments"
+      : browserCollection === "unfiled"
+        ? "No collection"
+        : collectionName(browserCollection);
+    browser.results.append(experimentGroup(label, filtered));
+  }
+
+  if (!total) {
+    const empty = document.createElement("p");
+    empty.className = "experiment-browser-empty";
+    empty.textContent = search ? "No experiments match this search." : "No experiments are available here.";
+    browser.results.append(empty);
+  }
+}
+
+async function loadProfile'''
+          text, count = render_pattern.subn(render_replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'renderBrowser: expected one function, got {count}')
+
+          once(
+              'async function restoreBuiltIn({ apply = true } = {}) {\n  applyExperimentArtifacts(builtinArtifacts);',
+              'async function restoreBuiltIn({ apply = true } = {}) {\n  applyExperimentArtifacts(builtinArtifacts);',
+              'restore builtin anchor',
+          )
+          once(
+              '  updateCurrentUi();\n  setMessage(user ? "Built-in experiment loaded." : "Built-in experiment loaded. Sign in to open your private library.");\n  if (apply) await applyLoadedSources();\n}\n\nasync function loadRemoteExperiment(id) {',
+              '  updateCurrentUi();\n  rememberCurrentWorkspace();\n  setMessage(user ? "Built-in experiment loaded." : "Built-in experiment loaded. Sign in to open your private library.");\n  if (apply) await applyLoadedSources();\n}\n\nasync function loadRemoteExperiment(id) {',
+              'remember builtin',
+          )
+          once(
+              '  updateCurrentUi();\n  await applyLoadedSources();\n  setMessage(`${experiment.title} · revision ${experiment.revision} loaded.`, "success");\n}',
+              '  updateCurrentUi();\n  rememberCurrentWorkspace();\n  await applyLoadedSources();\n  setMessage(`${experiment.title} · revision ${experiment.revision} loaded.`, "success");\n}',
+              'remember remote',
+          )
+          once(
+              '  updateCurrentUi();\n  renderBrowser();\n  await applyLoadedSources();\n  setMessage(`${data.title} created in My experiments / ${collectionName(data.collection_id)}.`, "success");',
+              '  updateCurrentUi();\n  rememberCurrentWorkspace();\n  renderBrowser();\n  await applyLoadedSources();\n  setMessage(`${data.title} created${data.collection_id ? ` in ${collectionName(data.collection_id)}` : " without a collection"}.`, "success");',
+              'remember new experiment',
+          )
+
+          insert_anchor = 'async function initializeSession() {'
+          restore_helper = '''async function restoreRememberedWorkspace() {
+  if (!user || currentRemote) return false;
+  const remembered = rememberedWorkspaceValue();
+  if (!remembered || remembered === BUILTIN_VALUE) return false;
+  if (!remembered.startsWith("registry:")) {
+    clearRememberedWorkspace();
+    return false;
+  }
+  const id = remembered.slice("registry:".length);
+  if (!remoteExperiments.some((experiment) => experiment.id === id)) {
+    clearRememberedWorkspace();
+    return false;
+  }
+  await loadRemoteExperiment(id);
+  return true;
+}
+
+'''
+          once(insert_anchor, restore_helper + insert_anchor, 'restore helper')
+          once(
+              '  await loadProfile();\n  await Promise.all([loadCollections(), loadExperimentList()]);\n  setSignedInUi();',
+              '  await loadProfile();\n  await Promise.all([loadCollections(), loadExperimentList()]);\n  await restoreRememberedWorkspace();\n  setSignedInUi();',
+              'session restore',
+          )
+
+          open_pattern = re.compile(r'function openBrowser\(\) \{.*?\n\}', re.S)
+          open_replacement = '''function openBrowser() {
+  browserCollection = "all";
+  browserSearch = "";
+  browser.search.value = "";
+  renderBrowser();
+  browser.dialog.showModal();
+  browser.search.focus({ preventScroll: true });
+}'''
+          text, count = open_pattern.subn(open_replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'openBrowser: expected one function, got {count}')
+
+          listener_pattern = re.compile(r'experimentSelect\.addEventListener\("change", \(\) => run\(async \(\) => \{.*?\n\}\)\);', re.S)
+          listener_replacement = '''experimentSelect.addEventListener("change", () => run(async () => {
+  const value = experimentSelect.value;
+  if (value === BUILTIN_VALUE) {
+    if (currentRemote && !(await confirmDiscardIfNeeded())) {
+      setQuickSwitchOptions();
+      return;
+    }
+    if (currentRemote) await restoreBuiltIn();
+    return;
+  }
+  if (!value.startsWith("registry:")) return;
+  const id = value.slice("registry:".length);
+  if (currentRemote?.id === id) return;
+  if (!(await confirmDiscardIfNeeded())) {
+    setQuickSwitchOptions();
+    return;
+  }
+  await loadRemoteExperiment(id);
+}));'''
+          text, count = listener_pattern.subn(listener_replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'experiment select listener: expected one, got {count}')
+
+          once(
+              'browser.search.addEventListener("input", () => {\n  browserSearch = browser.search.value;\n  if (browserSearch.trim()) browserCollection = "all";\n  renderBrowser();\n});',
+              'browser.search.addEventListener("input", () => {\n  browserSearch = browser.search.value;\n  if (browserSearch.trim()) browserCollection = "all";\n  renderBrowser();\n});',
+              'search listener anchor',
+          )
+
+          path.write_text(text)
+
+          test = Path('web/tests/issue153-workspace-continuity.test.mjs')
+          test.write_text(r'''import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const registryUrl = new URL("../src/registry-ui-v3.js", import.meta.url);
+
+test("issue #153 restores the last owned experiment for the authenticated account", async () => {
+  const source = await readFile(registryUrl, "utf8");
+  assert.match(source, /WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:"/);
+  assert.match(source, /window\.localStorage\.setItem\(key, value\)/);
+  assert.match(source, /async function restoreRememberedWorkspace\(\)/);
+  assert.match(source, /await restoreRememberedWorkspace\(\);/);
+  assert.match(source, /rememberCurrentWorkspace\(\);/);
+});
+
+test("issue #153 makes experiment switching global rather than collection-scoped", async () => {
+  const source = await readFile(registryUrl, "utf8");
+  assert.match(source, /experimentLabel\.textContent = "Experiment"/);
+  assert.match(source, /experimentSelect\.setAttribute\("aria-label", "Switch experiment"\)/);
+  assert.doesNotMatch(source, /Quick switch within the current collection/);
+  assert.match(source, /group\.label = "Your experiments"/);
+  assert.match(source, /browse\.textContent = "Find experiment"/);
+  assert.match(source, /Search the built-in source and all of your runnable experiments in one place/);
+  assert.match(source, /Collections are optional organization/);
+  assert.match(source, /tabs\.hidden = true/);
+  assert.match(source, /filterButton\("All experiments", "all"\)/);
+  assert.match(source, /filterButton\("No collection", "unfiled"\)/);
+});
+''')
+
+          Path('.github/workflows/issue153-self-patch.yml').unlink()
+          PY
+      - name: Test browser source
+        run: node --test web/tests/*.test.mjs
+      - name: Commit browser-only implementation
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add web/src/registry-ui-v3.js web/tests/issue153-workspace-continuity.test.mjs .github/workflows/issue153-self-patch.yml
+          git commit -m "UI/UX: restore workspace and unify experiment switching (#153)"
+          git push origin HEAD:feature/issue-153-workspace-continuity
