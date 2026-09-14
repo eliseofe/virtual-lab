@@ -35,7 +35,7 @@ test("issue #63 generic runtime requirements are independent of Active Elastic p
     MAX_ANGULAR_SPEED: 1.0,
   });
 
-  assert.equal(runtime.version, "vlab.runtime/0.1");
+  assert.equal(runtime.version, "vlab.runtime/0.2");
   assert.equal(runtime.agentCount, 3);
   assert.equal(runtime.arenaSize, 4.0);
   assert.equal(runtime.interactionRadius, 1.0);
