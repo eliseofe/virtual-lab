@@ -18,18 +18,20 @@ This is the current major product frontier. Do **not** infer project priority fr
 
 ## Current gate before starting the professor loop
 
-The private-student production path is already implemented far enough that the remaining gate is **owner acceptance**, not a new architecture phase:
+The owner accepted the normal production private-student workflow on **14 September 2026**:
 
-- #74 — production write-back / revision and conflict safety: implemented, still open for live owner acceptance;
-- #76 — scalable experiment browser / collections / ownership presentation: implemented, still open for owner visual acceptance.
+- #74 — production write-back / revision and conflict safety: **accepted and closed**;
+- #76 — scalable experiment browser / collections / ownership presentation: **accepted and closed**.
 
-When the owner is available to test, close this acceptance gate first. Once the private-student round trip is accepted, proceed to the professor loop.
+During that acceptance pass, the owner identified one narrow missing library-management feature: an experiment should be assignable to a collection when using `Save as new…`, and an existing owned experiment should be movable between collections. This is tracked as focused follow-up **#115**.
 
-This gate exists because the professor workflow should extend a trusted student experiment lifecycle, not replace or bypass it.
+#115 is the immediate active completion gate before starting the professor loop. It is not a new architectural phase: it extends the already accepted private-student path using the existing `collection_id` / `experiment_collections` model. Preserve all accepted #74/#76 behavior.
+
+Once #115 is implemented, deployed and owner-accepted, proceed to the professor loop.
 
 ## Next major product stage
 
-After the #74/#76 acceptance gate:
+After #115:
 
 1. add authenticated `professor` / `curator` role support while preserving ordinary student behavior;
 2. add durable Supabase capability-request records and role-dependent missing-capability behavior;
@@ -127,4 +129,4 @@ A new session should be able to align in one pass:
 
 ## Current one-line status
 
-**Strategic priority:** finish owner acceptance of the already-implemented private-student path (#74/#76), then implement the Professor paper-to-experiment capability-request loop. While owner acceptance is unavailable, parallel roadmap work may proceed, but it does not change this priority.
+**Strategic priority:** complete focused collection-management follow-up #115 on the accepted private-student path, then implement the Professor paper-to-experiment capability-request loop. Parallel roadmap work may proceed when owner acceptance is unavailable, but it does not change this priority.
