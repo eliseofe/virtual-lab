@@ -18,6 +18,14 @@ import {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/1'
+
+type RegistryRole = 'student' | 'professor'
+type RegistryProfile = {
+  id: string
+  display_name: string
+  role: RegistryRole
+}
 
 const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,
@@ -74,15 +82,44 @@ function toolError(message: string, detail?: unknown) {
   }
 }
 
-function authoringInfo(includeContract: boolean) {
+function unsupportedCapabilityBehavior(role: RegistryRole) {
+  return role === 'professor'
+    ? {
+        requestable: true,
+        action: 'request_capability',
+        capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
+        preserve_draft: true,
+      }
+    : {
+        requestable: false,
+        action: null,
+        reason: 'student-role',
+      }
+}
+
+function authoringInfo(includeContract: boolean, role: RegistryRole) {
   return {
     contract_version: AUTHORING_CONTRACT.contract_version,
     experiment_interface_version: AUTHORING_CONTRACT.experiment_interface_version,
     experiment_artifact_interface: AUTHORING_CONTRACT.experiment_artifact_interface,
+    capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
     validation_required_for_source_writes: true,
     invalid_write_policy: AUTHORING_CONTRACT.invalid_write_policy,
+    unsupported_capability_behavior: unsupportedCapabilityBehavior(role),
     ...(includeContract ? { contract: AUTHORING_CONTRACT } : {}),
   }
+}
+
+function validationForRole(
+  validation: ReturnType<typeof validateExperimentArtifacts>,
+  role: RegistryRole,
+) {
+  const unsupported = validation.diagnostics?.some(
+    (diagnostic: { category?: string }) => diagnostic.category === 'unsupported-capability',
+  )
+  return unsupported
+    ? { ...validation, unsupported_capability_behavior: unsupportedCapabilityBehavior(role) }
+    : validation
 }
 
 function legacySourceArgumentsPresent(values: {
@@ -98,10 +135,11 @@ function legacySourceArgumentsPresent(values: {
 function registerExperimentTools(
   server: McpServer,
   supabase: any,
-  userId: string,
+  profile: RegistryProfile,
   email: string | null,
   clientId: string | null,
 ) {
+  const userId = profile.id
   const aiClient = clientId ?? 'mcp-client'
 
   server.registerTool(
@@ -109,7 +147,7 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab experiment workspace',
       description:
-        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment and its ordered typed artifacts at the current revision. The artifacts array is canonical. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. This tool never writes.',
+        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment and its ordered typed artifacts at the current revision. The artifacts array is canonical. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. The response also states the current role-dependent behavior for unsupported experiment capabilities. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         lifecycle: z.enum(['active', 'archived', 'all']).default('active'),
@@ -119,15 +157,8 @@ function registerExperimentTools(
       annotations: READ_ONLY_ANNOTATIONS,
     },
     async ({ experiment_id, lifecycle, owned_only, include_authoring_contract }) => {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, display_name, role')
-        .eq('id', userId)
-        .single()
-      if (profileError) return toolError('Could not read the authenticated profile.', profileError.message)
-
       const identity = { ...profile, email, oauth_client_id: clientId }
-      const authoring = authoringInfo(include_authoring_contract)
+      const authoring = authoringInfo(include_authoring_contract, profile.role)
 
       if (experiment_id) {
         const { data: experiment, error } = await supabase
@@ -248,7 +279,10 @@ function registerExperimentTools(
 
       const validation = validateExperimentArtifacts(nextArtifacts)
       if (!validation.valid) {
-        return toolError('Experiment artifacts are not valid for the current Virtual Lab authoring contract.', validation)
+        return toolError(
+          'Experiment artifacts are not valid for the current Virtual Lab authoring contract.',
+          validationForRole(validation, profile.role),
+        )
       }
 
       const { data, error } = await supabase
@@ -336,7 +370,10 @@ function registerExperimentTools(
 
         validation = validateExperimentArtifacts(nextArtifacts)
         if (!validation.valid) {
-          return toolError('Experiment artifacts are not valid for the current Virtual Lab authoring contract.', validation)
+          return toolError(
+            'Experiment artifacts are not valid for the current Virtual Lab authoring contract.',
+            validationForRole(validation, profile.role),
+          )
         }
       }
 
@@ -403,6 +440,106 @@ function registerExperimentTools(
       return toolResult({ permanently_deleted_experiment_id: data.id })
     },
   )
+
+  if (profile.role === 'professor') {
+    server.registerTool(
+      'request_capability',
+      {
+        title: 'Request a missing Virtual Lab experiment capability',
+        description:
+          'Professor-only. Use when the active Virtual Lab authoring/runtime contract lacks a capability required to express the professor\'s experiment intent. Preserve the intent/draft; do not invent a workaround or implement the simulator feature. This creates only a durable requested capability row for later Professor triage and separate developer work.',
+        inputSchema: {
+          capability_domain: z.string().min(1).max(200),
+          capability_name: z.string().min(1).max(300),
+          context: z.string().max(20000).default(''),
+          origin_experiment_id: z.string().uuid().optional(),
+          origin_revision: z.number().int().positive().optional(),
+          draft_title: z.string().max(300).optional(),
+          draft_description: z.string().max(20000).optional(),
+          draft_artifacts: z.array(ARTIFACT_INPUT).optional(),
+          requested_artifact_type: z.string().min(1).max(200).optional(),
+          requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'finalize']).optional(),
+        },
+        annotations: WRITE_ANNOTATIONS,
+      },
+      async ({
+        capability_domain,
+        capability_name,
+        context,
+        origin_experiment_id,
+        origin_revision,
+        draft_title,
+        draft_description,
+        draft_artifacts,
+        requested_artifact_type,
+        requested_lifecycle_hook,
+      }) => {
+        const domain = capability_domain.trim()
+        const name = capability_name.trim()
+        if (!domain || !name) return toolError('Capability domain and name must contain non-whitespace text.')
+        if (origin_revision !== undefined && origin_experiment_id === undefined) {
+          return toolError('origin_revision requires origin_experiment_id.')
+        }
+
+        let origin: {
+          id: string
+          revision: number
+          title: string
+          description: string
+          artifacts: unknown[]
+        } | null = null
+
+        if (origin_experiment_id) {
+          const { data, error } = await supabase
+            .from('experiments')
+            .select('id, revision, title, description, artifacts')
+            .eq('id', origin_experiment_id)
+            .maybeSingle()
+          if (error) return toolError('Could not read the originating experiment.', error.message)
+          if (!data) return toolError('Originating experiment was not found or is not visible to this user.')
+          if (origin_revision !== undefined && data.revision !== origin_revision) {
+            return toolError(
+              `Conflict: originating experiment is at revision ${data.revision}, not requested revision ${origin_revision}. Re-read it before creating the capability request.`,
+            )
+          }
+          origin = data
+        }
+
+        const preservedTitle = draft_title?.trim() || origin?.title || null
+        const preservedDescription = draft_description ?? origin?.description ?? null
+        const preservedArtifacts = draft_artifacts ?? origin?.artifacts ?? []
+        if (!origin && !preservedTitle && preservedArtifacts.length === 0) {
+          return toolError('Preserve either an originating experiment or draft title/artifacts with the capability request.')
+        }
+
+        const { data, error } = await supabase
+          .from('capability_requests')
+          .insert({
+            requester_id: userId,
+            requester_role: profile.role,
+            origin_experiment_id: origin?.id ?? null,
+            origin_experiment_revision: origin?.revision ?? null,
+            draft_title: preservedTitle,
+            draft_description: preservedDescription,
+            draft_artifacts: preservedArtifacts,
+            capability_domain: domain,
+            capability_name: name,
+            context,
+            requested_artifact_type: requested_artifact_type?.trim() || null,
+            requested_lifecycle_hook: requested_lifecycle_hook ?? null,
+            status: 'requested',
+          })
+          .select('*')
+          .single()
+        if (error) return toolError('Could not create capability request.', error.message)
+
+        return toolResult({
+          capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
+          request: data,
+        })
+      },
+    )
+  }
 }
 
 const authenticatedMcp = pipeline(
@@ -413,11 +550,21 @@ const authenticatedMcp = pipeline(
     const email = typeof claims.email === 'string' ? claims.email : null
     const clientId = typeof claims.client_id === 'string' ? claims.client_id : null
 
+    const { data: rawProfile, error: profileError } = await ctx.supabase
+      .from('profiles')
+      .select('id, display_name, role')
+      .eq('id', userId)
+      .single()
+    if (profileError || !rawProfile) {
+      return json({ error: 'Could not read the authenticated Virtual Lab profile.' }, 500)
+    }
+    const profile = rawProfile as RegistryProfile
+
     const server = new McpServer({
       name: 'virtual-lab-experiment-registry',
-      version: '2.4.0',
+      version: '2.5.0',
     })
-    registerExperimentTools(server, ctx.supabase, userId, email, clientId)
+    registerExperimentTools(server, ctx.supabase, profile, email, clientId)
 
     const transport = new WebStandardStreamableHTTPServerTransport()
     await server.connect(transport)
@@ -440,12 +587,15 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: true,
       service: 'virtual-lab-experiment-mcp',
-      interface_version: '6',
+      interface_version: '7',
       experiment_artifact_interface: AUTHORING_CONTRACT.experiment_artifact_interface,
+      capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
       auth_implementation: 'supabase-jwks-middleware',
       authoring_contract_version: AUTHORING_CONTRACT.contract_version,
       validation_mode: AUTHORING_CONTRACT.validation_mode,
       tool_count: 5,
+      shared_tool_count: 5,
+      professor_tool_count: 6,
       simulator_access: false,
     })
   }
