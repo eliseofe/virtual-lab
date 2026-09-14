@@ -2,6 +2,11 @@ import { compileController } from "./controller/compiler.js";
 import { compileConfig, numericParameters } from "./config/compiler.js";
 import { compileInitializer } from "./initializer/compiler.js";
 import {
+  artifactWritePayload,
+  experimentArtifactArray,
+  sourceFieldsFromArtifactArray,
+} from "./experiment-artifacts.js";
+import {
   validateInitialStateForRuntime,
   validateRuntimeValues,
 } from "./runtime/contract.js";
@@ -19,10 +24,11 @@ export function runtimeValuesForProductionExperiment(values) {
 }
 
 function sourcesFromExperiment(experiment) {
+  const fields = sourceFieldsFromArtifactArray(experimentArtifactArray(experiment));
   return {
-    configSource: experiment?.config_source ?? experiment?.configSource ?? "",
-    initializerSource: experiment?.initializer_source ?? experiment?.initializerSource ?? "",
-    controllerSource: experiment?.controller_source ?? experiment?.controllerSource ?? "",
+    configSource: fields.config_source,
+    initializerSource: fields.initializer_source,
+    controllerSource: fields.controller_source,
   };
 }
 
@@ -78,8 +84,9 @@ export function registryExperimentRunnability(experiment, options) {
 // experiment, add only the generic runtime aliases already used mechanically by
 // production. No scientific values are derived or changed.
 export function registryArtifactsFromProductionExperiment(experiment) {
-  const { configSource, initializerSource, controllerSource } = sourcesFromExperiment(experiment);
-  const config = compileConfig(configSource);
+  const artifacts = experimentArtifactArray(experiment);
+  const fields = sourceFieldsFromArtifactArray(artifacts);
+  const config = compileConfig(fields.config_source);
   const aliases = [];
   if (config.values.INTERACTION_RADIUS === undefined && config.values.PROXIMAL_RANGE !== undefined) {
     aliases.push("INTERACTION_RADIUS = PROXIMAL_RANGE");
@@ -91,11 +98,13 @@ export function registryArtifactsFromProductionExperiment(experiment) {
     aliases.push("MAX_ANGULAR_SPEED = OMEGA_MAX");
   }
 
-  return {
-    config_source: aliases.length
-      ? `${configSource.replace(/\s+$/, "")}\n${aliases.join("\n")}\n`
-      : configSource,
-    initializer_source: initializerSource,
-    controller_source: controllerSource,
-  };
+  const configSource = aliases.length
+    ? `${fields.config_source.replace(/\s+$/, "")}\n${aliases.join("\n")}\n`
+    : fields.config_source;
+  const updated = artifacts.map((artifact) => (
+    artifact.id === "configuration"
+      ? { ...artifact, content: configSource }
+      : artifact
+  ));
+  return artifactWritePayload(updated);
 }

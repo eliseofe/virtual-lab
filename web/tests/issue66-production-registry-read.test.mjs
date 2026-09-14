@@ -18,7 +18,7 @@ function fakeRoot(initial = {}) {
   const editors = new Map(
     EXPERIMENT_ARTIFACTS.map((descriptor) => [
       descriptor.editorSelector,
-      { value: initial[descriptor.registryField] ?? "" },
+      { value: initial[descriptor.registryField] ?? "", dataset: {} },
     ]),
   );
   return {
@@ -47,7 +47,7 @@ MAX_ANGULAR_SPEED = 1.0
 `,
 };
 
-test("experiment artifact integration is descriptor-driven and currently exposes the three supported sources", () => {
+test("experiment artifact integration retains the three specialized core adapters", () => {
   assert.deepEqual(
     EXPERIMENT_ARTIFACTS.map(({ id, registryField }) => [id, registryField]),
     [
@@ -60,7 +60,7 @@ test("experiment artifact integration is descriptor-driven and currently exposes
   assert.equal(new Set(EXPERIMENT_ARTIFACTS.map((item) => item.editorSelector)).size, EXPERIMENT_ARTIFACTS.length);
 });
 
-test("artifact adapter can load and capture registry sources without registry-specific editor branching", () => {
+test("artifact adapter upgrades legacy registry sources into the canonical artifact payload", () => {
   const root = fakeRoot();
   const experiment = {
     config_source: "N = 5",
@@ -69,7 +69,11 @@ test("artifact adapter can load and capture registry sources without registry-sp
   };
 
   applyExperimentArtifacts(experiment, root);
-  assert.deepEqual(captureExperimentArtifacts(root), experiment);
+  const captured = captureExperimentArtifacts(root);
+  assert.equal(captured.config_source, experiment.config_source);
+  assert.equal(captured.initializer_source, experiment.initializer_source);
+  assert.equal(captured.controller_source, experiment.controller_source);
+  assert.deepEqual(captured.artifacts.map(({ id }) => id), ["configuration", "initialization", "controller"]);
 });
 
 test("production runnability preflight accepts a generic valid experiment and rejects empty artifacts", () => {
@@ -79,13 +83,13 @@ test("production runnability preflight accepts a generic valid experiment and re
   assert.ok(invalid.error);
 });
 
-test("production registry read path remains ownership-scoped, session-isolated and runnable-only", async () => {
+test("production registry read path remains ownership-scoped, session-isolated, artifact-aware and runnable-only", async () => {
   const registryUi = await readFile(path.join(src, "registry-ui-v3.js"), "utf8");
   assert.match(registryUi, /storageKey: "vlab-production-registry-auth-v1"/);
   assert.match(registryUi, /\.from\("experiments"\)/);
   assert.match(registryUi, /\.eq\("owner_id", user\.id\)/);
   assert.match(registryUi, /\.eq\("lifecycle", "active"\)/);
-  assert.match(registryUi, /config_source,initializer_source,controller_source/);
+  assert.match(registryUi, /artifacts,config_source,initializer_source,controller_source/);
   assert.match(registryUi, /productionExperimentRunnability\(experiment\)\.runnable/);
   assert.match(registryUi, /async function readExperiment/);
   assert.match(registryUi, /Experiment not found in your library/);
