@@ -105,12 +105,29 @@ jobs:
 
           python - <<'PY'
           from pathlib import Path
+
           path = Path('web/tests/issue115-collection-assignment.test.mjs')
           text = path.read_text()
           old = '  assert.match(source, /created in My experiments \\/ \\$\\{collectionName\\(data\\.collection_id\\)\\}/);\n'
           new = '  assert.match(source, /data\\.collection_id \\? ` in \\$\\{collectionName\\(data\\.collection_id\\)\\}` : " without a collection"/);\n'
           if old not in text:
               raise SystemExit('issue115 create-message assertion not found')
+          path.write_text(text.replace(old, new, 1))
+
+          path = Path('web/tests/issue66-production-registry-read.test.mjs')
+          text = path.read_text()
+          old = '  assert.match(registryUi, /Browse library/);\n'
+          new = '  assert.match(registryUi, /Find experiment/);\n'
+          if old not in text:
+              raise SystemExit('issue66 Browse library assertion not found')
+          path.write_text(text.replace(old, new, 1))
+
+          path = Path('web/tests/issue74-production-registry-write.test.mjs')
+          text = path.read_text()
+          old = '  assert.match(registryUi, /created in My experiments \\/ \\$\\{collectionName\\(data\\.collection_id\\)\\}/);\n'
+          new = '  assert.match(registryUi, /data\\.collection_id \\? ` in \\$\\{collectionName\\(data\\.collection_id\\)\\}` : " without a collection"/);\n'
+          if old not in text:
+              raise SystemExit('issue74 create-message assertion not found')
           path.write_text(text.replace(old, new, 1))
           PY
       - name: Test browser source
@@ -120,6 +137,6 @@ jobs:
           rm -f .github/workflows/issue153-self-patch.yml .github/issue153-trigger
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add web/src/registry-ui-v3.js web/tests/issue153-workspace-continuity.test.mjs web/tests/issue76-experiment-browser.test.mjs web/tests/issue115-collection-assignment.test.mjs .github/workflows/issue153-self-patch.yml .github/issue153-trigger
+          git add web/src/registry-ui-v3.js web/tests/issue153-workspace-continuity.test.mjs web/tests/issue76-experiment-browser.test.mjs web/tests/issue115-collection-assignment.test.mjs web/tests/issue66-production-registry-read.test.mjs web/tests/issue74-production-registry-write.test.mjs .github/workflows/issue153-self-patch.yml .github/issue153-trigger
           git commit -m "UI/UX: restore workspace and unify experiment switching (#153)"
           git push origin HEAD:feature/issue-153-workspace-continuity
