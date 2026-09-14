@@ -10,10 +10,15 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Production Lab: `https://eliseofe.github.io/virtual-lab/`
 - Supabase project: `izdmmudfrmqhvlgepwes`
 - Experiment MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
-- Experiment MCP: **ACTIVE Edge Function version 13**
+- Experiment MCP: **ACTIVE Edge Function version 14**
 - MCP server version: **2.5.0**
 - MCP health interface version: **7**
 - Capability-request interface: **`vlab.capability-request/1`**
+- Current authoring contract: **`vlab.authoring/0.4`**
+- Current Experiment interface version: **`6`**
+- Current runtime contract: **`vlab.runtime/0.2`**
+- Current artifact capability contract: **`vlab.artifact-capabilities/0.2`**
+- Current Environment capability contract: **`vlab.environment-capabilities/0.1`**
 
 Important recent merge SHAs:
 
@@ -29,6 +34,7 @@ Important recent merge SHAs:
 - #135 durable capability requests: `f14210124150eb220b40999007b515d296cde589`
 - #139 Professor inbox/triage: `c4c9e435d430d6d4e316124f13e9777c73246a33`
 - #141 trusted developer handoff: `5a0016f3949d0a8f40418b0e612c7576366c6612`
+- #143 generic scalar Environment / local scalar observation: `7b4861e90dc00633f811cd5d882617b74301c765`
 
 ## Owner-visible acceptance state
 
@@ -39,9 +45,11 @@ Engineering-complete but awaiting a later consolidated owner live pass:
 - **#115** — collection choice during Save as new and clean owned-experiment moves between collections/Unfiled;
 - **#118** — artifact-driven Experiment workspace while retaining ordinary Configuration / Initialization / Controller behavior.
 
-The owner prefers a self-directed combined test rather than many micro-tests. Professor is intentionally a strict permission superset using the same ordinary Experiment code path. Student-specific negative authorization boundaries are verified automatically.
+Professor is intentionally a strict permission superset using the same ordinary Experiment code path. Student-specific negative authorization boundaries are verified automatically.
 
-#133/#135/#139/#141 are independently verified role/request/inbox/developer-handoff checkpoints and do not require immediate owner testing. A later combined pass can cover ordinary Experiment behavior, optional passive artifacts, unsupported executable intent, request creation/triage, linked development visibility, and collection moves.
+The first real Professor/Grok capability-request loop is now being tested end-to-end with the Karagüzel et al. 2023 collective-gradient-perception paper. Request creation, Professor note/approval, developer discussion/handoff, generic capability implementation, deployment and `implemented` provenance have all occurred. The immediate live acceptance step is now back in Grok: it should re-read the live contract and complete the preserved experiment using the paper's actual scalar field and controller modulation.
+
+A broader Lab UI/UX audit is parked until the functional loop has settled. The owner prefers the assistant to identify coherent visual/usability improvements rather than requiring point-by-point feedback.
 
 ## Canonical Experiment artifact state — #117/#118
 
@@ -51,19 +59,17 @@ Current required core IDs remain exactly `configuration`, `initialization`, `con
 
 Legacy three-source columns remain synchronized compatibility mirrors; they are not a competing source of truth. Browser load/apply/capture/dirty/save behavior is artifact-driven while retaining the specialized three core editors. Supported extra text artifacts can render generically; unsupported formats fail explicitly.
 
-Neither #117 nor #118 changed Rust/WASM physics, RNG ordering, controller algebra, initializer semantics, integrator, scheduler, renderer, or scientific parameters.
+## Artifact capability/lifecycle state — #124/#125/#143
 
-## Artifact capability/lifecycle state — #124/#125
-
-Canonical design: `docs/ARTIFACT_EXECUTION_LIFECYCLE.md`.
+Canonical lifecycle design: `docs/ARTIFACT_EXECUTION_LIFECYCLE.md`.
 
 Artifacts are classified as required core, optional passive, or optional executable. Optional executable content runs only if its type is explicitly registered by the active versioned capability contract. Lifecycle vocabulary is:
 
 `setup → initialize → control → finalize`
 
-Current contract `vlab.artifact-capabilities/0.1` registers **zero optional executable artifact types**. Arbitrary additional code/text never gains execution by inference. Unsupported executable intent becomes `unsupported-capability`.
+Current contract `vlab.artifact-capabilities/0.2` still registers **zero optional executable artifact types**. Arbitrary additional code/text never gains execution by inference. The newly supported static scalar Environment is deliberately a capability of the required Initialization artifact, not a fourth artifact.
 
-#126 remains blocked until a concrete owner-approved first optional executable capability exists. #127 remains future Study work.
+#126 remains blocked until a concrete owner-approved first optional executable artifact capability exists. #127 remains future Study work.
 
 ## Professor capability-request loop — #58
 
@@ -79,9 +85,7 @@ PR #138 merged as `f14210124150eb220b40999007b515d296cde589`.
 
 Migration `20260914153000_capability_requests.sql` is live. `public.capability_requests` durably preserves stable request ID/timestamps, requester/provenance, optional origin Experiment/revision, unrunnable draft content, capability description, lifecycle state, and developer/deployment provenance fields.
 
-MCP v13 exposes the same ordinary Experiment tools to Student and Professor. Professor additionally receives `request_capability`; Student receives no request action. The MCP has no GitHub/repository/shell/deployment/admin/simulator-source capability and `simulator_access` remains false.
-
-Key evidence: branch workflow `34862760429` success, production Professor/Student RLS probes passed, main workflow `34863015099` build/deploy/smoke success, MCP v13 ACTIVE.
+MCP exposes the same ordinary Experiment tools to Student and Professor. Professor additionally receives `request_capability`; Student receives no request action. MCP has no GitHub/repository/shell/deployment/admin/simulator-source capability and `simulator_access` remains false.
 
 ### #139 / #58.3 — Professor request inbox + Approve/Decline — completed/deployed
 
@@ -97,6 +101,8 @@ Database/authorization:
 - Student cannot see the queue;
 - Professor can see the curator queue and triage only pending requests;
 - preserved draft/provenance/developer fields stay immutable through the browser path.
+
+Approval means the Professor accepts the need for discussion/consideration. It does **not** by itself authorize engineering implementation. Actual coding begins after design discussion in the developer chat and explicit owner implementation approval.
 
 Production rollback probes after the real migration verified Professor approval + reviewer/time stamping and Student zero-row visibility/update. No probe rows remain.
 
@@ -114,32 +120,19 @@ Accepted evidence:
 - main workflow `34865922898`: build, Pages deploy and deployed-browser smoke success;
 - downloaded deployed Pages artifact contained `professor-inbox.js` and the deployed loader reference.
 
-No simulator/scientific behavior changed.
-
 ### #141 / #58.4 — trusted developer handoff — completed/deployed
 
 Issue #141 was implemented in PR #142 and merged as `5a0016f3949d0a8f40418b0e612c7576366c6612`.
 
 Canonical developer procedure: `docs/DEVELOPER_CAPABILITY_HANDOFF.md`.
 
-#### Lifecycle semantics
+Lifecycle semantics:
 
-`approved` no longer ambiguously means engineering has started:
-
-- `approved` = Professor accepted the need, but no developer workflow has claimed it;
-- `in_progress` = exactly one GitHub engineering issue is linked by the trusted developer workflow;
-- `implemented` remains reserved for a later gate after deployed capability-contract verification.
-
-#### Database / trusted developer boundary
+- `approved` = Professor accepted the need but engineering has not claimed it;
+- `in_progress` = after explicit owner implementation approval, exactly one GitHub engineering issue is linked by the trusted developer workflow;
+- `implemented` = actual capability is deployed and live capability/provenance verification has succeeded.
 
 Migration `20260914161504_developer_capability_handoff.sql` is live.
-
-New durable fields:
-
-- `github_issue_number bigint`;
-- `development_started_at timestamptz`.
-
-Existing `github_issue_url` is paired with the issue number. Partial unique indexes prevent one GitHub issue number/URL from being linked to multiple capability requests.
 
 Trusted claim operation:
 
@@ -150,95 +143,129 @@ Properties:
 - `SECURITY INVOKER`;
 - canonical URL must be `https://github.com/eliseofe/virtual-lab/issues/<number>`;
 - only `approved → in_progress` is accepted;
-- stores issue number/URL and `development_started_at`;
-- exact retry of the same already-linked `in_progress` request is idempotent and does not overwrite the original developer note;
-- wrong lifecycle, duplicate issue linkage, or relink to a different issue is rejected;
-- EXECUTE is revoked from `public`, `anon`, `authenticated`, and `service_role` Data-API roles;
-- authenticated users also have no UPDATE privilege on `github_issue_number`, `github_issue_url`, or `developer_notes`;
-- the function is intended only for the trusted developer database connection used by developer-side ChatGPT.
-
-This operation is not exposed by the Experiment MCP and is not callable from the Professor browser.
-
-#### Context-free developer handoff
-
-A future developer chat can receive a request such as:
-
-`implement the next approved capability request`
-
-and recover state without asking the owner to copy request details:
-
-1. query approved requests from Supabase;
-2. search GitHub for the exact capability-request UUID;
-3. reuse an existing matching implementation issue after an interrupted handoff, or create one if absent;
-4. call the trusted claim operation;
-5. verify `in_progress` and linkage;
-6. treat actual capability implementation as a new substantial engineering checkpoint.
-
-Because the repository is public, GitHub receives a stable request UUID and safe engineering summary, not an automatic dump of full draft artifacts, free-form private context, Professor notes, requester identity, or unpublished paper text. Full research context remains available privately in Supabase to the developer workflow.
-
-#### Professor visibility
-
-Production includes `web/src/professor-development-links.js` as a read-only layer after the Professor inbox.
-
-When a request has developer linkage, Professor can see:
-
-- capability name;
-- lifecycle status;
-- linked `Issue #N`;
-- linked PR when later populated.
-
-The module reads through the normal Professor RLS path and contains no update/insert/delete/RPC action.
-
-#### Verification evidence
-
-Before production DDL, rollback probes verified:
-
-- approved request can be claimed;
 - exact retry is idempotent;
-- requested-state claim is rejected;
-- second request cannot reuse the same issue;
-- an in-progress request cannot be relinked;
-- authenticated/service-role Data API roles cannot execute the claim or write developer fields.
+- wrong lifecycle, duplicate issue linkage, or relink is rejected;
+- EXECUTE is revoked from `public`, `anon`, `authenticated`, and `service_role` Data-API roles;
+- not exposed by Experiment MCP or Professor browser.
 
-After the real migration, the same transactional probes passed again and synthetic rows were rolled back.
+Professor Lab includes `web/src/professor-development-links.js` as a read-only layer showing linked issue/PR metadata.
 
-Accepted CI/deployment evidence:
+Accepted evidence includes corrected PR normal workflow `34868310837`, corrected performance workflow `34868310789`, production transactional authorization probes, security-advisor check, and main workflow `34868586388` with build/Pages/deployed-browser smoke green.
 
-- corrected PR normal workflow `34868310837`: success;
-- corrected PR performance workflow `34868310789`: success;
-- Supabase security advisor after DDL showed no new #141 finding; the same two unrelated pre-existing notices remain;
-- main workflow `34868586388`: build success, GitHub Pages deploy success, deployed-browser smoke success (`kernel ready with populated editors`);
-- downloaded deployed Pages artifact `10358231396` / digest `sha256:6a5ecc49b15959cc4ef803ee4a2eee9d62f632fb782e12acb71e6dccd98f1506` contains `assets-*/professor-development-links.js`;
-- deployed `assets-*/runtime-speed.js` explicitly imports `./professor-development-links.js`.
+## First real paper-driven capability — #143 / PR #144 — completed/deployed
 
-One stale #66 loader-syntax assertion failed on the first PR run; all #141 tests already passed. The assertion was corrected to test additive failure isolation rather than requiring the prior literal import shape, after which both PR workflows passed.
+Originating Professor request:
 
-No Experiment MCP, Rust/WASM simulator, scientific model, RNG, controller algebra, initializer semantics, timing, integrator or renderer semantics changed in #141.
+- request ID: `d89cdc40-bbcc-426c-ac40-7dc3f3638599`;
+- requested capability: `observations / local.environmental_scalar`;
+- origin Experiment: `ac57dfca-d63f-4186-be46-4231a2d37a6e`, revision 1;
+- engineering issue: #143;
+- implementation PR: #144;
+- merge SHA: `7b4861e90dc00633f811cd5d882617b74301c765`.
 
-## Private Experiment production path
+### Approved architecture
 
-Production remains a real client of the canonical Supabase Experiment registry while scientific execution stays local in browser/WASM.
+The simulator capability is generic and contains no Karagüzel-specific scalar field or scientific tuning.
 
-Existing behavior includes owned private experiment discovery, local compile/run, optimistic revision saves, Save as new, Built-in vs My experiments navigation, collections/Unfiled, dirty-switch protection, and anonymous/built-in read-only behavior.
+- required Experiment artifacts remain exactly Configuration, Initialization, Controller;
+- Initialization may additionally define optional `environmental_scalar(x, y, config)`;
+- the definition is a constrained deterministic static scalar expression over `x`, `y`, finite numeric config parameters and approved pure scalar intrinsics;
+- simulator/WASM owns the Environment evaluation;
+- observation construction samples the Environment at the robot's actual position;
+- controller sees only `obs.environmental_scalar` as a scalar;
+- controller does not gain global position, field function, gradient, simulator/global Environment, RNG, filesystem or network access;
+- arena visualization receives samples from the same Rust Environment evaluator used by robot sensing, preventing a second scientific implementation in the renderer;
+- existing Experiments without a field remain supported.
 
-#115 adds collection choice and clean Experiment moves; engineering is complete and owner acceptance remains pending.
+### Contract/runtime versions
 
-## Current Professor-loop frontier
+After #143:
 
-Completed infrastructure:
+- authoring: `vlab.authoring/0.4`;
+- Experiment interface: `6`;
+- runtime: `vlab.runtime/0.2`;
+- artifact capabilities: `vlab.artifact-capabilities/0.2`;
+- Environment capabilities: `vlab.environment-capabilities/0.1`;
+- Environment IR: `vlab.environment-scalar-ir/0.1`;
+- published capabilities: `environment.static_scalar_field` and `local.environmental_scalar` (`obs.environmental_scalar`).
 
-1. #133 / #58.1 — server-controlled Professor role;
-2. #135 / #58.2 — durable capability requests + Professor-only creation;
-3. #139 / #58.3 — Professor Lab inbox + Approve/Decline;
-4. #141 / #58.4 — trusted developer/GitHub handoff + `in_progress`.
+### Verification/deployment
 
-The next substantial infrastructure checkpoint is the **deployed-capability completion and origin/draft revalidation gate**.
+PR #144 normal CI passed after correcting only stale version/compatibility assertions. The independent performance guard's first attempt hit the known browser profile-harness module-resolution race; an identical rerun passed completely. No product change was made for that transient race.
 
-Important distinction: #141 does not implement a requested simulator capability. The concrete capability is implemented through its linked GitHub engineering issue as a separate substantive task. Only after that capability is deployed and advertised by the active versioned authoring/runtime capability contract may the completion gate move the request to `implemented` and revalidate the preserved origin/draft.
+Main GitHub Pages run `34876180995` completed successfully:
 
-The next infrastructure checkpoint must therefore provide trusted completion semantics, durable deployed contract/capability provenance, `in_progress → implemented` only after live contract verification, and revalidation results for the preserved originating intent.
+- build: success;
+- Pages deployment: success;
+- deployed-browser smoke: success.
 
-It is **not started** and requires explicit owner continuation under `docs/EXECUTION_GRANULARITY.md`.
+Supabase `experiment-mcp` **v14 is ACTIVE**. It was deployed from the exact merged #144 bundle, including the new Environment compiler and matching browser/MCP compiler/runtime sources. v14 bundle hash: `8a6232defa369c97b60224eb59c59165532b05b747c981d5da4bfb5cf6b41f08`.
+
+The deployed bundle explicitly advertises:
+
+- `environment.static_scalar_field`;
+- `local.environmental_scalar` / `obs.environmental_scalar`;
+- `vlab.authoring/0.4`;
+- `vlab.environment-capabilities/0.1`.
+
+### Capability request terminal state
+
+After live Pages and MCP verification, request `d89cdc40-bbcc-426c-ac40-7dc3f3638599` was transitioned by the trusted developer DB connection from `in_progress → implemented` and now durably records:
+
+- GitHub Issue #143;
+- GitHub PR #144;
+- implemented contract `vlab.authoring/0.4`;
+- implemented capability `vlab.environment-capabilities/0.1`;
+- implementation timestamp.
+
+There is not yet a reusable private completion RPC. This first real request used the trusted developer DB connection after explicit live verification. A generic deployed-capability completion/revalidation gate remains a separate future infrastructure checkpoint and should not be silently bundled into a later capability ticket.
+
+### Preserved-draft post-deployment check
+
+The stored request draft:
+
+- contains exactly the three required core artifacts;
+- exactly equals the current artifacts of the originating Experiment revision 1;
+- origin is still revision 1;
+- contains no `environmental_scalar` definition;
+- contains no `obs.environmental_scalar` use.
+
+This is correct. Grok preserved the already-valid flocking substrate before the missing simulator capability existed. The contract blocker has now been removed, but the paper-specific scalar distribution and desired-distance/speed modulation are still absent. **Those scientific details must come from Grok/the paper, not from simulator implementation reasoning.**
+
+The immediate end-to-end test is therefore to return to Grok, have it re-read the live authoring contract, and continue the preserved experiment rather than starting a disconnected new workflow.
+
+## Capability generalization/refactor gate
+
+`docs/CAPABILITY_GENERALIZATION_GATE.md` is mandatory for paper-driven simulator capability work.
+
+Before implementing each new capability, developer-side ChatGPT must explicitly decide whether the request fits an existing abstraction cleanly or creates a new special case. Stop before implementation and bring the owner a refactor proposal when material signs include:
+
+- paper-specific simulator semantics;
+- duplicate representations/evaluation paths for one concept;
+- repeated conditional/special-case growth across layers;
+- violation of ownership/information boundaries;
+- repeated pressure on an abstraction previously treated as provisional.
+
+Even if individual requests look clean, perform an architecture audit after every **three** implemented paper-driven capabilities, or when a **second substantial capability extends the same subsystem**, whichever happens first.
+
+Scientific equivalence/generalization is not decided autonomously. If a refactor requires claiming that two scientific models/concepts are equivalent, stop and discuss that scientific decision with the owner.
+
+#143 passed the first gate: one generic Environment evaluator, one local observation boundary, same evaluator for visualization, no paper-specific simulator branch.
+
+## Success-only durable completion reporting
+
+GitHub issue #145 is the central GitHub-only success-report stream for ChatGPT-managed work across `eliseofe/*` projects.
+
+Rules:
+
+- pure discussion: no report;
+- running/failed/retrying/partial action plan: no report;
+- verified terminal success: append one `[SUCCESS REPORT]` comment to #145;
+- `.github/workflows/success-report-notifier.yml` reposts as `github-actions[bot]` and mentions `@eliseofe`, allowing GitHub's normal notification/email channel to carry the report without Gmail/mailbox access.
+
+Workflow live test run `34877631853` passed and the bot repost was verified.
+
+Issue #146 is the separate Work task for the account-level GitHub setting that disables Actions failure-email noise. The available GitHub connector cannot change that personal account notification preference.
 
 ## Performance lane
 
@@ -249,3 +276,9 @@ It is **not started** and requires explicit owner continuation under `docs/EXECU
 While building the simulator, do not independently perform scientific derivations, equilibrium/model analysis, retuning, or other calculations about the simulated scientific system. Software architecture/implementation reasoning is allowed. If a simulator-design decision requires a scientific decision, stop and discuss it with the owner first.
 
 Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, scientific timing/integration semantics, and rendering as an observer unless the owner explicitly approves a scientific change.
+
+## Current frontier
+
+The first real Professor/Grok paper-driven capability has completed its developer/deployment leg and the request is `implemented`. The **next immediate action is owner/research-AI acceptance in Grok**: re-read the current authoring contract and continue the preserved Karagüzel et al. experiment using the actual paper-specific scalar field and modulation.
+
+The reusable completion/revalidation gate remains future infrastructure. #115/#118 owner acceptance and the broader Lab UI/UX audit remain queued for later coherent passes.
