@@ -1,6 +1,6 @@
 # Virtual Lab — Current Project State
 
-Updated: **14 September 2026**
+Updated: **15 September 2026**
 
 This is the durable current technical state/evidence for future ChatGPT/Work/human sessions. Read `AGENTS.md`, then `PROJECT_CONTROL.md`, before this file. Detailed pre-#117 history is preserved at `docs/archive/PROJECT_STATE_pre_117_2026-09-14.md`.
 
@@ -37,6 +37,7 @@ Important recent merge SHAs:
 - #143 generic scalar Environment / local scalar observation: `7b4861e90dc00633f811cd5d882617b74301c765`
 - #150 simulation-first workspace shell (final fix): `9f75ed7f9e2530e8c5681a30f3126b2f4b2a2bdd`
 - #153 workspace continuity + unified Experiment switcher: `dfb70a3882176cd28a11fb3f891952eccc28d865`
+- #155 authoring + persistence workspace: `694fd544563ff01fe87f061c9240c74d31873eb1`
 
 ## Owner-visible acceptance state
 
@@ -53,7 +54,13 @@ The first real Professor/Grok capability-request loop on the Karagüzel et al. 2
 
 Showcase promotion is a separate optional Professor/curator decision, not a success condition for paper-driven Experiment authoring. The working Experiment may be refined/promoted later or remain private.
 
-The current owner-visible blocker remains the Lab UI/UX. Epic #147 is the active redesign frontier and #148 is the completed interaction audit. Two substantial redesign children are now deployed: #150 made the workspace simulation-first, and #153 added workspace continuity plus one unified Experiment switcher/finder. Production verification for #153 is workflow `34895522534` (build/deploy/deployed-browser smoke success); its initial deploy attempt hit an external GitHub OIDC-token timeout and succeeded on an unchanged retry. #115/#118 owner acceptance remains deferred behind the redesign. The next substantial UI child is editor/workspace organization; deeper collection-management cleanup and visual/responsive polish remain later children.
+Epic #147 remains the active UI/UX redesign frontier and #148 is the completed interaction audit. Three substantial redesign children are now deployed:
+
+- #150 made the workspace simulation-first;
+- #153 added workspace continuity plus one unified Experiment switcher/finder;
+- #155 replaced the permanent editor stack with one authoring/persistence workbench.
+
+#155 production verification is workflow `34898683292`: build, GitHub Pages deploy and deployed-browser smoke all succeeded. PR workflow `34898283071` passed the full Rust/Node suite and static browser build. Independent performance workflow `34898283150` first hit the known `Chrome did not publish DevToolsActivePort` harness startup race and then passed unchanged on rerun. #115/#118 owner acceptance remains deferred behind the redesign. The next substantial #147 child is **D. Collections / organization redesign**; responsive/accessibility/regression hardening remains later child **E**.
 
 ## Canonical Experiment artifact state — #117/#118
 
@@ -62,6 +69,8 @@ The canonical Experiment representation is an ordered typed `artifacts` JSONB co
 Current required core IDs remain exactly `configuration`, `initialization`, `controller`.
 
 Legacy three-source columns remain synchronized compatibility mirrors; they are not a competing source of truth. Browser load/apply/capture/dirty/save behavior is artifact-driven while retaining the specialized three core editors. Supported extra text artifacts can render generically; unsupported formats fail explicitly.
+
+#155 changes only presentation/wiring around those same artifacts: Configuration, Initialization and Controller are tabs in one single-active editor workspace; supported additional text artifacts join the same workspace; one visible `Apply changes & restart` action delegates to the existing setup/controller application paths; registry Save/Save as new/dirty/conflict controls are colocated without changing their persistence semantics; compiled IR is hidden under Technical details.
 
 ## Artifact capability/lifecycle state — #124/#125/#143
 
@@ -236,7 +245,16 @@ The stored request draft:
 
 This is correct. Grok preserved the already-valid flocking substrate before the missing simulator capability existed. The contract blocker has now been removed, but the paper-specific scalar distribution and desired-distance/speed modulation are still absent. **Those scientific details must come from Grok/the paper, not from simulator implementation reasoning.**
 
-The immediate end-to-end test is therefore to return to Grok, have it re-read the live authoring contract, and continue the preserved experiment rather than starting a disconnected new workflow.
+The immediate end-to-end test was completed successfully: Grok re-read the live authoring contract, continued the preserved experiment, and the resulting working experiment was exercised in the Lab. Showcase promotion remains optional curation, not a completion condition.
+
+## Pending research-AI capability requests — not approved for engineering
+
+Two later Grok requests for the informed-robot aggregation experiment are durable in `public.capability_requests` but remain at lifecycle state **`requested`**:
+
+- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`, lifecycle hook `control`;
+- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — `initialization / heterogeneous_agent_state`, lifecycle hook `initialize`.
+
+Neither has Professor approval, developer handoff, GitHub implementation issue, or implementation authorization. They must not be treated as the current execution frontier merely because they are recent.
 
 ## Capability generalization/refactor gate
 
@@ -269,7 +287,7 @@ Rules:
 
 Workflow live test run `34877631853` passed and the bot repost was verified.
 
-Issue #146 is the separate Work task for the account-level GitHub setting that disables Actions failure-email noise. The available GitHub connector cannot change that personal account notification preference.
+Issue #146 is complete: GitHub Actions email delivery was disabled at the account level while failed-workflow notifications on GitHub remain enabled. No repository workflow behavior was changed by #146.
 
 ## Performance lane
 
@@ -283,6 +301,6 @@ Preserve simulator-owned RNG, controller information boundaries, environment-own
 
 ## Current frontier
 
-The first real Professor/Grok paper-driven capability has completed its developer/deployment leg and the request is `implemented`. The **next immediate action is owner/research-AI acceptance in Grok**: re-read the current authoring contract and continue the preserved Karagüzel et al. experiment using the actual paper-specific scalar field and modulation.
+The active execution frontier is **#147 UI/UX redesign**. #150, #153 and #155 are deployed and browser-verified. The next substantial child is **D. Collections / organization redesign** from #148; do not start it inside the #155 completion unit. Later child **E** owns responsive/accessibility/regression hardening.
 
-The reusable completion/revalidation gate remains future infrastructure. #115/#118 owner acceptance and the broader Lab UI/UX audit remain queued for later coherent passes.
+The two recent informed-robot capability requests remain `requested` and unapproved; they are parallel research-AI inputs, not current developer work. The reusable capability completion/revalidation gate remains future infrastructure. #115/#118 owner acceptance and optional #149 paper-experiment refinement/Showcase curation remain deferred coherent follow-up work.
