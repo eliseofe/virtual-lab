@@ -12,27 +12,27 @@ The #147 UI/UX redesign is complete, deployed and browser-verified. The accepted
 
 The backlog was audited on 15 Sep 2026. Historical Round-1/integration shells #1, #14–#18, #46, #52 and completed capability epic #58 are closed. Remaining work is organized around focused parents/children rather than issue recency.
 
-## Active performance frontier — #56 / #165 → #168
+## Active performance frontier — #56 / #168
 
 The owner promoted simulator performance back to active work, specifically the strong dependence on neighbour density / interaction radius.
 
-### #165 measurement result
+### #165 measurement result — completed
 
 #165 added a deterministic N=5,000 profiler and compared the current periodic grid (`ceil(sqrt(N))` cells per axis) with half-resolution, double-resolution and radius-matched internal geometries. All alternatives were checked against the brute-force neighbour oracle and returned identical sorted neighbour sets.
 
-Authoritative PR evidence: #167 performance workflow `34905824329`, artifact `10371728802`; normal PR workflow `34905824660` is green. The profiler workflow was also hardened with `pipefail` so a failing `cargo run | tee` cannot be misreported as success.
+PR #167 squash-merged as `bb83b7f774504924a396fc9c961f9e45eaa6df45`. Final-head normal PR workflow `34906284691` passed. Performance workflow `34906284696` hit the known Chrome `DevToolsActivePort` startup race on its first attempt; the unchanged failed-job rerun passed completely. Main production workflow `34906602411` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke. Primary measurement artifact: performance run `34905824329`, artifact `10371728802`.
 
 Key result: the current one-cell-per-agent grid introduces a material avoidable penalty when the query radius spans many small grid cells. The radius-matched candidate kept normal queries at 9 visited cells and was about 2–4× faster in the diagnostic query sweep across all seven measured density/radius cases. Dense experiments still retain unavoidable cost proportional to the actual returned-neighbour count and controller work.
 
 Detailed evidence: `docs/PERFORMANCE_NEIGHBOUR_DENSITY_2026-09-15.md`.
 
-### Next performance child
+### Current performance child
 
 **#168 — implement radius-aware periodic grid resolution without changing neighbour semantics.**
 
-#168 is the recommended next implementation checkpoint after #165 is merged/closed. It must preserve exact periodic membership, sorted deterministic order, the brute-force oracle, and all scientific parameters. Internal grid/hash resolution remains simulator infrastructure and must not become a user-visible experiment parameter.
+#168 is the recommended next implementation checkpoint. It must preserve exact periodic membership, sorted deterministic order, the brute-force oracle, and all scientific parameters. Internal grid/hash resolution remains simulator infrastructure and must not become a user-visible experiment parameter.
 
-Do not silently bundle later performance ideas into #168.
+#168 has not been started. Do not silently bundle later performance ideas into it.
 
 ## Near-term parallel product/research lanes
 
@@ -125,4 +125,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#165 measured a real avoidable neighbour-index penalty and recommends #168 as the next performance implementation child once #167 is merged and #165 is closed; no production neighbour semantics have changed yet. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
+**#165 is complete: it measured a real avoidable neighbour-index penalty without changing production semantics. #168 is the next recommended performance implementation child and has not been started. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
