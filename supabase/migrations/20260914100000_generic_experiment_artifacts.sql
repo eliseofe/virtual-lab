@@ -95,8 +95,12 @@ from public, anon, authenticated;
 alter table public.experiments
   add column if not exists artifacts jsonb;
 
--- Mechanical backfill. Do not create a new scientific revision merely because the
--- persistence representation changed.
+-- Remove v1 version checks before assigning the v2 representation. The backfill
+-- itself is mechanical, so preserve scientific revision numbers.
+alter table public.experiments
+  drop constraint if exists experiments_schema_version_check,
+  drop constraint if exists experiments_interface_version_check;
+
 alter table public.experiments disable trigger bump_experiment_revision;
 
 update public.experiments
@@ -109,10 +113,6 @@ set artifacts = private.default_experiment_artifacts(
     interface_version = 'vlab.experiment-artifacts/2';
 
 alter table public.experiments enable trigger bump_experiment_revision;
-
-alter table public.experiments
-  drop constraint if exists experiments_schema_version_check,
-  drop constraint if exists experiments_interface_version_check;
 
 alter table public.experiments
   alter column schema_version set default 'vlab.registry-experiment/2',
@@ -128,6 +128,7 @@ alter table public.experiments
 create or replace function private.sync_experiment_artifacts()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
 as $$
 declare
