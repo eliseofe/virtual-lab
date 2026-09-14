@@ -161,7 +161,9 @@ export function mergeLegacySourcesIntoArtifacts(artifacts, changes = {}) {
 function errorDiagnostic(artifact, error) {
   const message = error instanceof Error ? error.message : String(error);
   const compilerCategory = typeof error?.category === "string" ? error.category : null;
-  let category = compilerCategory ?? (artifact === "initialization" ? "initializer" : "syntax");
+  // Preserve the established external diagnostic name `initializer` even though
+  // the canonical generic artifact id is `initialization`.
+  let category = compilerCategory ?? (artifact === "initializer" ? "initializer" : "syntax");
   if (
     category === "unsupported-feature" ||
     category === "invalid-observation-field" ||
@@ -214,7 +216,7 @@ export function validateExperimentSources({ config_source, initializer_source, c
     initializer = compileInitializer(initializer_source, initializerConfig);
     validateInitialStateForRuntime(initializer.state, runtime);
   } catch (error) {
-    diagnostics.push(errorDiagnostic("initialization", error));
+    diagnostics.push(errorDiagnostic("initializer", error));
     return invalid(diagnostics);
   }
 
