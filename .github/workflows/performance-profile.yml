@@ -42,6 +42,9 @@ jobs:
       - name: Run native kernel profile
         run: cargo run --release -p vlab-kernel --example perf_profile | tee native-profile.txt
 
+      - name: Run neighbour-density profile
+        run: cargo run --release -p vlab-kernel --example neighbour_density_profile | tee neighbour-density-profile.txt
+
       - name: Build browser kernel
         working-directory: crates/kernel
         run: wasm-pack build --release --target web --out-dir ../../web/public/wasm --out-name vlab_kernel
@@ -72,6 +75,7 @@ jobs:
           path: |
             runner-environment.txt
             native-profile.txt
+            neighbour-density-profile.txt
             browser-profile.json
             real-isolation-profile.json
             controller-cost-profile.json
