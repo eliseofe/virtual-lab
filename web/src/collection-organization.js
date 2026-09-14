@@ -142,7 +142,6 @@ function buildOrganizer() {
   return {
     dialog,
     close,
-    assignment,
     assignmentSlot,
     noAssignment,
     createName,
@@ -160,9 +159,17 @@ let organizeButton = null;
 let collectionRows = [];
 let registryMessageObserver = null;
 
+function setHidden(element, hidden) {
+  if (element.hidden !== hidden) element.hidden = hidden;
+}
+
+function setText(element, text) {
+  if (element.textContent !== text) element.textContent = text;
+}
+
 function setStatus(text, state = "idle") {
-  organizer.status.textContent = text;
-  organizer.status.dataset.state = state;
+  setText(organizer.status, text);
+  if (organizer.status.dataset.state !== state) organizer.status.dataset.state = state;
 }
 
 function signedIn() {
@@ -187,14 +194,14 @@ function ensureOrganizeButton() {
     organizeButton.addEventListener("click", () => openOrganizer());
   }
   if (organizeButton.parentElement !== meta) meta.append(organizeButton);
-  organizeButton.hidden = !signedIn();
+  setHidden(organizeButton, !signedIn());
   return true;
 }
 
 function normalizeCollectionLanguage() {
   for (const select of document.querySelectorAll(".registry-new-form select, .registry-move-select")) {
     const emptyOption = [...select.options].find((option) => option.value === "");
-    if (emptyOption && emptyOption.textContent !== "No collection") emptyOption.textContent = "No collection";
+    if (emptyOption) setText(emptyOption, "No collection");
   }
   const newCollectionLabel = document.querySelector(".registry-new-form .registry-new-field:nth-of-type(2)");
   if (newCollectionLabel?.firstChild?.nodeType === Node.TEXT_NODE && newCollectionLabel.firstChild.textContent !== "Collection (optional)") {
@@ -206,21 +213,21 @@ function normalizeCollectionLanguage() {
   }
   const registryMessage = document.querySelector(".registry-message");
   if (registryMessage?.textContent?.includes("Unfiled")) {
-    registryMessage.textContent = registryMessage.textContent.replaceAll("Unfiled", "No collection");
+    setText(registryMessage, registryMessage.textContent.replaceAll("Unfiled", "No collection"));
   }
 }
 
 function simplifyExperimentBrowser() {
   const filters = document.querySelector(".experiment-browser-filters");
   if (filters) {
-    filters.hidden = true;
-    filters.setAttribute("aria-hidden", "true");
+    setHidden(filters, true);
+    if (filters.getAttribute("aria-hidden") !== "true") filters.setAttribute("aria-hidden", "true");
   }
   const contextHelp = document.querySelector(".experiment-browser-context span");
   const help = signedIn()
     ? "Search all of your available experiments directly. Collections are optional metadata, never navigation."
     : "Search the available experiments. Sign in to include your private experiments.";
-  if (contextHelp && contextHelp.textContent !== help) contextHelp.textContent = help;
+  if (contextHelp) setText(contextHelp, help);
 }
 
 function relocateMoveControl() {
@@ -228,9 +235,10 @@ function relocateMoveControl() {
   if (!row) return false;
   if (row.parentElement !== organizer.assignmentSlot) organizer.assignmentSlot.append(row);
   const button = row.querySelector("button");
-  if (button && button.textContent !== "Save organization") button.textContent = "Save organization";
-  organizer.noAssignment.hidden = currentOwnedExperiment();
-  row.hidden = !currentOwnedExperiment();
+  if (button) setText(button, "Save organization");
+  const owned = currentOwnedExperiment();
+  setHidden(organizer.noAssignment, owned);
+  setHidden(row, !owned);
   return true;
 }
 
