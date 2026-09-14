@@ -260,7 +260,9 @@ fn run(workload: Workload) {
         let grid = Grid::build(&sample, arena, cells);
         let stats = grid.sweep(&sample, workload.radius);
         assert_eq!(stats.accepted, production_accepted, "accepted neighbours changed for {} / {}", workload.label, policy.label());
-        let query_ms = median_ms(reps, || black_box(grid.sweep(black_box(&sample), workload.radius)));
+        let query_ms = median_ms(reps, || {
+            black_box(grid.sweep(black_box(&sample), workload.radius));
+        });
         let total_cells = cells * cells;
         let occupied = grid.buckets.len();
         let mean_all = workload.agents as f64 / total_cells as f64;
