@@ -6,6 +6,7 @@
   <meta name="description" content="Virtual Lab — browser-based simulation for swarm robotics experiments.">
   <title>Virtual Lab</title>
   <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./ux-hardening.css">
 </head>
 <body>
   <div class="app-shell">
@@ -15,7 +16,7 @@
         <h1>Swarm robotics simulation</h1>
       </div>
       <div class="topbar-actions">
-        <div class="topbar-status">
+        <div class="topbar-status" role="status" aria-live="polite" aria-atomic="true">
           <span class="status-dot" aria-hidden="true"></span>
           <span id="worker-status" data-state="loading">Starting simulator…</span>
         </div>
@@ -34,11 +35,11 @@
         </select>
       </section>
 
-      <section class="panel stage-panel">
+      <section class="panel stage-panel" aria-labelledby="arena-heading">
         <div class="stage-heading">
           <div>
             <p class="section-kicker">SIMULATION</p>
-            <h2>Arena</h2>
+            <h2 id="arena-heading">Arena</h2>
           </div>
           <span class="badge">periodic square boundary</span>
         </div>
@@ -100,21 +101,21 @@
         </div>
 
         <div class="canvas-wrap">
-          <canvas id="simulation-canvas" width="960" height="600" aria-label="Agent simulation. Drag to pan; use wheel, trackpad, or pinch to zoom."></canvas>
+          <canvas id="simulation-canvas" width="960" height="600" aria-label="Agent simulation. Drag to pan; use wheel, trackpad, or pinch to zoom." aria-describedby="arena-instructions"></canvas>
           <div id="canvas-empty" class="canvas-empty">Waiting for simulation data…</div>
         </div>
-        <p class="muted stage-note">Drag to pan. Wheel/trackpad or pinch to zoom. Positions and headings remain in arena coordinates; camera movement is visual only.</p>
+        <p id="arena-instructions" class="muted stage-note">Drag to pan. Wheel/trackpad or pinch to zoom. Positions and headings remain in arena coordinates; camera movement is visual only.</p>
       </section>
 
-      <section id="authoring-workbench" class="panel editor-panel" aria-label="Experiment authoring workspace">
+      <section id="authoring-workbench" class="panel editor-panel" aria-labelledby="authoring-heading">
         <div class="authoring-workbench-head">
           <div>
             <p class="section-kicker">AUTHORING</p>
-            <h2>Experiment source</h2>
+            <h2 id="authoring-heading">Experiment source</h2>
             <p class="muted">Edit one artifact at a time. Runtime changes are applied together and restart the current run.</p>
           </div>
           <div class="authoring-workbench-actions">
-            <span id="authoring-runtime-state" class="authoring-runtime-state" data-state="clean">Runtime sources applied</span>
+            <span id="authoring-runtime-state" class="authoring-runtime-state" data-state="clean" role="status" aria-live="polite" aria-atomic="true">Runtime sources applied</span>
             <button id="apply-workspace" class="primary" type="button" disabled>Apply changes &amp; restart</button>
           </div>
         </div>
@@ -197,7 +198,7 @@
           <p class="section-kicker">WORKSPACE</p>
           <h2>Account &amp; Professor</h2>
         </div>
-        <button id="utility-close" type="button">Close</button>
+        <button id="utility-close" type="button" aria-label="Close account and Professor utilities">Close</button>
       </div>
       <div id="workspace-utility-content" class="utility-content">
         <p id="utility-loading" class="muted">Loading account controls…</p>
