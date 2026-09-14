@@ -125,4 +125,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#165 measured a real avoidable neighbour-index penalty and recommends #168 as the next performance implementation child; no production neighbour semantics have changed yet. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
+**#165 measured a real avoidable neighbour-index penalty and recommends #168 as the next performance implementation child once #167 is merged and #165 is closed; no production neighbour semantics have changed yet. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
