@@ -1,0 +1,1 @@
+Do not create more checkpoint-note files for this completion. Use GitHub issue comments and the central success-report stream instead.
