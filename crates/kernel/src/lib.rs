@@ -2,8 +2,10 @@ use wasm_bindgen::prelude::*;
 use serde::Deserialize;
 
 mod controller_ir;
+mod environment_ir;
 mod neighbour_index;
 pub use controller_ir::IrControllerRuntime;
+pub use environment_ir::EnvironmentRuntime;
 pub use neighbour_index::PeriodicGridNeighbourIndex;
 
 const TAU: f64 = std::f64::consts::PI * 2.0;
@@ -56,6 +58,7 @@ pub struct NeighbourObservation { pub relative_position: Vec2 }
 pub struct Observation {
     pub heading: Vec2,
     pub neighbours: Vec<NeighbourObservation>,
+    pub environmental_scalar: Option<f64>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -191,6 +194,7 @@ impl LocalObservationModel {
         neighbours.query(state, agent_index, radius, arena_size, neighbour_indices);
         let origin = state[agent_index].position;
         out.heading = state[agent_index].heading();
+        out.environmental_scalar = None;
         out.neighbours.clear();
         if neighbour_indices.is_empty() { return; }
         let (sin, cos) = bearing_noise.sin_cos();
@@ -215,7 +219,7 @@ impl ObservationModel for LocalObservationModel {
         bearing_noise: f64,
     ) -> Observation {
         let mut neighbour_indices = Vec::new();
-        let mut observation = Observation { heading: Vec2::ZERO, neighbours: Vec::new() };
+        let mut observation = Observation { heading: Vec2::ZERO, neighbours: Vec::new(), environmental_scalar: None };
         self.observe_into(
             state,
             agent_index,
@@ -328,13 +332,23 @@ pub struct Simulation<C: ControllerRuntime> {
     neighbour_index: PeriodicGridNeighbourIndex,
     observation_scratch: Observation,
     neighbour_indices_scratch: Vec<usize>,
+    environment: EnvironmentRuntime,
     controller: C,
     rng: DeterministicRng,
     metrics: Vec<Box<dyn MetricRuntime>>,
 }
 
 impl<C: ControllerRuntime> Simulation<C> {
-    pub fn new(initialization: SwarmInitialization, config: SimulationConfig, mut controller: C) -> Result<Self, String> {
+    pub fn new(initialization: SwarmInitialization, config: SimulationConfig, controller: C) -> Result<Self, String> {
+        Self::new_with_environment(initialization, config, controller, EnvironmentRuntime::default())
+    }
+
+    pub fn new_with_environment(
+        initialization: SwarmInitialization,
+        config: SimulationConfig,
+        mut controller: C,
+        environment: EnvironmentRuntime,
+    ) -> Result<Self, String> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
         controller.reset(initialization.state.len());
@@ -353,8 +367,9 @@ impl<C: ControllerRuntime> Simulation<C> {
             physics: KinematicPhysics,
             observation_model: LocalObservationModel,
             neighbour_index: PeriodicGridNeighbourIndex::default(),
-            observation_scratch: Observation { heading: Vec2::ZERO, neighbours: Vec::new() },
+            observation_scratch: Observation { heading: Vec2::ZERO, neighbours: Vec::new(), environmental_scalar: None },
             neighbour_indices_scratch: Vec::new(),
+            environment,
             controller,
             rng,
             metrics: Vec::new(),
@@ -364,10 +379,20 @@ impl<C: ControllerRuntime> Simulation<C> {
     pub fn add_metric(&mut self, mut metric: Box<dyn MetricRuntime>) { metric.reset(); self.metrics.push(metric); }
 
     pub fn replace_setup(&mut self, initialization: SwarmInitialization, config: SimulationConfig) -> Result<(), String> {
+        self.replace_setup_with_environment(initialization, config, EnvironmentRuntime::default())
+    }
+
+    pub fn replace_setup_with_environment(
+        &mut self,
+        initialization: SwarmInitialization,
+        config: SimulationConfig,
+        environment: EnvironmentRuntime,
+    ) -> Result<(), String> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
         self.initialization = initialization;
         self.config = config;
+        self.environment = environment;
         self.control_stride = control_stride;
         self.metric_stride = metric_stride;
         self.reset();
@@ -384,6 +409,7 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.control_updates = 0;
         self.rng = DeterministicRng::new(self.config.seed);
         self.observation_scratch.heading = Vec2::ZERO;
+        self.observation_scratch.environmental_scalar = None;
         self.observation_scratch.neighbours.clear();
         self.neighbour_indices_scratch.clear();
         self.controller.reset(self.state.len());
@@ -407,6 +433,7 @@ impl<C: ControllerRuntime> Simulation<C> {
                         &mut self.neighbour_indices_scratch,
                         &mut self.observation_scratch,
                     );
+                    self.observation_scratch.environmental_scalar = self.environment.sample(self.state[agent_index].position);
                     let raw = self.controller.step(agent_index, &self.observation_scratch);
                     self.actuators[agent_index] = Action {
                         forward: raw.forward.clamp(-self.config.max_forward_speed, self.config.max_forward_speed),
@@ -430,6 +457,22 @@ impl<C: ControllerRuntime> Simulation<C> {
     pub fn control_updates(&self) -> u32 { self.control_updates }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot { scientific_time: self.scientific_time(), physics_ticks: self.physics_ticks, state: self.state.clone() }
+    }
+    pub fn has_environmental_scalar(&self) -> bool { self.environment.has_scalar() }
+    pub fn sample_environment_grid(&self, resolution: u32) -> Vec<f64> {
+        if resolution == 0 || !self.environment.has_scalar() { return Vec::new(); }
+        let n = resolution as usize;
+        let mut values = Vec::with_capacity(n * n);
+        let half = self.config.arena_size / 2.0;
+        let step = self.config.arena_size / resolution as f64;
+        for row in 0..resolution {
+            let y = half - (row as f64 + 0.5) * step;
+            for column in 0..resolution {
+                let x = -half + (column as f64 + 0.5) * step;
+                values.push(self.environment.sample(Vec2::new(x, y)).expect("environment is present"));
+            }
+        }
+        values
     }
 }
 
@@ -489,13 +532,15 @@ impl ProbeSimulation {
         sensor_noise: f64,
         max_forward_speed: f64,
         max_angular_speed: f64,
+        environment_ir_json: &str,
         controller_ir_json: &str,
         parameters_json: &str,
     ) -> Result<ProbeSimulation, JsValue> {
         let initialization = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
         let config = simulation_config(seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size, sensor_noise, max_forward_speed, max_angular_speed);
+        let environment = EnvironmentRuntime::from_json(environment_ir_json).map_err(|message| JsValue::from_str(&message))?;
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json).map_err(|message| JsValue::from_str(&message))?;
-        let simulation = Simulation::new(initialization, config, controller).map_err(|message| JsValue::from_str(&message))?;
+        let simulation = Simulation::new_with_environment(initialization, config, controller, environment).map_err(|message| JsValue::from_str(&message))?;
         Ok(Self { simulation })
     }
 
@@ -511,10 +556,12 @@ impl ProbeSimulation {
         sensor_noise: f64,
         max_forward_speed: f64,
         max_angular_speed: f64,
+        environment_ir_json: &str,
     ) -> Result<(), JsValue> {
         let initialization = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
         let config = simulation_config(seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size, sensor_noise, max_forward_speed, max_angular_speed);
-        self.simulation.replace_setup(initialization, config).map_err(|message| JsValue::from_str(&message))
+        let environment = EnvironmentRuntime::from_json(environment_ir_json).map_err(|message| JsValue::from_str(&message))?;
+        self.simulation.replace_setup_with_environment(initialization, config, environment).map_err(|message| JsValue::from_str(&message))
     }
 
     pub fn set_controller(&mut self, controller_ir_json: &str, parameters_json: &str) -> Result<(), JsValue> {
@@ -528,6 +575,8 @@ impl ProbeSimulation {
     pub fn scientific_time(&self) -> f64 { self.simulation.scientific_time() }
     pub fn physics_ticks(&self) -> u32 { self.simulation.physics_ticks() }
     pub fn control_updates(&self) -> u32 { self.simulation.control_updates() }
+    pub fn has_environmental_scalar(&self) -> bool { self.simulation.has_environmental_scalar() }
+    pub fn sample_environment_grid(&self, resolution: u32) -> Vec<f64> { self.simulation.sample_environment_grid(resolution) }
     pub fn snapshot_state(&self) -> Vec<f64> {
         let snapshot = self.simulation.snapshot();
         let mut values = Vec::with_capacity(snapshot.state.len() * 3);
@@ -626,6 +675,7 @@ mod tests {
         assert_eq!(out, vec![1]);
         let observation = LocalObservationModel.observe(&state, 0, &BruteForceNeighbourIndex, 0.5, 10.0, 0.0);
         assert!((observation.neighbours[0].relative_position.x + 0.2).abs() < 1e-12);
+        assert_eq!(observation.environmental_scalar, None);
     }
 
     #[test]
@@ -662,6 +712,7 @@ mod tests {
         let mut actual = Observation {
             heading: Vec2::new(99.0, 99.0),
             neighbours: vec![NeighbourObservation { relative_position: Vec2::new(99.0, 99.0) }],
+            environmental_scalar: Some(99.0),
         };
         LocalObservationModel.observe_into(&state, 0, &grid, 0.5, 10.0, 0.17, &mut indices, &mut actual);
         assert_eq!(actual, expected);
@@ -694,6 +745,44 @@ mod tests {
         let agent = sim.snapshot().state[0];
         assert!((agent.position.x - 0.05).abs() < 1e-12);
         assert!((agent.heading_angle - (TAU - 0.025)).abs() < 1e-12);
+    }
+
+    struct ScalarController;
+    impl ControllerRuntime for ScalarController {
+        fn reset(&mut self, _agent_count: usize) {}
+        fn step(&mut self, _agent_index: usize, observation: &Observation) -> Action {
+            Action { forward: observation.environmental_scalar.expect("scalar environment"), turning: 0.0 }
+        }
+    }
+
+    #[test]
+    fn simulator_samples_environment_locally_before_controller_step() {
+        let environment = EnvironmentRuntime::from_json(r#"{
+          "schema":"vlab.environment-scalar-ir/0.1",
+          "language":"python-vlab/0.1",
+          "entry":"environmental_scalar(x, y, config)",
+          "expression":{"kind":"binary","op":"+","left":{"kind":"x"},"right":{"kind":"const","value":1.0}}
+        }"#).unwrap();
+        let mut cfg = config();
+        cfg.physics_dt = 0.1; cfg.control_dt = 0.1; cfg.metric_dt = 0.1;
+        let init = SwarmInitialization { state: vec![AgentPhysicalState { position: Vec2::new(0.5, 0.0), heading_angle: 0.0 }] };
+        let mut sim = Simulation::new_with_environment(init, cfg, ScalarController, environment).unwrap();
+        sim.advance_physics_ticks(1);
+        assert!((sim.snapshot().state[0].position.x - 0.65).abs() < 1e-12);
+    }
+
+    #[test]
+    fn environment_visual_grid_uses_same_runtime_evaluator_without_affecting_trajectory() {
+        let environment = EnvironmentRuntime::from_json(r#"{
+          "schema":"vlab.environment-scalar-ir/0.1",
+          "language":"python-vlab/0.1",
+          "entry":"environmental_scalar(x, y, config)",
+          "expression":{"kind":"binary","op":"-","left":{"kind":"x"},"right":{"kind":"y"}}
+        }"#).unwrap();
+        let sim = Simulation::new_with_environment(initialization(0.0, 1), config(), ConstantController { action: Action::default() }, environment).unwrap();
+        let grid = sim.sample_environment_grid(2);
+        assert_eq!(grid.len(), 4);
+        assert_eq!(grid, vec![-5.0, 0.0, 0.0, 5.0]);
     }
 
     #[test]

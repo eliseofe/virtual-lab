@@ -83,7 +83,7 @@ fn validate_expression(
             if !value.is_finite() { return Err(at_line(*line, "numeric constants must be finite")); }
         }
         Expression::Load { path, line } => {
-            if path == "obs.heading" || path == "obs.neighbours" { return Ok(()); }
+            if path == "obs.heading" || path == "obs.neighbours" || path == "obs.environmental_scalar" { return Ok(()); }
             if let Some(name) = path.strip_prefix("self.") {
                 if state.contains(name) { return Ok(()); }
                 return Err(at_line(*line, format!("private state '{name}' is not declared")));
@@ -190,6 +190,7 @@ enum Intrinsic { Vec2, Dot, Perpendicular, Norm, Pow, Motion }
 #[derive(Debug, Clone, Copy)]
 enum PreparedLoad {
     Heading,
+    EnvironmentalScalar,
     NeighbourRelativePosition,
     Parameter(usize),
     PrivateState(usize),
@@ -232,6 +233,9 @@ fn resolve_load(
 ) -> Result<PreparedLoad, String> {
     if path == "obs.heading" {
         return Ok(PreparedLoad::Heading);
+    }
+    if path == "obs.environmental_scalar" {
+        return Ok(PreparedLoad::EnvironmentalScalar);
     }
     if let Some(name) = path.strip_prefix("self.") {
         return Ok(PreparedLoad::PrivateState(*state_slots.get(name)
@@ -404,6 +408,9 @@ fn push_load(
 ) {
     stack.push(match load {
         PreparedLoad::Heading => Value::Vec2(observation.heading),
+        PreparedLoad::EnvironmentalScalar => Value::Scalar(
+            observation.environmental_scalar.expect("validated environmental scalar observation")
+        ),
         PreparedLoad::NeighbourRelativePosition => {
             Value::Vec2(neighbour.expect("prepared neighbour load inside loop").relative_position)
         }
@@ -662,6 +669,7 @@ mod tests {
                 NeighbourObservation { relative_position: Vec2::new(0.5, 1.0) },
                 NeighbourObservation { relative_position: Vec2::new(1.0, -1.0) },
             ],
+            environmental_scalar: None,
         };
         let action = runtime.step(0, &observation);
         assert!((action.forward - 9.0).abs() < 1e-12);
@@ -669,6 +677,7 @@ mod tests {
         let second = runtime.step(0, &Observation {
             heading: Vec2::new(1.0, 0.0),
             neighbours: vec![NeighbourObservation { relative_position: Vec2::new(1.0, 0.0) }],
+            environmental_scalar: None,
         });
         assert!((second.forward - 4.0).abs() < 1e-12);
         assert_eq!(second.turning, 0.0);
@@ -686,7 +695,7 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, "{}");
         runtime.reset(2);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![] };
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
         assert_eq!(runtime.step(0, &observation).forward, 2.0);
         assert_eq!(runtime.step(1, &observation).forward, 1.0);
@@ -719,9 +728,10 @@ mod tests {
                 NeighbourObservation { relative_position: Vec2::new(3.0, 4.0) },
                 NeighbourObservation { relative_position: Vec2::new(0.0, 2.0) },
             ],
+            environmental_scalar: None,
         };
         assert_eq!(runtime.step(0, &observation).forward, 16.0);
-        assert_eq!(runtime.step(0, &Observation { heading: observation.heading, neighbours: vec![] }).forward, 3.0);
+        assert_eq!(runtime.step(0, &Observation { heading: observation.heading, neighbours: vec![], environmental_scalar: None }).forward, 3.0);
     }
 
     #[test]
@@ -740,8 +750,27 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, "{}");
         runtime.reset(1);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![] };
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
+    }
+
+    #[test]
+    fn environmental_scalar_is_a_local_read_only_controller_input() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"ScalarSensor","entry":"step",
+          "parameters":{},"state":[],
+          "body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[
+            {"kind":"load","path":"obs.environmental_scalar"},{"kind":"const","value":0.0}
+          ]}}]
+        }"#;
+        let mut runtime = compile(ir, "{}");
+        runtime.reset(1);
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: Some(0.375),
+        };
+        assert_eq!(runtime.step(0, &observation).forward, 0.375);
     }
 
     #[test]

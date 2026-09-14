@@ -1,5 +1,6 @@
 import { compileController } from "./controller/compiler.js";
 import { compileConfig, numericParameters } from "./config/compiler.js";
+import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./environment/compiler.js";
 import { compileInitializer } from "./initializer/compiler.js";
 import {
   RUNTIME_CONTRACT,
@@ -9,8 +10,6 @@ import {
 } from "./runtime/contract.js";
 import { ArenaCamera } from "./visualization/camera.js";
 
-// Simulator-owned implementation settings. These are deliberately not part of
-// the student experiment parameter namespace.
 const INTERNAL_SEED = 2026;
 
 const defaultConfigSource = `# EXPERIMENT SETUP
@@ -143,9 +142,12 @@ let activeSeed = INTERNAL_SEED;
 let appliedConfig = null;
 let appliedConfigSource = defaultConfigSource;
 let appliedInitializerSource = defaultInitializerSource;
+let appliedEnvironment = null;
 let appliedController = null;
 let pendingSetup = null;
 let pendingController = null;
+let environmentGrid = null;
+let environmentGridImage = null;
 
 const camera = new ArenaCamera();
 const activePointers = new Map();
@@ -209,10 +211,6 @@ function currentPinch() {
   };
 }
 
-// Temporary compatibility adapter for the pre-#63 built-in Active Elastic
-// configuration. These aliases stay in the production browser only; they are
-// intentionally absent from the science-free MCP authoring contract. Registry
-// experiments must use the generic runtime names directly.
 function runtimeValuesForCurrentBuiltIn(values) {
   return {
     ...values,
@@ -229,6 +227,7 @@ function compileSetup({ seed = activeSeed, configSource = ui.config.value, initi
   const initializerConfig = { ...config, values: { ...config.values, SEED: seed } };
   const initializer = compileInitializer(initializerSource, initializerConfig);
   validateInitialStateForRuntime(initializer.state, runtime);
+  const environment = compileEnvironmentScalar(initializerSource, initializerConfig);
 
   ui.initializerIr.textContent = JSON.stringify({
     version: initializer.version,
@@ -237,19 +236,22 @@ function compileSetup({ seed = activeSeed, configSource = ui.config.value, initi
     seed,
     agentCount: initializer.state.length,
     arenaSize: runtime.arenaSize,
+    environment: environment ? { schema: environment.schema, entry: environment.entry } : null,
     firstAgents: initializer.state.slice(0, 5),
   }, null, 2);
 
   return {
     config,
-    setup: simulationSetupFromRuntime(runtime, seed, initializer.state),
+    environment,
+    setup: simulationSetupFromRuntime(runtime, seed, initializer.state, environment),
   };
 }
 
-function compileControllerFor(config) {
+function compileControllerFor(config, environment = appliedEnvironment) {
   const parameters = numericParameters(config);
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
   const compiled = compileController(ui.source.value, { parameters: parameterTypes });
+  validateEnvironmentControllerPair(environment, compiled);
   ui.ir.textContent = JSON.stringify(compiled, null, 2);
   return { compiled, parameters };
 }
@@ -305,11 +307,12 @@ function setRunning(next, { notifyWorker = true } = {}) {
 function initializeIfReady() {
   if (!wasmReady || initialized) return;
   try {
-    const { config, setup } = compileSetup({ seed: activeSeed });
-    const controller = compileControllerFor(config);
+    const { config, environment, setup } = compileSetup({ seed: activeSeed });
+    const controller = compileControllerFor(config, environment);
     appliedConfig = config;
     appliedConfigSource = ui.config.value;
     appliedInitializerSource = ui.initializerSource.value;
+    appliedEnvironment = environment;
     appliedController = controller;
     setActiveArenaSize(setup.simulation.arenaSize, { resetView: true });
     ui.setupError.textContent = "";
@@ -343,6 +346,32 @@ function updateSnapshot(message) {
   ui.time.textContent = scientificTime.toFixed(3);
   ui.physicsTicks.textContent = String(message.physicsTicks ?? 0);
   ui.controlUpdates.textContent = String(message.controlUpdates ?? 0);
+}
+
+function rebuildEnvironmentGridImage() {
+  environmentGridImage = null;
+  if (!environmentGrid?.resolution || !environmentGrid.values.length) return;
+  const finite = environmentGrid.values.filter(Number.isFinite);
+  if (!finite.length) return;
+  const min = Math.min(...finite);
+  const max = Math.max(...finite);
+  const span = max - min;
+  const canvas = document.createElement("canvas");
+  canvas.width = environmentGrid.resolution;
+  canvas.height = environmentGrid.resolution;
+  const context = canvas.getContext("2d");
+  const image = context.createImageData(canvas.width, canvas.height);
+  for (let i = 0; i < environmentGrid.values.length; i += 1) {
+    const value = environmentGrid.values[i];
+    const normalized = Number.isFinite(value) && span > 0 ? (value - min) / span : 0.5;
+    const shade = Math.round(245 - normalized * 90);
+    image.data[i * 4] = shade;
+    image.data[i * 4 + 1] = shade;
+    image.data[i * 4 + 2] = shade;
+    image.data[i * 4 + 3] = 255;
+  }
+  context.putImageData(image, 0, 0);
+  environmentGridImage = canvas;
 }
 
 function drawAgent(context, glyph, x, y, heading, ratio) {
@@ -412,9 +441,14 @@ function drawSnapshot() {
   context.rect(arenaLeft, arenaTop, arenaRight - arenaLeft, arenaBottom - arenaTop);
   context.clip();
 
-  // Scientific scale reference only: this visual grid is unrelated to the
-  // simulator's internal neighbour-search index. Large arenas coarsen the visual
-  // grid only to avoid sub-pixel lines; zooming restores the finer scale.
+  if (environmentGridImage) {
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.globalAlpha = 0.72;
+    context.drawImage(environmentGridImage, arenaLeft, arenaTop, arenaRight - arenaLeft, arenaBottom - arenaTop);
+    context.restore();
+  }
+
   const pixelsPerUnit = frame.pixelsPerUnit;
   const visualGridStep = Math.max(1, Math.ceil((3 * ratio) / Math.max(pixelsPerUnit, 1e-9)));
   const visibleMinX = Math.max(-halfArena, frame.toWorldX(0));
@@ -478,6 +512,15 @@ worker.addEventListener("message", (event) => {
     initializeIfReady();
     return;
   }
+  if (message.type === "environment") {
+    if (Number.isFinite(message.arenaSize)) setActiveArenaSize(Number(message.arenaSize));
+    environmentGrid = {
+      resolution: Number(message.resolution) || 0,
+      values: Array.from(message.values ?? []),
+    };
+    rebuildEnvironmentGridImage();
+    return;
+  }
   if (message.type === "ready") {
     ui.status.textContent = "Simulator ready";
     ui.status.dataset.state = "ready";
@@ -503,6 +546,7 @@ worker.addEventListener("message", (event) => {
         appliedConfig = pendingSetup.config;
         appliedConfigSource = pendingSetup.configSource;
         appliedInitializerSource = pendingSetup.initializerSource;
+        appliedEnvironment = pendingSetup.environment;
         appliedController = pendingSetup.controller;
       }
       pendingSetup = null;
@@ -561,9 +605,9 @@ ui.applySetup.addEventListener("click", () => {
   try {
     const configSource = ui.config.value;
     const initializerSource = ui.initializerSource.value;
-    const { config, setup } = compileSetup({ seed: activeSeed, configSource, initializerSource });
-    const controller = compileControllerFor(config);
-    pendingSetup = { config, configSource, initializerSource, controller };
+    const { config, environment, setup } = compileSetup({ seed: activeSeed, configSource, initializerSource });
+    const controller = compileControllerFor(config, environment);
+    pendingSetup = { config, configSource, initializerSource, environment, controller };
     setActiveArenaSize(setup.simulation.arenaSize, { resetView: true });
     ui.setupError.textContent = "";
     ui.error.textContent = "";
@@ -580,7 +624,7 @@ ui.applySetup.addEventListener("click", () => {
 ui.compile.addEventListener("click", () => {
   try {
     if (!appliedConfig) throw new Error("No valid experiment configuration is active.");
-    const controller = compileControllerFor(appliedConfig);
+    const controller = compileControllerFor(appliedConfig, appliedEnvironment);
     pendingController = controller;
     ui.error.textContent = "";
     setFeedback(ui.feedback, "Applying controller…", "working");
@@ -673,11 +717,13 @@ ui.restartNewSeed.addEventListener("click", () => {
   try {
     if (!appliedConfig || !appliedController) throw new Error("No valid experiment is active.");
     const seed = randomSeedDifferentFromCurrent();
-    const { config, setup } = compileSetup({ seed, configSource: appliedConfigSource, initializerSource: appliedInitializerSource });
+    const { config, environment, setup } = compileSetup({ seed, configSource: appliedConfigSource, initializerSource: appliedInitializerSource });
+    validateEnvironmentControllerPair(environment, appliedController.compiled);
     pendingSetup = {
       config,
       configSource: appliedConfigSource,
       initializerSource: appliedInitializerSource,
+      environment,
       controller: appliedController,
     };
     ui.setupError.textContent = "";

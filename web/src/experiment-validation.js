@@ -1,5 +1,6 @@
 import { compileController } from "./controller/compiler.js";
 import { compileConfig, numericParameters } from "./config/compiler.js";
+import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./environment/compiler.js";
 import { compileInitializer } from "./initializer/compiler.js";
 import {
   artifactWritePayload,
@@ -11,9 +12,6 @@ import {
   validateRuntimeValues,
 } from "./runtime/contract.js";
 
-// Production-only compatibility for the pre-#63 built-in/legacy Active Elastic
-// source. These aliases are deliberately not part of the science-free MCP
-// authoring contract. New registry experiments use the generic runtime names.
 export function runtimeValuesForProductionExperiment(values) {
   return {
     ...values,
@@ -40,21 +38,20 @@ function compileExperiment(experiment, runtimeValues, { seed = 0 } = {}) {
   const initializerConfig = { ...config, values: { ...config.values, SEED: seed } };
   const initializer = compileInitializer(initializerSource, initializerConfig);
   validateInitialStateForRuntime(initializer.state, runtime);
+  const environment = compileEnvironmentScalar(initializerSource, initializerConfig);
 
   const parameters = numericParameters(config);
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
   const controller = compileController(controllerSource, { parameters: parameterTypes });
+  validateEnvironmentControllerPair(environment, controller);
 
-  return { config, runtime, initializer, controller, parameters };
+  return { config, runtime, initializer, environment, controller, parameters };
 }
 
 export function compileProductionExperiment(experiment, options) {
   return compileExperiment(experiment, runtimeValuesForProductionExperiment, options);
 }
 
-// Registry writes use the same science-neutral runtime requirements exposed to
-// AI authors. Unlike the production loader, this path deliberately does not
-// apply the built-in Active Elastic compatibility aliases.
 export function compileRegistryExperiment(experiment, options) {
   return compileExperiment(experiment, (values) => values, options);
 }
@@ -79,10 +76,6 @@ export function registryExperimentRunnability(experiment, options) {
   return runnability(compileRegistryExperiment, experiment, options);
 }
 
-// The built-in Active Elastic source predates the generic runtime contract.
-// When a signed-in user explicitly saves that built-in example as a registry
-// experiment, add only the generic runtime aliases already used mechanically by
-// production. No scientific values are derived or changed.
 export function registryArtifactsFromProductionExperiment(experiment) {
   const artifacts = experimentArtifactArray(experiment);
   const fields = sourceFieldsFromArtifactArray(artifacts);

@@ -74,6 +74,7 @@ fn exact_controller_can_command_backward_motion() {
             neighbours: vec![NeighbourObservation {
                 relative_position: Vec2::new(0.40, 0.0),
             }],
+            environmental_scalar: None,
         },
     );
     assert!(action.forward < 0.0, "close neighbour ahead must produce a negative raw forward command");
@@ -91,6 +92,7 @@ fn exact_controller_turns_for_an_off_axis_neighbour() {
             neighbours: vec![NeighbourObservation {
                 relative_position: Vec2::new(0.60, 0.05),
             }],
+            environmental_scalar: None,
         },
     );
     assert!(action.forward > 0.0);

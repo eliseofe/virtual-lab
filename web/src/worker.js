@@ -14,6 +14,7 @@ let loopTimer = null;
 let lastSnapshotWallMs = -Infinity;
 
 const SNAPSHOT_INTERVAL_MS = 1000 / 60;
+const ENVIRONMENT_GRID_RESOLUTION = 64;
 
 function emitSnapshot(type) {
   if (!simulation) return;
@@ -30,10 +31,24 @@ function emitSnapshot(type) {
   });
 }
 
+function emitEnvironment() {
+  if (!simulation) return;
+  const values = simulation.has_environmental_scalar()
+    ? simulation.sample_environment_grid(ENVIRONMENT_GRID_RESOLUTION)
+    : [];
+  self.postMessage({
+    type: "environment",
+    arenaSize: activeArenaSize,
+    resolution: values.length ? ENVIRONMENT_GRID_RESOLUTION : 0,
+    values,
+  });
+}
+
 function simulationValues(setup = {}) {
   const simulationSetup = setup.simulation ?? {};
   return {
     initialState: Array.isArray(setup.initialState) ? setup.initialState : [],
+    environment: setup.environment ?? null,
     seed: Number(simulationSetup.seed),
     physicsDt: Number(simulationSetup.physicsDt),
     controlDt: Number(simulationSetup.controlDt),
@@ -118,8 +133,6 @@ function runLoop() {
     emitSnapshot("snapshot");
   }
 
-  // Yield to the worker event loop between bounded chunks so pause, speed,
-  // reset and edit messages remain responsive even above compute capacity.
   scheduleLoop(0);
 }
 
@@ -179,11 +192,13 @@ self.addEventListener("message", (event) => {
         setup.sensorNoise,
         setup.maxForwardSpeed,
         setup.maxAngularSpeed,
+        JSON.stringify(setup.environment),
         JSON.stringify(message.ir),
         JSON.stringify(message.parameters ?? {}),
       );
       pacer = new RuntimePacer(activePhysicsDt);
       self.postMessage({ type: "ready", kernelVersion: wasm.kernel_version() });
+      emitEnvironment();
       emitSnapshot("snapshot");
       return;
     }
@@ -204,9 +219,6 @@ self.addEventListener("message", (event) => {
       setTargetSpeed(message.speed);
       return;
     }
-    // Profiling/test hook only. Production main.js is statically tested never
-    // to send this message; it exists so raw exact-tick benchmarks remain
-    // comparable across scheduler refactors without making the UI clock physics.
     if (message.type === "advance") {
       stopLoop();
       const ticks = Math.max(0, Math.trunc(Number(message.ticks ?? 0)));
@@ -214,8 +226,6 @@ self.addEventListener("message", (event) => {
       emitSnapshot("advanced");
       return;
     }
-    // #111 profiling-only hook. It separates kernel advance time from snapshot
-    // materialization. Production main.js never sends profile-advance.
     if (message.type === "profile-advance") {
       stopLoop();
       const ticks = Math.max(0, Math.trunc(Number(message.ticks ?? 0)));
@@ -257,10 +267,12 @@ self.addEventListener("message", (event) => {
         setup.sensorNoise,
         setup.maxForwardSpeed,
         setup.maxAngularSpeed,
+        JSON.stringify(setup.environment),
       );
       simulation.set_controller(JSON.stringify(message.ir), JSON.stringify(message.parameters ?? {}));
       activeSeed = setup.seed >>> 0;
       pacer = new RuntimePacer(activePhysicsDt);
+      emitEnvironment();
       emitSnapshot("setup-applied");
       return;
     }

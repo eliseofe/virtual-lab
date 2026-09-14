@@ -1,4 +1,5 @@
 import { compileConfig, numericParameters } from "./vendor/config-compiler.js";
+import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./vendor/environment-compiler.js";
 import { compileInitializer } from "./vendor/initializer-compiler.js";
 import { compileController } from "./vendor/controller-compiler.js";
 import {
@@ -14,8 +15,8 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.3",
-  experiment_interface_version: "5",
+  contract_version: "vlab.authoring/0.4",
+  experiment_interface_version: "6",
   experiment_artifact_interface: "vlab.experiment-artifacts/2",
   validation_mode: "compile-without-simulation",
   invalid_write_policy: "reject",
@@ -34,11 +35,19 @@ export const AUTHORING_CONTRACT = Object.freeze({
     },
     initialization: {
       compiled_version: "vlab.initializer-state/0.2",
-      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and approved intrinsics.",
+      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and approved intrinsics. It may additionally define the optional static Environment function environmental_scalar(x, y, config).",
       entry: "initialize(config, rng, place)",
       simulator_owned_inputs: ["config", "rng", "place", "SEED"],
       intrinsics: ["sqrt", "ceil", "floor", "abs", "max", "min", "range", "rng.uniform", "place"],
-      constants: ["TAU", "SQRT3_OVER_2"]
+      constants: ["TAU", "SQRT3_OVER_2"],
+      environment: {
+        capability: "environment.static_scalar_field",
+        optional_entry: "environmental_scalar(x, y, config)",
+        syntax: "A single pure `return <scalar expression>` body. The expression may use x, y, finite numeric config parameters, TAU, SQRT3_OVER_2, and the approved pure scalar intrinsics.",
+        intrinsics: ["sqrt", "abs", "sin", "cos", "exp", "pow", "min", "max"],
+        semantics: "Defines a deterministic static scalar field over world position. The simulator samples this field locally; it does not derive or expose a spatial gradient.",
+        artifact_policy: "This is a capability of the required Initialization artifact. It does not create a fourth required artifact."
+      }
     },
     controller: {
       language: "python-vlab/0.1",
@@ -48,7 +57,8 @@ export const AUTHORING_CONTRACT = Object.freeze({
       observations: {
         "obs.heading": "vec2",
         "obs.neighbours": "sequence<neighbour>",
-        "neighbour.relative_position": "vec2"
+        "neighbour.relative_position": "vec2",
+        "obs.environmental_scalar": "scalar when Initialization defines environmental_scalar(x, y, config)"
       },
       actions: {
         Motion: { arguments: ["forward: scalar", "turning: scalar"], result: "action" }
@@ -73,7 +83,24 @@ export const AUTHORING_CONTRACT = Object.freeze({
     observations: [
       { id: "local.heading", source_name: "obs.heading", type: "vec2" },
       { id: "local.neighbours", source_name: "obs.neighbours", type: "sequence<neighbour>" },
-      { id: "local.neighbour.relative_position", source_name: "neighbour.relative_position", type: "vec2" }
+      { id: "local.neighbour.relative_position", source_name: "neighbour.relative_position", type: "vec2" },
+      {
+        id: "local.environmental_scalar",
+        source_name: "obs.environmental_scalar",
+        type: "scalar",
+        requires: "environment.static_scalar_field",
+        information_boundary: "local scalar measurement only; no global position, field function or gradient"
+      }
+    ],
+    environment: [
+      {
+        id: "environment.static_scalar_field",
+        definition: "Initialization environmental_scalar(x, y, config)",
+        compiled_schema: "vlab.environment-scalar-ir/0.1",
+        cadence: "static",
+        deterministic: true,
+        rendering: "same simulator field evaluator used for sensing"
+      }
     ],
     actions: [
       { id: "motion.forward_turning", constructor: "Motion", arguments: ["scalar", "scalar"] }
@@ -161,8 +188,6 @@ export function mergeLegacySourcesIntoArtifacts(artifacts, changes = {}) {
 function errorDiagnostic(artifact, error) {
   const message = error instanceof Error ? error.message : String(error);
   const compilerCategory = typeof error?.category === "string" ? error.category : null;
-  // Preserve the established external diagnostic name `initializer` even though
-  // the canonical generic artifact id is `initialization`.
   let category = compilerCategory ?? (artifact === "initializer" ? "initializer" : "syntax");
   if (
     category === "unsupported-feature" ||
@@ -211,10 +236,12 @@ export function validateExperimentSources({ config_source, initializer_source, c
   }
 
   let initializer;
+  let environment;
   try {
     const initializerConfig = { ...config, values: { ...config.values, SEED: 0 } };
     initializer = compileInitializer(initializer_source, initializerConfig);
     validateInitialStateForRuntime(initializer.state, runtime);
+    environment = compileEnvironmentScalar(initializer_source, initializerConfig);
   } catch (error) {
     diagnostics.push(errorDiagnostic("initializer", error));
     return invalid(diagnostics);
@@ -225,6 +252,7 @@ export function validateExperimentSources({ config_source, initializer_source, c
     const parameters = numericParameters(config);
     const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
     controller = compileController(controller_source, { parameters: parameterTypes });
+    validateEnvironmentControllerPair(environment, controller);
   } catch (error) {
     diagnostics.push(errorDiagnostic("controller", error));
     return invalid(diagnostics);
@@ -237,6 +265,7 @@ export function validateExperimentSources({ config_source, initializer_source, c
     compiled: {
       configuration: config.version,
       initializer: initializer.version,
+      environment: environment?.schema ?? null,
       controller_language: controller.language,
       controller_ir_schema: controller.schema,
       runtime_contract: runtime.version

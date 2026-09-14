@@ -35,8 +35,8 @@ test("issue #55/#63 edge validator vendors the exact production compilers and ru
 });
 
 test("issue #55 contract contains software interface only, not a scientific reference experiment", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.3");
-  assert.equal(AUTHORING_CONTRACT.runtime_contract.version, "vlab.runtime/0.1");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.4");
+  assert.equal(AUTHORING_CONTRACT.runtime_contract.version, "vlab.runtime/0.2");
   assert.equal(AUTHORING_CONTRACT.content_policy.includes_scientific_models, false);
   assert.equal(AUTHORING_CONTRACT.content_policy.includes_reference_experiments, false);
   assert.equal(Object.prototype.hasOwnProperty.call(AUTHORING_CONTRACT, "reference_examples"), false);
@@ -67,12 +67,12 @@ test("issue #55 contract contains software interface only, not a scientific refe
 test("issue #55/#63 a generic experiment with arbitrary scientific parameter names validates", () => {
   const result = validateExperimentSources(SOFTWARE_FIXTURE);
   assert.equal(result.valid, true, JSON.stringify(result, null, 2));
-  assert.equal(result.contract_version, "vlab.authoring/0.3");
+  assert.equal(result.contract_version, "vlab.authoring/0.4");
   assert.equal(result.compiled.configuration, "vlab.config/0.2");
   assert.equal(result.compiled.initializer, "vlab.initializer-state/0.2");
   assert.equal(result.compiled.controller_language, "python-vlab/0.1");
   assert.equal(result.compiled.controller_ir_schema, "vlab.controller-ir/0.1");
-  assert.equal(result.compiled.runtime_contract, "vlab.runtime/0.1");
+  assert.equal(result.compiled.runtime_contract, "vlab.runtime/0.2");
 });
 
 test("issue #63 missing generic runtime configuration is rejected before persistence", () => {
