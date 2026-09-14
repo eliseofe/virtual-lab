@@ -53,6 +53,22 @@ Once Studies/results exist, the complete scalability matrix should become a pers
 
 No candidate implementation is authorized merely by the existence of #168. Proceed by focused child issues under normal execution granularity.
 
+### #169 contract/harness checkpoint — completed
+
+#169 froze the comparative contract before any competing implementation was allowed to enter the tournament. PR #170 squash-merged as `70dda6c40039a7e814c75668d7008b4fef8cdf03`.
+
+Durable artifacts:
+
+- `docs/NEIGHBOUR_SEARCH_BENCHMARK_CONTRACT.md` — exact semantic, timing, fairness and reporting contract;
+- `benchmarks/neighbour_search_matrix.json` — machine-readable full-tournament axes and deterministic CI smoke scenarios;
+- `crates/kernel/examples/neighbour_strategy_benchmark.rs` — candidate-independent baseline/oracle harness.
+
+The frozen smoke matrix explicitly covers single and simultaneous multiple radii, a wide smallest/largest-radius ratio, clustered occupancy and periodic-boundary bands. One candidate rebuild is reused across each ordered radius set. The current production grid matched `BruteForceNeighbourIndex` exactly for every agent/radius in all five smoke scenarios.
+
+PR performance workflow `34909595098` passed the new contract smoke plus the full existing native/WASM/browser performance tail; evidence artifact `10373957403`. Post-merge production workflow `34909748448` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+
+No ARGoS-stamping, multi-resolution, tree/BVH or auto-selection implementation was started in #169. The next candidate must be a focused child of #168 and must use the frozen contract rather than altering the benchmark to fit itself.
+
 ## Near-term parallel product/research lanes
 
 - **#45 / #162:** production Virtual Lab OAuth/login surface and explicit enrollment policy. Current Supabase baseline has only the owner Professor + Student test identities; no unknown accounts were present at audit time.
@@ -135,14 +151,15 @@ When sources disagree:
 1. explicit current owner instruction;
 2. `PROJECT_CONTROL.md` for priority/sequencing;
 3. `docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md` for neighbour-search architecture/investigation state;
-4. current dedicated closeout/performance design documents;
-5. `PROJECT_STATE.md` for accepted technical state/evidence;
-6. current design documents;
-7. active issue scope;
-8. older issues/chats as history only.
+4. `docs/NEIGHBOUR_SEARCH_BENCHMARK_CONTRACT.md` for the frozen comparative neighbour-search contract/matrix rules;
+5. current dedicated closeout/performance design documents;
+6. `PROJECT_STATE.md` for accepted technical state/evidence;
+7. current design documents;
+8. active issue scope;
+9. older issues/chats as history only.
 
 Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#165 is complete and proved a real avoidable single-grid-resolution penalty. #168 is now the serious exact-neighbour architecture investigation: ARGoS-style stamping, multi-resolution grids and adaptive tree/BVH strategies will be compared against current/brute-force/radius-matched baselines before any new production default is chosen. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
+**#169 is complete and the exact multi-radius neighbour-search contract/matrix is frozen and verified. #168 remains the serious architecture investigation; no candidate has won or been implemented yet. The next performance work must be a focused candidate child using the frozen tournament contract. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
