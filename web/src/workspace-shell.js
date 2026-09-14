@@ -1,3 +1,5 @@
+import "./authoring-workspace.js";
+
 const utilityDialog = document.querySelector("#workspace-utilities");
 const utilityContent = document.querySelector("#workspace-utility-content");
 const utilityLoading = document.querySelector("#utility-loading");
