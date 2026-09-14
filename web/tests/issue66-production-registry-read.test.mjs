@@ -107,5 +107,6 @@ test("registry bootstrap is additive and cannot block the core simulator runtime
   const runtimeSpeed = await readFile(path.join(src, "runtime-speed.js"), "utf8");
   assert.doesNotMatch(runtimeSpeed, /^import "\.\/registry-ui-v3\.js";/);
   assert.match(runtimeSpeed, /import\("\.\/registry-ui-v3\.js"\)[\s\S]*\.catch\(\(error\) => \{[\s\S]*Registry UI failed to load/);
-  assert.match(runtimeSpeed, /import\("\.\/professor-inbox\.js"\)\.catch/);
+  assert.match(runtimeSpeed, /import\("\.\/professor-inbox\.js"\)[\s\S]*\.catch\(\(error\) => \{[\s\S]*Professor inbox failed to load/);
+  assert.match(runtimeSpeed, /import\("\.\/professor-development-links\.js"\)\.catch/);
 });
