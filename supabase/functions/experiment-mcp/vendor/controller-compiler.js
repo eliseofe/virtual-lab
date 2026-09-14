@@ -243,6 +243,7 @@ function inferExpression(expr, scope) {
   if (expr.kind === "load") {
     if (expr.path === "obs.heading") return "vec2";
     if (expr.path === "obs.neighbours") return "neighbours";
+    if (expr.path === "obs.environmental_scalar") return "scalar";
     if (expr.path.startsWith("obs.")) throw new ControllerCompileError("invalid-observation-field", `unknown observation field '${expr.path}'`, expr.line);
     if (expr.path.startsWith("self.")) {
       const name = expr.path.slice(5);
@@ -310,7 +311,7 @@ function checkStatements(body, scope) {
       returnsAction ||= nestedReturns;
     } else if (statement.kind === "return") {
       const type = inferExpression(statement.value, scope);
-      if (type !== "action") throw new ControllerCompileError("type", `step must return Motion/action, got ${type}`, statement.line);
+      if (type !== "action") throw new ControllerCompileError("type", "step method must return a Motion/action");
       returnsAction = true;
     }
   }
