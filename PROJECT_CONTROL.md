@@ -10,34 +10,48 @@ The near-term product objective remains the **Professor paper-to-experiment capa
 
 `paper + professor AI → experiment draft → missing capability → Supabase capability request → Professor inbox → approve/decline → ChatGPT/GitHub implementation → deployed capability → request implemented → draft revalidates/runs`
 
-Before extending that workflow, finish the approved Experiment-artifact architectural prerequisite without teaching new AI workflows a representation already known to be temporary.
+The Experiment-artifact architectural prerequisite is now engineering-complete through #117 and #118. Do not start the Professor loop automatically from recency: first obtain the owner's pending live acceptance of the current private-experiment/library flow and artifact refactor when the owner is available.
 
-## Current gates and sequencing
+## Current owner acceptance gate
 
-### #115 owner acceptance
+The owner can now test the relevant current production state in one consolidated pass.
 
-#115 collection assignment/moves is implemented, merged, deployed and automated-smoke green. It remains open only for owner live acceptance. This acceptance may occur when convenient and does not imply unfinished engineering.
+### #115 — collection assignment/moves
 
-### #117 — completed
+#115 is implemented, merged, deployed and automated-smoke green. It remains open only for owner live acceptance:
 
-#117 generic Experiment artifact persistence/contract is complete:
+- `Save as new…` can place a copy in a chosen owned collection;
+- a clean owned experiment can move between collections / back to Unfiled and the library grouping/location updates.
 
-- isolated PR #122 merged as `6b31bd5626b5af31804ff7fbaa19ec01c719177f`;
-- production database migrated to canonical ordered typed artifacts with bounded legacy mirrors;
-- MCP v5 deployed as Supabase Edge Function version 9;
-- existing experiment IDs/revisions/ownership/collections/RLS and scientific semantics preserved;
-- synthetic fourth-artifact tests pass;
+### #117 — generic artifact persistence/MCP — engineering complete
+
+#117 is complete and closed:
+
+- PR #122 merged as `6b31bd5626b5af31804ff7fbaa19ec01c719177f`;
+- canonical ordered typed Experiment artifacts are persisted in Supabase;
+- bounded legacy mirrors remain synchronized for compatibility;
+- MCP v5 is deployed as Supabase Edge Function version 9;
+- production migration preserved existing IDs, revisions, ownership, collections, RLS and scientific semantics;
 - main workflow `34832435383` passed build, Pages deploy and deployed-browser smoke.
 
-A minimal real-client Grok read-only sanity check is useful before the next checkpoint: read `Simple Random Walk` and report artifact IDs; expected `configuration`, `initialization`, `controller`.
+A minimal real-client sanity check may be included in the owner's consolidated acceptance: in a fresh Grok session, read `Simple Random Walk` and report artifact IDs. Expected: `configuration`, `initialization`, `controller`.
 
-### #118 — waiting for explicit continuation
+### #118 — artifact-driven Experiment workspace/UI — engineering complete, owner acceptance pending
 
-#118 artifact-driven Experiment workspace/UI is approved but **must not start merely because it was pre-approved**.
+#118 is implemented and deployed as its own substantial checkpoint:
 
-Per the owner's execution-granularity rule, #117 was a substantial checkpoint and is now complete. Stop here and ask whether to continue with #118. If the owner says yes, implement/test/deploy/verify #118 as its own substantial delivery unit.
+- PR #123 merged as `ec3993b07faf12be063863ee609e86e7fa31668b`;
+- current Configuration / Initialization / Controller remain the same visible core editors and ordering;
+- browser load/apply/capture/dirty/save paths now operate through the generic ordered artifact representation;
+- supported future text artifacts can be rendered through a generic editor adapter rather than a new hard-coded editor branch;
+- unsupported artifact formats fail explicitly instead of silently dropping content;
+- #74/#76/#115 registry/library/save/conflict behavior remains on the same production path;
+- no simulator/scientific semantics changed;
+- PR normal workflow `34833362480` passed;
+- PR performance-regression workflow `34833362464` passed;
+- main production workflow `34833493231` passed build, Pages deploy and deployed-browser smoke (`kernel ready with populated editors`).
 
-The superseded combined PR #121 is closed unmerged. Its branch is implementation history only and must not be merged wholesale.
+Issue #118 remains open only for owner live acceptance. No additional #118 engineering is currently known to be pending.
 
 ## Execution granularity — mandatory
 
@@ -57,15 +71,17 @@ Default to one substantial independently deployable/testable ticket at a time:
 
 Small/trivial adjacent tickets may be batched. If scope turns out larger than expected, split at the next safe boundary. Full rule: `docs/EXECUTION_GRANULARITY.md`.
 
-## After #118
+## After owner acceptance
 
-Resume the Professor capability-request loop:
+Resume the Professor capability-request loop, still one substantial independently closable checkpoint at a time. The intended sequence is:
 
 1. authenticated `professor` / `curator` role support while preserving student behavior;
 2. durable Supabase capability-request records and role-dependent missing-capability behavior;
 3. Professor request inbox with Approve / Decline;
-4. developer handoff: approved request → ChatGPT → linked GitHub implementation issue → test/deploy → mark implemented only when active capability contract advertises it;
-5. revalidate originating experiment/draft.
+4. developer handoff: approved request → ChatGPT → linked GitHub implementation issue → test/deploy → mark implemented only when the active capability contract advertises it;
+5. revalidate the originating experiment/draft.
+
+Before implementing that sequence, inspect #58 and the current code/design state and decompose the next substantial checkpoint rather than treating the entire loop as one ticket.
 
 Broader sharing/Showcase, Study execution, Research Notes/Documents, results-to-AI and paper synthesis remain related future epics/backlog rather than prerequisites for the first capability-request loop.
 
@@ -90,4 +106,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#117 is complete. #115 awaits only owner live acceptance. The next substantial engineering checkpoint is #118, but it must not begin until the owner explicitly says to continue; after #118, resume the Professor paper-to-experiment capability-request loop.**
+**#117 and #118 engineering are complete and deployed. #115 and #118 await owner live acceptance, which can be done together; the optional minimal Grok read-only check can validate #117 in the same pass. Do not start the next substantial Professor-loop implementation checkpoint until the owner explicitly continues after this acceptance boundary.**
