@@ -40,10 +40,14 @@ jobs:
           lscpu | tee -a runner-environment.txt
 
       - name: Run native kernel profile
-        run: cargo run --release -p vlab-kernel --example perf_profile | tee native-profile.txt
+        run: |
+          set -o pipefail
+          cargo run --release -p vlab-kernel --example perf_profile | tee native-profile.txt
 
       - name: Run neighbour-density profile
-        run: cargo run --release -p vlab-kernel --example neighbour_density_profile | tee neighbour-density-profile.txt
+        run: |
+          set -o pipefail
+          cargo run --release -p vlab-kernel --example neighbour_density_profile | tee neighbour-density-profile.txt
 
       - name: Build browser kernel
         working-directory: crates/kernel
