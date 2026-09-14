@@ -11,7 +11,7 @@ test("#125 authoring contract names the required core artifact interface", () =>
   ]);
 
   const capabilities = AUTHORING_CONTRACT.runtime_contract.artifact_capabilities;
-  assert.equal(capabilities.version, "vlab.artifact-capabilities/0.1");
+  assert.equal(capabilities.version, "vlab.artifact-capabilities/0.2");
   assert.deepEqual(capabilities.lifecycle_hooks, ["setup", "initialize", "control", "finalize"]);
   assert.deepEqual(capabilities.required_core.map(({ id }) => id), [
     "configuration",
@@ -46,7 +46,8 @@ test("#125 optional artifacts are representable but optional execution is curren
 
   assert.deepEqual(capabilities.optional_executable.registered_types, []);
   assert.equal(capabilities.optional_executable.unsupported_request, "unsupported-capability");
-  assert.match(capabilities.optional_executable.execution_policy, /never executed by inference/i);
+  assert.match(capabilities.optional_executable.execution_policy, /No optional executable artifact type is currently registered/i);
+  assert.match(capabilities.optional_executable.execution_policy, /not a fourth artifact/i);
 
   assert.equal(capabilities.optional_executable.registered_types.includes("world"), false);
   assert.equal(capabilities.optional_executable.registered_types.includes("control_parameters"), false);
