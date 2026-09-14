@@ -63,7 +63,7 @@ test("#118 registry UI loads/saves artifacts generically and tracks edits outsid
   const registry = await text("registry-ui-v3.js");
   assert.match(registry, /experimentArtifactsEqual/);
   assert.match(registry, /artifacts,config_source,initializer_source,controller_source/);
-  assert.match(registry, /data-experiment-artifact-editor/);
+  assert.match(registry, /experimentArtifactEditor/);
   assert.match(registry, /captureExperimentArtifacts\(\)/);
 });
 
