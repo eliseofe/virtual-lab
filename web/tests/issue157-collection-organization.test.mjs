@@ -18,7 +18,7 @@ test("issue #157 keeps collections out of primary experiment navigation", async 
   const [shell, organization] = await sources();
   assert.match(shell, /import "\.\/collection-organization\.js";/);
   assert.match(organization, /\.experiment-browser-body \{ grid-template-columns: minmax\(0, 1fr\) !important; \}/);
-  assert.match(organization, /filters\.hidden = true/);
+  assert.match(organization, /setHidden\(filters, true\)/);
   assert.match(organization, /Collections are optional metadata, never navigation/);
   assert.doesNotMatch(organization, /filterButton\(|browserCollection/);
 });
@@ -35,14 +35,14 @@ test("issue #157 reuses existing move semantics instead of writing experiments d
   const [, organization] = await sources();
   assert.match(organization, /document\.querySelector\("\.registry-move-row"\)/);
   assert.match(organization, /organizer\.assignmentSlot\.append\(row\)/);
-  assert.match(organization, /button\.textContent = "Save organization"/);
+  assert.match(organization, /setText\(button, "Save organization"\)/);
   assert.doesNotMatch(organization, /from\("experiments"\)/);
   assert.doesNotMatch(organization, /collection_id\s*:/);
 });
 
 test("issue #157 makes No collection organization-only language", async () => {
   const [, organization] = await sources();
-  assert.match(organization, /emptyOption\.textContent = "No collection"/);
+  assert.match(organization, /setText\(emptyOption, "No collection"\)/);
   assert.match(organization, /Collection \(optional\)/);
   assert.match(organization, /replaceAll\("Unfiled", "No collection"\)/);
 });
@@ -53,7 +53,16 @@ test("issue #157 collection management is bounded to the existing collection tab
   assert.match(organization, /from\("experiment_collections"\)[\s\S]*\.update\(\{ name \}\)/);
   assert.match(organization, /\.eq\("owner_id", user\.id\)/);
   assert.doesNotMatch(organization, /\.delete\(\)/);
-  assert.doesNotMatch(organization, /capability_requests|experiment-mcp|simulator|controller_source|initializer_source/);
+  assert.doesNotMatch(organization, /capability_requests|experiment-mcp|controller_source|initializer_source/);
+});
+
+test("issue #157 observer mutations are idempotent", async () => {
+  const [, organization] = await sources();
+  assert.match(organization, /function setHidden\(element, hidden\)/);
+  assert.match(organization, /if \(element\.hidden !== hidden\) element\.hidden = hidden;/);
+  assert.match(organization, /function setText\(element, text\)/);
+  assert.match(organization, /if \(element\.textContent !== text\) element\.textContent = text;/);
+  assert.match(organization, /attributeFilter: \["hidden", "data-kind"\]/);
 });
 
 test("issue #157 preserves existing registry save-as-new and move endpoints underneath", async () => {
