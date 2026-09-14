@@ -1,0 +1,1 @@
+Issue #143 final status is recorded in `2026-09-14-scalar-capability-completion.md` and the authoritative project state files.
