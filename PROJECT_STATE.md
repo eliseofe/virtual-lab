@@ -2,7 +2,7 @@
 
 Updated: **14 September 2026**
 
-This is the durable, context-free starting point for future ChatGPT/Work/human sessions. Read it before inferring roadmap order from old issue numbers or old chats.
+This is the durable **detailed technical state/evidence** for future ChatGPT/Work/human sessions. For current strategy, priority and sequencing, read `AGENTS.md` and then `PROJECT_CONTROL.md` **before** this file. Do not infer roadmap priority from the order of technical sections below.
 
 ## Repository and production
 
@@ -21,14 +21,17 @@ Current production line includes the completed performance/runtime/visualization
 - #106 / PR #107 — reliable achieved real-time-factor meter under heavy browser load;
 - PR #108 — conservative CI hygiene: docs-only pushes to `main` do not run the Pages pipeline;
 - #109 / PR #110 — interactive arena camera, zoom/pan feedback, and selectable agent glyphs;
-- #111 / PR #114 — N≈5,000 layer-attribution profile across worker compute, snapshot transfer, main-thread copy, and Canvas rendering.
+- #111 / PR #114 — N≈5,000 layer-attribution profile across worker compute, snapshot transfer, main-thread copy, and Canvas rendering;
+- #74 / PR #75 + #76 / PRs #77/#78 — private-student production write-back and scalable experiment library, owner accepted 14 September 2026;
+- #115 / PR #116 — collection assignment on `Save as new…` plus moving clean owned experiments between collections; deployed, automated smoke green, owner live acceptance still pending.
 
 Important merge SHAs:
 
 - #29: `f713dad722c68683bfc5822366b2e8071395b307`;
 - #106: `9de15df3b972f2a2e63c1bd5ebfd6b22467fa7a3`;
 - #109: `39ec2423874aef3b75ccc7cc03dc81d96917b733`;
-- #111: `69f8d293fc500de7e0cd3647a24decf1f4a49f8b`.
+- #111: `69f8d293fc500de7e0cd3647a24decf1f4a49f8b`;
+- #115: `5048793c75602faba3d99809693fca1e622642be`.
 
 ## Owner-visible acceptance state
 
@@ -39,8 +42,50 @@ Important merge SHAs:
 - #106 fixed the achieved-runtime meter. Owner tested production and accepted that `Actual` now agrees with the visible simulation clock (around 0.6× in the accepted test). Remember: runtime factor is **simulation-time / wall-clock**, not FPS.
 - #109 camera/visualization work was owner-tested on phone and reported to work **very well**. Pinch zoom and touch pan are therefore accepted. Desktop mouse/trackpad behavior remains ordinary future regression coverage, not a known defect.
 - After #109, the owner reported that N≈5,000 simulations are still slow on the phone. #111 diagnosed the software layers before any graphics optimization; results are below.
+- On 14 September 2026 the owner exercised and accepted the normal #74/#76 private-student production flow: open/edit/save an owned experiment, create a private copy, browse/switch within the library, and signed-in ownership/editability behavior. The live registry evidence showed `Simple Random Walk` advanced to revision 4 and a new `Simple Random Walk tiny` copy at revision 1.
+- During that acceptance the owner identified the missing ability to choose a collection during `Save as new…` and to move an existing owned experiment between collections. That is #115. It is now implemented/deployed; only the owner's short live acceptance remains.
 
 Do not reopen accepted work without genuinely new evidence.
+
+## Private-student production path — accepted through #76; #115 awaiting owner live acceptance
+
+The production Virtual Lab is a real client of the canonical Supabase experiment registry while scientific execution remains local in browser/WASM.
+
+Accepted behavior through #74/#76:
+
+- production authentication uses its own browser auth-storage namespace;
+- signed-in users discover only their own runnable private experiments;
+- owned experiments load into the real local compile/run path;
+- source edits can save back to the same registry experiment as a new revision;
+- stale writes use optimistic `id + owner_id + base revision` protection and refuse silent overwrite;
+- `Save as new…` creates a distinct private experiment;
+- browser/library navigation exposes Built-in vs My experiments, All / Unfiled / collections, search, ownership/editability and revision context;
+- dirty-switch confirmation preserves unsaved work;
+- built-in/read-only behavior and anonymous mode remain separate from private persistence.
+
+#74 and #76 are closed `completed` after owner acceptance on 14 September 2026.
+
+### #115 collection assignment/moves
+
+Owner acceptance exposed one remaining organization gap. PR #116 implemented it using the existing `collection_id` and `experiment_collections` model; no new storage model or simulator change was introduced.
+
+Current deployed #115 behavior:
+
+- `Save as new…` offers `Unfiled` plus all collections visible to the signed-in owner;
+- copying an owned experiment defaults to its current collection;
+- copying the built-in source defaults to `Unfiled`;
+- a clean owned experiment exposes a collection selector + `Move` action;
+- move is disabled/refused when local source edits are dirty or a revision conflict is known, so moving cannot implicitly persist source edits;
+- move uses the same `id + owner_id + base revision` optimistic guard as source write-back;
+- successful moves naturally advance the experiment revision through the existing database revision trigger;
+- browser grouping, current-location feedback and quick-switch scope refresh after the move.
+
+Live database verification before implementation confirmed both protections for collection ownership:
+
+1. experiment INSERT/UPDATE RLS permits a non-null `collection_id` only when that collection belongs to `auth.uid()`;
+2. existing `validate_experiment_collection_owner` trigger independently validates owner/collection consistency.
+
+PR #116 tests passed; `main` build, Pages deployment and deployed browser smoke run `34824094006` all succeeded. Issue #115 remains open only for owner live acceptance of collection placement/movement.
 
 ## #29 — worker-owned simulation scheduler — completed and accepted
 
@@ -246,7 +291,7 @@ AI still cannot run the simulator or observe simulation results automatically; f
 
 Current registry workload references:
 
-- Simple Random Walk: `75a313d5-150a-4831-b4f7-b02255a1482e`, revision 3;
+- Simple Random Walk: `75a313d5-150a-4831-b4f7-b02255a1482e`, revision 4;
 - ordered Active Elastic: `b57a9113-32d5-4c82-928b-22ceec2c4a2b`, revision 1.
 
 ## Professor capability-request workflow — approved architecture
@@ -358,7 +403,7 @@ Required eventual capabilities include:
 
 Cost invariant remains local compute/storage + static hosting, with no required paid backend.
 
-A previously proposed first bounded slice is **Round 2A — deterministic multi-run/headless execution core**. Do not start it merely from this file; inspect current #3 and owner priorities first.
+A previously proposed first bounded slice is **Round 2A — deterministic multi-run/headless execution core**. Do not start it merely from this file; inspect current `PROJECT_CONTROL.md`, #3 and owner priorities first.
 
 ## Performance epic #56 — current conclusion
 
@@ -422,18 +467,20 @@ The project remains zero-euro incremental cost: GitHub/GitHub Pages, existing Su
 
 ## Resume instructions for a context-free agent
 
-1. Read this file first.
-2. Inspect current `main`, latest #56 comments, and the relevant open issue before acting.
-3. #29 is completed/accepted; do not rebuild the old scheduler solution.
-4. #100 is completed: pre/post at U=0.05 was bit-for-bit identical for 1,000 ticks.
-5. #101 is completed: valid setup handles 10k/100k initialization; owner also confirmed production 100k with arena165 for both current placement modes.
-6. #106 runtime-factor meter is accepted; do not use old pre-#106 extreme-load `Actual` readings as evidence.
-7. #109 zoom/pan/glyph work is deployed and owner accepted on phone.
-8. #111 is completed: renderer/snapshot transfer are not the primary N≈5k bottleneck on the measured CI workload; next performance lane would be worker computation, but no follow-up optimization is currently authorized merely by this statement.
-9. Preserve the ordered Active Elastic and disordered Random Walk performance guardrails.
-10. Do not revive #83 without genuinely new evidence.
-11. Professor unsupported-capability policy is role-based and simple: professor missing capability → Supabase request; student missing capability → reject for now. Do not reintroduce a requestability classifier.
-12. Read `docs/PROFESSOR_CAPABILITY_REQUEST_WORKFLOW.md` before implementing professor/request functionality.
-13. #102 requires owner scientific involvement before integrator decisions.
-14. #8 is future native/HPC architecture; current evidence does not establish state transfer/rendering as the immediate large-N bottleneck.
-15. Test/deploy/close the loop before reporting implementation completion.
+1. Read `AGENTS.md`, then `PROJECT_CONTROL.md`, then this file.
+2. Inspect current `main` and only the issue/design documents relevant to the current gate before acting.
+3. #74 and #76 are owner accepted and closed; do not reopen them merely because #115 extends collection management.
+4. #115 is merged and deployed; automated tests/build/deploy/smoke are green; it remains open only for owner live acceptance.
+5. #29 is completed/accepted; do not rebuild the old scheduler solution.
+6. #100 is completed: pre/post at U=0.05 was bit-for-bit identical for 1,000 ticks.
+7. #101 is completed: valid setup handles 10k/100k initialization; owner also confirmed production 100k with arena165 for both current placement modes.
+8. #106 runtime-factor meter is accepted; do not use old pre-#106 extreme-load `Actual` readings as evidence.
+9. #109 zoom/pan/glyph work is deployed and owner accepted on phone.
+10. #111 is completed: renderer/snapshot transfer are not the primary N≈5k bottleneck on the measured CI workload; next performance lane would be worker computation, but no follow-up optimization is currently authorized merely by this statement.
+11. Preserve the ordered Active Elastic and disordered Random Walk performance guardrails.
+12. Do not revive #83 without genuinely new evidence.
+13. Professor unsupported-capability policy is role-based and simple: professor missing capability → Supabase request; student missing capability → reject for now. Do not reintroduce a requestability classifier.
+14. Read `docs/PROFESSOR_CAPABILITY_REQUEST_WORKFLOW.md` before implementing professor/request functionality.
+15. #102 requires owner scientific involvement before integrator decisions.
+16. #8 is future native/HPC architecture; current evidence does not establish state transfer/rendering as the immediate large-N bottleneck.
+17. Test/deploy/close the loop before reporting implementation completion.
