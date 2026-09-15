@@ -1,0 +1,51 @@
+name: Neighbour environment-size matrix
+
+on:
+  pull_request:
+    paths:
+      - 'crates/kernel/examples/neighbour_environment_size_matrix.rs'
+      - 'crates/kernel/examples/adaptive_periodic_bvh.rs'
+      - 'crates/kernel/examples/multi_resolution_periodic_grid.rs'
+      - '.github/workflows/neighbour-environment-size-matrix.yml'
+      - 'docs/NEIGHBOUR_SEARCH_ENVIRONMENT_SIZE_MATRIX_2026-09-15.md'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/kernel/examples/neighbour_environment_size_matrix.rs'
+      - 'crates/kernel/examples/adaptive_periodic_bvh.rs'
+      - 'crates/kernel/examples/multi_resolution_periodic_grid.rs'
+      - '.github/workflows/neighbour-environment-size-matrix.yml'
+      - 'docs/NEIGHBOUR_SEARCH_ENVIRONMENT_SIZE_MATRIX_2026-09-15.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Record runner environment
+        run: |
+          {
+            echo "utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            uname -a
+            rustc --version --verbose
+            cargo --version
+            lscpu
+          } > neighbour-environment-size-environment.txt
+      - name: Run controlled 2x2x2x2 environment-size matrix
+        run: |
+          set -o pipefail
+          cargo run --release -p vlab-kernel --example neighbour_environment_size_matrix | tee neighbour-environment-size-matrix.txt
+      - name: Upload matrix evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: neighbour-environment-size-matrix-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          path: |
+            neighbour-environment-size-matrix.txt
+            neighbour-environment-size-environment.txt
+          retention-days: 90
