@@ -230,11 +230,11 @@
   .live-results { min-height: 400px; }
 }
 
+/* A square/foldable viewport still has enough horizontal room for the
+   scientific view and Results together. Keep the two surfaces co-located
+   side by side until the viewport is genuinely phone-narrow. */
 @media (max-width: 820px) {
-  .simulation-results-grid { grid-template-columns: 1fr; }
-  .live-results { min-height: 280px; }
-  .results-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .results-empty { grid-column: 1 / -1; }
+  .results-panels { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
@@ -243,4 +243,10 @@
   .results-series-options { position: fixed; inset: auto 12px 12px 12px; width: auto; max-height: 45vh; }
   .results-plot-canvas { height: 190px; min-height: 190px; }
   .results-plot-wrap { min-height: 190px; }
+}
+
+@media (max-width: 560px) {
+  .simulation-results-grid { grid-template-columns: 1fr; }
+  .live-results { min-height: 280px; }
+  .results-empty { grid-column: 1 / -1; }
 }
