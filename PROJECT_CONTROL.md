@@ -12,7 +12,7 @@ The #147 UI/UX redesign is complete and deployed. The accepted Lab workflow rema
 
 Neighbour-search architecture is complete and production uses corrected adaptive periodic BVH `adaptive-periodic-bvh/v1` through #193 / PR #194. #168 and #178 are closed; #179 remains deferred until Studies exist.
 
-The active product/scientific frontier is **#195 — Experiment Metrics + live Results**. #196 / #195.1 is complete and deployed: the canonical Experiment has four compulsory artifacts (`configuration`, `initialization`, `controller`, `metrics`), with an empty Metrics artifact valid for compatibility. #197 / #195.2 is also complete and deployed: multiple metric streams now execute in the runtime with deterministic scientific timing, bounded in-memory buffering and batched worker→UI transport. The next substantial implementation ticket is **#198 / #195.3 — co-located live Results UI with configurable multi-series plot panels**.
+The active product/scientific frontier is **#195 — Experiment Metrics + live Results**. #196 / #195.1 is complete and deployed: the canonical Experiment has four compulsory artifacts (`configuration`, `initialization`, `controller`, `metrics`), with an empty Metrics artifact valid for compatibility. #197 / #195.2 is complete and production-recertified: multiple metric streams execute with deterministic scientific timing, bounded in-memory buffering and batched worker→UI transport. #198 / #195.3 is now complete and deployed: live Results are co-located with the simulation through configurable multi-series time-series plot panels. The next substantial implementation ticket is **#199 / #195.4 — local single-run result persistence, buffered flush policy and export provenance**.
 
 A separate editor ergonomics lane is #202. A new owner-feedback UI refinement lane is #207. Neither displaces #195 unless the owner explicitly reprioritizes.
 
@@ -41,7 +41,7 @@ The measurement lifecycle includes an explicit `measure` phase. The frozen perio
 
 ### Deployed runtime sampling foundation — #197 / #195.2 complete
 
-#197 / PR #213 is merged and deployed at main merge `95d3e64e4ccb79ef4551411f0f19cdba78d31c32`.
+#197 / PR #213 merged the runtime foundation at `95d3e64e4ccb79ef4551411f0f19cdba78d31c32`. The owner-requested production triple-check later found a packaging hole: the Pages HTML referenced the Metrics runtime bridge at the root while the file existed only inside the hashed asset directory. PR #215 repaired that production wiring and strengthened deployed smoke; the final recertified merge is `a87ad175f3527b404fcf7adf096cb6cb0a1d882e`.
 
 The runtime now:
 
@@ -54,26 +54,28 @@ The runtime now:
 - performs no durable storage I/O on the simulator hot path;
 - keeps Metrics edits inside the existing Apply & restart flow.
 
-Deterministic browser/WASM profiling verified identical trajectories with and without metrics, exact expected sample counts across several metric-count/cadence cases, and zero dropped samples in the tested cases. Main Pages build, deployment and deployed-browser smoke are green after merge.
+Deterministic browser/WASM profiling verified identical trajectories with and without metrics, exact expected sample counts across several metric-count/cadence cases, and zero dropped samples in the tested cases. Final production recertification run `35008691715` passed build, Pages deployment and a deployed-browser smoke that explicitly requires `globalThis.__vlabMetricRuntime`. Independent Pages artifact inspection also confirmed the versioned Metrics bridge path exists exactly as referenced.
 
-#197 stops exactly at runtime collection/transport/performance isolation. It does not implement live plotting or persistence.
+#197 stops exactly at runtime collection/transport/performance isolation. It does not implement persistence.
 
-### Current next ticket — #198 / #195.3
+### Deployed live Results UI — #198 / #195.3 complete
 
-Build the live Results presentation on top of #197's stable result stream. Live Results must remain physically close to the running simulation; normal metric inspection must not require leaving the Experiment screen, switching browser tabs or opening a separate Results page.
+#198 / PR #216 merged as `3197b937a00dbdc7c91fccfc571dfe54fd73ea5a` and is deployed.
 
-Results use generic plot panels:
+Live Results now remain on the Experiment screen with the running simulation:
 
-- a panel references one or more stable metric IDs;
-- several metrics may share one panel;
-- the same metric may appear in more than one panel;
-- colors are assigned automatically and remain stable within the active presentation;
-- panel arrangement/bindings are presentation/workspace state, not scientific metric definitions;
-- first visualization type is an interactive time-series line plot.
+- desktop uses an adjacent simulation + Results composition; smaller screens stack Results below the arena without leaving the page;
+- generic plot panels bind to one or more stable metric IDs;
+- multiple metrics may share a panel and the same metric may appear in multiple panels;
+- colors are assigned deterministically by metric ID and remain stable within the presentation;
+- users can add/remove plot panels and change series bindings without modifying the scientific Experiment definition;
+- the first visualization is an interactive time-series line plot with hover inspection, horizontal pan/zoom and reset-view;
+- complete received scientific samples remain retained separately from display reduction for long series;
+- UI rendering is throttled independently from scientific metric sampling/transport and non-visible panels are skipped.
 
-UI redraw cadence remains independent from scientific metric sampling. Rendering may use a reduced display representation for long series only if the complete collected scientific samples remain preserved separately.
+Panel composition/bindings are presentation/workspace state only. #198 does not create scientific Experiment revisions and contains no persistence/export implementation.
 
-#198 must stop after live Results UI is deployed and browser-verified. Do not begin #199 persistence/export inside #198.
+Pre-merge Round 1A run `35009414282` and performance-profile run `35009414213` passed. Production run `35009612243` passed build, Pages deploy, ordinary deployed-browser smoke, dedicated live-Results smoke, and responsive/focus smoke. The dedicated Results smoke verified complete sample accumulation, two independently configurable panels, the same metric in multiple panels, rendered co-location beside the arena, and mobile stacking without horizontal overflow.
 
 ### Experiment Results vs Studies
 
@@ -87,11 +89,13 @@ Studies later orchestrate repeated runs/parameter conditions, consume the same s
 
 Basic metrics and one-run live Results therefore precede the Study foundation. #3 remains important but is not a prerequisite for #195.
 
-### Local persistence — #199
+### Current next ticket — #199 / #195.4 local persistence
 
 Single-run result persistence is local-first. Never synchronously write every metric sample on the simulation hot path. Preserve complete scientific samples according to the declared sampling policy even if rendering uses a reduced display representation for long series.
 
 Persist/export enough provenance to identify the exact Experiment/revision, metric IDs/definitions, sampling policies, scientific/run time, configuration/seed/runtime/capability versions and result/export identity.
+
+#199 must keep persistence flush cadence independent from metric evaluation and UI refresh, define pending-buffer crash/stop/finalize semantics explicitly, and stop before Studies or MCP authoring.
 
 ### MCP / research-AI completion — #200
 
@@ -110,9 +114,9 @@ Research AI authors scientific Experiment artifacts and generic Results bindings
 ### #195 child sequence
 
 - **#196 / #195.1 — COMPLETE/DEPLOYED** — four compulsory artifacts + Metrics language/validation/read-only execution contract + explicit measurement phase.
-- **#197 / #195.2 — COMPLETE/DEPLOYED** — multi-metric runtime sampling, bounded buffered transport and performance isolation.
-- **#198 / #195.3 — NEXT** — co-located live Results UI with configurable multi-series plot panels.
-- **#199 / #195.4** — local single-run result persistence, buffered flush policy, export/provenance.
+- **#197 / #195.2 — COMPLETE/DEPLOYED/RECERTIFIED** — multi-metric runtime sampling, bounded buffered transport and performance isolation.
+- **#198 / #195.3 — COMPLETE/DEPLOYED** — co-located live Results UI with configurable multi-series plot panels.
+- **#199 / #195.4 — NEXT** — local single-run result persistence, buffered flush policy, export/provenance.
 - **#200 / #195.5** — MCP/Connector fine-grained Metrics + Results binding authoring end to end.
 - **#201 / #195.6** — owner-defined flocking-order-parameter acceptance.
 
@@ -140,7 +144,7 @@ Program structure comes from parser/compiler semantics, not magic comment string
 
 Children: #203 editor foundation/highlighting; #204 outline/navigation/folding/search; #205 diagnostics/completion.
 
-#202 is important but does not block #198.
+#202 is important but does not block #199.
 
 ## Owner-feedback UI/UX refinement lane — #207
 
@@ -268,4 +272,4 @@ Older statements fixing the runnable core permanently at three artifacts or assi
 
 ## Current one-line status
 
-**#196 and #197 are complete and deployed: Virtual Lab has four compulsory Experiment artifacts plus deterministic multi-metric runtime sampling with bounded buffered worker transport. The next substantial product ticket is #198: co-located live Results UI and configurable multi-series plot panels. #207 records the owner’s next UI refinement round but does not displace #195. #202 remains the separate editor-ergonomics lane; Studies remain downstream of basic one-run Metrics/Results.**
+**#196, #197 and #198 are complete and deployed: Virtual Lab has four compulsory Experiment artifacts, deterministic multi-metric runtime sampling with bounded buffered transport, and co-located configurable live Results plots. The next substantial product ticket is #199: local single-run result persistence/export with decoupled flush cadence and provenance. #207 remains the parallel owner-feedback UI refinement lane; #202 remains the separate editor-ergonomics lane; Studies remain downstream of the single-run Metrics/Results foundation.**
