@@ -76,11 +76,17 @@ test("#196 authoring/artifact contracts are versioned for four compulsory artifa
 
 test("#196 database migration backfills Metrics without revision bump and enforces four core artifacts", async () => {
   const migration = await text("supabase/migrations/20260915130000_metrics_fourth_core_artifact.sql");
+  assert.match(migration, /disable trigger artifact_sync_experiment_artifacts/);
+  assert.match(migration, /enable trigger artifact_sync_experiment_artifacts/);
   assert.match(migration, /disable trigger bump_experiment_revision/);
   assert.match(migration, /ensure_metrics_artifact/);
   assert.match(migration, /vlab\.registry-experiment\/3/);
   assert.match(migration, /vlab\.experiment-artifacts\/3/);
   assert.match(migration, /configuration, initialization, controller, and metrics core artifact/);
+  const disableSync = migration.indexOf("disable trigger artifact_sync_experiment_artifacts");
+  const backfill = migration.indexOf("update public.experiments");
+  const enableSync = migration.indexOf("enable trigger artifact_sync_experiment_artifacts");
+  assert.ok(disableSync >= 0 && disableSync < backfill && backfill < enableSync, "legacy artifact sync must be disabled only around the v3 backfill");
 });
 
 test("#196 browser artifact adapter recognizes Metrics as core while using generic editor presentation", async () => {
