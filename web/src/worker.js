@@ -12,9 +12,33 @@ let targetSpeed = 1;
 let stopAtScientificTime = null;
 let loopTimer = null;
 let lastSnapshotWallMs = -Infinity;
+let lastMetricTransportWallMs = -Infinity;
+let lastReportedDroppedSamples = 0;
 
 const SNAPSHOT_INTERVAL_MS = 1000 / 60;
+const METRIC_TRANSPORT_INTERVAL_MS = 100;
+const METRIC_TRANSPORT_BATCH_SIZE = 4096;
 const ENVIRONMENT_GRID_RESOLUTION = 64;
+const EMPTY_METRICS_IR = Object.freeze({
+  schema: "vlab.metrics-ir/0.1",
+  language: "python-vlab-metrics/0.1",
+  measurement_phase: "post-physics-wrapped-state/1",
+  observation_contract: {
+    mode: "read-only-global-snapshot",
+    fields: [
+      "snapshot.scientific_time",
+      "snapshot.agent_count",
+      "snapshot.agents[].position",
+      "snapshot.agents[].heading",
+      "snapshot.agents[].heading_angle",
+    ],
+  },
+  metrics: [],
+});
+
+function metricsIr(message = {}) {
+  return message.metricsIr ?? EMPTY_METRICS_IR;
+}
 
 function emitSnapshot(type) {
   if (!simulation) return;
@@ -43,6 +67,47 @@ function emitEnvironment() {
     resolution: values.length ? ENVIRONMENT_GRID_RESOLUTION : 0,
     values,
   });
+}
+
+function resetMetricTransportClock() {
+  lastMetricTransportWallMs = -Infinity;
+  lastReportedDroppedSamples = 0;
+  self.postMessage({ type: "metric-reset" });
+}
+
+function readMetricBatch(maxSamples = METRIC_TRANSPORT_BATCH_SIZE) {
+  if (!simulation) return null;
+  return JSON.parse(simulation.drain_metric_samples_json(maxSamples));
+}
+
+function shouldPostMetricBatch(batch) {
+  const dropped = Number(batch?.buffer?.dropped_samples ?? 0);
+  return Boolean(batch?.samples?.length) || dropped !== lastReportedDroppedSamples;
+}
+
+function postMetricBatch(batch) {
+  if (!batch || !shouldPostMetricBatch(batch)) return;
+  lastReportedDroppedSamples = Number(batch.buffer?.dropped_samples ?? lastReportedDroppedSamples);
+  self.postMessage({ type: "metric-batch", batch });
+}
+
+function emitMetricBatch(force = false) {
+  if (!simulation) return;
+  const now = performance.now();
+  if (!force && now - lastMetricTransportWallMs < METRIC_TRANSPORT_INTERVAL_MS) return;
+  const batch = readMetricBatch();
+  lastMetricTransportWallMs = now;
+  postMetricBatch(batch);
+}
+
+function flushMetricBatches() {
+  if (!simulation) return;
+  for (;;) {
+    const batch = readMetricBatch();
+    postMetricBatch(batch);
+    if (!batch?.buffer?.remaining_samples) break;
+  }
+  lastMetricTransportWallMs = performance.now();
 }
 
 function simulationValues(setup = {}) {
@@ -90,9 +155,23 @@ function ticksUntilStop() {
   return Math.max(1, Math.ceil((remaining / activePhysicsDt) - 1e-12));
 }
 
+function metricRuntimeError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  stopLoop();
+  self.postMessage({ type: "metrics-runtime-error", message });
+  self.postMessage({ type: "error", message: `Metrics runtime: ${message}` });
+}
+
 function finishRunIfNeeded() {
   if (ticksUntilStop() > 0) return false;
   stopLoop();
+  try {
+    simulation.finalize_metrics();
+    flushMetricBatches();
+  } catch (error) {
+    metricRuntimeError(error);
+    return true;
+  }
   emitSnapshot("completed");
   return true;
 }
@@ -117,16 +196,19 @@ function runLoop() {
   try {
     simulation.advance_ticks(ticks);
   } catch (error) {
-    stopLoop();
-    self.postMessage({
-      type: "controller-runtime-error",
-      message: error instanceof Error ? error.message : String(error),
-    });
+    const message = error instanceof Error ? error.message : String(error);
+    if (/metric/i.test(message)) {
+      metricRuntimeError(error);
+    } else {
+      stopLoop();
+      self.postMessage({ type: "controller-runtime-error", message });
+    }
     return;
   }
   const finished = performance.now();
   pacer.recordWork(ticks, finished - started);
 
+  emitMetricBatch(false);
   if (finishRunIfNeeded()) return;
 
   if (finished - lastSnapshotWallMs >= SNAPSHOT_INTERVAL_MS) {
@@ -148,6 +230,7 @@ function startLoop(speed, stopAt) {
   const now = performance.now();
   pacer.start(now, targetSpeed);
   lastSnapshotWallMs = now - SNAPSHOT_INTERVAL_MS;
+  lastMetricTransportWallMs = now - METRIC_TRANSPORT_INTERVAL_MS;
   scheduleLoop(0);
 }
 
@@ -186,7 +269,7 @@ self.addEventListener("message", (event) => {
       activeArenaSize = setup.arenaSize;
       activeSeed = setup.seed >>> 0;
       activePhysicsDt = setup.physicsDt;
-      simulation = new wasm.ProbeSimulation(
+      simulation = new wasm.MetricProbeSimulation(
         JSON.stringify(setup.initialState),
         setup.seed,
         setup.physicsDt,
@@ -199,13 +282,16 @@ self.addEventListener("message", (event) => {
         setup.maxAngularSpeed,
         JSON.stringify(setup.environment),
         JSON.stringify(message.ir),
+        JSON.stringify(metricsIr(message)),
         JSON.stringify(message.parameters ?? {}),
       );
       pacer = new RuntimePacer(activePhysicsDt);
+      resetMetricTransportClock();
       self.postMessage({
         type: "ready",
         kernelVersion: wasm.kernel_version(),
         neighbourStrategy: simulation.neighbour_strategy(),
+        metricCount: simulation.metric_count(),
       });
       emitEnvironment();
       emitSnapshot("snapshot");
@@ -221,6 +307,7 @@ self.addEventListener("message", (event) => {
     }
     if (message.type === "pause") {
       stopLoop();
+      flushMetricBatches();
       emitSnapshot("paused");
       return;
     }
@@ -232,6 +319,7 @@ self.addEventListener("message", (event) => {
       stopLoop();
       const ticks = Math.max(0, Math.trunc(Number(message.ticks ?? 0)));
       simulation.advance_ticks(ticks);
+      flushMetricBatches();
       emitSnapshot("advanced");
       return;
     }
@@ -239,6 +327,7 @@ self.addEventListener("message", (event) => {
       stopLoop();
       const ticks = Math.max(0, Math.trunc(Number(message.ticks ?? 0)));
       const includeState = message.includeState === true;
+      const transportMetrics = message.metricTransport === true;
       const advanceStarted = performance.now();
       simulation.advance_ticks(ticks);
       const advanceFinished = performance.now();
@@ -249,14 +338,35 @@ self.addEventListener("message", (event) => {
         state = simulation.snapshot_state();
         snapshotMs = performance.now() - snapshotStarted;
       }
+      let metricTransportMs = 0;
+      let metricTransportBytes = 0;
+      let metricSamples = 0;
+      let metricDroppedSamples = 0;
+      if (transportMetrics) {
+        const transportStarted = performance.now();
+        for (;;) {
+          const batchText = simulation.drain_metric_samples_json(METRIC_TRANSPORT_BATCH_SIZE);
+          metricTransportBytes += batchText.length;
+          const batch = JSON.parse(batchText);
+          metricSamples += batch.samples?.length ?? 0;
+          metricDroppedSamples = Number(batch.buffer?.dropped_samples ?? metricDroppedSamples);
+          if (!batch.buffer?.remaining_samples) break;
+        }
+        metricTransportMs = performance.now() - transportStarted;
+      }
       self.postMessage({
         type: "profile-advanced",
         ticks,
         advanceMs: advanceFinished - advanceStarted,
         snapshotMs,
+        metricTransportMs,
+        metricTransportBytes,
+        metricSamples,
+        metricDroppedSamples,
         scientificTime: simulation.scientific_time(),
         stateLength: state?.length ?? 0,
         neighbourStrategy: simulation.neighbour_strategy(),
+        metricCount: simulation.metric_count(),
         state,
       });
       return;
@@ -278,10 +388,13 @@ self.addEventListener("message", (event) => {
         setup.maxForwardSpeed,
         setup.maxAngularSpeed,
         JSON.stringify(setup.environment),
+        JSON.stringify(metricsIr(message)),
+        JSON.stringify(message.parameters ?? {}),
       );
       simulation.set_controller(JSON.stringify(message.ir), JSON.stringify(message.parameters ?? {}));
       activeSeed = setup.seed >>> 0;
       pacer = new RuntimePacer(activePhysicsDt);
+      resetMetricTransportClock();
       emitEnvironment();
       emitSnapshot("setup-applied");
       return;
@@ -289,22 +402,36 @@ self.addEventListener("message", (event) => {
     if (message.type === "apply-controller") {
       stopLoop();
       simulation.set_controller(JSON.stringify(message.ir), JSON.stringify(message.parameters ?? {}));
+      simulation.set_metrics(JSON.stringify(metricsIr(message)), JSON.stringify(message.parameters ?? {}));
+      resetMetricTransportClock();
       emitSnapshot("controller-applied");
+      return;
+    }
+    if (message.type === "apply-metrics") {
+      stopLoop();
+      simulation.set_metrics(JSON.stringify(metricsIr(message)), JSON.stringify(message.parameters ?? {}));
+      resetMetricTransportClock();
+      emitSnapshot("metrics-applied-snapshot");
+      self.postMessage({ type: "metrics-applied", metricCount: simulation.metric_count() });
       return;
     }
     if (message.type === "reset") {
       stopLoop();
       simulation.reset();
+      resetMetricTransportClock();
       emitSnapshot("reset");
       return;
     }
     self.postMessage({ type: "error", message: `unknown worker message '${message.type}'` });
   } catch (error) {
     stopLoop();
-    self.postMessage({
-      type: message.type === "apply-setup" ? "setup-error" : "controller-runtime-error",
-      message: error instanceof Error ? error.message : String(error),
-    });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const type = message.type === "apply-setup"
+      ? "setup-error"
+      : message.type === "apply-metrics"
+        ? "metrics-error"
+        : "controller-runtime-error";
+    self.postMessage({ type, message: errorMessage });
   }
 });
 
