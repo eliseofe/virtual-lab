@@ -74,12 +74,18 @@ function connect(wsUrl) {
 }
 
 async function profileInPage() {
+  // Runtime.evaluate executes outside an ES-module referrer context on newer
+  // Chrome versions. Resolve all dynamic module/worker URLs explicitly against
+  // the loaded hashed performance-profile page instead of relying on bare
+  // relative-specifier resolution.
+  const pageBase = new URL(".", globalThis.location.href);
   const [controllerModule, configModule, initializerModule, runtimeModule] = await Promise.all([
-    import("./controller/compiler.js"),
-    import("./config/compiler.js"),
-    import("./initializer/compiler.js"),
-    import("./runtime/contract.js"),
+    import(new URL("controller/compiler.js", pageBase).href),
+    import(new URL("config/compiler.js", pageBase).href),
+    import(new URL("initializer/compiler.js", pageBase).href),
+    import(new URL("runtime/contract.js", pageBase).href),
   ]);
+  const workerUrl = new URL("worker.js", pageBase);
   const { compileController } = controllerModule;
   const { compileConfig, numericParameters } = configModule;
   const { compileInitializer } = initializerModule;
@@ -239,7 +245,7 @@ def initialize(config, rng, place):
     const ir = compileController(controllerSpec.source, { parameters: parameterTypes });
     const samples = [];
     for (let repetition = 0; repetition < 5; repetition += 1) {
-      const worker = new Worker("./worker.js", { type: "module" });
+      const worker = new Worker(workerUrl, { type: "module" });
       await waitMessage(worker, (message) => message.type === "wasm-ready");
       const snapshot = waitMessage(worker, (message) => message.type === "snapshot");
       worker.postMessage({ type: "initialize", setup, ir, parameters });
