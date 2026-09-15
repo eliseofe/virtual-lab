@@ -46,7 +46,7 @@ jobs:
       - name: Upload tournament evidence
         uses: actions/upload-artifact@v4
         with:
-          name: generic-neighbour-tournament-${{ github.sha }}
+          name: generic-neighbour-tournament-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: |
             generic-neighbour-tournament.txt
             generic-neighbour-tournament-environment.txt
