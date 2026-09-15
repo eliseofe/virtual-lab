@@ -60,7 +60,8 @@ Key merges: `3197b937a00dbdc7c91fccfc571dfe54fd73ea5a` initial UI; `7b6c62e094d0
 
 ### #199 — local single-run result persistence — complete/deployed
 
-PR #225 merged as `c39979ee15d4682497d9a96f08a0c661c9424f79`.
+Primary persistence merge PR #225: `c39979ee15d4682497d9a96f08a0c661c9424f79`.
+Final package-semantics cleanup PR #227: `7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d`.
 
 The canonical scientific result is ordinary user-visible files under a user-selected Virtual Lab workspace root where writable-directory access is supported. Browser-private storage is not used as the scientific archive. IndexedDB may remember a directory handle only; it does not contain the metric sample data.
 
@@ -98,9 +99,10 @@ Persistence behavior:
 - pending persistence is bounded at 524,288 samples; if storage falls behind to that bound the Lab pauses rather than silently dropping scientific data;
 - hiding the page triggers a best-effort immediate flush;
 - direct folder location cannot be changed in the middle of an active run;
-- browsers without supported writable-directory access use a portable one-file ZIP fallback for completed runs rather than treating browser-private storage as canonical durability.
-
-The portable fallback contains flat metric CSV files plus internal `.vlab` run metadata inside the archive; this fallback packaging does not alter the direct user-visible workspace layout.
+- when direct writable-directory access is unavailable, completed standalone runs currently retained for the selected Experiment can be exported through `Download experiment package`;
+- the package mirrors the canonical hierarchy: `<Experiment>/runs/*.csv` plus compact `<Experiment>/.vlab/` bookkeeping;
+- package numbering is flat and incremental inside the exported Experiment collection; there are no per-run directories and no per-run JSON manifests;
+- package export is a secondary convenience, not the canonical automatic-persistence mechanism where direct folder writing exists.
 
 CSV metric file contract is intentionally simple:
 
@@ -112,7 +114,7 @@ scientific_time,value
 
 #### #199 verification evidence
 
-PR checks passed both Round 1A and the performance-profile suite. The persistence-specific premerge browser smoke ran the actual Active Elastic compiler→worker→metric pipeline with only the writable-filesystem API replaced by a deterministic in-memory test implementation. It verified:
+PR #225 checks passed both Round 1A and the performance-profile suite. Its persistence-specific browser smoke ran the actual Active Elastic compiler→worker→metric pipeline with only the writable-filesystem API replaced by a deterministic in-memory test implementation. It verified:
 
 - selection of a workspace root;
 - first run created exactly `polarization_000001.csv` and `angular_momentum_000001.csv`;
@@ -124,7 +126,13 @@ PR checks passed both Round 1A and the performance-profile suite. The persistenc
 
 Persistence-only serialization profile: 8 metrics × 32,768 samples = 262,144 samples, about 7.29 MB CSV output, approximately 122.45 ms serialization time on the CI runner. This measures storage serialization separately from scientific metric computation.
 
-Production Pages run `35031228033` passed build, deploy and every smoke, including the dedicated deployed local-result-persistence smoke, ordinary browser/kernel smoke, real built-in metric smoke, live Results smoke and responsive/focus smoke.
+Initial production Pages run `35031228033` passed build, deploy and every smoke, including the dedicated deployed local-result-persistence smoke, ordinary browser/kernel smoke, real built-in metric smoke, live Results smoke and responsive/focus smoke.
+
+Owner phone review then identified that `Download last run` was ambiguous and had the wrong package semantics. PR #227 changed the action to `Download experiment package`, packages all completed standalone runs currently retained for the selected Experiment using the canonical flat hierarchy, removed the word `fallback` from the user-facing/diagnostic model, and added regression coverage for multi-run package structure. PR #227 passed Round 1A run `35032932608` and performance run `35032932456` before merge.
+
+Final production Pages run `35033123628` at `7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d` passed build, deploy, kernel/editor smoke, built-in real-metric smoke, live Results smoke, deployed local-result-persistence smoke and responsive/focus smoke.
+
+The owner could not directly exercise the writable-directory path on the phone and explicitly allowed that desktop spot-check to remain a future non-blocking check. #199 is therefore complete/deployed and no longer blocks the roadmap.
 
 ## Current frontier
 
