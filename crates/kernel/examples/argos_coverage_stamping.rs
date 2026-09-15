@@ -140,7 +140,6 @@ impl CoverageStampingNeighbourIndex {
                 stats.accepted += 1;
             }
         }
-        // candidates were sorted before filtering, so accepted output is sorted.
         stats
     }
 }
@@ -198,3 +197,5 @@ fn wrap_coordinate(value: f64, arena_size: f64) -> f64 {
         (value + half).rem_euclid(arena_size) - half
     }
 }
+
+fn main() {}
