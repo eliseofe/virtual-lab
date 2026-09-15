@@ -42,6 +42,7 @@ Important recent merge SHAs:
 - #193 production adaptive periodic BVH: `740658fc91fd25eafb362b49532e86433c00930d`
 - #196 primary Metrics/fourth-artifact merge: `bad877a5c8b60391f12617779763b725f1167bc0`
 - #196 production migration-order repair: `082365d0861cda618e68e91960cf2cd949992f00`
+- #197 multi-metric runtime sampling/buffered transport: `95d3e64e4ccb79ef4551411f0f19cdba78d31c32`
 
 ## #196 / #195.1 — four compulsory Experiment artifacts — completed/deployed
 
@@ -78,11 +79,11 @@ Verified live after the repaired migration:
 
 One compulsory Metrics artifact contains zero or more metric definitions. There is no architecture-level maximum number of metrics.
 
-Each metric has stable ID, human-readable name, optional unit, computation/source, and sampling policy. Current constrained language supports periodic `every(seconds)` and `final()` declarations at the contract/compiler layer; runtime execution/buffering is #197.
+Each metric has stable ID, human-readable name, optional unit, computation/source, and sampling policy. Current constrained language supports periodic `every(seconds)` and `final()` declarations. Runtime execution/buffering is deployed through #197.
 
 Metric execution is a read-only global scientific observer. It may observe only the explicitly exposed metric snapshot and approved intrinsics. It cannot mutate agents/world/actions, access controller-private state, consume simulator RNG, use filesystem/network, or obtain unrestricted simulator/host internals.
 
-The artifact lifecycle vocabulary is now:
+The artifact lifecycle vocabulary is:
 
 `setup → initialize → control → measure → finalize`
 
@@ -108,7 +109,7 @@ Semantics: observe canonical physical state after one physics integration update
 
 PR #206 completed the implementation. Its final normal and performance CI suites were green before merge. PR #211 added only the production migration-order repair and regression assertion; its normal CI passed.
 
-Latest production Pages workflow on main, run `34991392084` at SHA `082365d0861cda618e68e91960cf2cd949992f00`, completed successfully:
+Production Pages workflow on main, run `34991392084` at SHA `082365d0861cda618e68e91960cf2cd949992f00`, completed successfully:
 
 - Rust/kernel tests: success;
 - python-vlab/compiler tests: success;
@@ -126,9 +127,45 @@ The deployed MCP contract advertises Experiment interface 7 and `vlab.authoring/
 
 Security advisor after migration reported only the already-unrelated project findings: informational RLS-with-no-policy on `preserved_experiment_snapshots` and account-level leaked-password protection disabled. #196 introduced no new authorization surface or RLS policy.
 
+## #197 / #195.2 — multi-metric runtime sampling and buffered transport — completed/deployed
+
+PR #213 implemented the bounded runtime foundation and merged into `main` as `95d3e64e4ccb79ef4551411f0f19cdba78d31c32` on 15 Sep 2026.
+
+The deployed native/WASM runtime now executes the already-approved `vlab.metrics-ir/0.1` definitions at the frozen `post-physics-wrapped-state/1` measurement phase. It preserves independent periodic/final policies per metric. Periodic intervals that cannot be scheduled exactly on the simulator timestep are rejected rather than silently rounded.
+
+Runtime samples carry stable metric ID plus scientific time. The simulation-side result queue is bounded at **262,144 samples**. If transport falls behind, overflow is explicit rather than scientifically silent: provenance includes total dropped-sample count, first-drop scientific time and a `complete` state.
+
+Worker→UI metric transport is independent from rendering snapshots. Current batching is bounded at **4,096 samples per batch** on an approximately **100 ms wall-clock cadence**, rather than a `postMessage` for every sample. Rendering remains separately paced. No durable storage I/O occurs on the simulator hot path; persistence/export is intentionally #199.
+
+Metrics edits participate in the existing Apply & restart flow. #197 added no live Results composition and no persistence/export surface.
+
+### #197 verification evidence
+
+Head verification on `bb31be8e1995fce72b2b58c276058c0c3934beaf` before merge:
+
+- Round 1A Rust + Node + WASM/static build: success, run `34999061792`;
+- canonical neighbour regime matrix: success, run `34999061946`;
+- performance profile: success, run `34999061762`;
+- dedicated browser/WASM metric profile used 500 agents, 2,000 physics ticks (20 scientific seconds), 3 repetitions per case;
+- deterministic trajectories with versus without metrics were exactly identical;
+- zero dropped samples occurred in every profiled case;
+- expected emitted counts were exact: 1 metric at 0.1 s = 200 samples; 4 metrics at 0.1 s = 800; 4 metrics at 0.02 s = 4,000; 4 metrics at 0.5 s = 160;
+- measured batch serialization/drain cost on the CI runner was approximately 0.6 ms / 0.9 ms / 2.9 ms / 0.6 ms for those cases respectively; fresh-worker advance timings were noisy and showed no metric-induced regression relative to zero-metric cases.
+
+Post-merge main workflows at `95d3e64e4ccb79ef4551411f0f19cdba78d31c32` all completed successfully:
+
+- canonical neighbour regime matrix run `34999390623` — success;
+- generic neighbour tournament run `34999390664` — success;
+- faithful RAB strategy comparison run `34999390650` — success;
+- Round 1A build and Pages probe run `34999390621` — success.
+
+For Pages run `34999390621`, the `build`, `deploy`, and `smoke` jobs all succeeded. The smoke job verified the deployed browser reached kernel-ready state with populated editors and verified deployed responsive hierarchy/focus behavior.
+
+#197 does not require a Supabase schema/MCP deployment because it changes runtime/browser execution and transport, not the persisted Experiment contract or current authoring API.
+
 ## Canonical Experiment/browser state
 
-Browser load/apply/capture/dirty/save behavior is artifact-driven. Configuration, Initialization and Controller retain their specialized execution/editor wiring. Metrics is now a required core artifact and uses the generic source editor presentation until #202 improves editor ergonomics and #198 introduces live Results UI.
+Browser load/apply/capture/dirty/save behavior is artifact-driven. Configuration, Initialization and Controller retain their specialized execution/editor wiring. Metrics is a required core artifact and now executes through the #197 runtime transport foundation. It still uses the generic source editor presentation until #202 improves editor ergonomics; live plotting begins with #198.
 
 Supported passive extra text artifacts remain representable and round-trippable. Unsupported formats fail explicitly rather than disappearing. Optional code-looking artifacts never execute by inference.
 
@@ -181,7 +218,7 @@ Retained reference/benchmark alternatives:
 - multi-resolution periodic grid — benchmark evidence only;
 - faithful ARGoS RAB — benchmark/reference only.
 
-#56 remains the living performance umbrella. #111 established that around N≈5,000 the dominant measured bottleneck was worker-side simulator/neighbour/observation/controller compute rather than Canvas/snapshot transfer. #197 must preserve the performance gains from #56/#168 when adding metric execution/transport.
+#56 remains the living performance umbrella. #111 established that around N≈5,000 the dominant measured bottleneck was worker-side simulator/neighbour/observation/controller compute rather than Canvas/snapshot transfer. #197 preserved deterministic simulation semantics and the performance boundary while adding metric execution/transport; future #198/#199 work must keep metric sampling, UI redraw and persistence flushing decoupled.
 
 ## Success-only durable completion reporting
 
@@ -202,10 +239,12 @@ For Metrics specifically, generic execution/compiler/buffering/persistence/UI pl
 
 Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, explicit read-only metric boundaries, scientific timing/integration semantics and rendering as an observer unless the owner explicitly approves a scientific change.
 
+Standing observation gatekeeper: global position is disallowed as a robotics observation capability unless the owner explicitly reverses that decision.
+
 ## Current frontier
 
-**#196 is complete/deployed. The active next substantial implementation ticket is #197 / #195.2: multi-metric runtime sampling, buffered transport and performance isolation.**
+**#196 and #197 are complete/deployed. The active next substantial implementation ticket is #198 / #195.3: co-located live Results UI with configurable multi-series plot panels.**
 
-Then: #198 live co-located Results UI → #199 local result persistence/export → #200 full MCP/Connector Metrics + Results authoring → #201 owner-defined scientific end-to-end acceptance.
+Then: #199 local result persistence/export → #200 full MCP/Connector Metrics + Results authoring → #201 owner-defined scientific end-to-end acceptance.
 
 #202 remains the separate editor-ergonomics lane. #207 records the newly approved UI refinement round. Studies remain downstream of the single-run Metrics/Results foundation. The two approved aggregation capability requests remain design-pending and are not authorized for implementation.
