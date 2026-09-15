@@ -3,6 +3,7 @@ import {
   EXPERIMENT_ARTIFACTS,
   applyExperimentArtifacts,
   captureExperimentArtifacts,
+  experimentArtifactsEqual,
 } from "./experiment-artifacts.js";
 import {
   productionExperimentRunnability,
@@ -314,8 +315,7 @@ function setMessage(text, state = "idle") {
 }
 
 function artifactsEqual(left, right) {
-  if (!left || !right) return false;
-  return EXPERIMENT_ARTIFACTS.every(({ registryField }) => left[registryField] === right[registryField]);
+  return experimentArtifactsEqual(left, right);
 }
 
 function hasUnsavedRemoteEdits() {
@@ -509,7 +509,7 @@ async function loadExperimentList() {
   }
   const { data, error } = await supabase
     .from("experiments")
-    .select("id,owner_id,collection_id,title,revision,updated_at,config_source,initializer_source,controller_source")
+    .select("id,owner_id,collection_id,title,revision,updated_at,artifacts,config_source,initializer_source,controller_source")
     .eq("owner_id", user.id)
     .eq("lifecycle", "active")
     .order("updated_at", { ascending: false });
@@ -527,7 +527,7 @@ async function loadExperimentList() {
 async function readExperiment(id) {
   const { data, error } = await supabase
     .from("experiments")
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,config_source,initializer_source,controller_source,updated_at")
+    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
     .eq("id", id)
     .eq("owner_id", user.id)
     .maybeSingle();
@@ -614,7 +614,7 @@ async function saveCurrentExperiment() {
     .eq("id", currentRemote.id)
     .eq("owner_id", user.id)
     .eq("revision", baseRevision)
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,config_source,initializer_source,controller_source,updated_at")
+    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
     .maybeSingle();
 
   if (error) throw error;
@@ -672,7 +672,7 @@ async function createNewExperiment() {
       updated_by_actor: "human",
       updated_by_ai_client: null,
     })
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,config_source,initializer_source,controller_source,updated_at")
+    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
     .single();
   if (error) throw error;
 
