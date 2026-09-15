@@ -64,12 +64,7 @@ test("Initialization can define one generic static scalar Environment field", ()
       kind: "binary",
       op: "+",
       left: { kind: "x" },
-      right: {
-        kind: "binary",
-        op: "*",
-        left: { kind: "const", value: 2 },
-        right: { kind: "y" },
-      },
+      right: { kind: "binary", op: "*", left: { kind: "const", value: 2 }, right: { kind: "y" } },
     },
     right: { kind: "const", value: 0.25 },
   });
@@ -79,14 +74,8 @@ test("Initialization can define one generic static scalar Environment field", ()
 test("controller accepts only the published local scalar observation field", () => {
   const controller = compileController(controllerWithField);
   assert.doesNotThrow(() => validateEnvironmentControllerPair({ schema: "vlab.environment-scalar-ir/0.1" }, controller));
-  assert.throws(
-    () => validateEnvironmentControllerPair(null, controller),
-    /controller reads obs\.environmental_scalar but Initialization does not define environmental_scalar/,
-  );
-  assert.throws(
-    () => compileController(`class Bad(Agent):\n    def step(self, obs):\n        return Motion(obs.position, 0.0)\n`),
-    /unknown observation field 'obs.position'/,
-  );
+  assert.throws(() => validateEnvironmentControllerPair(null, controller), /controller reads obs\.environmental_scalar but Initialization does not define environmental_scalar/);
+  assert.throws(() => compileController(`class Bad(Agent):\n    def step(self, obs):\n        return Motion(obs.position, 0.0)\n`), /unknown observation field 'obs.position'/);
 });
 
 test("registry validation accepts a scalar field experiment and rejects the missing-field pair", () => {
@@ -96,13 +85,15 @@ test("registry validation accepts a scalar field experiment and rejects the miss
   assert.match(missing.error, /environmental_scalar/);
 });
 
-test("Environment remains part of Initialization rather than becoming a fourth required artifact", () => {
+test("Environment remains a capability of Initialization; Metrics is the independent fourth core artifact", () => {
   assert.deepEqual(
     RUNTIME_CONTRACT.artifact_capabilities.required_core.map(({ id }) => id),
-    ["configuration", "initialization", "controller"],
+    ["configuration", "initialization", "controller", "metrics"],
   );
   assert.equal(RUNTIME_CONTRACT.environment_capabilities.static_scalar_field.definition_location, "initialization");
   assert.equal(RUNTIME_CONTRACT.environment_capabilities.static_scalar_field.observation, "obs.environmental_scalar");
+  const metrics = RUNTIME_CONTRACT.artifact_capabilities.required_core.find(({ id }) => id === "metrics");
+  assert.equal(metrics.execution_hook, "measure");
 });
 
 test("browser rendering samples the same WASM Environment runtime rather than a second field evaluator", async () => {
