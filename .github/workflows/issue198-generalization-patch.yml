@@ -21,6 +21,9 @@ jobs:
         run: python tools/issue198_apply_two_metric_generalization.py
       - name: Commit patch if needed
         run: |
+          # The GitHub App may not update workflow files. The existing deployed
+          # smoke step already invokes this same script, so keep its label unchanged.
+          git checkout -- .github/workflows/round1a-pages.yml
           if git diff --quiet && [ -z "$(git status --porcelain --untracked-files=all)" ]; then
             echo "Patch already applied."
             exit 0
