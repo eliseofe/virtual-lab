@@ -55,10 +55,10 @@ jobs:
           set -o pipefail
           cargo run --release -p vlab-kernel --example neighbour_strategy_benchmark | tee neighbour-strategy-profile.txt
 
-      - name: Run ARGoS-style coverage-stamping candidate
+      - name: Run faithful ARGoS RAB benchmark
         run: |
           set -o pipefail
-          cargo run --release -p vlab-kernel --example neighbour_argos_coverage_benchmark | tee neighbour-argos-coverage-profile.txt
+          cargo run --release -p vlab-kernel --example neighbour_argos_rab_benchmark | tee neighbour-argos-rab-profile.txt
 
       - name: Build browser kernel
         working-directory: crates/kernel
@@ -92,7 +92,7 @@ jobs:
             native-profile.txt
             neighbour-density-profile.txt
             neighbour-strategy-profile.txt
-            neighbour-argos-coverage-profile.txt
+            neighbour-argos-rab-profile.txt
             browser-profile.json
             real-isolation-profile.json
             controller-cost-profile.json
