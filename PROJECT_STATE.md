@@ -23,6 +23,8 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Current Environment capability contract: **`vlab.environment-capabilities/0.1`**
 - Current Metrics language: **`python-vlab-metrics/0.1`**
 - Current Metrics IR: **`vlab.metrics-ir/0.1`**
+- Current metric batch transport: **`vlab.metric-sample-batch/0.1`**
+- Metric measurement phase: **`post-physics-wrapped-state/1`**
 - Production neighbour strategy: **`adaptive-periodic-bvh/v1`**
 
 Important recent merge SHAs:
@@ -42,10 +44,11 @@ Important recent merge SHAs:
 - #193 production adaptive periodic BVH: `740658fc91fd25eafb362b49532e86433c00930d`
 - #196 primary Metrics/fourth-artifact merge: `bad877a5c8b60391f12617779763b725f1167bc0`
 - #196 production migration-order repair: `082365d0861cda618e68e91960cf2cd949992f00`
+- #197 multi-metric runtime sampling/buffering/transport: `95d3e64e4ccb79ef4551411f0f19cdba78d31c32`
 
 ## #196 / #195.1 — four compulsory Experiment artifacts — completed/deployed
 
-#196 establishes the durable Metrics foundation. The canonical Experiment is now an ordered typed `artifacts` JSONB collection whose required core IDs are exactly:
+The canonical Experiment is an ordered typed `artifacts` JSONB collection whose required core IDs are exactly:
 
 1. `configuration`
 2. `initialization`
@@ -56,100 +59,158 @@ Each artifact contains `id`, `type`, `label`, `format`, `order`, and `content`.
 
 Legacy `config_source`, `initializer_source`, and `controller_source` columns remain synchronized compatibility mirrors for the first three artifacts only; they are not a competing source of truth. Metrics has no legacy mirror.
 
-An empty Metrics artifact is valid. Existing three-artifact Experiments were normalized mechanically by adding one empty Metrics artifact. This compatibility migration did **not** create scientific revisions.
+An empty Metrics artifact is valid. The production compatibility migration added one empty Metrics artifact to every existing three-artifact Experiment without creating scientific revisions. Live verification after the repaired migration found all **7** Experiment rows on `vlab.registry-experiment/3` / `vlab.experiment-artifacts/3`, each with exactly one empty compatibility Metrics artifact and unchanged revisions.
 
-### Production migration evidence
-
-Migration: `20260915130000_metrics_fourth_core_artifact.sql` / Supabase migration `metrics_fourth_core_artifact`.
-
-The first production attempt failed transactionally because the legacy `artifact_sync_experiment_artifacts` trigger rewrote attempted v3 schema/interface values back to v2 during the backfill, causing the new v3 check constraint to reject the transaction. The transaction rolled back completely; production data remained unchanged.
-
-PR #211 repaired the migration ordering: both `artifact_sync_experiment_artifacts` and `bump_experiment_revision` are disabled only around the mechanical backfill and re-enabled before commit. Regression coverage freezes that ordering.
-
-Verified live after the repaired migration:
-
-- all **7** existing Experiment rows are `vlab.registry-experiment/3` / `vlab.experiment-artifacts/3`;
-- all 7 contain exactly one `metrics` core artifact;
-- all 7 compatibility Metrics artifacts are empty;
-- every Experiment revision exactly matches the pre-migration revision snapshot;
-- `artifact_sync_experiment_artifacts`, `bump_experiment_revision`, and collection-owner validation triggers are enabled after migration.
-
-### Metrics language and read-only boundary
+### Metrics language and information boundary
 
 One compulsory Metrics artifact contains zero or more metric definitions. There is no architecture-level maximum number of metrics.
 
-Each metric has stable ID, human-readable name, optional unit, computation/source, and sampling policy. Current constrained language supports periodic `every(seconds)` and `final()` declarations at the contract/compiler layer; runtime execution/buffering is #197.
+Each metric has stable ID, human-readable name, optional unit, computation/source, and sampling policy. The constrained language supports periodic `every(seconds)` and `final()` declarations.
 
 Metric execution is a read-only global scientific observer. It may observe only the explicitly exposed metric snapshot and approved intrinsics. It cannot mutate agents/world/actions, access controller-private state, consume simulator RNG, use filesystem/network, or obtain unrestricted simulator/host internals.
 
-The artifact lifecycle vocabulary is now:
+The artifact lifecycle vocabulary is:
 
 `setup → initialize → control → measure → finalize`
 
-The frozen periodic measurement phase is:
+The frozen measurement phase is:
 
 `post-physics-wrapped-state/1`
 
-Semantics: observe canonical physical state after one physics integration update and periodic wrapping, at the resulting `scientific_time`. This makes explicit the measurement point already present in the dormant Rust `MetricRuntime` hook. It does not define any paper-specific metric formula or scientific sampling choice.
+Semantics: observe canonical physical state after the due physics integration update and periodic wrapping, at the resulting `scientific_time`. This is a versioned simulator contract, not a paper-specific metric formula or paper-specific sampling choice.
 
-### #196 contract versions
+### #196 production infrastructure evidence
 
-- registry: `vlab.registry-experiment/3`
-- artifact interface: `vlab.experiment-artifacts/3`
-- authoring: `vlab.authoring/0.5`
-- Experiment interface: `7`
-- artifact capabilities: `vlab.artifact-capabilities/0.3`
-- Metrics language: `python-vlab-metrics/0.1`
-- Metrics IR: `vlab.metrics-ir/0.1`
-- runtime remains: `vlab.runtime/0.2`
-- Environment capabilities remain: `vlab.environment-capabilities/0.1`
+PR #206 implemented the four-artifact contract; PR #211 repaired production migration ordering after the first migration attempt correctly rolled back transactionally.
 
-### #196 build/deployment evidence
+Supabase `experiment-mcp` **v15 is ACTIVE**. The deployed authoring contract advertises Experiment interface 7 and `vlab.authoring/0.5`; full fine-grained Metrics/Results authoring remains #200.
 
-PR #206 completed the implementation. Its final normal and performance CI suites were green before merge. PR #211 added only the production migration-order repair and regression assertion; its normal CI passed.
+## #197 / #195.2 — multi-metric runtime sampling, buffering and transport — completed/deployed
 
-Latest production Pages workflow on main, run `34991392084` at SHA `082365d0861cda618e68e91960cf2cd949992f00`, completed successfully:
+Accepted detailed record: `docs/METRIC_RUNTIME_FOUNDATION_2026-09-15.md`.
+
+PR #213 merged as `95d3e64e4ccb79ef4551411f0f19cdba78d31c32`.
+
+### Runtime execution
+
+Validated `vlab.metrics-ir/0.1` now executes in the production Rust/WASM runtime.
+
+The implementation wraps the existing `Simulation`; it does not duplicate physics or controller semantics. Advances are split only when required to land exactly on a due metric tick. The metric then reads the resulting canonical physical state in Rust/WASM at the already-frozen `post-physics-wrapped-state/1` phase.
+
+Periodic metric intervals must be exact integer multiples of `PHYSICS_DT`. Unschedulable intervals are rejected rather than rounded. `final()` metrics execute exactly once at explicit run finalization.
+
+Metrics remain read-only and do not receive action/mutation/RNG/controller-private-state/filesystem/network APIs.
+
+### Runtime buffering / transport
+
+The three approved cadences are separated:
+
+1. metric evaluation — each metric's scientific sampling policy;
+2. worker/UI sample transport — independent batched transport;
+3. durable persistence flush — not implemented yet; #199 owns it.
+
+Runtime buffer capacity: **262,144 scalar samples**.
+
+Ordinary worker transport:
+
+- transport cadence: approximately **100 ms wall-clock**;
+- maximum ordinary drain batch: **4096 samples**;
+- arena rendering remains independently approximately **60 Hz**.
+
+Each transported sample contains stable metric ID, scientific time and scalar value.
+
+Overflow semantics are explicit. Status/batch metadata contains capacity, remaining samples, cumulative dropped-sample count, first dropped scientific time and a `complete` flag. Data loss is therefore detectable and cannot silently masquerade as a complete result.
+
+No durable database/local-storage write occurs on the simulation hot path.
+
+### Authoring/browser integration
+
+The required Metrics artifact is compiled before worker initialization/restart and passed as Metrics IR.
+
+Metrics edits participate in the existing **Apply changes & restart** workflow. Metrics-only changes use the same visible action; Metrics changes combined with Configuration/Initialization/Controller piggyback the same restart.
+
+There is intentionally no live Results presentation yet. #198 owns visualization of the runtime metric-batch stream.
+
+### #197 correctness evidence
+
+Automated tests cover:
+
+- multiple independent periodic cadences and stable metric identities;
+- one-time final metrics;
+- rejection of unschedulable cadence instead of rounding;
+- explicit overflow reporting;
+- unchanged deterministic simulation trajectory under metric observation/drain;
+- separate rendering and metric-transport cadences;
+- absence of persistence/database I/O in worker metric collection;
+- Metrics integration with existing apply/restart authoring flow.
+
+### #197 performance evidence
+
+PR-head performance workflow `34999061762`: **success**.
+
+Dedicated browser/WASM matrix used 500 agents, 2,000 physics ticks (20 scientific seconds), and 3 repetitions per case.
+
+Expected/observed emitted sample counts:
+
+- one metric every 0.1 s: **200**;
+- four metrics every 0.1 s: **800**;
+- four metrics every 0.02 s: **4,000**;
+- four metrics every 0.5 s: **160**.
+
+Every tested case reported **0 dropped samples**.
+
+Measured batch serialization/drain cost on the CI runner was approximately:
+
+- 200 samples: **0.6 ms**;
+- 800 samples: **0.9 ms**;
+- 4,000 samples: **2.9 ms**;
+- 160 samples: **0.6 ms**.
+
+Fresh-worker advance timings were noisy and are not interpreted as a scientific or negative-overhead claim. The matrix showed no measurable framework regression relative to the zero-metric cases.
+
+The deterministic trajectory comparison passed exactly: final metric-enabled state equaled final zero-metric state value-for-value.
+
+Final PR-head regression workflows on `bb31be8e1995fce72b2b58c276058c0c3934beaf` all passed:
+
+- Round 1A build: `34999061792`;
+- canonical neighbour regime matrix: `34999061946`;
+- performance profile: `34999061762`;
+- faithful RAB strategy comparison: `34999062387`;
+- generic neighbour tournament: `34999061926`.
+
+Production main workflow `34999390621` on merge SHA `95d3e64e4ccb79ef4551411f0f19cdba78d31c32` completed successfully:
 
 - Rust/kernel tests: success;
-- python-vlab/compiler tests: success;
+- compiler/Node tests: success;
 - WASM/browser build: success;
 - static artifact verification: success;
 - GitHub Pages deployment: success;
 - deployed browser kernel/editor smoke: success;
 - deployed responsive hierarchy/focus smoke: success.
 
-Supabase `experiment-mcp` **v15 is ACTIVE** with `verify_jwt=false` preserved because authentication is implemented inside the function through the existing Supabase OAuth/JWT middleware. v15 bundle hash: `d8cd3b44f319ea7d8038d27b324cb241b8610647a7b09219a3ae27ea9d587e74`.
-
-The v15 management-API deployment entrypoint is pinned to exact merged main commit `082365d0861cda618e68e91960cf2cd949992f00`; Supabase bundled that immutable module and its relative dependencies at deployment time. The live contract therefore comes from the same merged #196 sources while avoiding an unpinned moving-branch dependency.
-
-The deployed MCP contract advertises Experiment interface 7 and `vlab.authoring/0.5`; full fine-grained Metrics/Results authoring remains #200.
-
-Security advisor after migration reported only the already-unrelated project findings: informational RLS-with-no-policy on `preserved_experiment_snapshots` and account-level leaked-password protection disabled. #196 introduced no new authorization surface or RLS policy.
-
 ## Canonical Experiment/browser state
 
-Browser load/apply/capture/dirty/save behavior is artifact-driven. Configuration, Initialization and Controller retain their specialized execution/editor wiring. Metrics is now a required core artifact and uses the generic source editor presentation until #202 improves editor ergonomics and #198 introduces live Results UI.
+Browser load/apply/capture/dirty/save behavior is artifact-driven. Configuration, Initialization and Controller retain their specialized execution/editor wiring. Metrics is a required core artifact using the generic source editor presentation until #202 improves editor ergonomics.
+
+#197 adds the runtime metric stream but no Results panel. #198 is therefore the first owner-visible live Results implementation ticket.
 
 Supported passive extra text artifacts remain representable and round-trippable. Unsupported formats fail explicitly rather than disappearing. Optional code-looking artifacts never execute by inference.
 
-`#126` remains blocked: Metrics is compulsory core and does not use optional-executable-artifact dispatch.
+#126 remains blocked: Metrics is compulsory core and does not use optional-executable-artifact dispatch.
 
-## UI/UX accepted state and new owner-feedback lane
+## UI/UX accepted state and owner-feedback lane
 
 The #147 redesign is deployed and materially improved the Lab. Core accepted direction remains simulation-first with one Experiment finder/switcher, one authoring workspace and secondary organization rather than collection-first navigation.
 
-Engineering-complete items still awaiting a later consolidated owner live pass include:
+Engineering-complete items still awaiting a later consolidated owner live pass include #115 collection choice/moves and #118 artifact-driven Experiment workspace behavior.
 
-- **#115** — collection choice during Save as new and clean owned-experiment moves;
-- **#118** — artifact-driven Experiment workspace behavior.
-
-On 15 Sep 2026 the owner supplied a new refinement pass, now tracked by #207:
+Owner refinement feedback is tracked by #207:
 
 - #208 — unify the top Experiment and bottom Save/Persistence areas into one Experiment identity/save/save-as-new/organization flow;
 - #209 — reconcile duplicate-looking Account and Professor entry surfaces while preserving sign-in/out and Professor capability approvals;
-- #210 — audit all tiny microcopy/labels, remove nonessential explanatory prose, strengthen retained text/title hierarchy and verify responsive desktop/mobile presentation.
+- #210 — remove nonessential tiny microcopy, strengthen necessary text/title hierarchy and verify responsive desktop/mobile presentation.
 
-Simulation and Authoring are acceptable structural baselines for this pass. #207 is durable parallel UI work and does not replace #195 as the current scientific/product frontier.
+Simulation and Authoring remain acceptable structural baselines for this pass. #207 does not replace #195 as the active scientific/product sequence.
 
 ## Professor capability-request loop
 
@@ -161,27 +222,20 @@ Durable flow:
 
 The first real Karagüzel et al. scalar-environment capability request completed this full loop successfully through #143. The simulator capability is generic: static deterministic `environmental_scalar(x, y, config)` is defined through Initialization, evaluated by simulator-owned Environment code, sensed only as local `obs.environmental_scalar`, and rendered from the same evaluator.
 
-Two later informed-robot aggregation capability requests are currently **approved by the Professor but not implementation-authorized**:
+Two later informed-robot aggregation capability requests are **approved by the Professor but not implementation-authorized**:
 
 - `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`;
 - `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — `initialization / heterogeneous_agent_state`.
 
-Live database verification on 15 Sep shows both lifecycle state `approved`. They require developer architecture discussion and explicit owner implementation approval before any coding.
-
-Research AI never receives GitHub/repository/shell/deployment/admin/simulator-source privileges.
+They require developer architecture discussion and explicit owner implementation approval before coding. Research AI never receives GitHub/repository/shell/deployment/admin/simulator-source privileges.
 
 ## Neighbour-search / performance state
 
-The neighbour-search investigation is complete. Production native and WASM `Simulation` use `adaptive-periodic-bvh/v1` with exact receiver-radius membership, arbitrary simultaneous radii, periodic minimum-image geometry and deterministic sorted neighbour indices.
+Production native and WASM `Simulation` use `adaptive-periodic-bvh/v1` with exact receiver-radius membership, arbitrary simultaneous radii, periodic minimum-image geometry and deterministic sorted neighbour indices.
 
-Retained reference/benchmark alternatives:
+Retained reference/benchmark alternatives: `PeriodicGridNeighbourIndex` exact reference/fallback; `BruteForceNeighbourIndex` hidden correctness oracle; multi-resolution periodic grid and faithful ARGoS RAB benchmark/reference only.
 
-- `PeriodicGridNeighbourIndex` — exact reference/fallback;
-- `BruteForceNeighbourIndex` — hidden correctness oracle;
-- multi-resolution periodic grid — benchmark evidence only;
-- faithful ARGoS RAB — benchmark/reference only.
-
-#56 remains the living performance umbrella. #111 established that around N≈5,000 the dominant measured bottleneck was worker-side simulator/neighbour/observation/controller compute rather than Canvas/snapshot transfer. #197 must preserve the performance gains from #56/#168 when adding metric execution/transport.
+#56 remains the living performance umbrella. #111 established that around N≈5,000 the dominant measured bottleneck was worker-side simulator/neighbour/observation/controller compute rather than Canvas/snapshot transfer. #197's metric runtime passed the existing neighbour/performance regression suites.
 
 ## Success-only durable completion reporting
 
@@ -204,8 +258,8 @@ Preserve simulator-owned RNG, controller information boundaries, environment-own
 
 ## Current frontier
 
-**#196 is complete/deployed. The active next substantial implementation ticket is #197 / #195.2: multi-metric runtime sampling, buffered transport and performance isolation.**
+**#196 and #197 are complete/deployed. The active next substantial implementation ticket is #198 / #195.3: co-located live Results UI with configurable multi-series plot panels consuming the deployed runtime metric stream.**
 
-Then: #198 live co-located Results UI → #199 local result persistence/export → #200 full MCP/Connector Metrics + Results authoring → #201 owner-defined scientific end-to-end acceptance.
+Then: #199 local result persistence/export → #200 full MCP/Connector Metrics + Results authoring → #201 owner-defined scientific end-to-end acceptance.
 
-#202 remains the separate editor-ergonomics lane. #207 records the newly approved UI refinement round. Studies remain downstream of the single-run Metrics/Results foundation. The two approved aggregation capability requests remain design-pending and are not authorized for implementation.
+#202 remains the separate editor-ergonomics lane. #207 records the owner-approved UI refinement round. Studies remain downstream of the single-run Metrics/Results foundation. The two approved aggregation capability requests remain design-pending and are not authorized for implementation.
