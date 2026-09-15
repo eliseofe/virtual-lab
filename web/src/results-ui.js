@@ -29,6 +29,17 @@ function allMetricIds() {
   return [...new Set([...definitions.keys(), ...samples.keys()])];
 }
 
+function defaultMetricIds() {
+  return [...definitions.keys()].slice(0, 3);
+}
+
+function updateAddPlotButton() {
+  const button = document.querySelector("#results-add-panel");
+  if (!button) return;
+  button.disabled = definitions.size === 0;
+  button.title = definitions.size === 0 ? "This experiment has no configured metrics." : "Add another metric plot.";
+}
+
 function mount() {
   if (document.querySelector("#live-results")) return;
   const canvasWrap = document.querySelector(".canvas-wrap");
@@ -52,13 +63,13 @@ function mount() {
     </header>
     <div id="results-panels" class="results-panels"></div>`;
   grid.append(results);
-  results.querySelector("#results-add-panel").addEventListener("click", () => addPanel([]));
-  addPanel(defaultMetricIds());
-  refreshAllPanels();
-}
-
-function defaultMetricIds() {
-  return allMetricIds().slice(0, 3);
+  results.querySelector("#results-add-panel").addEventListener("click", () => {
+    const ids = defaultMetricIds();
+    if (!ids.length) return;
+    addPanel(ids.slice(0, 1));
+  });
+  updateAddPlotButton();
+  refreshEmptyState();
 }
 
 function addPanel(metricIds = []) {
@@ -76,6 +87,7 @@ function addPanel(metricIds = []) {
   host.append(panel.element);
   panels.push(panel);
   buildPanel(panel);
+  refreshEmptyState();
   scheduleRender(true);
   return panel;
 }
@@ -90,17 +102,17 @@ function removePanel(panel) {
 function buildPanel(panel) {
   panel.element.innerHTML = `
     <header class="results-plot-head">
-      <strong>Plot ${panel.id}</strong>
-      <details class="results-series-picker">
-        <summary>Series</summary>
-        <div class="results-series-options"></div>
-      </details>
+      <strong>Metric plot</strong>
       <button class="results-plot-action" data-action="reset-view" type="button">Reset view</button>
-      <button class="results-plot-action" data-action="remove" type="button" aria-label="Remove plot">×</button>
+      <button class="results-plot-action" data-action="remove" type="button" aria-label="Remove plot" title="Remove plot">×</button>
     </header>
+    <details class="results-series-picker">
+      <summary>Choose metric</summary>
+      <div class="results-series-options"></div>
+    </details>
     <div class="results-plot-wrap">
       <canvas class="results-plot-canvas" tabindex="0" aria-label="Live metric time-series plot"></canvas>
-      <div class="results-plot-message">Choose one or more metric series.</div>
+      <div class="results-plot-message">Choose one or more metrics.</div>
       <div class="results-tooltip" hidden></div>
     </div>
     <div class="results-legend"></div>`;
@@ -126,7 +138,7 @@ function buildPanel(panel) {
 function refreshPanelControls(panel) {
   if (!panel.options) return;
   panel.options.replaceChildren();
-  const ids = allMetricIds();
+  const ids = [...definitions.keys()];
   for (const id of ids) {
     const label = document.createElement("label");
     label.className = "results-series-option";
@@ -149,8 +161,21 @@ function refreshPanelControls(panel) {
     label.append(input, swatch, name);
     panel.options.append(label);
   }
+
+  const title = panel.element.querySelector(".results-plot-head strong");
   const summary = panel.element.querySelector(".results-series-picker > summary");
-  summary.textContent = panel.metricIds.length ? `Series ${panel.metricIds.length}` : "Series";
+  if (panel.metricIds.length === 1) {
+    const label = metricLabel(panel.metricIds[0]);
+    title.textContent = label;
+    summary.textContent = `Metric: ${label}`;
+  } else if (panel.metricIds.length > 1) {
+    title.textContent = `${panel.metricIds.length} metrics`;
+    summary.textContent = `Metrics: ${panel.metricIds.length} selected`;
+  } else {
+    title.textContent = "Choose a metric";
+    summary.textContent = "Choose metric";
+  }
+
   panel.legend.replaceChildren();
   for (const id of panel.metricIds) {
     const item = document.createElement("span");
@@ -170,6 +195,7 @@ function refreshPanelControls(panel) {
 function refreshAllPanels() {
   for (const panel of panels) refreshPanelControls(panel);
   refreshEmptyState();
+  updateAddPlotButton();
   scheduleRender(true);
 }
 
@@ -180,7 +206,9 @@ function refreshEmptyState() {
   if (panels.length) return;
   const empty = document.createElement("p");
   empty.className = "results-empty";
-  empty.textContent = "No plot panels. Add a plot to inspect live metrics beside the simulation.";
+  empty.textContent = definitions.size
+    ? "No plot panels. Add a plot to inspect the configured metrics."
+    : "No metrics configured for this experiment.";
   host.append(empty);
 }
 
@@ -195,7 +223,7 @@ function updateStatus() {
   } else if (total > 0) {
     status.textContent = `${total.toLocaleString()} samples · complete`;
     status.dataset.state = "ok";
-  } else if (allMetricIds().length) {
+  } else if (definitions.size) {
     status.textContent = "Waiting for metric samples";
     status.dataset.state = "idle";
   } else {
@@ -209,7 +237,18 @@ function receiveDefinitions(ir) {
   for (const metric of ir?.metrics ?? []) {
     definitions.set(metric.id, { id: metric.id, name: metric.name ?? metric.id, unit: metric.unit ?? null });
   }
-  if (panels.length === 1 && panels[0].metricIds.length === 0) panels[0].metricIds = defaultMetricIds();
+
+  const available = new Set(definitions.keys());
+  for (const panel of panels) panel.metricIds = panel.metricIds.filter((id) => available.has(id));
+
+  if (!definitions.size) {
+    for (const panel of [...panels]) removePanel(panel);
+  } else if (!panels.length) {
+    addPanel(defaultMetricIds().slice(0, 1));
+  } else if (panels[0].metricIds.length === 0) {
+    panels[0].metricIds = defaultMetricIds().slice(0, 1);
+  }
+
   refreshAllPanels();
   updateStatus();
 }
@@ -310,7 +349,7 @@ function renderPanel(panel) {
   const values = seriesData.flatMap((entry) => entry.points.map((point) => point.value)).filter(Number.isFinite);
   if (!range || !values.length) {
     panel.message.hidden = false;
-    panel.message.textContent = panel.metricIds.length ? "Waiting for samples from the selected metrics." : "Choose one or more metric series.";
+    panel.message.textContent = panel.metricIds.length ? "Waiting for samples from the selected metrics." : "Choose one or more metrics.";
     return;
   }
   panel.message.hidden = true;
