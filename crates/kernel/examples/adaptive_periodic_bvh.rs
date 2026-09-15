@@ -1,6 +1,7 @@
 use vlab_kernel::{AgentPhysicalState, Vec2};
 
 const LEAF_CAPACITY: usize = 8;
+const PRUNING_ULPS: f64 = 64.0;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct QueryStats {
@@ -104,6 +105,14 @@ impl AdaptivePeriodicBvh {
         let centers_x = periodic_query_centers(origin.x, radius, arena_size);
         let centers_y = periodic_query_centers(origin.y, radius, arena_size);
         let radius2 = radius * radius;
+        // Broad-phase pruning must be conservative. Candidate inclusion is only
+        // an optimization; the final minimum-image <= radius^2 test below is
+        // authoritative. A small scale-aware slack prevents a mathematically
+        // tangent AABB from being discarded after floating-point translation,
+        // subtraction and squaring at periodic boundaries.
+        let linear_slack = PRUNING_ULPS * f64::EPSILON * arena_size.abs().max(radius.abs()).max(1.0);
+        let pruning_radius = radius + linear_slack;
+        let pruning_radius2 = pruning_radius * pruning_radius;
         let mut candidates = Vec::new();
         let mut stats = QueryStats::default();
 
@@ -113,7 +122,7 @@ impl AdaptivePeriodicBvh {
                     root,
                     cx,
                     cy,
-                    radius2,
+                    pruning_radius2,
                     &self.nodes,
                     &self.indices,
                     &mut candidates,
@@ -198,7 +207,7 @@ fn collect_candidates(
     node_index: usize,
     cx: f64,
     cy: f64,
-    radius2: f64,
+    pruning_radius2: f64,
     nodes: &[Node],
     indices: &[usize],
     candidates: &mut Vec<usize>,
@@ -206,7 +215,7 @@ fn collect_candidates(
 ) {
     let node = &nodes[node_index];
     stats.visited_nodes += 1;
-    if distance2_to_aabb(cx, cy, node) > radius2 {
+    if distance2_to_aabb(cx, cy, node) > pruning_radius2 {
         return;
     }
     if node.is_leaf() {
@@ -214,8 +223,8 @@ fn collect_candidates(
         candidates.extend_from_slice(&indices[node.start..node.end]);
         return;
     }
-    collect_candidates(node.left.unwrap(), cx, cy, radius2, nodes, indices, candidates, stats);
-    collect_candidates(node.right.unwrap(), cx, cy, radius2, nodes, indices, candidates, stats);
+    collect_candidates(node.left.unwrap(), cx, cy, pruning_radius2, nodes, indices, candidates, stats);
+    collect_candidates(node.right.unwrap(), cx, cy, pruning_radius2, nodes, indices, candidates, stats);
 }
 
 fn distance2_to_aabb(x: f64, y: f64, node: &Node) -> f64 {
@@ -226,11 +235,12 @@ fn distance2_to_aabb(x: f64, y: f64, node: &Node) -> f64 {
 
 fn periodic_query_centers(value: f64, radius: f64, arena_size: f64) -> Vec<f64> {
     let half = arena_size / 2.0;
+    let slack = PRUNING_ULPS * f64::EPSILON * arena_size.abs().max(radius.abs()).max(1.0);
     let mut centers = vec![value];
-    if value - radius < -half {
+    if value - radius <= -half + slack {
         centers.push(value + arena_size);
     }
-    if value + radius > half {
+    if value + radius >= half - slack {
         centers.push(value - arena_size);
     }
     centers
