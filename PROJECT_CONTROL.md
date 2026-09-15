@@ -12,7 +12,7 @@ The #147 UI/UX redesign is complete and deployed. The accepted Lab workflow rema
 
 Neighbour-search architecture is complete and production uses corrected adaptive periodic BVH `adaptive-periodic-bvh/v1` through #193 / PR #194. #168 and #178 are closed; #179 remains deferred until Studies exist.
 
-The active product/scientific frontier is **#195 — Experiment Metrics + live Results**. #196 / #195.1 is now complete and deployed: the canonical Experiment has four compulsory artifacts (`configuration`, `initialization`, `controller`, `metrics`), with an empty Metrics artifact valid for compatibility. The next substantial implementation ticket is **#197 / #195.2 — multi-metric runtime sampling, buffering and performance isolation**.
+The active product/scientific frontier is **#195 — Experiment Metrics + live Results**. #196 / #195.1 is complete and deployed: the canonical Experiment has four compulsory artifacts (`configuration`, `initialization`, `controller`, `metrics`), with an empty Metrics artifact valid for compatibility. #197 / #195.2 is also complete and deployed: multiple metric streams now execute in the runtime with deterministic scientific timing, bounded in-memory buffering and batched worker→UI transport. The next substantial implementation ticket is **#198 / #195.3 — co-located live Results UI with configurable multi-series plot panels**.
 
 A separate editor ergonomics lane is #202. A new owner-feedback UI refinement lane is #207. Neither displaces #195 unless the owner explicitly reprioritizes.
 
@@ -37,21 +37,43 @@ The deployed authoring/validation contract is `vlab.authoring/0.5`, Experiment i
 
 Each metric has stable identity, name, optional unit, computation/source and sampling policy/cadence. Metric execution is read-only and cannot mutate simulation state/actions, access controller-private state, unrestricted simulator/host internals, filesystem/network, or bypass simulator-owned information/RNG boundaries.
 
-The measurement lifecycle now includes an explicit `measure` phase. The frozen periodic measurement point is `post-physics-wrapped-state/1`: observe canonical physical state after the physics integration update and periodic wrapping, at the resulting scientific time. This matches the pre-existing dormant kernel metric hook and is now explicit/versioned. Scientific metric formulas and paper-specific sampling intent remain owner/research-AI decisions.
+The measurement lifecycle includes an explicit `measure` phase. The frozen periodic measurement point is `post-physics-wrapped-state/1`: observe canonical physical state after the physics integration update and periodic wrapping, at the resulting scientific time. This matches the pre-existing dormant kernel metric hook and is now explicit/versioned. Scientific metric formulas and paper-specific sampling intent remain owner/research-AI decisions.
 
-### Current next ticket — #197 / #195.2
+### Deployed runtime sampling foundation — #197 / #195.2 complete
 
-Implement multiple metric streams during one run while preserving simulator throughput and deterministic semantics.
+#197 / PR #213 is merged and deployed at main merge `95d3e64e4ccb79ef4551411f0f19cdba78d31c32`.
 
-Keep three independent cadences:
+The runtime now:
 
-1. metric evaluation cadence — scientific sampling/computation;
-2. UI refresh/transport cadence — live visualization transport;
-3. persistence flush cadence — buffered local durable writes.
+- executes the approved `vlab.metrics-ir/0.1` definitions at `post-physics-wrapped-state/1`;
+- preserves independent per-metric periodic/final sampling policies and rejects unschedulable periodic intervals instead of rounding them;
+- emits compact scalar samples with stable metric ID and scientific time;
+- buffers samples in a bounded 262,144-sample runtime queue;
+- exposes explicit overflow provenance (`dropped` count, first-drop scientific time, and completeness state) rather than silently losing scientific data;
+- batches worker transport independently from rendering, currently up to 4,096 samples per batch on an approximately 100 ms wall-clock cadence;
+- performs no durable storage I/O on the simulator hot path;
+- keeps Metrics edits inside the existing Apply & restart flow.
 
-The hot simulation path may evaluate due metrics and append compact samples to memory, but must not synchronously perform durable storage I/O. UI transport and persistence happen asynchronously/in batches. Performance acceptance must separate unavoidable scientific metric-computation cost from avoidable framework/serialization/transport cost.
+Deterministic browser/WASM profiling verified identical trajectories with and without metrics, exact expected sample counts across several metric-count/cadence cases, and zero dropped samples in the tested cases. Main Pages build, deployment and deployed-browser smoke are green after merge.
 
-#197 must stop at the runtime sampling/buffering/transport foundation. Do not begin #198 live Results UI or #199 persistence inside #197.
+#197 stops exactly at runtime collection/transport/performance isolation. It does not implement live plotting or persistence.
+
+### Current next ticket — #198 / #195.3
+
+Build the live Results presentation on top of #197's stable result stream. Live Results must remain physically close to the running simulation; normal metric inspection must not require leaving the Experiment screen, switching browser tabs or opening a separate Results page.
+
+Results use generic plot panels:
+
+- a panel references one or more stable metric IDs;
+- several metrics may share one panel;
+- the same metric may appear in more than one panel;
+- colors are assigned automatically and remain stable within the active presentation;
+- panel arrangement/bindings are presentation/workspace state, not scientific metric definitions;
+- first visualization type is an interactive time-series line plot.
+
+UI redraw cadence remains independent from scientific metric sampling. Rendering may use a reduced display representation for long series only if the complete collected scientific samples remain preserved separately.
+
+#198 must stop after live Results UI is deployed and browser-verified. Do not begin #199 persistence/export inside #198.
 
 ### Experiment Results vs Studies
 
@@ -64,19 +86,6 @@ An Experiment defines metrics, samples them during one run, collects scalar obse
 Studies later orchestrate repeated runs/parameter conditions, consume the same stable metric identities, aggregate/compare results and create cross-run analyses such as box/distribution/density/scatter/ensemble plots.
 
 Basic metrics and one-run live Results therefore precede the Study foundation. #3 remains important but is not a prerequisite for #195.
-
-### Live Results UI rule — #198
-
-Live Results must remain physically close to the running simulation. Normal metric inspection must not require leaving the Experiment screen, switching browser tabs or opening a separate Results page.
-
-Results use generic plot panels:
-
-- a panel references one or more stable metric IDs;
-- several metrics may share one panel;
-- the same metric may appear in more than one panel;
-- colors are assigned automatically and remain stable within the active presentation;
-- panel arrangement/bindings are presentation/workspace state, not scientific metric definitions;
-- first visualization type is an interactive time-series line plot.
 
 ### Local persistence — #199
 
@@ -101,8 +110,8 @@ Research AI authors scientific Experiment artifacts and generic Results bindings
 ### #195 child sequence
 
 - **#196 / #195.1 — COMPLETE/DEPLOYED** — four compulsory artifacts + Metrics language/validation/read-only execution contract + explicit measurement phase.
-- **#197 / #195.2 — NEXT** — multi-metric runtime sampling, buffered transport and performance isolation.
-- **#198 / #195.3** — co-located live Results UI with configurable multi-series plot panels.
+- **#197 / #195.2 — COMPLETE/DEPLOYED** — multi-metric runtime sampling, bounded buffered transport and performance isolation.
+- **#198 / #195.3 — NEXT** — co-located live Results UI with configurable multi-series plot panels.
 - **#199 / #195.4** — local single-run result persistence, buffered flush policy, export/provenance.
 - **#200 / #195.5** — MCP/Connector fine-grained Metrics + Results binding authoring end to end.
 - **#201 / #195.6** — owner-defined flocking-order-parameter acceptance.
@@ -131,7 +140,7 @@ Program structure comes from parser/compiler semantics, not magic comment string
 
 Children: #203 editor foundation/highlighting; #204 outline/navigation/folding/search; #205 diagnostics/completion.
 
-#202 is important but does not block #197.
+#202 is important but does not block #198.
 
 ## Owner-feedback UI/UX refinement lane — #207
 
@@ -219,6 +228,8 @@ Developer-side ChatGPT must not independently invent or derive the scientific mo
 
 Software architecture/performance work may design metric execution plumbing, buffering, persistence, UI transport and editor tooling while preserving exact scientific semantics. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, explicit metric read-only observation boundaries, scientific timing/integration semantics and rendering as an observer.
 
+Standing observation gatekeeper: global position is not an allowed robotics observation capability unless the owner explicitly reverses that decision. Capability additions that affect what a robot can observe require owner approval rather than developer inference.
+
 ## Execution granularity — mandatory
 
 Approval breadth is not execution breadth. Default to one substantial independently deployable/testable ticket at a time:
@@ -257,4 +268,4 @@ Older statements fixing the runnable core permanently at three artifacts or assi
 
 ## Current one-line status
 
-**#196 is complete and deployed: Virtual Lab now has four compulsory Experiment artifacts with a constrained read-only Metrics contract and explicit `post-physics-wrapped-state/1` measurement phase. The next substantial product ticket is #197: execute multiple metrics with buffered, performance-isolated runtime sampling/transport. #207 records the owner’s next UI refinement round but does not displace #195. #202 remains the separate editor-ergonomics lane; Studies remain downstream of basic one-run Metrics/Results.**
+**#196 and #197 are complete and deployed: Virtual Lab has four compulsory Experiment artifacts plus deterministic multi-metric runtime sampling with bounded buffered worker transport. The next substantial product ticket is #198: co-located live Results UI and configurable multi-series plot panels. #207 records the owner’s next UI refinement round but does not displace #195. #202 remains the separate editor-ergonomics lane; Studies remain downstream of basic one-run Metrics/Results.**
