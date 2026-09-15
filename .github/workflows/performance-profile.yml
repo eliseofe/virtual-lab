@@ -14,6 +14,7 @@ on:
       - 'web/scripts/runtime-scheduler-profile.mjs'
       - 'web/scripts/layer-attribution-profile.mjs'
       - 'web/scripts/metric-runtime-profile.mjs'
+      - 'web/scripts/result-persistence-profile.mjs'
       - '.github/workflows/performance-profile.yml'
 
 permissions:
@@ -84,6 +85,7 @@ jobs:
           node web/scripts/runtime-scheduler-profile.mjs http://127.0.0.1:4173/ | tee runtime-scheduler-profile.json
           node web/scripts/layer-attribution-profile.mjs http://127.0.0.1:4173/ | tee layer-attribution-profile.json
           node web/scripts/metric-runtime-profile.mjs http://127.0.0.1:4173/ | tee metric-runtime-profile.json
+          node web/scripts/result-persistence-profile.mjs | tee result-persistence-profile.json
 
       - name: Upload profile evidence
         uses: actions/upload-artifact@v4
@@ -101,4 +103,5 @@ jobs:
             runtime-scheduler-profile.json
             layer-attribution-profile.json
             metric-runtime-profile.json
+            result-persistence-profile.json
           retention-days: 30
