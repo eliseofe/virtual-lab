@@ -1,12 +1,17 @@
 import { compileMetrics } from "./metrics/compiler.js";
 import "./builtin-active-elastic-metrics.js";
 import "./results-ui.js";
+import "./result-persistence.js";
 
 const NativeWorker = globalThis.Worker;
 let activeSimulationWorker = null;
 let activeParameters = {};
 let lastBatch = null;
 let lastBuffer = null;
+let lastRuntimeContext = {};
+let pendingMetricResetReason = null;
+let pendingControllerApply = false;
+let pendingSetupApply = false;
 let metricsDirty = false;
 let metricsApplyPending = false;
 let metricsPiggybackPending = false;
@@ -33,6 +38,32 @@ function compiledMetrics(parameters) {
   const ir = compileMetrics(metricSource(), { parameters: parameterTypes(parameters) });
   dispatch("vlab:metrics-definition", { ir });
   return ir;
+}
+
+function rememberRuntimeMessage(message) {
+  if (!message) return;
+  if (message.type === "initialize" || message.type === "apply-setup") {
+    lastRuntimeContext = {
+      ...lastRuntimeContext,
+      setup: { simulation: message.setup?.simulation ?? null },
+      controllerIr: message.ir ?? null,
+      parameters: message.parameters ?? {},
+      metricsIr: message.metricsIr ?? null,
+    };
+  } else if (message.type === "apply-controller") {
+    lastRuntimeContext = {
+      ...lastRuntimeContext,
+      controllerIr: message.ir ?? lastRuntimeContext.controllerIr ?? null,
+      parameters: message.parameters ?? lastRuntimeContext.parameters ?? {},
+      metricsIr: message.metricsIr ?? lastRuntimeContext.metricsIr ?? null,
+    };
+  } else if (message.type === "apply-metrics") {
+    lastRuntimeContext = {
+      ...lastRuntimeContext,
+      parameters: message.parameters ?? lastRuntimeContext.parameters ?? {},
+      metricsIr: message.metricsIr ?? lastRuntimeContext.metricsIr ?? null,
+    };
+  }
 }
 
 function coreRuntimeDirty() {
@@ -107,16 +138,46 @@ class MetricsAwareWorker extends NativeWorker {
       } else if (message.type === "metric-reset") {
         lastBatch = null;
         lastBuffer = null;
-        dispatch("vlab:metric-reset", message);
+        dispatch("vlab:metric-reset", { ...message, reason: pendingMetricResetReason });
+        pendingMetricResetReason = null;
       } else if (message.type === "metrics-applied") {
         metricsApplyPending = false;
         metricsDirty = false;
         syncMetricsAuthoringUi();
         dispatch("vlab:metrics-applied", message);
       } else if (message.type === "metrics-error" || message.type === "metrics-runtime-error") {
+        const wasApply = metricsApplyPending;
         metricsApplyPending = false;
+        pendingMetricResetReason = null;
         syncMetricsAuthoringUi({ error: message.message || "Metrics runtime error" });
         dispatch("vlab:metrics-error", message);
+        if (!wasApply && message.type === "metrics-runtime-error") dispatch("vlab:run-error", message);
+      } else if (message.type === "ready") {
+        lastRuntimeContext = {
+          ...lastRuntimeContext,
+          kernelVersion: message.kernelVersion ?? lastRuntimeContext.kernelVersion ?? null,
+          neighbourStrategy: message.neighbourStrategy ?? lastRuntimeContext.neighbourStrategy ?? null,
+        };
+        pendingSetupApply = false;
+        dispatch("vlab:runtime-ready", lastRuntimeContext);
+      } else if (message.type === "paused") {
+        dispatch("vlab:run-paused", message);
+      } else if (message.type === "completed") {
+        dispatch("vlab:run-complete", message);
+      } else if (message.type === "setup-applied") {
+        pendingSetupApply = false;
+      } else if (message.type === "controller-applied") {
+        pendingControllerApply = false;
+      } else if (message.type === "setup-error") {
+        pendingSetupApply = false;
+        pendingMetricResetReason = null;
+      } else if (message.type === "controller-runtime-error") {
+        const wasApply = pendingControllerApply;
+        pendingControllerApply = false;
+        pendingMetricResetReason = null;
+        if (!wasApply) dispatch("vlab:run-error", message);
+      } else if (message.type === "error") {
+        dispatch("vlab:run-error", message);
       }
     });
   }
@@ -130,6 +191,21 @@ class MetricsAwareWorker extends NativeWorker {
         metricsIr: compiledMetrics(activeParameters),
       };
     }
+    if (next?.type === "initialize") pendingMetricResetReason = "initialize";
+    else if (next?.type === "reset") pendingMetricResetReason = "restart";
+    else if (next?.type === "apply-setup") {
+      pendingMetricResetReason = "configuration changed";
+      pendingSetupApply = true;
+    } else if (next?.type === "apply-controller") {
+      pendingMetricResetReason = "controller changed";
+      pendingControllerApply = true;
+    } else if (next?.type === "apply-metrics") pendingMetricResetReason = "metrics changed";
+
+    rememberRuntimeMessage(next);
+    if (next?.type === "run") dispatch("vlab:run-start", {
+      speed: next.speed ?? null,
+      stopAtScientificTime: next.stopAtScientificTime ?? null,
+    });
     return super.postMessage(next, transferOrOptions);
   }
 }
@@ -173,6 +249,9 @@ document.addEventListener("vlab:apply-metrics", () => {
     return;
   }
   try {
+    const pause = document.querySelector("#pause");
+    if (pause && !pause.disabled) pause.click();
+    else activeSimulationWorker.postMessage({ type: "pause" });
     activeSimulationWorker.postMessage({
       type: "apply-metrics",
       metricsIr: compiledMetrics(activeParameters),
@@ -189,5 +268,6 @@ Object.defineProperty(globalThis, "__vlabMetricRuntime", {
   value: Object.freeze({
     lastBatch: () => lastBatch,
     bufferStatus: () => lastBuffer,
+    runtimeContext: () => lastRuntimeContext,
   }),
 });
