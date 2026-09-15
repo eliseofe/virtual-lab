@@ -1,275 +1,176 @@
 # Virtual Lab — Project Control
 
-Updated: **15 September 2026**
+Updated: **16 September 2026**
 
-This file is the authoritative current roadmap / execution frontier for Virtual Lab. Read `AGENTS.md` first. Detailed accepted technical evidence lives in `PROJECT_STATE.md`; execution-unit rules live in `docs/EXECUTION_GRANULARITY.md`.
+This file is the authoritative current roadmap / execution frontier for Virtual Lab. Read `AGENTS.md` first. Accepted deployed technical evidence lives in `PROJECT_STATE.md`; execution-unit rules live in `docs/EXECUTION_GRANULARITY.md`.
 
 ## Current strategic status
 
-The #147 UI/UX redesign is complete and deployed. The accepted Lab workflow remains:
+The active product/scientific frontier is **#195 — Experiment Metrics + live Results**.
 
-`find/resume Experiment → run/observe → edit one artifact → apply/restart → save → organize only when explicitly needed`
+Completed and deployed children:
 
-Neighbour-search architecture is complete and production uses corrected adaptive periodic BVH `adaptive-periodic-bvh/v1` through #193 / PR #194. #168 and #178 are closed; #179 remains deferred until Studies exist.
+- **#196 / #195.1** — four compulsory Experiment artifacts: Configuration, Initialization, Controller, Metrics.
+- **#197 / #195.2** — deterministic multi-metric runtime sampling, bounded buffering and batched worker→UI transport.
+- **#198 / #195.3** — co-located live Results with generic multi-series time-series panels.
+- **#199 / #195.4** — local-first single-run result persistence, flat user-visible metric files, async flushes and optional whole-Experiment package export.
 
-The active product/scientific frontier is **#195 — Experiment Metrics + live Results**. #196 / #195.1 is complete and deployed: the canonical Experiment has four compulsory artifacts (`configuration`, `initialization`, `controller`, `metrics`), with an empty Metrics artifact valid for compatibility. #197 / #195.2 is complete and production-recertified: multiple metric streams execute with deterministic scientific timing, bounded in-memory buffering and batched worker→UI transport. #198 / #195.3 is now complete and deployed: live Results are co-located with the simulation through configurable multi-series time-series plot panels. The next substantial implementation ticket is **#199 / #195.4 — local single-run result persistence, buffered flush policy and export provenance**.
+The next substantial implementation ticket is **#200 / #195.5 — MCP/Connector fine-grained Metrics + Results binding authoring end to end**.
 
-A separate editor ergonomics lane is #202. A new owner-feedback UI refinement lane is #207. Neither displaces #195 unless the owner explicitly reprioritizes.
+After #200, **#201 / #195.6** is the owner-defined scientific end-to-end acceptance fixture. Do not start #201 before #200 is independently complete unless the owner explicitly reprioritizes.
 
-## Near-term strategic frontier — #195 Experiment Metrics + live Results
+A separate editor ergonomics lane is #202. A separate owner-feedback UI/UX refinement lane is #207. Neither displaces #195 by default.
 
-Owner-approved architecture: `docs/EXPERIMENT_METRICS_RESULTS_ARCHITECTURE_2026-09-15.md`.
+## Canonical Experiment and Results model
 
-### Deployed four-artifact foundation — #196 complete
-
-A runnable Experiment now has four compulsory authored artifacts:
+A runnable Experiment has four required authored artifacts:
 
 1. `configuration`
 2. `initialization`
 3. `controller`
 4. `metrics`
 
-Production registry/interface versions are `vlab.registry-experiment/3` and `vlab.experiment-artifacts/3`. Existing three-artifact Experiments were mechanically backfilled with one compulsory empty Metrics artifact without changing their scientific revision numbers.
+An empty Metrics artifact is valid. One Metrics artifact contains a generic collection of metric definitions; there is no architecture-level maximum metric count. Metrics execute as read-only scientific observers and must not mutate simulation/world/controller state or bypass simulator-owned information/RNG boundaries.
 
-Metrics is part of the scientific Experiment definition, not an optional executable artifact. One Metrics artifact contains a generic collection of metric definitions; there is no architecture-level maximum such as 4/6/8 metrics.
+Metric evaluation cadence, UI refresh cadence and persistence flush cadence are independent. Changing rendering or storage cadence must not change scientific sampling semantics.
 
-The deployed authoring/validation contract is `vlab.authoring/0.5`, Experiment interface `7`, artifact-capability contract `vlab.artifact-capabilities/0.3`, Metrics language `python-vlab-metrics/0.1`, Metrics IR `vlab.metrics-ir/0.1`.
+Results plot panels are presentation/workspace objects. A panel can bind one or more stable metric IDs; the same metric can appear in multiple panels. Reconfiguring plots must not create a new scientific Experiment revision.
 
-Each metric has stable identity, name, optional unit, computation/source and sampling policy/cadence. Metric execution is read-only and cannot mutate simulation state/actions, access controller-private state, unrestricted simulator/host internals, filesystem/network, or bypass simulator-owned information/RNG boundaries.
+## Deployed #199 storage contract
 
-The measurement lifecycle includes an explicit `measure` phase. The frozen periodic measurement point is `post-physics-wrapped-state/1`: observe canonical physical state after the physics integration update and periodic wrapping, at the resulting scientific time. This matches the pre-existing dormant kernel metric hook and is now explicit/versioned. Scientific metric formulas and paper-specific sampling intent remain owner/research-AI decisions.
+Single-run scientific results are local-first. The authoritative raw output is ordinary user-visible files under a user-selected Virtual Lab workspace root when the browser supports writable directory access. Browser-private storage is not the scientific archive.
 
-### Deployed runtime sampling foundation — #197 / #195.2 complete
+Canonical organization:
 
-#197 / PR #213 merged the runtime foundation at `95d3e64e4ccb79ef4551411f0f19cdba78d31c32`. The owner-requested production triple-check later found a packaging hole: the Pages HTML referenced the Metrics runtime bridge at the root while the file existed only inside the hashed asset directory. PR #215 repaired that production wiring and strengthened deployed smoke; the final recertified merge is `a87ad175f3527b404fcf7adf096cb6cb0a1d882e`.
+```text
+<VirtualLab root>/
+  <Experiment>/
+    runs/
+      <metric-id>_000001.csv
+      <other-metric-id>_000001.csv
+      <metric-id>_000002.csv
+      ...
+    studies/
+      <Study>/
+        runs/
+          <metric-id>_000001.csv
+          ...
+```
 
-The runtime now:
+Rules:
 
-- executes the approved `vlab.metrics-ir/0.1` definitions at `post-physics-wrapped-state/1`;
-- preserves independent per-metric periodic/final sampling policies and rejects unschedulable periodic intervals instead of rounding them;
-- emits compact scalar samples with stable metric ID and scientific time;
-- buffers samples in a bounded 262,144-sample runtime queue;
-- exposes explicit overflow provenance (`dropped` count, first-drop scientific time, and completeness state) rather than silently losing scientific data;
-- batches worker transport independently from rendering, currently up to 4,096 samples per batch on an approximately 100 ms wall-clock cadence;
-- performs no durable storage I/O on the simulator hot path;
-- keeps Metrics edits inside the existing Apply & restart flow.
+- the selected Lab Experiment is the parent directory;
+- standalone runs are flat files directly under `<Experiment>/runs/`;
+- never create one directory per simulation run;
+- stable metric ID + increasing run number associates files belonging to one run;
+- previous runs are never overwritten;
+- compact Lab-managed reproducibility/debugging bookkeeping stays out of the ordinary `runs/` directory;
+- future Studies must reuse the same single-run file/data contract under `<Experiment>/studies/<Study>/runs/`;
+- where direct writable-directory access is unavailable, the optional `Download experiment package` action packages all completed standalone runs currently retained for the selected Experiment using the same `<Experiment>/runs/` flat-file organization plus compact `<Experiment>/.vlab/` bookkeeping;
+- the package action is secondary and is not a substitute for automatic selected-folder persistence where that capability exists;
+- do not expose per-run ZIPs, per-run directories or one visible JSON manifest per run.
 
-Deterministic browser/WASM profiling verified identical trajectories with and without metrics, exact expected sample counts across several metric-count/cadence cases, and zero dropped samples in the tested cases. Final production recertification run `35008691715` passed build, Pages deployment and a deployed-browser smoke that explicitly requires `globalThis.__vlabMetricRuntime`. Independent Pages artifact inspection also confirmed the versioned Metrics bridge path exists exactly as referenced.
+#199 initially merged through PR #225 as `c39979ee15d4682497d9a96f08a0c661c9424f79`. Owner phone review then clarified the package semantics; PR #227 replaced ambiguous `Download last run` behavior with whole-Experiment packaging and removed fallback terminology, merging as `7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d`.
 
-#197 stops exactly at runtime collection/transport/performance isolation. It does not implement persistence.
+Production run `35033123628` passed build, Pages deploy, ordinary browser smoke, built-in real-metric smoke, live Results smoke, the dedicated local-result-persistence smoke, and responsive/focus smoke. The direct selected-folder path remains available for a later desktop spot-check by the owner, but that acceptance check is explicitly non-blocking; #199 is complete and the project moves on.
 
-### Deployed live Results UI — #198 / #195.3 complete
+## Current next ticket — #200 / #195.5
 
-#198 / PR #216 merged as `3197b937a00dbdc7c91fccfc571dfe54fd73ea5a` and is deployed.
+#200 completes the machine-readable authoring side of #195. The Virtual Lab MCP/Connector must expose the complete four-artifact Experiment model plus fine-grained Metrics and Results presentation authoring so an authorized research AI can:
 
-Live Results now remain on the Experiment screen with the running simulation:
+- discover supported Metrics syntax/capabilities;
+- create/update/remove metric definitions inside the compulsory Metrics artifact;
+- specify supported sampling policies;
+- create/amend Results plot-panel bindings by stable metric IDs;
+- receive validation/unsupported-capability diagnostics instead of fabricating behavior;
+- author a paper-driven Experiment with sensible initial Results presentation.
 
-- desktop uses an adjacent simulation + Results composition; smaller screens stack Results below the arena without leaving the page;
-- generic plot panels bind to one or more stable metric IDs;
-- multiple metrics may share a panel and the same metric may appear in multiple panels;
-- colors are assigned deterministically by metric ID and remain stable within the presentation;
-- users can add/remove plot panels and change series bindings without modifying the scientific Experiment definition;
-- the first visualization is an interactive time-series line plot with hover inspection, horizontal pan/zoom and reset-view;
-- complete received scientific samples remain retained separately from display reduction for long series;
-- UI rendering is throttled independently from scientific metric sampling/transport and non-visible panels are skipped.
+Research AI still receives no GitHub/repository/shell/deployment/admin/simulator-development privilege. Unsupported simulator capability requests continue through the Professor approval → developer design discussion → explicit owner implementation approval flow.
 
-Panel composition/bindings are presentation/workspace state only. #198 does not create scientific Experiment revisions and contains no persistence/export implementation.
+Stop after #200 is independently implemented, tested, deployed and verified. Do not roll #201 into it.
 
-Pre-merge Round 1A run `35009414282` and performance-profile run `35009414213` passed. Production run `35009612243` passed build, Pages deploy, ordinary deployed-browser smoke, dedicated live-Results smoke, and responsive/focus smoke. The dedicated Results smoke verified complete sample accumulation, two independently configurable panels, the same metric in multiple panels, rendered co-location beside the arena, and mobile stacking without horizontal overflow.
+## #201 scientific acceptance
 
-### Experiment Results vs Studies
+#201 is the final end-to-end scientific acceptance child for #195. Developer-side ChatGPT must not invent the mathematical definition, paper-specific sampling cadence or scientific interpretation of the acceptance metric. Those scientific choices require explicit owner/research-AI input.
 
-**Experiment Results:** what happened during this run?
+The Active Elastic showcase already contains owner-authorized polarization and rotation/milling metrics for product acceptance; that does not waive the general scientific guardrail.
 
-An Experiment defines metrics, samples them during one run, collects scalar observations associated with scientific/run time and shows live Results.
+## Separate editor lane — #202
 
-**Studies:** what happened across runs/conditions?
+Approved direction applies across Configuration, Initialization, Controller, Metrics and future authored artifacts:
 
-Studies later orchestrate repeated runs/parameter conditions, consume the same stable metric identities, aggregate/compare results and create cross-run analyses such as box/distribution/density/scatter/ensemble plots.
-
-Basic metrics and one-run live Results therefore precede the Study foundation. #3 remains important but is not a prerequisite for #195.
-
-### Current next ticket — #199 / #195.4 local persistence
-
-Single-run result persistence is local-first. Never synchronously write every metric sample on the simulation hot path. Preserve complete scientific samples according to the declared sampling policy even if rendering uses a reduced display representation for long series.
-
-Persist/export enough provenance to identify the exact Experiment/revision, metric IDs/definitions, sampling policies, scientific/run time, configuration/seed/runtime/capability versions and result/export identity.
-
-#199 must keep persistence flush cadence independent from metric evaluation and UI refresh, define pending-buffer crash/stop/finalize semantics explicitly, and stop before Studies or MCP authoring.
-
-### MCP / research-AI completion — #200
-
-#196 deployed the four-artifact Metrics-aware validation/authoring contract, but #195 is not complete until #200 exposes the full intended authoring workflow including fine-grained metric definition operations and Results plot-panel bindings.
-
-Target workflow:
-
-`paper + research AI → four-artifact Experiment + relevant metrics + sensible initial live Results layout`
-
-Research AI authors scientific Experiment artifacts and generic Results bindings through supported contracts. It receives explicit validation/unsupported-capability diagnostics and no GitHub/repository/shell/deployment/admin/simulator-development privileges.
-
-### First scientific acceptance fixture — #201
-
-#201 will use a flocking order parameter as the first real end-to-end metric fixture. Its mathematical definition and scientifically intended sampling semantics are intentionally not invented by developer-side ChatGPT; the owner must provide/approve them before that acceptance ticket executes.
-
-### #195 child sequence
-
-- **#196 / #195.1 — COMPLETE/DEPLOYED** — four compulsory artifacts + Metrics language/validation/read-only execution contract + explicit measurement phase.
-- **#197 / #195.2 — COMPLETE/DEPLOYED/RECERTIFIED** — multi-metric runtime sampling, bounded buffered transport and performance isolation.
-- **#198 / #195.3 — COMPLETE/DEPLOYED** — co-located live Results UI with configurable multi-series plot panels.
-- **#199 / #195.4 — NEXT** — local single-run result persistence, buffered flush policy, export/provenance.
-- **#200 / #195.5** — MCP/Connector fine-grained Metrics + Results binding authoring end to end.
-- **#201 / #195.6** — owner-defined flocking-order-parameter acceptance.
-
-Do not implement #195 monolithically.
-
-## Separate editor lane — #202 code-authoring ergonomics
-
-Large Metrics source is an editor problem, not a reason to fragment the Metrics artifact.
-
-Approved direction applies to Configuration, Initialization, Controller, Metrics and future authored artifacts:
-
-- syntax highlighting;
-- semantic highlighting where parser/compiler information supports it;
-- line numbers and robust indentation/editing;
-- useful styling of comments/decorative separators;
-- parser-derived symbol outline/navigation;
-- jump-to-definition;
-- code folding;
-- current symbol/section indication;
-- in-artifact search;
-- source-linked diagnostics gutter;
+- syntax/semantic highlighting where supported;
+- line numbers and robust editing;
+- parser-derived outline/navigation;
+- jump-to-definition, folding and search;
+- source-linked diagnostics;
 - later lightweight contract-derived completion where justified.
 
-Program structure comes from parser/compiler semantics, not magic comment strings.
-
-Children: #203 editor foundation/highlighting; #204 outline/navigation/folding/search; #205 diagnostics/completion.
-
-#202 is important but does not block #199.
+Children: #203 foundation/highlighting; #204 navigation/folding/search; #205 diagnostics/completion.
 
 ## Owner-feedback UI/UX refinement lane — #207
 
-The owner reviewed the deployed #147 redesign on 15 Sep 2026. It is a clear improvement but not final. This feedback is durable in #207 and does **not** displace #195 by default.
+The deployed UI is functional but not final. Preserve these concrete owner observations for the later coherent redesign rather than patching them piecemeal into unrelated tickets:
 
-Highest-priority structural follow-up:
+- #208 — unify Experiment identity and Save/Persistence/organization into one coherent workflow;
+- #209 — reconcile duplicate-looking Account and Professor entry surfaces;
+- #210 — remove unnecessary microcopy, strengthen typography/hierarchy and verify deliberate desktop/mobile layouts;
+- Results metric/series selection currently lacks clear affordance even though multi-series binding works;
+- touching/panning a live plot leaves follow-live mode without an obvious state/control for returning to the live edge;
+- later Results workspace polish may include deliberate side-by-side/stacked/tabbed layout, rearrangement and resizing, while remaining presentation state rather than scientific definition.
 
-- **#208 / #207.1** — unify the current top Experiment area and bottom Save/Persistence area into one coherent Experiment identity/save/save-as-new/organization flow; remove redundancy and fix action hierarchy, including Organize.
-- **#209 / #207.2** — reconcile duplicate-looking Account and Professor entry surfaces; preserve sign-in/out/session controls and Professor capability approvals in one comprehensible account/role model.
-- **#210 / #207.3** — global microcopy/typography/responsive hierarchy cleanup: aggressively delete unnecessary tiny explanatory text, enlarge/reposition retained necessary text, strengthen titles/section hierarchy, and design for desktop/mobile rather than uniformly shrinking.
+The connected Product Design workflow may be used when #207 is deliberately activated, but #207 is not the current implementation frontier.
 
-Simulation and Authoring are acceptable structural baselines for this refinement pass. Do not mix #207 structural work into unrelated Metrics/runtime tickets merely because UI files overlap.
+## Neighbour-search / performance state
 
-## Neighbour-search architecture — production decision complete
+Production native/WASM `Simulation` uses `adaptive-periodic-bvh/v1`, preserving exact receiver-radius membership, arbitrary simultaneous radii, periodic minimum-image geometry and deterministic sorted neighbour indices.
 
-Production native/WASM `Simulation` neighbour backend: `adaptive-periodic-bvh/v1`.
+Retained alternatives: `PeriodicGridNeighbourIndex` as exact reference/fallback and `BruteForceNeighbourIndex` as hidden correctness oracle. #56 remains the living performance umbrella. #179 remains deferred until Studies exist.
 
-It preserves exact receiver-side radius membership, arbitrary simultaneous query radii, periodic minimum-image geometry, deterministic sorted neighbour indices and simulator-owned infrastructure geometry. No experiment-visible backend selector or BVH tuning is exposed.
+## Studies boundary
 
-Retained alternatives:
+Experiment Results answer: **what happened during this run?**
 
-- `PeriodicGridNeighbourIndex` — exact test/reference/fallback;
-- `BruteForceNeighbourIndex` — hidden correctness/debug oracle;
-- multi-resolution periodic grid — benchmark evidence only;
-- faithful ARGoS RAB — benchmark/reference only.
+Studies answer: **what happened across runs/conditions?**
 
-#56 remains the living performance umbrella. #179 remains a deferred future reproducible Study and is not the current execution ticket.
+Future Study work must compose the #199 run identities/file contract rather than inventing an incompatible result layer. Relevant future work includes #3 Study foundation, #4 Study storage, #127 resume/checkpoint semantics, #6/#166 selected Study-result → AI, and #179 persistent neighbour benchmark Study.
 
-## Studies / research workflow after #195
+## Parallel capability requests — approved for design only
 
-- **#3:** Study epic; decompose the first concrete Study object/workspace foundation when Studies become active.
-- **#4:** local Study result storage/provenance; compose the single-run identities/contracts from #195/#199 rather than creating an incompatible result layer.
-- **#127:** fresh vs resume/checkpoint Study semantics.
-- **#6 / #166:** selected Study-result → AI handoff after stable Study/result identities exist.
-- **#179:** encode neighbour benchmark as a persistent Study only after Study/results infrastructure is mature.
-- **#119 / #120:** Research Notes/Documents and later AI synthesis after stable Study/result identities.
+Professor-approved but **not implementation-authorized**:
 
-Boundary: one-run Metrics/Results at Experiment level; cross-run orchestration/aggregation at Study level.
+- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — controller stochasticity/RNG capability;
+- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — heterogeneous agent initialization/state capability.
 
-## Parallel product/access lane
-
-- **#45 / #162:** production OAuth/login surface and explicit enrollment policy; owner decision still needed before changing admission semantics.
-- **#115 / #163:** owner acceptance for collection creation/rename/assignment/moves.
-- **#118 / #164:** owner acceptance for artifact-driven authoring workspace.
-- **#149:** optional first-paper refinement / Showcase decision.
-
-## Parallel research-AI capability requests — approved, design pending
-
-The Professor approved both current informed-robot aggregation capability requests on 15 Sep 2026. Approval authorizes design discussion only, not implementation.
-
-- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`, hook `control`: generic simulator-owned deterministic/reproducible RNG with multiple probability distributions.
-- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — `initialization / heterogeneous_agent_state`, hook `initialize`: generic heterogeneous swarm initialization beyond a boolean flag, extensible toward different private information/sensors/capabilities.
-
-Durable record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
-
-#57 is the likely architecture discussion vehicle for RNG. No coding begins until developer design is discussed and the owner explicitly approves implementation.
-
-## Artifact lifecycle implications
-
-#124 remains the artifact capability/lifecycle epic. Production now deliberately has **four required core artifacts**, and lifecycle vocabulary includes explicit `measure` for compulsory Metrics.
-
-Metrics does not activate #126. #126 remains blocked until a genuinely optional executable artifact type is owner-approved.
-
-## Living architecture / infrastructure parents
-
-- **#2:** scientific validation/reproducibility guardrails.
-- **#56:** simulator performance profiling/optimization.
-- **#65:** world/environment capabilities and sensor queries.
-- **#124:** artifact capability registry/run lifecycle.
-- **#57:** canonical deterministic domain-separated RNG architecture candidate.
-- **#8/#9/#102:** future native/HPC, richer physics/heterogeneity and numerical-integrator evaluation.
-- **#145:** global success-only completion stream.
-
-## Professor capability-request boundary
-
-Standing flow:
-
-`paper + research AI → Experiment draft → missing capability → durable request → Professor approve/decline → developer design discussion → explicit owner implementation approval → trusted developer handoff → capability implementation/deploy → deployed-contract verification → request implemented → research AI resumes preserved draft`
-
-Research AI asks/uses; Professor decides; developer-side ChatGPT implements/certifies. Professor approval alone never starts engineering. Research AI never receives GitHub/repository/shell/deployment/admin/simulator-source privileges.
+Durable record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`. No coding begins until architecture is discussed and the owner explicitly authorizes implementation.
 
 ## Scientific / architecture guardrail
 
-Developer-side ChatGPT must not independently invent or derive the scientific model being simulated. Scientific equivalence, paper-specific equations/parameters, controller logic, metric formulas, paper-specific sampling semantics, retuning and model analysis belong to the Professor/research-AI discussion unless explicitly authorized.
+Developer-side ChatGPT must not independently invent or derive scientific models, paper-specific equations/parameters, controller logic, metric formulas, scientific sampling semantics, retuning or claims of scientific equivalence.
 
-Software architecture/performance work may design metric execution plumbing, buffering, persistence, UI transport and editor tooling while preserving exact scientific semantics. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, explicit metric read-only observation boundaries, scientific timing/integration semantics and rendering as an observer.
+Software architecture/performance work may design compilers, buffering, persistence, UI transport, file formats and editor tooling while preserving scientific semantics. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, explicit metric read-only observation boundaries, scientific timing/integration semantics and rendering as an observer.
 
-Standing observation gatekeeper: global position is not an allowed robotics observation capability unless the owner explicitly reverses that decision. Capability additions that affect what a robot can observe require owner approval rather than developer inference.
+Standing observation gatekeeper: global position is not an allowed robotics controller observation capability unless the owner explicitly reverses that decision.
 
 ## Execution granularity — mandatory
 
-Approval breadth is not execution breadth. Default to one substantial independently deployable/testable ticket at a time:
+Approval breadth is not execution breadth. Default to one substantial independently testable/deployable ticket at a time:
 
 1. implement or measure;
 2. test;
 3. deploy when applicable;
-4. verify actual behavior;
+4. verify actual production behavior;
 5. update repository state/issue;
-6. report a clean checkpoint;
-7. stop before the next substantial ticket unless the owner's current message explicitly requests a broader sequence.
-
-Full rule: `docs/EXECUTION_GRANULARITY.md`.
-
-## Success-only durable reporting
-
-Issue #145 is the central success-report stream for ChatGPT-managed `eliseofe/*` work.
-
-- pure discussion/planning: no report;
-- failed/retrying/partial work: no success report;
-- verified terminal implementation success: append one `[SUCCESS REPORT]` comment.
+6. append a success report to #145 only at verified terminal success;
+7. stop before the next substantial ticket unless the owner's current instruction explicitly requests more.
 
 ## Source precedence
 
 When sources disagree:
 
 1. explicit current owner instruction;
-2. `PROJECT_CONTROL.md` for priority/sequencing;
-3. `docs/EXPERIMENT_METRICS_RESULTS_ARCHITECTURE_2026-09-15.md` for the Metrics/Results architecture;
-4. `PROJECT_STATE.md` for accepted deployed technical state/evidence;
-5. focused current design docs;
-6. active focused issue scope;
-7. older issues/chats as history only.
-
-Older statements fixing the runnable core permanently at three artifacts or assigning all Metrics/Results exclusively to Studies are superseded.
-
-## Current one-line status
-
-**#196, #197 and #198 are complete and deployed: Virtual Lab has four compulsory Experiment artifacts, deterministic multi-metric runtime sampling with bounded buffered transport, and co-located configurable live Results plots. The next substantial product ticket is #199: local single-run result persistence/export with decoupled flush cadence and provenance. #207 remains the parallel owner-feedback UI refinement lane; #202 remains the separate editor-ergonomics lane; Studies remain downstream of the single-run Metrics/Results foundation.**
+2. this `PROJECT_CONTROL.md`;
+3. focused current architecture/design docs;
+4. `PROJECT_STATE.md` technical evidence;
+5. current issue;
+6. older chats/issues/history.
