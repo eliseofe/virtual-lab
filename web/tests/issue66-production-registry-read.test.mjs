@@ -14,15 +14,48 @@ import { productionExperimentRunnability } from "../src/experiment-validation.js
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = path.resolve(here, "../src");
 
+function fakeElement() {
+  return {
+    value: "",
+    dataset: {},
+    children: [],
+    className: "",
+    textContent: "",
+    spellcheck: false,
+    setAttribute() {},
+    append(...children) { this.children.push(...children); },
+  };
+}
+
 function fakeRoot(initial = {}) {
   const editors = new Map(
-    EXPERIMENT_ARTIFACTS.map((descriptor) => [
-      descriptor.editorSelector,
-      { value: initial[descriptor.registryField] ?? "", dataset: {} },
-    ]),
+    EXPERIMENT_ARTIFACTS
+      .filter((descriptor) => descriptor.editorSelector)
+      .map((descriptor) => [
+        descriptor.editorSelector,
+        { value: initial[descriptor.registryField] ?? "", dataset: {} },
+      ]),
   );
+  const extraContainer = fakeElement();
+  extraContainer.replaceChildren = function replaceChildren() { this.children = []; };
+  extraContainer.querySelector = function querySelector(selector) {
+    if (!selector.includes('data-experiment-artifact-editor="true"')) return null;
+    const idMatch = selector.match(/data-experiment-artifact-id="([^"]+)"/);
+    return this.children
+      .flatMap((child) => child.children ?? [])
+      .find((child) => child.dataset?.experimentArtifactEditor === "true" && (!idMatch || child.dataset.experimentArtifactId === idMatch[1])) ?? null;
+  };
+  extraContainer.querySelectorAll = function querySelectorAll(selector) {
+    if (!selector.includes('data-experiment-artifact-editor="true"')) return [];
+    return this.children
+      .flatMap((child) => child.children ?? [])
+      .filter((child) => child.dataset?.experimentArtifactEditor === "true");
+  };
+  const ownerDocument = { createElement: fakeElement };
   return {
+    ownerDocument,
     querySelector(selector) {
+      if (selector === "#additional-experiment-artifacts") return extraContainer;
       return editors.get(selector) ?? null;
     },
   };
@@ -47,20 +80,21 @@ MAX_ANGULAR_SPEED = 1.0
 `,
 };
 
-test("experiment artifact integration retains the three specialized core adapters", () => {
+test("experiment artifact integration retains three specialized adapters plus compulsory Metrics", () => {
   assert.deepEqual(
     EXPERIMENT_ARTIFACTS.map(({ id, registryField }) => [id, registryField]),
     [
       ["configuration", "config_source"],
       ["initialization", "initializer_source"],
       ["controller", "controller_source"],
+      ["metrics", null],
     ],
   );
-  assert.equal(new Set(EXPERIMENT_ARTIFACTS.map((item) => item.registryField)).size, EXPERIMENT_ARTIFACTS.length);
-  assert.equal(new Set(EXPERIMENT_ARTIFACTS.map((item) => item.editorSelector)).size, EXPERIMENT_ARTIFACTS.length);
+  assert.equal(new Set(EXPERIMENT_ARTIFACTS.filter((item) => item.registryField).map((item) => item.registryField)).size, 3);
+  assert.equal(new Set(EXPERIMENT_ARTIFACTS.filter((item) => item.editorSelector).map((item) => item.editorSelector)).size, 3);
 });
 
-test("artifact adapter upgrades legacy registry sources into the canonical artifact payload", () => {
+test("artifact adapter upgrades legacy registry sources into the four-artifact canonical payload", () => {
   const root = fakeRoot();
   const experiment = {
     config_source: "N = 5",
@@ -73,7 +107,8 @@ test("artifact adapter upgrades legacy registry sources into the canonical artif
   assert.equal(captured.config_source, experiment.config_source);
   assert.equal(captured.initializer_source, experiment.initializer_source);
   assert.equal(captured.controller_source, experiment.controller_source);
-  assert.deepEqual(captured.artifacts.map(({ id }) => id), ["configuration", "initialization", "controller"]);
+  assert.deepEqual(captured.artifacts.map(({ id }) => id), ["configuration", "initialization", "controller", "metrics"]);
+  assert.equal(captured.artifacts.find(({ id }) => id === "metrics").content, "");
 });
 
 test("production runnability preflight accepts a generic valid experiment and rejects empty artifacts", () => {
