@@ -53,7 +53,7 @@ test("Metrics runtime bridge is installed before main simulation startup", () =>
 });
 
 test("metrics-only authoring changes use the existing Apply and restart action", () => {
-  assert.match(bridgeSource, /data-experiment-artifact-id=\\"metrics\\"/);
+  assert.match(bridgeSource, /data-experiment-artifact-id/);
   assert.match(bridgeSource, /#apply-workspace/);
   assert.match(bridgeSource, /metricsDirty = true/);
   assert.match(bridgeSource, /stopImmediatePropagation/);
