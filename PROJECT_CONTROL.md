@@ -153,6 +153,8 @@ The benchmark-only tree uses widest-bounding-box-axis median splits and a fixed 
 
 Every frozen #169 smoke scenario/radius matched `BruteForceNeighbourIndex` exactly. Final-head dedicated benchmark `34946443310` passed and retained artifact `10387037408`; standard PR workflow `34946443238` and full performance/browser workflow `34946443341` also passed.
 
+The larger #176 tournament subsequently exposed a tiny floating-point periodic-boundary broad-phase omission that the frozen smoke matrix had not reached. #185 corrected the BVH pruning conservatively without changing the authoritative minimum-image membership test, and added an exhaustive N=5,000 boundary regression: 25,000 queries over radii 0.1, 0.25, 1, 4 and 10, all exactly equal to brute force. The corrected candidate is the one used by the final #176 tournament.
+
 Representative BVH query results versus the current grid from the retained smoke evidence:
 
 - uniform single small: +29.9% slower;
@@ -161,22 +163,53 @@ Representative BVH query results versus the current grid from the retained smoke
 - clustered multi-radius: 0.5% faster (effectively tied; rebuild+query +0.6%);
 - periodic boundary bands: 26.5% faster.
 
-Its index-entry proxy is roughly 1.2–1.4 entries per agent in these fixtures, substantially lower than the 6–8 entries per agent of the #174 hierarchy. Rebuild cost is generally much closer to the current grid than the multi-resolution hierarchy, while query performance is mixed. This makes BVH a serious low-storage/general finalist, **not a declared winner**.
+Its index-entry proxy is roughly 1.2–1.4 entries per agent in these fixtures, substantially lower than the 6–8 entries per agent of the #174 hierarchy. Rebuild cost is generally much closer to the current grid than the multi-resolution hierarchy, while query performance is mixed. This makes BVH a serious low-storage/general finalist, **not a declared winner from #175 alone**.
 
 Durable result:
 
 `docs/NEIGHBOUR_SEARCH_ADAPTIVE_BVH_RESULT_2026-09-15.md`
 
-PR #182 squash-merged as `b1cd5f518a1822fd64db333f4b6f444119ed2735`. Post-merge dedicated benchmark `34946622192` passed. Post-merge production workflow `34946622156` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+PR #182 squash-merged as `b1cd5f518a1822fd64db333f4b6f444119ed2735`. Post-merge dedicated benchmark `34946622192` passed. Post-merge production workflow `34946622156` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke. #185's corrected BVH is merged with #176 in `f0c3b2c3bb1ed2c44db4b4581437c1b01baaaf27`.
 
 Production `PeriodicGridNeighbourIndex` remains unchanged.
+
+### #176 — common generic neighbour tournament completed
+
+#176 / #183 / PR #184 ran the corrected generic candidates under one common deterministic native harness across 34 scaling/crossover scenarios spanning N, density, single/multiple/wide radius sets, uniform/clustered/periodic-boundary occupancy, rebuild cost, query cost, index-size proxy and representative observation/controller-path timing.
+
+Three independent final-head attempts were retained. Despite GitHub scheduling them on three different AMD EPYC host models, 31/34 scenarios selected the same generic winner in all three attempts. The three unstable near-crossover cases are explicitly recorded in the report and must not be used as sharp selector thresholds.
+
+Median winners across the 34 scenarios:
+
+- adaptive periodic BVH: **26/34**;
+- multi-resolution periodic grid: **5/34**;
+- current production grid: **3/34**.
+
+There is therefore **no universal generic winner**. BVH is the strongest broad/default candidate from the native tournament; the current grid retains legitimate low-overhead single-radius/sparse winning regions; multi-resolution has real specialist wins for wide radius ratios, including a strong dense wide-radius regime. Four representative existing observation/controller-path anchors all favored BVH.
+
+The radius-matched/Violet-like grid remains a diagnostic performance reference only, not an admissible generic backend, because its geometry is constructed from scientific query radius.
+
+Durable result:
+
+`docs/NEIGHBOUR_SEARCH_TOURNAMENT_2026-09-15.md`
+
+Evidence:
+
+- final-head three-attempt workflow run `34949378085`, retained artifacts `10389135146`, `10388283977`, `10389230424`;
+- report-bearing PR-head tournament `34950490008`, standard Rust/WASM workflow `34950490048`, performance/browser workflow `34950490056`, and BVH benchmark `34950490023` all passed;
+- PR #184 squash-merged as `f0c3b2c3bb1ed2c44db4b4581437c1b01baaaf27`;
+- post-merge main tournament `34950718323` passed;
+- post-merge BVH benchmark `34950718229` passed;
+- post-merge production workflow `34950718319` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+
+No production backend or automatic selector changed in #176. Production/WASM integration and selector policy remain #178 work.
 
 ### Agreed execution sequence under #168
 
 - **#174 / #168.4 — multi-resolution periodic grid. Completed.** Exact benchmark-only candidate retained; production unchanged.
-- **#175 / #168.5 — adaptive tree/BVH. Completed.** Exact low-storage benchmark-only candidate retained; production unchanged.
-- **#176 / #168.6 — generic tournament. Next performance ticket.** Current vs Violet reference vs multi-resolution vs tree/BVH; brute force hidden oracle.
-- **#177 / #168.7 — faithful transmitter-range RAB comparison.** Compare exact structures under genuine RAB semantics, including heterogeneous ranges.
+- **#175 / #168.5 — adaptive tree/BVH. Completed.** Exact low-storage benchmark-only candidate retained; #185 follow-up exactness fix completed; production unchanged.
+- **#176 / #168.6 — generic tournament. Completed.** No universal winner; BVH strongest broad generic candidate, current grid and multi-resolution retain distinct winning regions; production unchanged.
+- **#177 / #168.7 — faithful transmitter-range RAB comparison. Next performance ticket.** Compare exact structures under genuine RAB semantics, including heterogeneous ranges.
 - **#178 / #168.8 — production decision/integration.** Select one or several justified backends, any deterministic `auto` policy, provenance, and whether a specialized RAB backend is retained.
 - **#179 / #168.9 — persistent scalability Study.** Deferred until Studies/results infrastructure is mature.
 
@@ -275,4 +308,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#175 is complete: the exact adaptive periodic BVH is retained alongside #174 multi-resolution as a serious generic finalist, with much lower storage/rebuild overhead but mixed query performance. Production generic neighbour search remains unchanged, and faithful ARGoS RAB remains separately completed in #173. The next performance child is #176 generic tournament, followed by #177 faithful RAB comparison, #178 integration decision and #179 persistent Study. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
+**#176 is complete and production remains unchanged. The corrected generic tournament found no universal backend winner: BVH is the strongest broad generic/default candidate, while the current grid and multi-resolution retain distinct winning regions. The next performance child is #177 faithful transmitter-range RAB comparison, followed by #178 evidence-backed production integration/`auto` decision and #179 persistent Study. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
