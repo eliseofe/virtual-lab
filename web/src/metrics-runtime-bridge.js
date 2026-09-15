@@ -1,4 +1,5 @@
 import { compileMetrics } from "./metrics/compiler.js";
+import "./results-ui.js";
 
 const NativeWorker = globalThis.Worker;
 let activeSimulationWorker = null;
@@ -23,12 +24,14 @@ function parameterTypes(parameters) {
   return Object.fromEntries(Object.keys(parameters ?? {}).map((name) => [name, "scalar"]));
 }
 
-function compiledMetrics(parameters) {
-  return compileMetrics(metricSource(), { parameters: parameterTypes(parameters) });
-}
-
 function dispatch(name, detail = {}) {
   document.dispatchEvent(new CustomEvent(name, { detail }));
+}
+
+function compiledMetrics(parameters) {
+  const ir = compileMetrics(metricSource(), { parameters: parameterTypes(parameters) });
+  dispatch("vlab:metrics-definition", { ir });
+  return ir;
 }
 
 function coreRuntimeDirty() {
