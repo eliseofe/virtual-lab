@@ -18,7 +18,9 @@ function editorFor(root, descriptor) {
 }
 
 function dynamicEditorFor(root, id) {
-  return root.querySelector(`#additional-experiment-artifacts [data-experiment-artifact-editor="true"][data-experiment-artifact-id="${CSS.escape(id)}"]`);
+  const container = root.querySelector("#additional-experiment-artifacts");
+  if (!container?.querySelector) return null;
+  return container.querySelector(`[data-experiment-artifact-editor="true"][data-experiment-artifact-id="${id}"]`);
 }
 
 function normalizeArtifact(artifact) {
@@ -120,7 +122,7 @@ export function captureExperimentArtifactArray(root = document) {
   }
   const container = root.querySelector("#additional-experiment-artifacts");
   if (container) {
-    for (const editor of container.querySelectorAll('[data-experiment-artifact-editor="true"]')) {
+    for (const editor of container.querySelectorAll?.('[data-experiment-artifact-editor="true"]') ?? []) {
       if (CORE_BY_ID.has(editor.dataset.experimentArtifactId)) continue;
       artifacts.push({ id: editor.dataset.experimentArtifactId, type: editor.dataset.experimentArtifactType, label: editor.dataset.experimentArtifactLabel, format: editor.dataset.experimentArtifactFormat, order: Number(editor.dataset.experimentArtifactOrder), content: editor.value });
     }
