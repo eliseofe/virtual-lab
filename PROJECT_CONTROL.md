@@ -13,7 +13,7 @@ Completed and deployed children:
 - **#196 / #195.1** — four compulsory Experiment artifacts: Configuration, Initialization, Controller, Metrics.
 - **#197 / #195.2** — deterministic multi-metric runtime sampling, bounded buffering and batched worker→UI transport.
 - **#198 / #195.3** — co-located live Results with generic multi-series time-series panels.
-- **#199 / #195.4** — local-first single-run result persistence, flat user-visible metric files, async flushes and portable fallback export.
+- **#199 / #195.4** — local-first single-run result persistence, flat user-visible metric files, async flushes and optional whole-Experiment package export.
 
 The next substantial implementation ticket is **#200 / #195.5 — MCP/Connector fine-grained Metrics + Results binding authoring end to end**.
 
@@ -66,9 +66,13 @@ Rules:
 - previous runs are never overwritten;
 - compact Lab-managed reproducibility/debugging bookkeeping stays out of the ordinary `runs/` directory;
 - future Studies must reuse the same single-run file/data contract under `<Experiment>/studies/<Study>/runs/`;
-- unsupported direct-filesystem browsers use an explicit portable download fallback rather than pretending browser-private storage is durable scientific output.
+- where direct writable-directory access is unavailable, the optional `Download experiment package` action packages all completed standalone runs currently retained for the selected Experiment using the same `<Experiment>/runs/` flat-file organization plus compact `<Experiment>/.vlab/` bookkeeping;
+- the package action is secondary and is not a substitute for automatic selected-folder persistence where that capability exists;
+- do not expose per-run ZIPs, per-run directories or one visible JSON manifest per run.
 
-#199 merged through PR #225 as `c39979ee15d4682497d9a96f08a0c661c9424f79`. Production run `35031228033` passed build, Pages deploy, ordinary browser smoke, built-in real-metric smoke, live Results smoke, the dedicated local-result-persistence smoke, and responsive/focus smoke.
+#199 initially merged through PR #225 as `c39979ee15d4682497d9a96f08a0c661c9424f79`. Owner phone review then clarified the package semantics; PR #227 replaced ambiguous `Download last run` behavior with whole-Experiment packaging and removed fallback terminology, merging as `7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d`.
+
+Production run `35033123628` passed build, Pages deploy, ordinary browser smoke, built-in real-metric smoke, live Results smoke, the dedicated local-result-persistence smoke, and responsive/focus smoke. The direct selected-folder path remains available for a later desktop spot-check by the owner, but that acceptance check is explicitly non-blocking; #199 is complete and the project moves on.
 
 ## Current next ticket — #200 / #195.5
 
