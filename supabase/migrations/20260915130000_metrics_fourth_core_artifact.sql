@@ -50,12 +50,17 @@ alter table public.experiments
   drop constraint if exists experiments_schema_version_check,
   drop constraint if exists experiments_interface_version_check;
 
+-- Backfill must bypass the legacy v2 artifact-sync trigger; otherwise that trigger
+-- rewrites schema/interface versions back to v2 before the v3 constraints are installed.
+-- Both triggers are restored in the same transaction before commit.
+alter table public.experiments disable trigger artifact_sync_experiment_artifacts;
 alter table public.experiments disable trigger bump_experiment_revision;
 update public.experiments
 set artifacts = private.ensure_metrics_artifact(artifacts),
     schema_version = 'vlab.registry-experiment/3',
     interface_version = 'vlab.experiment-artifacts/3';
 alter table public.experiments enable trigger bump_experiment_revision;
+alter table public.experiments enable trigger artifact_sync_experiment_artifacts;
 
 alter table public.experiments
   alter column schema_version set default 'vlab.registry-experiment/3',
