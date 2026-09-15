@@ -55,6 +55,11 @@ jobs:
           set -o pipefail
           cargo run --release -p vlab-kernel --example neighbour_strategy_benchmark | tee neighbour-strategy-profile.txt
 
+      - name: Run ARGoS-style coverage-stamping candidate
+        run: |
+          set -o pipefail
+          cargo run --release -p vlab-kernel --example neighbour_argos_coverage_benchmark | tee neighbour-argos-coverage-profile.txt
+
       - name: Build browser kernel
         working-directory: crates/kernel
         run: wasm-pack build --release --target web --out-dir ../../web/public/wasm --out-name vlab_kernel
@@ -87,6 +92,7 @@ jobs:
             native-profile.txt
             neighbour-density-profile.txt
             neighbour-strategy-profile.txt
+            neighbour-argos-coverage-profile.txt
             browser-profile.json
             real-isolation-profile.json
             controller-cost-profile.json
