@@ -1,9 +1,11 @@
 use wasm_bindgen::prelude::*;
 use serde::Deserialize;
 
+mod adaptive_neighbour_index;
 mod controller_ir;
 mod environment_ir;
 mod neighbour_index;
+pub use adaptive_neighbour_index::{AdaptivePeriodicBvh, PRODUCTION_NEIGHBOUR_STRATEGY};
 pub use controller_ir::IrControllerRuntime;
 pub use environment_ir::EnvironmentRuntime;
 pub use neighbour_index::PeriodicGridNeighbourIndex;
@@ -329,7 +331,7 @@ pub struct Simulation<C: ControllerRuntime> {
     control_updates: u32,
     physics: KinematicPhysics,
     observation_model: LocalObservationModel,
-    neighbour_index: PeriodicGridNeighbourIndex,
+    neighbour_index: AdaptivePeriodicBvh,
     observation_scratch: Observation,
     neighbour_indices_scratch: Vec<usize>,
     environment: EnvironmentRuntime,
@@ -366,7 +368,7 @@ impl<C: ControllerRuntime> Simulation<C> {
             control_updates: 0,
             physics: KinematicPhysics,
             observation_model: LocalObservationModel,
-            neighbour_index: PeriodicGridNeighbourIndex::default(),
+            neighbour_index: AdaptivePeriodicBvh::default(),
             observation_scratch: Observation { heading: Vec2::ZERO, neighbours: Vec::new(), environmental_scalar: None },
             neighbour_indices_scratch: Vec::new(),
             environment,
@@ -455,6 +457,7 @@ impl<C: ControllerRuntime> Simulation<C> {
     pub fn scientific_time(&self) -> f64 { self.physics_ticks as f64 * self.config.physics_dt }
     pub fn physics_ticks(&self) -> u32 { self.physics_ticks }
     pub fn control_updates(&self) -> u32 { self.control_updates }
+    pub fn neighbour_strategy(&self) -> &'static str { PRODUCTION_NEIGHBOUR_STRATEGY }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot { scientific_time: self.scientific_time(), physics_ticks: self.physics_ticks, state: self.state.clone() }
     }
@@ -575,6 +578,7 @@ impl ProbeSimulation {
     pub fn scientific_time(&self) -> f64 { self.simulation.scientific_time() }
     pub fn physics_ticks(&self) -> u32 { self.simulation.physics_ticks() }
     pub fn control_updates(&self) -> u32 { self.simulation.control_updates() }
+    pub fn neighbour_strategy(&self) -> String { self.simulation.neighbour_strategy().to_owned() }
     pub fn has_environmental_scalar(&self) -> bool { self.simulation.has_environmental_scalar() }
     pub fn sample_environment_grid(&self, resolution: u32) -> Vec<f64> { self.simulation.sample_environment_grid(resolution) }
     pub fn snapshot_state(&self) -> Vec<f64> {
@@ -591,6 +595,9 @@ impl ProbeSimulation {
 
 #[wasm_bindgen]
 pub fn kernel_version() -> String { env!("CARGO_PKG_VERSION").to_owned() }
+
+#[wasm_bindgen]
+pub fn production_neighbour_strategy() -> String { PRODUCTION_NEIGHBOUR_STRATEGY.to_owned() }
 
 #[cfg(test)]
 mod tests {
@@ -619,6 +626,12 @@ mod tests {
     }
     fn simulation(offset: f64) -> Simulation<LocalCentroidProbeController> {
         Simulation::new(initialization(offset, 12), config(), LocalCentroidProbeController::new(0.1, 0.002, 0.04)).unwrap()
+    }
+
+    #[test]
+    fn production_simulation_reports_selected_neighbour_strategy() {
+        assert_eq!(simulation(0.0).neighbour_strategy(), "adaptive-periodic-bvh/v1");
+        assert_eq!(production_neighbour_strategy(), "adaptive-periodic-bvh/v1");
     }
 
     #[test]
