@@ -315,3 +315,5 @@ fn wrap_coordinate(value: f64, arena_size: f64) -> f64 {
         (value + half).rem_euclid(arena_size) - half
     }
 }
+
+fn main() {}
