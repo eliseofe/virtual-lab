@@ -1,7 +1,12 @@
+mod multi_resolution_periodic_grid;
+
 use std::collections::BTreeSet;
 use std::hint::black_box;
 use std::time::Instant;
 
+use multi_resolution_periodic_grid::{
+    MultiResolutionPeriodicGrid, RadiusMatchedGridReference,
+};
 use serde::Deserialize;
 use vlab_kernel::{
     AgentPhysicalState, BruteForceNeighbourIndex, NeighbourIndex, PeriodicGridNeighbourIndex, Vec2,
@@ -91,6 +96,30 @@ struct CurrentPeriodicGridStrategy {
 
 impl BenchmarkStrategy for CurrentPeriodicGridStrategy {
     fn id(&self) -> &'static str { "current-periodic-grid" }
+
+    fn rebuild(&mut self, state: &[AgentPhysicalState], arena_size: f64) {
+        self.index.rebuild(state, arena_size);
+    }
+
+    fn query(
+        &self,
+        state: &[AgentPhysicalState],
+        agent_index: usize,
+        radius: f64,
+        arena_size: f64,
+        out: &mut Vec<usize>,
+    ) {
+        self.index.query(state, agent_index, radius, arena_size, out);
+    }
+}
+
+#[derive(Default)]
+struct MultiResolutionGridStrategy {
+    index: MultiResolutionPeriodicGrid,
+}
+
+impl BenchmarkStrategy for MultiResolutionGridStrategy {
+    fn id(&self) -> &'static str { "multi-resolution-periodic-grid" }
 
     fn rebuild(&mut self, state: &[AgentPhysicalState], arena_size: f64) {
         self.index.rebuild(state, arena_size);
@@ -255,22 +284,53 @@ fn validate_matrix(matrix: &Matrix) {
 
 fn validate_exactness(scenario: &Scenario, state: &[AgentPhysicalState]) {
     let mut oracle = BruteForceStrategy::default();
-    let mut candidate = CurrentPeriodicGridStrategy::default();
+    let mut current = CurrentPeriodicGridStrategy::default();
+    let mut multi = MultiResolutionGridStrategy::default();
     oracle.rebuild(state, scenario.arena_size);
-    candidate.rebuild(state, scenario.arena_size);
+    current.rebuild(state, scenario.arena_size);
+    multi.rebuild(state, scenario.arena_size);
+    let hierarchy_before = multi.index.level_geometry();
 
     let mut expected = Vec::new();
     let mut actual = Vec::new();
+    let mut reference = RadiusMatchedGridReference::default();
     for &radius in &scenario.radii {
+        reference.rebuild_for_radius(state, scenario.arena_size, radius);
         for agent in 0..state.len() {
             oracle.query(state, agent, radius, scenario.arena_size, &mut expected);
-            candidate.query(state, agent, radius, scenario.arena_size, &mut actual);
+
+            current.query(state, agent, radius, scenario.arena_size, &mut actual);
             assert_eq!(
                 actual, expected,
-                "exactness failure scenario={} radius={} agent={}",
+                "current-grid exactness failure scenario={} radius={} agent={}",
+                scenario.id, radius, agent
+            );
+
+            multi.query(state, agent, radius, scenario.arena_size, &mut actual);
+            assert_eq!(
+                actual, expected,
+                "multi-resolution exactness failure scenario={} radius={} agent={}",
+                scenario.id, radius, agent
+            );
+
+            reference.query_with_stats(
+                state,
+                agent,
+                radius,
+                scenario.arena_size,
+                &mut actual,
+            );
+            assert_eq!(
+                actual, expected,
+                "radius-matched reference exactness failure scenario={} radius={} agent={}",
                 scenario.id, radius, agent
             );
         }
+        assert_eq!(
+            multi.index.level_geometry(),
+            hierarchy_before,
+            "query radius changed multi-resolution hierarchy geometry"
+        );
     }
 }
 
@@ -322,15 +382,140 @@ fn profile_strategy(
     );
 }
 
+fn profile_multi_resolution_diagnostics(scenario: &Scenario, state: &[AgentPhysicalState]) {
+    let mut index = MultiResolutionPeriodicGrid::default();
+    index.rebuild(state, scenario.arena_size);
+    let geometry = index
+        .level_geometry()
+        .into_iter()
+        .enumerate()
+        .map(|(level, (cells, cell_size))| format!("{level}:{cells}:{cell_size:.6}"))
+        .collect::<Vec<_>>()
+        .join(";");
+    println!(
+        "hierarchy,multi-resolution-periodic-grid,{},{},{},\"{}\"",
+        scenario.id,
+        index.level_count(),
+        index.index_entries(),
+        geometry,
+    );
+
+    for &radius in &scenario.radii {
+        let mut out = Vec::new();
+        let mut accepted = 0usize;
+        let mut visited_cells = 0usize;
+        let mut candidate_checks = 0usize;
+        let mut selected_level = None;
+        let mut cells_per_axis = 0usize;
+        let mut cell_size = 0.0;
+        for agent in 0..state.len() {
+            let stats = index.query_with_stats(
+                state,
+                agent,
+                radius,
+                scenario.arena_size,
+                &mut out,
+            );
+            if let Some(level) = selected_level {
+                assert_eq!(level, stats.level_index, "radius selected inconsistent hierarchy levels");
+            } else {
+                selected_level = Some(stats.level_index);
+                cells_per_axis = stats.cells_per_axis;
+                cell_size = stats.cell_size;
+            }
+            accepted += out.len();
+            visited_cells += stats.visited_cells;
+            candidate_checks += stats.candidate_checks;
+        }
+        let queries = state.len();
+        println!(
+            "multi_resolution_diagnostic,{},{:.6},{},{},{:.6},{},{:.3},{:.3},{:.3}",
+            scenario.id,
+            radius,
+            selected_level.expect("non-empty scenario"),
+            cells_per_axis,
+            cell_size,
+            index.index_entries(),
+            visited_cells as f64 / queries as f64,
+            candidate_checks as f64 / queries as f64,
+            accepted as f64 / queries as f64,
+        );
+    }
+}
+
+fn profile_radius_matched_reference(scenario: &Scenario, state: &[AgentPhysicalState]) {
+    let repetitions = 3;
+    for &radius in &scenario.radii {
+        let mut reference = RadiusMatchedGridReference::default();
+        let rebuild_ms = median_ms(repetitions, || {
+            reference.rebuild_for_radius(black_box(state), scenario.arena_size, radius);
+        });
+        reference.rebuild_for_radius(state, scenario.arena_size, radius);
+
+        let mut accepted = 0usize;
+        let query_ms = median_ms(repetitions, || {
+            let mut out = Vec::new();
+            let mut total = 0usize;
+            for agent in 0..state.len() {
+                reference.query_with_stats(
+                    state,
+                    agent,
+                    radius,
+                    scenario.arena_size,
+                    &mut out,
+                );
+                total += out.len();
+            }
+            accepted = total;
+            black_box(total);
+        });
+
+        let mut out = Vec::new();
+        let mut visited_cells = 0usize;
+        let mut candidate_checks = 0usize;
+        for agent in 0..state.len() {
+            let stats = reference.query_with_stats(
+                state,
+                agent,
+                radius,
+                scenario.arena_size,
+                &mut out,
+            );
+            visited_cells += stats.visited_cells;
+            candidate_checks += stats.candidate_checks;
+        }
+
+        println!(
+            "reference_profile,radius-matched-per-radius,{},{:.6},{},{:.6},{},{:.6},{:.6},{},{:.3},{:.3},{:.3}",
+            scenario.id,
+            radius,
+            reference.cells_per_axis(),
+            reference.cell_size(),
+            reference.index_entries(state.len()),
+            rebuild_ms,
+            query_ms,
+            state.len(),
+            visited_cells as f64 / state.len() as f64,
+            candidate_checks as f64 / state.len() as f64,
+            accepted as f64 / state.len() as f64,
+        );
+    }
+}
+
 fn main() {
     let matrix: Matrix = serde_json::from_str(MATRIX_JSON).expect("parse neighbour-search matrix");
     validate_matrix(&matrix);
 
-    println!("vlab_neighbour_strategy_benchmark_version=1");
+    println!("vlab_neighbour_strategy_benchmark_version=2");
     println!("matrix_version={}", matrix.version);
     println!("matrix_seed={}", matrix.seed);
     println!("correctness_contract=brute-force-exact-sorted-multi-radius-single-rebuild");
     println!("profile_schema=row_type,strategy,scenario,agents,arena_size,radii,rebuild_median_ms,query_all_radii_median_ms,total_queries,avg_neighbours");
+    println!("hierarchy_schema=row_type,strategy,scenario,level_count,index_entries,level_geometry_level:cells_per_axis:cell_size");
+    println!("multi_resolution_diagnostic_schema=row_type,scenario,radius,selected_level,cells_per_axis,cell_size,index_entries,avg_visited_cells,avg_candidate_checks,avg_neighbours");
+    println!("reference_profile_schema=row_type,strategy,scenario,radius,cells_per_axis,cell_size,index_entries,rebuild_median_ms,query_all_agents_median_ms,total_queries,avg_visited_cells,avg_candidate_checks,avg_neighbours");
+    println!("multi_resolution_geometry_policy=population-and-arena-only;finest=4*ceil(sqrt(N));coarsen-by-approximately-2-to-one-cell");
+    println!("radius_matched_reference_policy=performance-reference-only;rebuilds-separately-per-radius;not-admissible-general-strategy");
 
     for scenario in &matrix.ci_smoke_scenarios {
         let state = state_for(scenario);
@@ -342,7 +527,12 @@ fn main() {
 
         let mut current = CurrentPeriodicGridStrategy::default();
         profile_strategy(&mut current, scenario, &state);
+
+        let mut multi = MultiResolutionGridStrategy::default();
+        profile_strategy(&mut multi, scenario, &state);
+        profile_multi_resolution_diagnostics(scenario, &state);
+        profile_radius_matched_reference(scenario, &state);
     }
 
-    println!("validation=all-ci-scenarios-current-grid-match-brute-force-across-all-radii");
+    println!("validation=all-ci-scenarios-current-grid-and-multi-resolution-match-brute-force-across-all-radii");
 }
