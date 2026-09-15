@@ -1,4 +1,5 @@
 import { compileMetrics } from "./metrics/compiler.js";
+import "./builtin-active-elastic-metrics.js";
 import "./results-ui.js";
 
 const NativeWorker = globalThis.Worker;
