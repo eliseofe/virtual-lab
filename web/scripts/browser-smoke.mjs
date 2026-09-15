@@ -93,7 +93,8 @@ async function state(send) {
     speed: document.querySelector('#simulation-speed')?.value ?? null,
     speedLabel: document.querySelector('#simulation-speed-value')?.textContent ?? null,
     actualSpeed: document.querySelector('#actual-simulation-speed')?.textContent ?? null,
-    runSeed: document.querySelector('#run-seed')?.textContent ?? null
+    runSeed: document.querySelector('#run-seed')?.textContent ?? null,
+    metricRuntimeBridge: Boolean(globalThis.__vlabMetricRuntime)
   })`;
   const result = await send("Runtime.evaluate", { expression, returnByValue: true });
   const value = result?.result?.value;
@@ -113,6 +114,9 @@ try {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     latest = await state(cdp.send);
     if (latest?.statusState === "ready") {
+      if (!latest.metricRuntimeBridge) {
+        throw new Error(`metrics runtime bridge is not loaded in the browser artifact: ${JSON.stringify(latest)}`);
+      }
       const requiredConfig = [
         'INITIALIZATION_METHOD = "hexagon_perturbed"', "ARENA_SIZE = 10.0", "CONTROL_DT = 0.1",
         "INITIAL_POSITION_NOISE = 0.0", "U = 0.005", "OMEGA_MAX = 1.5707963267948966",
@@ -177,7 +181,7 @@ try {
       if (replayRandomized?.runSeed !== randomizedSeed || Number(replayRandomized?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve the new seed: ${JSON.stringify(replayRandomized)}`);
 
       console.log(JSON.stringify(replayRandomized, null, 2));
-      console.log("Browser reached simulator ready, reported measured speed, changed runtime speed live, and verified same-seed/new-seed restart controls.");
+      console.log("Browser reached simulator ready with the metrics runtime bridge loaded, reported measured speed, changed runtime speed live, and verified same-seed/new-seed restart controls.");
       succeeded = true;
       break;
     }
