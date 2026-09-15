@@ -35,6 +35,10 @@ jobs:
             cargo --version
             lscpu
           } > generic-neighbour-tournament-environment.txt
+      - name: Exhaustive large periodic-boundary BVH exactness regression
+        run: |
+          set -o pipefail
+          cargo run --release -p vlab-kernel --example bvh_boundary_exactness_regression | tee bvh-boundary-exactness-regression.txt
       - name: Run generic neighbour tournament
         run: |
           set -o pipefail
@@ -46,4 +50,5 @@ jobs:
           path: |
             generic-neighbour-tournament.txt
             generic-neighbour-tournament-environment.txt
+            bvh-boundary-exactness-regression.txt
           retention-days: 90
