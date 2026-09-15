@@ -1,10 +1,8 @@
 import {
   DEFAULT_FLUSH_INTERVAL_MS,
   PENDING_SAMPLE_LIMIT,
-  PORTABLE_RUN_SCHEMA,
   RUN_LOG_SCHEMA,
   buildStoredZip,
-  formatRunNumber,
   metricFileName,
   nextRunNumberFromLogText,
   nextRunNumberFromNames,
@@ -23,7 +21,7 @@ let definitionsIr = null;
 let activeRun = null;
 let lastFinishedRun = null;
 let unsavedRuns = [];
-let fallbackSequence = 0;
+let localSequence = 0;
 let flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS;
 let flushTimer = null;
 let ioChain = Promise.resolve();
@@ -87,10 +85,10 @@ function metricDefinitions() {
 }
 
 function createRun() {
-  fallbackSequence += 1;
+  localSequence += 1;
   return {
-    localId: globalThis.crypto?.randomUUID?.() ?? `run-${Date.now()}-${fallbackSequence}`,
-    portableOrdinal: fallbackSequence,
+    localId: globalThis.crypto?.randomUUID?.() ?? `run-${Date.now()}-${localSequence}`,
+    portableOrdinal: localSequence,
     startedAt: nowIso(),
     endedAt: null,
     experiment: currentExperiment(),
@@ -443,46 +441,80 @@ function finishRun(status, reason = null) {
   renderControls();
 }
 
-function portableRunMetadata(run, number) {
+function packageRunsForCurrentExperiment() {
+  const experimentId = currentExperiment().id;
+  return unsavedRuns.filter((run) => (
+    run.experiment.id === experimentId
+    && Boolean(run.terminal)
+    && sampleCount(run.all) > 0
+  ));
+}
+
+function packageRunCounts(run) {
+  return Object.fromEntries([...run.all.entries()].map(([id, points]) => [id, points.length]));
+}
+
+function portableExperimentPackage() {
+  const runs = packageRunsForCurrentExperiment();
+  if (!runs.length) return null;
+  const experiment = runs[0].experiment;
+  const directory = sanitizePathSegment(experiment.title, "Experiment");
+  const entries = [];
+  const logLines = [];
+
+  runs.forEach((run, index) => {
+    const number = index + 1;
+    for (const [id, points] of run.all.entries()) {
+      entries.push({
+        name: `${directory}/runs/${metricFileName(id, number)}`,
+        text: samplesToCsv(points),
+      });
+    }
+    logLines.push(JSON.stringify({
+      ...runLogStart(run),
+      run_number: number,
+    }));
+    logLines.push(JSON.stringify({
+      ...runLogTerminal(run),
+      run_number: number,
+      samples: packageRunCounts(run),
+    }));
+  });
+
+  entries.push({
+    name: `${directory}/.vlab/experiment.json`,
+    text: `${JSON.stringify({
+      schema: "vlab.experiment-storage/0.1",
+      experiment_id: experiment.id,
+      title: experiment.title,
+    }, null, 2)}\n`,
+  });
+  entries.push({
+    name: `${directory}/.vlab/runs.ndjson`,
+    text: `${logLines.join("\n")}\n`,
+  });
+
   return {
-    schema: PORTABLE_RUN_SCHEMA,
-    run_id: run.localId,
-    run_number: number,
-    started_at: run.startedAt,
-    ended_at: run.endedAt,
-    status: run.terminal?.status ?? run.status,
-    reason: run.terminal?.reason ?? null,
-    experiment: run.experiment,
-    runtime: run.runtime,
-    metrics: run.metrics,
-    buffer: run.lastBuffer,
+    experiment,
+    directory,
+    runs,
+    bytes: buildStoredZip(entries),
   };
 }
 
-function portableZip(run) {
-  const number = run.runNumber ?? run.portableOrdinal;
-  const entries = [];
-  for (const [id, points] of run.all.entries()) {
-    entries.push({ name: metricFileName(id, number), text: samplesToCsv(points) });
-  }
-  entries.push({ name: ".vlab/run.json", text: `${JSON.stringify(portableRunMetadata(run, number), null, 2)}\n` });
-  return { number, bytes: buildStoredZip(entries) };
-}
-
-function downloadLastRun() {
-  const run = lastFinishedRun;
-  if (!run || sampleCount(run.all) === 0) return;
-  const { number, bytes } = portableZip(run);
-  const blob = new Blob([bytes], { type: "application/zip" });
+function downloadExperimentPackage() {
+  const packaged = portableExperimentPackage();
+  if (!packaged) return;
+  const blob = new Blob([packaged.bytes], { type: "application/zip" });
   const link = document.createElement("a");
   const href = URL.createObjectURL(blob);
   link.href = href;
-  link.download = `${sanitizePathSegment(run.experiment.title, "Experiment")}_run_${formatRunNumber(number)}.zip`;
+  link.download = `${packaged.directory}_results.zip`;
   document.body.append(link);
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(href), 1000);
-  run.exported = true;
+  for (const run of packaged.runs) run.exported = true;
   renderControls();
 }
 
@@ -514,7 +546,7 @@ function mountControls() {
     <span id="results-storage-status" class="results-storage-status" role="status"></span>
     <button id="results-storage-folder" type="button">Choose results folder</button>
     <label>Save every <select id="results-storage-frequency" aria-label="Results save frequency"></select></label>
-    <button id="results-storage-export" type="button" hidden>Download last run</button>`;
+    <button id="results-storage-export" type="button" hidden>Download experiment package</button>`;
   results.querySelector(".live-results-head")?.insertAdjacentElement("afterend", controls);
   const frequency = controls.querySelector("#results-storage-frequency");
   for (const ms of FLUSH_CHOICES) {
@@ -529,7 +561,7 @@ function mountControls() {
     if (activeRun && rootHandle) scheduleFlush(activeRun, false);
   });
   controls.querySelector("#results-storage-folder").addEventListener("click", chooseOrReconnectRoot);
-  controls.querySelector("#results-storage-export").addEventListener("click", downloadLastRun);
+  controls.querySelector("#results-storage-export").addEventListener("click", downloadExperimentPackage);
   renderControls();
 }
 
@@ -552,7 +584,7 @@ function renderControls() {
     status.textContent = "Reconnect the previously selected results folder.";
     status.dataset.state = "idle";
   } else if (!persistenceSupported) {
-    status.textContent = "This browser cannot write a results folder directly. Download completed runs instead.";
+    status.textContent = "Direct folder writing is unavailable in this browser.";
     status.dataset.state = "idle";
   } else {
     status.textContent = "Choose a results folder to save raw metric files.";
@@ -562,7 +594,7 @@ function renderControls() {
   folder.textContent = rootHandle ? "Change folder" : rememberedHandle ? "Reconnect folder" : "Choose results folder";
   folder.disabled = Boolean(rootHandle && activeRun && !activeRun.terminal);
   frequency.disabled = !rootHandle;
-  exportButton.hidden = !(lastFinishedRun && sampleCount(lastFinishedRun.all) > 0);
+  exportButton.hidden = packageRunsForCurrentExperiment().length === 0;
 }
 
 async function chooseOrReconnectRoot() {
@@ -602,7 +634,7 @@ async function restoreRoot() {
 function diagnostics() {
   return {
     supported: persistenceSupported,
-    mode: rootHandle ? "directory" : "fallback",
+    mode: rootHandle ? "directory" : persistenceSupported ? "not-selected" : "package-export",
     rootName: rootHandle?.name ?? null,
     active: activeRun ? {
       id: activeRun.localId,
@@ -619,6 +651,7 @@ function diagnostics() {
       samples: sampleCount(lastFinishedRun.all),
     } : null,
     unsavedRuns: unsavedRuns.length,
+    packageRuns: packageRunsForCurrentExperiment().length,
     flushIntervalMs,
     pendingLimit: PENDING_SAMPLE_LIMIT,
     stats: { ...stats },
@@ -628,6 +661,7 @@ function diagnostics() {
 
 document.addEventListener("vlab:metrics-definition", (event) => {
   definitionsIr = event.detail?.ir ?? null;
+  renderControls();
 });
 document.addEventListener("vlab:run-start", beginOrResumeRun);
 document.addEventListener("vlab:metric-batch", (event) => receiveBatch(event.detail));
