@@ -232,7 +232,7 @@ function syncAdditionalArtifacts() {
     if (!presentIds.has(tab.dataset.artifactId)) tab.remove();
   }
   for (const tab of tablist.querySelectorAll(".authoring-tab")) {
-    if (!["configuration", "initialization", "controller"].includes(tab.dataset.artifactId)) {
+    if (!["configuration", "initialization", "controller", "metrics"].includes(tab.dataset.artifactId)) {
       tab.dataset.dynamicArtifact = "true";
     }
   }

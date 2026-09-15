@@ -124,6 +124,7 @@
           <button class="authoring-tab" type="button" role="tab" data-artifact-id="configuration" aria-controls="authoring-pane-configuration" aria-selected="true">Configuration</button>
           <button class="authoring-tab" type="button" role="tab" data-artifact-id="initialization" aria-controls="authoring-pane-initialization" aria-selected="false" tabindex="-1">Initialization</button>
           <button class="authoring-tab" type="button" role="tab" data-artifact-id="controller" aria-controls="authoring-pane-controller" aria-selected="false" tabindex="-1">Controller</button>
+          <button class="authoring-tab" type="button" role="tab" data-artifact-id="metrics" aria-controls="authoring-pane-metrics" aria-selected="false" tabindex="-1">Metrics</button>
         </div>
 
         <div class="authoring-body">
@@ -155,6 +156,14 @@
             <div id="compile-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
             <p id="compile-error" class="error" role="alert"></p>
             <button id="compile" class="primary" type="button" disabled hidden tabindex="-1" aria-hidden="true">Apply &amp; restart</button>
+          </section>
+
+          <section id="authoring-pane-metrics" class="authoring-pane" role="tabpanel" data-authoring-artifact-pane="metrics" hidden>
+            <div class="authoring-pane-head">
+              <h3>Metrics</h3>
+              <p class="muted">Defines read-only scientific measurements collected from the running experiment.</p>
+            </div>
+            <textarea id="metrics-source" class="code-editor metrics-editor" spellcheck="false" aria-label="Metrics source" data-experiment-artifact-editor="true" data-experiment-artifact-id="metrics" data-experiment-artifact-type="metrics" data-experiment-artifact-label="Metrics" data-experiment-artifact-format="python-vlab-metrics/0.1" data-experiment-artifact-order="40"></textarea>
           </section>
 
           <div id="additional-experiment-artifacts" aria-label="Additional experiment artifacts"></div>

@@ -4,7 +4,7 @@ export const EXPERIMENT_ARTIFACTS = Object.freeze([
   Object.freeze({ id: "configuration", type: "configuration", label: "Configuration", format: "python-vlab", order: 10, registryField: "config_source", editorSelector: "#experiment-config" }),
   Object.freeze({ id: "initialization", type: "initialization", label: "Initialization", format: "python-vlab", order: 20, registryField: "initializer_source", editorSelector: "#initializer-source" }),
   Object.freeze({ id: "controller", type: "controller", label: "Controller", format: "python-vlab", order: 30, registryField: "controller_source", editorSelector: "#controller-source" }),
-  Object.freeze({ id: "metrics", type: "metrics", label: "Metrics", format: METRICS_LANGUAGE, order: 40, registryField: null, editorSelector: null }),
+  Object.freeze({ id: "metrics", type: "metrics", label: "Metrics", format: METRICS_LANGUAGE, order: 40, registryField: null, editorSelector: "#metrics-source" }),
 ]);
 
 const CORE_BY_ID = new Map(EXPERIMENT_ARTIFACTS.map((descriptor) => [descriptor.id, descriptor]));

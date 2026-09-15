@@ -6,6 +6,7 @@ const FORBIDDEN_ROOTS = new Set([
 const CALL_SIGNATURES = {
   Vec2: { args: ["scalar", "scalar"], result: "vec2" },
   dot: { args: ["vec2", "vec2"], result: "scalar" },
+  cross2: { args: ["vec2", "vec2"], result: "scalar" },
   norm: { args: ["vec2"], result: "scalar" },
   abs: { args: ["scalar"], result: "scalar" },
   sqrt: { args: ["scalar"], result: "scalar" },
