@@ -27,6 +27,7 @@ function emitSnapshot(type) {
     agentCount: state.length / 3,
     arenaSize: activeArenaSize,
     seed: activeSeed,
+    neighbourStrategy: simulation.neighbour_strategy(),
     state,
   });
 }
@@ -165,7 +166,11 @@ async function loadWasm() {
   wasm = await import(moduleUrl);
   await wasm.default();
   wasmReady = true;
-  self.postMessage({ type: "wasm-ready", kernelVersion: wasm.kernel_version() });
+  self.postMessage({
+    type: "wasm-ready",
+    kernelVersion: wasm.kernel_version(),
+    neighbourStrategy: wasm.production_neighbour_strategy(),
+  });
 }
 
 self.addEventListener("message", (event) => {
@@ -197,7 +202,11 @@ self.addEventListener("message", (event) => {
         JSON.stringify(message.parameters ?? {}),
       );
       pacer = new RuntimePacer(activePhysicsDt);
-      self.postMessage({ type: "ready", kernelVersion: wasm.kernel_version() });
+      self.postMessage({
+        type: "ready",
+        kernelVersion: wasm.kernel_version(),
+        neighbourStrategy: simulation.neighbour_strategy(),
+      });
       emitEnvironment();
       emitSnapshot("snapshot");
       return;
@@ -247,6 +256,7 @@ self.addEventListener("message", (event) => {
         snapshotMs,
         scientificTime: simulation.scientific_time(),
         stateLength: state?.length ?? 0,
+        neighbourStrategy: simulation.neighbour_strategy(),
         state,
       });
       return;
