@@ -55,18 +55,25 @@ test("#199 scientific CSV is simple, complete and analysis-friendly", () => {
   assert.throws(() => samplesToCsv([{ t: 0.1, value: Number.NaN }]), /finite numeric/);
 });
 
-test("#199 portable fallback is one ZIP containing flat metric files plus hidden bookkeeping", () => {
+test("#199 optional Experiment package can contain all loose runs with the canonical hierarchy", () => {
   const bytes = buildStoredZip([
-    { name: "polarization_000001.csv", text: "scientific_time,value\n0.1,0.4\n" },
-    { name: "angular_momentum_000001.csv", text: "scientific_time,value\n0.1,0.2\n" },
-    { name: ".vlab/run.json", text: "{}\n" },
+    { name: "Active Elastic/runs/polarization_000001.csv", text: "scientific_time,value\n0.1,0.4\n" },
+    { name: "Active Elastic/runs/angular_momentum_000001.csv", text: "scientific_time,value\n0.1,0.2\n" },
+    { name: "Active Elastic/runs/polarization_000002.csv", text: "scientific_time,value\n0.1,0.5\n" },
+    { name: "Active Elastic/runs/angular_momentum_000002.csv", text: "scientific_time,value\n0.1,0.3\n" },
+    { name: "Active Elastic/.vlab/experiment.json", text: "{}\n" },
+    { name: "Active Elastic/.vlab/runs.ndjson", text: "{}\n{}\n" },
   ]);
   const text = utf8(bytes);
-  assert.equal(bytes[0], 0x50);
-  assert.equal(bytes[1], 0x4b);
-  assert.match(text, /polarization_000001\.csv/);
-  assert.match(text, /angular_momentum_000001\.csv/);
-  assert.match(text, /\.vlab\/run\.json/);
+  for (const expected of [
+    "Active Elastic/runs/polarization_000001.csv",
+    "Active Elastic/runs/angular_momentum_000001.csv",
+    "Active Elastic/runs/polarization_000002.csv",
+    "Active Elastic/runs/angular_momentum_000002.csv",
+    "Active Elastic/.vlab/experiment.json",
+    "Active Elastic/.vlab/runs.ndjson",
+  ]) assert.match(text, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(text, /run\.json/);
 });
 
 test("#199 browser persistence uses selected directory, bounded async buffering and no per-run directories", async () => {
@@ -82,4 +89,14 @@ test("#199 browser persistence uses selected directory, bounded async buffering 
   assert.match(bridge, /vlab:run-start/);
   assert.match(bridge, /vlab:run-complete/);
   assert.match(bridge, /import "\.\/result-persistence\.js"/);
+});
+
+test("#199 package UX means the whole Experiment collection, not the last run", async () => {
+  const persistence = await readFile(new URL("../src/result-persistence.js", here), "utf8");
+  assert.match(persistence, /Download experiment package/);
+  assert.match(persistence, /packageRunsForCurrentExperiment/);
+  assert.match(persistence, /\$\{directory\}\/runs\/\$\{metricFileName\(id, number\)\}/);
+  assert.match(persistence, /\$\{directory\}\/\.vlab\/runs\.ndjson/);
+  assert.doesNotMatch(persistence, /Download last run/i);
+  assert.doesNotMatch(persistence, /fallback/i);
 });
