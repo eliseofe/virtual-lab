@@ -103,13 +103,13 @@ Lower is better.
 | N=1,000, d=1, uniform, equal range 1 | 0.850 | 1.060 | 1.176 | 0.935 | faithful ARGoS |
 | N=5,000, d=1, uniform, equal range 1 | 4.369 | 5.362 | 6.325 | 5.034 | faithful ARGoS |
 | N=25,000, d=1, uniform, equal range 1 | 23.755 | 30.508 | 34.932 | 27.170 | faithful ARGoS |
-| N=5,000, d=1, uniform, heterogeneous 0.25/1/4 | 18.540 | 22.407 | 24.071 | 16.309 | BVH |
+| N=5,000, d=1, uniform, heterogeneous 0.25/1/4 | 18.540 | 23.434 | 29.067 | 16.309 | BVH |
 | N=5,000, d=1, uniform, heterogeneous 0.1/1/10 | 105.769 | 108.032 | 101.056 | 66.860 | BVH |
 | N=5,000, d=16, uniform, heterogeneous 0.1/1/10 | 1840.162 | 1184.010 | 430.997 | 829.189 | multi-resolution |
 | N=5,000, d=1, clustered, heterogeneous 0.25/1/4 | 308.188 | 133.552 | 176.945 | 124.774 | BVH |
 | N=5,000, d=1, boundary bands, equal range 1 | 38.844 | 12.730 | 14.797 | 8.083 | BVH |
 | N=25,000, d=1, clustered, heterogeneous 0.1/1/10 | 12137.444 | 3574.380 | 4907.383 | 3312.468 | BVH |
-| N=25,000, d=1, boundary bands, heterogeneous 0.1/1/10 | 4627.7 | 1472.6 | 1783.5 | 1390.5 | BVH |
+| N=25,000, d=1, boundary bands, heterogeneous 0.1/1/10 | 4627.747 | 1443.389 | 1755.863 | 1390.471 | BVH |
 
 The five faithful-ARGoS combined wins are:
 
