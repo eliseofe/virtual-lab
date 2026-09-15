@@ -119,10 +119,36 @@ Evidence:
 
 No production neighbour backend changed in #173. No winner is declared from the small smoke-matrix RAB timings; the broader faithful RAB comparison belongs to #177.
 
+### #174 — exact multi-resolution periodic-grid candidate completed
+
+#174 / PR #181 implemented the first serious generic multi-radius challenger while preserving the original #25 invariant: hierarchy geometry is simulator infrastructure, one hierarchy is rebuilt once, and arbitrary simultaneous scientific query radii select among already-built levels without radius-triggered rebuilding.
+
+The benchmark-only hierarchy starts at `4 * ceil(sqrt(N))` cells per axis and approximately halves resolution per level down to one cell. Every agent is indexed once per level; selected-level candidates are filtered by the exact periodic minimum-image test and returned in deterministic sorted order. The finest-level multiplier is an initial internal benchmark policy, not a scientific parameter or declared optimum.
+
+Every frozen #169 smoke scenario/radius matched `BruteForceNeighbourIndex` exactly. The benchmark also asserts that hierarchy geometry remains unchanged across the complete ordered simultaneous-radius set. A separate radius-matched per-radius grid remains a diagnostic performance reference only.
+
+Representative same-run evidence from performance workflow `34944939979`, artifact `10386334821`:
+
+- uniform multi-radius: aggregate query time -29.8% vs current grid; rebuild+query -15.8%;
+- uniform wide-radius-ratio: query -53.3%; rebuild+query -47.6%;
+- clustered multi-radius: query -26.0%; rebuild+query -20.0%;
+- periodic boundary bands: query -1.6%; rebuild+query +18.8%;
+- small single-radius: query +31.4%; rebuild+query +120.0%.
+
+The cost is substantial: smoke fixtures use 6–8 levels / index entries per agent and rebuild time is roughly 4.9–10.9× the current single-level grid. The candidate therefore remains promising but **is not yet a production winner**; full candidate comparison and rebuild/query/end-to-end accounting remain required.
+
+Durable result:
+
+`docs/NEIGHBOUR_SEARCH_MULTI_RESOLUTION_RESULT_2026-09-15.md`
+
+PR #181 squash-merged as `6298fba15ae474cc98c3b5eaca6562ebd236a847`. Normal PR workflow `34944939995` and full performance workflow `34944939979` passed on the code head; the final PR commit was documentation-only. Post-merge production workflow `34945372768` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+
+Production `PeriodicGridNeighbourIndex` remains unchanged.
+
 ### Agreed execution sequence under #168
 
-- **#174 / #168.4 — multi-resolution periodic grid.** Benchmark-only exact generic candidate. **Next performance ticket.**
-- **#175 / #168.5 — adaptive tree/BVH.** Benchmark-only exact generic candidate.
+- **#174 / #168.4 — multi-resolution periodic grid. Completed.** Exact benchmark-only candidate retained; production unchanged.
+- **#175 / #168.5 — adaptive tree/BVH. Next performance ticket.** Benchmark-only exact generic candidate.
 - **#176 / #168.6 — generic tournament.** Current vs Violet reference vs multi-resolution vs tree/BVH; brute force hidden oracle.
 - **#177 / #168.7 — faithful transmitter-range RAB comparison.** Compare exact structures under genuine RAB semantics, including heterogeneous ranges.
 - **#178 / #168.8 — production decision/integration.** Select one or several justified backends, any deterministic `auto` policy, provenance, and whether a specialized RAB backend is retained.
@@ -223,4 +249,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#173 is complete: the rejected fixed-halo adaptation is removed from active code and faithful ARGoS RAB is implemented, exact, documented and production-verified as a separate transmitter-range benchmark family. Production generic neighbour search remains unchanged. The next performance child is #174 multi-resolution periodic grids; #175–#179 define the remaining tournament/decision/Study sequence. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
+**#174 is complete: the exact multi-resolution periodic grid is retained as a promising generic multi-radius candidate, with major query wins in several smoke scenarios but materially higher rebuild/storage cost. Production generic neighbour search remains unchanged. Faithful ARGoS RAB remains separately completed in #173. The next performance child is #175 adaptive tree/BVH, followed by #176 generic tournament, #177 faithful RAB comparison, #178 integration decision and #179 persistent Study. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
