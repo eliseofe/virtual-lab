@@ -1,3 +1,4 @@
+import "./registry-ui-v3.js";
 import "./authoring-workspace.js";
 import "./collection-organization.js";
 import "./ux-hardening.js";
