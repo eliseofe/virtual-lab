@@ -36,14 +36,14 @@ Authoritative investigation document:
 
 `docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
 
-#168 now compares exact strategies under one correctness contract:
+#168 compares exact strategies under one correctness contract:
 
 - brute force — oracle / small-N baseline;
 - current single-level periodic grid — production baseline;
 - radius-matched single grid — Violet-like performance reference, not assumed general target;
-- ARGoS-style coverage stamping;
-- multi-resolution / hierarchical periodic grids;
-- adaptive tree / BVH-family indexing.
+- ARGoS-style coverage stamping — first experimental candidate now measured in #171;
+- multi-resolution / hierarchical periodic grids — next serious candidate;
+- adaptive tree / BVH-family indexing — later candidate.
 
 The multi-resolution strategy is currently the strongest architectural hypothesis, but **there is no declared winner**. Every strategy must return the exact same periodic neighbour set and deterministic ordering as brute force, including when several different radii are queried during the same control update.
 
@@ -51,7 +51,7 @@ The investigation should eventually support a common internal strategy interface
 
 Once Studies/results exist, the complete scalability matrix should become a persistent Virtual Lab Study covering N, density, one/multiple radii, spatial heterogeneity, rebuild/query decomposition, memory and end-to-end throughput. Publication/novelty claims require a separate literature review; that review is explicitly deferred.
 
-No candidate implementation is authorized merely by the existence of #168. Proceed by focused child issues under normal execution granularity.
+Proceed by focused child issues under normal execution granularity; do not change the production default before the comparative investigation is complete.
 
 ### #169 contract/harness checkpoint — completed
 
@@ -67,7 +67,19 @@ The frozen smoke matrix explicitly covers single and simultaneous multiple radii
 
 PR performance workflow `34909595098` passed the new contract smoke plus the full existing native/WASM/browser performance tail; evidence artifact `10373957403`. Post-merge production workflow `34909748448` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
 
-No ARGoS-stamping, multi-resolution, tree/BVH or auto-selection implementation was started in #169. The next candidate must be a focused child of #168 and must use the frozen contract rather than altering the benchmark to fit itself.
+### #171 ARGoS-style coverage-stamping candidate — completed
+
+#171 / PR #172 tested the transferable ARGoS coverage-stamping mechanism without importing a privileged scientific communication radius into the generic receiver-radius `NeighbourIndex` contract. The experimental candidate kept the current radius-independent grid resolution, stamped each agent into a simulator-owned one-cell halo, reduced the receiver-side query span, then deterministically deduplicated candidates and applied the exact minimum-image distance test.
+
+The candidate was exact on every frozen #169 smoke scenario/radius using one rebuild across the ordered radius set. However, it normally created **9 index entries per agent** and duplicate stamped references dominated the nontrivial cases. Relative to the current grid, all-radii query time was about 2.14x slower for uniform multi-radius, 3.08x slower for the wide-radius-ratio case, 3.34x slower for clustered multi-radius and 2.28x slower for periodic boundary bands. Only the tiny single-radius case showed a small ~7% query win, while rebuild was already ~6.47x slower.
+
+This is a result about the **generic fixed radius-independent halo adaptation**, not a claim that literal ARGoS range-and-bearing is inefficient. ARGoS's transmitter-owned range semantics make range-specific coverage insertion natural; Virtual Lab's generic service deliberately supports unrelated receiver-side radii against one physical state.
+
+Durable result: `docs/NEIGHBOUR_SEARCH_ARGOS_COVERAGE_RESULT_2026-09-15.md`.
+
+PR #172 squash-merged as `e459f02b7cfca996c2266620f45960f05a3839d1`. Final-head performance workflow `34934460319` passed. Earlier evidence workflow `34934226794` retained artifact `10382970942`. Post-merge production workflow `34934579845` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+
+Decision: preserve this candidate/evidence as a permanent experimental reference, do not promote it to the production general backend, and move next to a focused multi-resolution/hierarchical periodic-grid candidate when authorized.
 
 ## Near-term parallel product/research lanes
 
@@ -79,23 +91,23 @@ No ARGoS-stamping, multi-resolution, tree/BVH or auto-selection implementation w
 - **#118 / #164:** owner acceptance for artifact-driven authoring workspace.
 - **#149:** optional first-paper refinement / optional Showcase decision.
 
-## Parallel research-AI capability requests — not engineering work
+## Parallel research-AI capability requests — approved, design pending
 
-Two Grok requests for the informed-robot aggregation experiment are durable but remain **requested only**:
+The Professor approved both current Grok capability requests for the informed-robot aggregation experiment on 15 Sep 2026. They are now at the **developer-design discussion** stage only; approval does not itself authorize implementation.
 
-- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`, lifecycle hook `control`;
-- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — `initialization / heterogeneous_agent_state`, lifecycle hook `initialize`.
+- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`, lifecycle hook `control`. Professor note: the generic capability must support **different probability distributions**. The design must preserve simulator-owned deterministic/reproducible RNG.
+- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — `initialization / heterogeneous_agent_state`, lifecycle hook `initialize`. Professor note: this must become a **generic heterogeneous swarm initialization capability**, not an `informed` boolean; heterogeneity may include information/private state and potentially heterogeneous sensors/capabilities.
 
-Neither has Professor approval, developer handoff, GitHub implementation issue, or implementation authorization.
+Neither request yet has a developer design conclusion, explicit implementation approval, GitHub implementation issue/handoff, or development start. Durable approval record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
 
-#57 is the likely generic architecture discussion vehicle if the RNG request is later approved, but request existence does not authorize coding.
+#57 is the likely generic architecture discussion vehicle for the RNG request, but no coding starts until the developer design is discussed and the owner explicitly approves implementation.
 
 ## Living architecture / infrastructure parents
 
 - **#2:** scientific validation/reproducibility guardrails. Keep open as a living correctness umbrella; concrete tests belong in the implementation child that needs them.
 - **#65:** world/environment capabilities and sensor queries. Keep open as a living architecture epic; concrete capabilities get focused children.
 - **#124:** artifact capability registry/run lifecycle. #126 remains blocked until a concrete owner-approved optional executable artifact exists; #127 is future Study run semantics.
-- **#57:** canonical deterministic domain-separated RNG architecture; relevant but not yet authorized.
+- **#57:** canonical deterministic domain-separated RNG architecture; now directly relevant to the approved RNG capability request, but implementation still awaits developer design + explicit owner approval.
 - **#8/#9/#102:** future native/HPC, richer physics/heterogeneity, and numerical-integrator evaluation.
 
 ## Professor capability-request loop — durable boundary
@@ -162,4 +174,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#169 is complete and the exact multi-radius neighbour-search contract/matrix is frozen and verified. #168 remains the serious architecture investigation; no candidate has won or been implemented yet. The next performance work must be a focused candidate child using the frozen tournament contract. #162/#166 remain parallel near-term lanes, and the two Grok capability requests remain requested/unapproved.**
+**#169 and #171 are complete. The frozen exact multi-radius tournament rejected the generic fixed-halo ARGoS-style adaptation as a general performance winner despite exact semantics; the next performance candidate is multi-resolution/hierarchical periodic grids. The two Grok aggregation capability requests are Professor-approved with important generalization notes but remain design-pending and are not implementation-authorized. #162/#166 remain parallel near-term lanes.**
