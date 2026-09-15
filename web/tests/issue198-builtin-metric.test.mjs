@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import { compileMetrics } from "../src/metrics/compiler.js";
 import { BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE } from "../src/builtin-active-elastic-metrics-source.js";
@@ -23,10 +23,10 @@ test("#198 built-in Active Elastic ships two owner-authorized live metrics", () 
   assert.match(JSON.stringify(ir.metrics[1]), /"name":"cross2"/);
 });
 
-test("#198 Metrics is a normal static core editor rather than an emergency DOM fixture", () => {
+test("#198 built-in Metrics uses the generic artifact contract without an emergency DOM fixture", () => {
   assert.match(html, /id="metrics-source"/);
   assert.match(html, /data-artifact-id="metrics"/);
-  assert.match(artifacts, /id: "metrics"[\s\S]*editorSelector: "#metrics-source"/);
+  assert.match(artifacts, /id: "metrics"[\s\S]*editorSelector: null/);
   assert.doesNotMatch(installer, /createElement|append\(/);
   assert.match(installer, /document\.querySelector\("#metrics-source"\)/);
 });

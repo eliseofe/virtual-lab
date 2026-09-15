@@ -4,7 +4,7 @@ export const EXPERIMENT_ARTIFACTS = Object.freeze([
   Object.freeze({ id: "configuration", type: "configuration", label: "Configuration", format: "python-vlab", order: 10, registryField: "config_source", editorSelector: "#experiment-config" }),
   Object.freeze({ id: "initialization", type: "initialization", label: "Initialization", format: "python-vlab", order: 20, registryField: "initializer_source", editorSelector: "#initializer-source" }),
   Object.freeze({ id: "controller", type: "controller", label: "Controller", format: "python-vlab", order: 30, registryField: "controller_source", editorSelector: "#controller-source" }),
-  Object.freeze({ id: "metrics", type: "metrics", label: "Metrics", format: METRICS_LANGUAGE, order: 40, registryField: null, editorSelector: "#metrics-source" }),
+  Object.freeze({ id: "metrics", type: "metrics", label: "Metrics", format: METRICS_LANGUAGE, order: 40, registryField: null, editorSelector: null }),
 ]);
 
 const CORE_BY_ID = new Map(EXPERIMENT_ARTIFACTS.map((descriptor) => [descriptor.id, descriptor]));
@@ -18,9 +18,11 @@ function editorFor(root, descriptor) {
 }
 
 function dynamicEditorFor(root, id) {
+  const selector = `[data-experiment-artifact-editor="true"][data-experiment-artifact-id="${id}"]`;
+  const declared = root.querySelector?.(selector);
+  if (declared) return declared;
   const container = root.querySelector("#additional-experiment-artifacts");
-  if (!container?.querySelector) return null;
-  return container.querySelector(`[data-experiment-artifact-editor="true"][data-experiment-artifact-id="${id}"]`);
+  return container?.querySelector?.(selector) ?? null;
 }
 
 function normalizeArtifact(artifact) {
@@ -137,7 +139,7 @@ export function applyExperimentArtifacts(experiment, root = document) {
   const container = clearAdditionalArtifacts(root);
   for (const artifact of artifacts) {
     const descriptor = CORE_BY_ID.get(artifact.id);
-    const editor = descriptor ? editorFor(root, descriptor) : null;
+    const editor = descriptor ? (editorFor(root, descriptor) ?? dynamicEditorFor(root, artifact.id)) : dynamicEditorFor(root, artifact.id);
     if (editor) { editor.value = artifact.content; applyArtifactMetadata(editor, artifact); }
     else renderGenericArtifact(root, container, artifact);
   }
