@@ -145,11 +145,37 @@ PR #181 squash-merged as `6298fba15ae474cc98c3b5eaca6562ebd236a847`. Normal PR w
 
 Production `PeriodicGridNeighbourIndex` remains unchanged.
 
+### #175 — exact adaptive periodic BVH candidate completed
+
+#175 / PR #182 implemented the second serious generic candidate: a deterministic balanced 2D BVH/k-d-style tree built from physical positions only and reused unchanged for every simultaneous query radius.
+
+The benchmark-only tree uses widest-bounding-box-axis median splits and a fixed internal leaf capacity of 8. Periodic queries use only translated arena images required when a search circle crosses a boundary; duplicate candidates are removed, exact periodic minimum-image filtering is authoritative, and results remain deterministically sorted. The leaf capacity is benchmark infrastructure, not an experiment-visible or scientific parameter.
+
+Every frozen #169 smoke scenario/radius matched `BruteForceNeighbourIndex` exactly. Final-head dedicated benchmark `34946443310` passed and retained artifact `10387037408`; standard PR workflow `34946443238` and full performance/browser workflow `34946443341` also passed.
+
+Representative BVH query results versus the current grid from the retained smoke evidence:
+
+- uniform single small: +29.9% slower;
+- uniform multi-radius: +2.0% slower;
+- uniform wide-radius ratio: 17.0% faster;
+- clustered multi-radius: 0.5% faster (effectively tied; rebuild+query +0.6%);
+- periodic boundary bands: 26.5% faster.
+
+Its index-entry proxy is roughly 1.2–1.4 entries per agent in these fixtures, substantially lower than the 6–8 entries per agent of the #174 hierarchy. Rebuild cost is generally much closer to the current grid than the multi-resolution hierarchy, while query performance is mixed. This makes BVH a serious low-storage/general finalist, **not a declared winner**.
+
+Durable result:
+
+`docs/NEIGHBOUR_SEARCH_ADAPTIVE_BVH_RESULT_2026-09-15.md`
+
+PR #182 squash-merged as `b1cd5f518a1822fd64db333f4b6f444119ed2735`. Post-merge dedicated benchmark `34946622192` passed. Post-merge production workflow `34946622156` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+
+Production `PeriodicGridNeighbourIndex` remains unchanged.
+
 ### Agreed execution sequence under #168
 
 - **#174 / #168.4 — multi-resolution periodic grid. Completed.** Exact benchmark-only candidate retained; production unchanged.
-- **#175 / #168.5 — adaptive tree/BVH. Next performance ticket.** Benchmark-only exact generic candidate.
-- **#176 / #168.6 — generic tournament.** Current vs Violet reference vs multi-resolution vs tree/BVH; brute force hidden oracle.
+- **#175 / #168.5 — adaptive tree/BVH. Completed.** Exact low-storage benchmark-only candidate retained; production unchanged.
+- **#176 / #168.6 — generic tournament. Next performance ticket.** Current vs Violet reference vs multi-resolution vs tree/BVH; brute force hidden oracle.
 - **#177 / #168.7 — faithful transmitter-range RAB comparison.** Compare exact structures under genuine RAB semantics, including heterogeneous ranges.
 - **#178 / #168.8 — production decision/integration.** Select one or several justified backends, any deterministic `auto` policy, provenance, and whether a specialized RAB backend is retained.
 - **#179 / #168.9 — persistent scalability Study.** Deferred until Studies/results infrastructure is mature.
@@ -249,4 +275,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#174 is complete: the exact multi-resolution periodic grid is retained as a promising generic multi-radius candidate, with major query wins in several smoke scenarios but materially higher rebuild/storage cost. Production generic neighbour search remains unchanged. Faithful ARGoS RAB remains separately completed in #173. The next performance child is #175 adaptive tree/BVH, followed by #176 generic tournament, #177 faithful RAB comparison, #178 integration decision and #179 persistent Study. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
+**#175 is complete: the exact adaptive periodic BVH is retained alongside #174 multi-resolution as a serious generic finalist, with much lower storage/rebuild overhead but mixed query performance. Production generic neighbour search remains unchanged, and faithful ARGoS RAB remains separately completed in #173. The next performance child is #176 generic tournament, followed by #177 faithful RAB comparison, #178 integration decision and #179 persistent Study. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
