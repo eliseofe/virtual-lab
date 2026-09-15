@@ -18,9 +18,11 @@ function editorFor(root, descriptor) {
 }
 
 function dynamicEditorFor(root, id) {
+  const selector = `[data-experiment-artifact-editor="true"][data-experiment-artifact-id="${id}"]`;
+  const declared = root.querySelector?.(selector);
+  if (declared) return declared;
   const container = root.querySelector("#additional-experiment-artifacts");
-  if (!container?.querySelector) return null;
-  return container.querySelector(`[data-experiment-artifact-editor="true"][data-experiment-artifact-id="${id}"]`);
+  return container?.querySelector?.(selector) ?? null;
 }
 
 function normalizeArtifact(artifact) {
@@ -137,7 +139,7 @@ export function applyExperimentArtifacts(experiment, root = document) {
   const container = clearAdditionalArtifacts(root);
   for (const artifact of artifacts) {
     const descriptor = CORE_BY_ID.get(artifact.id);
-    const editor = descriptor ? editorFor(root, descriptor) : null;
+    const editor = descriptor ? (editorFor(root, descriptor) ?? dynamicEditorFor(root, artifact.id)) : dynamicEditorFor(root, artifact.id);
     if (editor) { editor.value = artifact.content; applyArtifactMetadata(editor, artifact); }
     else renderGenericArtifact(root, container, artifact);
   }

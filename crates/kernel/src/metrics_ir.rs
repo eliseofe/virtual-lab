@@ -241,6 +241,11 @@ fn eval_expression(
                 "dot" if values.len() == 2 => Ok(Value::Scalar(
                     values[0].vec2("dot argument 1")?.dot(values[1].vec2("dot argument 2")?),
                 )),
+                "cross2" if values.len() == 2 => {
+                    let a = values[0].vec2("cross2 argument 1")?;
+                    let b = values[1].vec2("cross2 argument 2")?;
+                    Ok(Value::Scalar(a.x * b.y - a.y * b.x))
+                }
                 "norm" if values.len() == 1 => Ok(Value::Scalar(
                     values[0].vec2("norm argument")?.norm_squared().sqrt(),
                 )),
@@ -757,6 +762,29 @@ mod tests {
         assert_eq!(batch["buffer"]["complete"], false);
         assert_eq!(batch["buffer"]["dropped_samples"], 2);
         assert_eq!(batch["buffer"]["first_dropped_scientific_time"], 0.2);
+    }
+
+
+    #[test]
+    fn cross2_metric_primitive_evaluates_signed_planar_cross_product() {
+        let ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "metrics":[{
+            "id":"probe.cross","name":"Cross","unit":null,
+            "sampling":{"kind":"periodic","interval_seconds":0.1},
+            "function":"cross_probe",
+            "body":[{"kind":"return","value":{"kind":"call","name":"cross2","args":[
+              {"kind":"call","name":"Vec2","args":[{"kind":"const","value":1.0},{"kind":"const","value":0.0}]},
+              {"kind":"call","name":"Vec2","args":[{"kind":"const","value":0.0},{"kind":"const","value":1.0}]}
+            ]}}]
+          }]
+        }"#;
+        let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
+        metrics.observe_due(&state(), 10, 0.1).unwrap();
+        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        assert_eq!(batch["samples"][0]["value"], 1.0);
     }
 
     struct NoopController;

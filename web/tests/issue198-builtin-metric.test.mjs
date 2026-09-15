@@ -4,21 +4,36 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { compileMetrics } from "../src/metrics/compiler.js";
+import { BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE } from "../src/builtin-active-elastic-metrics-source.js";
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "../..");
-const builtin = await readFile(path.join(repo, "web/src/builtin-active-elastic-metrics.js"), "utf8");
+const installer = await readFile(path.join(repo, "web/src/builtin-active-elastic-metrics.js"), "utf8");
 const bridge = await readFile(path.join(repo, "web/src/metrics-runtime-bridge.js"), "utf8");
+const html = await readFile(path.join(repo, "web/src/index.html"), "utf8");
+const artifacts = await readFile(path.join(repo, "web/src/experiment-artifacts.js"), "utf8");
 
-test("#198 built-in Active Elastic ships the owner-authorized polarization metric", () => {
-  assert.match(builtin, /@metric\(id="polarization", name="Polarization order parameter"/);
-  assert.match(builtin, /total \+= agent\.heading/);
-  assert.match(builtin, /return norm\(total\) \/ snapshot\.agent_count/);
-  assert.match(builtin, /data-experiment-artifact-id="metrics"/);
+test("#198 built-in Active Elastic ships two owner-authorized live metrics", () => {
+  assert.match(BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE, /@metric\(id="polarization", name="Polarization order parameter"/);
+  assert.match(BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE, /@metric\(id="angular_momentum", name="Angular momentum order parameter"/);
+  assert.match(BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE, /rotation \+= cross2\(radial_hat, agent\.heading\)/);
+  const ir = compileMetrics(BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE);
+  assert.deepEqual(ir.metrics.map((metric) => metric.id), ["polarization", "angular_momentum"]);
+  assert.match(JSON.stringify(ir.metrics[1]), /"name":"cross2"/);
 });
 
-test("#198 metric artifact is installed before Results/runtime bridge initialization", () => {
+test("#198 built-in Metrics uses the generic artifact contract without an emergency DOM fixture", () => {
+  assert.match(html, /id="metrics-source"/);
+  assert.match(html, /data-artifact-id="metrics"/);
+  assert.match(artifacts, /id: "metrics"[\s\S]*editorSelector: null/);
+  assert.doesNotMatch(installer, /createElement|append\(/);
+  assert.match(installer, /document\.querySelector\("#metrics-source"\)/);
+});
+
+test("#198 built-in source is installed before Results/runtime bridge initialization", () => {
   const builtinImport = bridge.indexOf('import "./builtin-active-elastic-metrics.js";');
   const resultsImport = bridge.indexOf('import "./results-ui.js";');
-  assert.ok(builtinImport >= 0, "metrics bridge must import the built-in metric artifact");
-  assert.ok(resultsImport > builtinImport, "built-in metric artifact must be installed before Results initializes");
+  assert.ok(builtinImport >= 0);
+  assert.ok(resultsImport > builtinImport);
 });

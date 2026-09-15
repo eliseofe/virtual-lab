@@ -33,6 +33,12 @@ function defaultMetricIds() {
   return [...definitions.keys()].slice(0, 3);
 }
 
+function defaultMetricIdForNewPanel() {
+  const ids = [...definitions.keys()];
+  const represented = new Set(panels.flatMap((panel) => panel.metricIds));
+  return ids.find((id) => !represented.has(id)) ?? ids[0] ?? null;
+}
+
 function updateAddPlotButton() {
   const button = document.querySelector("#results-add-panel");
   if (!button) return;
@@ -64,9 +70,9 @@ function mount() {
     <div id="results-panels" class="results-panels"></div>`;
   grid.append(results);
   results.querySelector("#results-add-panel").addEventListener("click", () => {
-    const ids = defaultMetricIds();
-    if (!ids.length) return;
-    addPanel(ids.slice(0, 1));
+    const id = defaultMetricIdForNewPanel();
+    if (!id) return;
+    addPanel([id]);
   });
   updateAddPlotButton();
   refreshEmptyState();
