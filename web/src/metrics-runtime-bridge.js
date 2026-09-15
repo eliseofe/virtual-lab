@@ -5,11 +5,18 @@ let activeSimulationWorker = null;
 let activeParameters = {};
 let lastBatch = null;
 let lastBuffer = null;
+let metricsDirty = false;
+let metricsApplyPending = false;
+let metricsPiggybackPending = false;
 
-function metricSource() {
+function metricEditor() {
   return document.querySelector(
     '[data-experiment-artifact-editor="true"][data-experiment-artifact-id="metrics"]',
-  )?.value ?? "";
+  );
+}
+
+function metricSource() {
+  return metricEditor()?.value ?? "";
 }
 
 function parameterTypes(parameters) {
@@ -22,6 +29,57 @@ function compiledMetrics(parameters) {
 
 function dispatch(name, detail = {}) {
   document.dispatchEvent(new CustomEvent(name, { detail }));
+}
+
+function coreRuntimeDirty() {
+  return ["configuration", "initialization", "controller"].some((id) =>
+    document.querySelector(`[data-artifact-id="${id}"]`)?.hasAttribute("data-dirty"));
+}
+
+function syncMetricsAuthoringUi({ error = null } = {}) {
+  const tab = document.querySelector('[data-artifact-id="metrics"]');
+  tab?.toggleAttribute("data-dirty", metricsDirty);
+  const apply = document.querySelector("#apply-workspace");
+  const state = document.querySelector("#authoring-runtime-state");
+  if (!apply || !state) return;
+
+  if (metricsApplyPending) {
+    apply.disabled = true;
+    state.textContent = "Applying runtime changes…";
+    state.dataset.state = "working";
+    return;
+  }
+  if (error) {
+    apply.disabled = false;
+    state.textContent = "Metrics source has an error";
+    state.dataset.state = "error";
+    return;
+  }
+  if (metricsDirty) {
+    apply.disabled = false;
+    state.textContent = "Runtime changes pending";
+    state.dataset.state = "dirty";
+    return;
+  }
+  if (!coreRuntimeDirty()) {
+    apply.disabled = true;
+    state.textContent = "Runtime sources applied";
+    state.dataset.state = "clean";
+  }
+}
+
+function settlePiggybackFromFeedback() {
+  if (!metricsPiggybackPending) return;
+  const setupState = document.querySelector("#setup-feedback")?.dataset.state;
+  const controllerState = document.querySelector("#compile-feedback")?.dataset.state;
+  if (setupState === "success" || controllerState === "success") {
+    metricsDirty = false;
+    metricsPiggybackPending = false;
+    syncMetricsAuthoringUi();
+  } else if (setupState === "error" || controllerState === "error") {
+    metricsPiggybackPending = false;
+    syncMetricsAuthoringUi();
+  }
 }
 
 class MetricsAwareWorker extends NativeWorker {
@@ -41,8 +99,13 @@ class MetricsAwareWorker extends NativeWorker {
         lastBuffer = null;
         dispatch("vlab:metric-reset", message);
       } else if (message.type === "metrics-applied") {
+        metricsApplyPending = false;
+        metricsDirty = false;
+        syncMetricsAuthoringUi();
         dispatch("vlab:metrics-applied", message);
       } else if (message.type === "metrics-error" || message.type === "metrics-runtime-error") {
+        metricsApplyPending = false;
+        syncMetricsAuthoringUi({ error: message.message || "Metrics runtime error" });
         dispatch("vlab:metrics-error", message);
       }
     });
@@ -63,6 +126,37 @@ class MetricsAwareWorker extends NativeWorker {
 
 globalThis.Worker = MetricsAwareWorker;
 
+document.addEventListener("input", (event) => {
+  if (event.target !== metricEditor()) return;
+  metricsDirty = true;
+  syncMetricsAuthoringUi();
+});
+
+document.addEventListener("click", (event) => {
+  const apply = event.target?.closest?.("#apply-workspace");
+  if (!apply || !metricsDirty || metricsApplyPending) return;
+  if (coreRuntimeDirty()) {
+    metricsPiggybackPending = true;
+    return;
+  }
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  metricsApplyPending = true;
+  syncMetricsAuthoringUi();
+  dispatch("vlab:apply-metrics");
+}, true);
+
+for (const feedback of [document.querySelector("#setup-feedback"), document.querySelector("#compile-feedback")]) {
+  if (!feedback) continue;
+  new MutationObserver(settlePiggybackFromFeedback).observe(feedback, {
+    attributes: true,
+    attributeFilter: ["data-state"],
+    childList: true,
+    characterData: true,
+    subtree: true,
+  });
+}
+
 document.addEventListener("vlab:apply-metrics", () => {
   if (!activeSimulationWorker) {
     dispatch("vlab:metrics-error", { message: "Simulation worker is not ready." });
@@ -75,6 +169,7 @@ document.addEventListener("vlab:apply-metrics", () => {
       parameters: activeParameters,
     });
   } catch (error) {
+    metricsApplyPending = false;
     dispatch("vlab:metrics-error", {
       message: error instanceof Error ? error.message : String(error),
     });
