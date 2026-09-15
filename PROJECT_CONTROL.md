@@ -47,7 +47,7 @@ Authoritative history/design record:
 
 `docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
 
-The investigation now deliberately separates two semantic families.
+The investigation deliberately separates two semantic families.
 
 **Generic receiver-radius tournament:**
 
@@ -117,7 +117,7 @@ Evidence:
 - PR #180 squash-merged as `cc5d9868d304eef61b6a1898ad5b1a0d78e13f51`;
 - post-merge production workflow `34943376032` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
 
-No production neighbour backend changed in #173. No winner is declared from the small smoke-matrix RAB timings; the broader faithful RAB comparison belongs to #177.
+No production neighbour backend changed in #173. The broader faithful RAB comparison is completed in #177 below.
 
 ### #174 — exact multi-resolution periodic-grid candidate completed
 
@@ -204,13 +204,45 @@ Evidence:
 
 No production backend or automatic selector changed in #176. Production/WASM integration and selector policy remain #178 work.
 
+### #177 — faithful transmitter-range RAB comparison completed
+
+#177 / #186 / PR #188 compared the faithful ARGoS RAB spatial mechanism against the already-existing exact generic backends under the same directed transmitter-owned-range relation. The generic adapters query at the maximum transmitter range and then apply the exact transmitter-owned-range filter; no new RAB-specific BVH/grid architecture and no extra real-experiment anchors were introduced.
+
+The 34-case panel mirrors the #176 mechanical regime map with equal range 1, heterogeneous 0.25/1/4 and heterogeneous 0.1/1/10 workloads. Full equality is checked for all N<=1,000 states, deterministic brute-force probes guard larger states, and an additional exhaustive N=5,000 periodic-boundary regression checks every receiver for all three range workloads.
+
+Combined rebuild+route winners in the retained comparison:
+
+- adaptive periodic BVH adapter: **23/34**;
+- faithful ARGoS RAB: **5/34**;
+- current periodic-grid adapter: **3/34**;
+- multi-resolution periodic-grid adapter: **3/34**.
+
+Faithful ARGoS is genuinely competitive for simple uniform modest-range RAB and wins several equal-range cases by modest margins. It is not a robust general winner: transmitter coverage stamping creates strong storage/rebuild amplification as ranges, density, clustering or boundary concentration increase. Representative index-entry counts at N=5,000,d=1 are 44,578 for faithful ARGoS with equal range 1 and 737,286 for heterogeneous 0.1/1/10, versus 7,047 for BVH and 5,000 for the current grid.
+
+Durable result:
+
+`docs/NEIGHBOUR_SEARCH_RAB_COMPARISON_2026-09-15.md`
+
+Evidence:
+
+- retained comparison run `34952716545`, artifact `10389886882`;
+- PR #188 squash-merged as `ba961a3d719bdafda0584c1e8519900a05e407f1`;
+- final-head standard build, dedicated comparison, generic tournament and full browser/WASM performance workflow passed;
+- post-merge dedicated RAB comparison `34953865476` passed;
+- post-merge generic tournament `34953865468` passed;
+- post-merge production workflow `34953865376` passed build, Pages deployment, functional browser smoke and responsive/focus smoke.
+
+Recommendation for #178: retain faithful ARGoS as benchmark/reference evidence, but do not maintain a separate production RAB spatial backend solely for routing performance. Implement transmitter-owned RAB routing through the selected generic exact infrastructure unless a future communication capability adds semantics the generic abstraction cannot express.
+
+No production neighbour backend changed in #177.
+
 ### Agreed execution sequence under #168
 
 - **#174 / #168.4 — multi-resolution periodic grid. Completed.** Exact benchmark-only candidate retained; production unchanged.
 - **#175 / #168.5 — adaptive tree/BVH. Completed.** Exact low-storage benchmark-only candidate retained; #185 follow-up exactness fix completed; production unchanged.
 - **#176 / #168.6 — generic tournament. Completed.** No universal winner; BVH strongest broad generic candidate, current grid and multi-resolution retain distinct winning regions; production unchanged.
-- **#177 / #168.7 — faithful transmitter-range RAB comparison. Next performance ticket.** Compare exact structures under genuine RAB semantics, including heterogeneous ranges.
-- **#178 / #168.8 — production decision/integration.** Select one or several justified backends, any deterministic `auto` policy, provenance, and whether a specialized RAB backend is retained.
+- **#177 / #168.7 — faithful transmitter-range RAB comparison. Completed.** Faithful ARGoS wins a few simple/modest-range regimes but does not justify a separate production spatial backend solely for routing performance.
+- **#178 / #168.8 — production decision/integration. Next performance ticket.** Select one or several justified generic backends, deterministic `auto` policy if warranted, provenance, and exact RAB adapter behavior; validate in production/WASM.
 - **#179 / #168.9 — persistent scalability Study.** Deferred until Studies/results infrastructure is mature.
 
 Each child is a separate measured/tested checkpoint. Do not promote a candidate from its own implementation ticket merely because it looks promising.
@@ -308,4 +340,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#176 is complete and production remains unchanged. The corrected generic tournament found no universal backend winner: BVH is the strongest broad generic/default candidate, while the current grid and multi-resolution retain distinct winning regions. The next performance child is #177 faithful transmitter-range RAB comparison, followed by #178 evidence-backed production integration/`auto` decision and #179 persistent Study. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
+**#177 is complete and production remains unchanged. The generic tournament shows BVH as the strongest broad candidate with current-grid and multi-resolution crossover regions; the faithful RAB comparison shows no performance justification for a separate production ARGoS-style spatial backend. The next performance ticket is #178 evidence-backed production integration/`auto` decision, followed by #179 persistent Study. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
