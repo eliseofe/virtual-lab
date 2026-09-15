@@ -1,0 +1,49 @@
+name: Generic neighbour tournament
+
+on:
+  pull_request:
+    paths:
+      - 'crates/kernel/**'
+      - 'benchmarks/neighbour_search_matrix.json'
+      - '.github/workflows/neighbour-generic-tournament.yml'
+      - 'docs/NEIGHBOUR_SEARCH_*'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/kernel/**'
+      - 'benchmarks/neighbour_search_matrix.json'
+      - '.github/workflows/neighbour-generic-tournament.yml'
+      - 'docs/NEIGHBOUR_SEARCH_*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tournament:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Record runner environment
+        run: |
+          {
+            echo "utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            uname -a
+            rustc --version --verbose
+            cargo --version
+            lscpu
+          } > generic-neighbour-tournament-environment.txt
+      - name: Run generic neighbour tournament
+        run: |
+          set -o pipefail
+          cargo run --release -p vlab-kernel --example neighbour_generic_tournament | tee generic-neighbour-tournament.txt
+      - name: Upload tournament evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: generic-neighbour-tournament-${{ github.sha }}
+          path: |
+            generic-neighbour-tournament.txt
+            generic-neighbour-tournament-environment.txt
+          retention-days: 90
