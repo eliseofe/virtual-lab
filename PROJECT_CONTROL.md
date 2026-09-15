@@ -2,7 +2,7 @@
 
 Updated: **15 September 2026**
 
-This file is the authoritative current roadmap / execution frontier for Virtual Lab. Read `AGENTS.md` first. For detailed technical state/evidence read `PROJECT_STATE.md`; for the completed UI/UX sequence read `docs/UI_UX_REDESIGN_CLOSEOUT_2026-09-15.md`; for execution-unit rules read `docs/EXECUTION_GRANULARITY.md`.
+This file is the authoritative current roadmap / execution frontier for Virtual Lab. Read `AGENTS.md` first. Detailed historical evidence lives in `PROJECT_STATE.md` and the dedicated documents under `docs/`; execution-unit rules live in `docs/EXECUTION_GRANULARITY.md`.
 
 ## Current strategic status
 
@@ -12,61 +12,59 @@ The #147 UI/UX redesign is complete, deployed and browser-verified. The accepted
 
 The backlog was audited on 15 Sep 2026. Historical Round-1/integration shells #1, #14–#18, #46, #52 and completed capability epic #58 are closed. Remaining work is organized around focused parents/children rather than issue recency.
 
-## Active performance frontier — #56 / #168
+## Neighbour-search architecture — production decision completed
 
-Neighbour discovery is an active first-class simulator architecture investigation.
+The #168 comparative neighbour-search investigation converged through #169–#178 and the owner-approved production integration #193 / PR #194.
 
-### Production baseline — unchanged
+### Production backend
 
-The production backend remains the long-standing #25 / PR #34 `PeriodicGridNeighbourIndex`:
+The normal native and WASM `Simulation` neighbour backend is:
 
-- radius-independent grid geometry;
-- `cells_per_axis = ceil(sqrt(N))`;
-- one positional cell per agent;
-- arbitrary receiver-side query radii served from one rebuilt index;
-- exact periodic minimum-image filtering;
-- deterministic sorted output.
+`adaptive-periodic-bvh/v1`
 
-**No radius-coupled production replacement was ever merged.** The post-#165 radius-aware proposal was stopped before implementation and superseded by #168.
+The selected `AdaptivePeriodicBvh` preserves the established generic receiver-radius contract:
 
-Brute force remains permanent hidden correctness/debug infrastructure and is not intended as a normal Lab user option.
+- exact receiver-side radius membership;
+- arbitrary query radii without constructing tree geometry from a scientific radius;
+- periodic minimum-image geometry;
+- deterministic sorted neighbour indices;
+- one simulator-owned rebuild at each control update;
+- no experiment-visible backend selector or BVH tuning parameters.
 
-### #165 — density/resolution measurement completed
+The production implementation is the corrected #185 design: deterministic widest-AABB-axis median splits, conservative periodic broad-phase pruning with scale-aware floating-point slack, and the exact minimum-image distance test as the authoritative membership decision.
 
-#165 / PR #167 was measurement-only. It compared the current single-level resolution with half, double and radius-matched/Violet-like diagnostic grids at N=5,000, all checked against brute force.
+Production provenance is exposed as the stable strategy identifier only. Native `Simulation`, WASM `ProbeSimulation`, the kernel-level provenance function and worker runtime/profile messages can report `adaptive-periodic-bvh/v1`. Leaf capacity, depth and other index internals remain simulator infrastructure.
 
-Result: the current approximately-one-cell-per-agent resolution can create avoidable bucket-lookup work when a radius spans many small cells. The radius-matched diagnostic kept ordinary queries near a 3×3 stencil and was roughly 2–4× faster in the measured query sweeps. This is evidence about the current resolution heuristic, not justification to make one scientific radius define the general index.
+### Retained alternatives
 
-PR #167 squash-merged as `bb83b7f774504924a396fc9c961f9e45eaa6df45`. Main workflow `34906602411` passed. Primary evidence: performance run `34905824329`, artifact `10371728802`.
+- `PeriodicGridNeighbourIndex` remains a separate exact test/reference/fallback implementation. It is no longer the normal production backend.
+- `BruteForceNeighbourIndex` remains hidden correctness/debug infrastructure only.
+- The multi-resolution periodic grid remains benchmark evidence and is not a production backend.
+- Faithful ARGoS RAB remains benchmark/reference evidence. There is no separate production ARGoS-style spatial backend; future transmitter-owned routing should use the selected generic exact spatial infrastructure unless a future communication capability requires different semantics.
 
-Detailed evidence: `docs/PERFORMANCE_NEIGHBOUR_DENSITY_2026-09-15.md`.
+Durable integration record:
 
-### #168 — comparative architecture investigation
+`docs/NEIGHBOUR_SEARCH_PRODUCTION_INTEGRATION_2026-09-15.md`
 
-Authoritative history/design record:
+## Evidence sequence behind the production decision
 
-`docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
+### #165 — density/resolution measurement
 
-The investigation deliberately separates two semantic families.
+The original approximately-one-cell-per-agent periodic grid can incur avoidable bucket traversal when a query radius spans many small cells. Radius-matched diagnostic grids were often much faster in those sweeps, but scientific radius was explicitly rejected as a global generic index-definition parameter.
 
-**Generic receiver-radius tournament:**
+Detailed evidence:
 
-1. current production single-level periodic grid — general baseline;
-2. radius-matched/Violet-like single grid — one-radius performance reference;
-3. multi-resolution/hierarchical periodic grid — serious general candidate;
-4. adaptive tree/BVH-family index — serious general candidate;
-5. brute force — hidden oracle only.
+`docs/PERFORMANCE_NEIGHBOUR_DENSITY_2026-09-15.md`
 
-**Faithful transmitter-range RAB comparison:**
+### #169 — common exact benchmark contract
 
-- ARGoS-style Range-and-Bearing semantics are evaluated separately because each transmitter owns its range and receivers perform point/location lookup rather than `query(receiver, radius)` scans.
-- Equal transmitter ranges provide a bridge to ordinary fixed-radius discovery; heterogeneous transmitter ranges exercise the genuine RAB case.
+#169 / PR #170 froze the common receiver-radius comparison contract before candidate implementation:
 
-Production remains unchanged until the evidence-backed integration decision in #178.
-
-### #169 — common contract/harness completed
-
-#169 / PR #170 froze the generic comparative contract before candidate implementation.
+- single and simultaneous multiple radii;
+- wide radius ratios;
+- uniform, clustered and periodic-boundary occupancy;
+- one rebuilt candidate serving the ordered radius set;
+- exact brute-force equality before timing.
 
 Durable artifacts:
 
@@ -74,182 +72,102 @@ Durable artifacts:
 - `benchmarks/neighbour_search_matrix.json`;
 - `crates/kernel/examples/neighbour_strategy_benchmark.rs`.
 
-The matrix covers single and simultaneous multiple radii, wide radius ratios, clustered occupancy and periodic boundaries. One candidate rebuild serves the complete ordered radius set; results are accepted only after exact brute-force equality.
+### #171 — fixed-halo generic adaptation rejected
 
-PR #170 squash-merged as `70dda6c40039a7e814c75668d7008b4fef8cdf03`. Performance workflow `34909595098` and post-merge production workflow `34909748448` passed.
+The fixed-halo stamping + receiver-side multi-cell scan adaptation was exact but slow because of duplicate candidate amplification. It was not faithful ARGoS RAB and was removed from active candidate code.
 
-### #171 — fixed-halo generic coverage adaptation retired
-
-#171 / PR #172 tested a hybrid fixed-halo coverage adaptation: simulator-owned one-cell stamping plus receiver-side multi-cell radius scans. It was exact but produced heavy duplicate candidate work and was slower than the current grid in every nontrivial multi-radius smoke case.
-
-This implementation was **not faithful ARGoS RAB**. It has been removed from active candidate code by #173 and is not a tournament finalist. Its evidence remains only as historical engineering evidence:
+Historical evidence:
 
 `docs/NEIGHBOUR_SEARCH_FIXED_HALO_ADAPTATION_RESULT_2026-09-15.md`
 
-Do not use #171 to make conclusions about ARGoS RAB.
+### #173 — faithful ARGoS RAB transcription
 
-### #173 — faithful ARGoS RAB benchmark completed
-
-#173 / PR #180 replaced the rejected fixed-halo candidate with a benchmark-only faithful transcription of the maintained ARGoS Range-and-Bearing spatial-index/routing mechanism.
-
-Source fidelity was checked directly against `ilpincy/argos3` commit `4bb398cd6bfdd09fc919f24c9cccbff38370849b`:
-
-- grid resolution independent of transmitter range;
-- transmitter-owned ranges;
-- `ForCellsInBoxRange(...)` coverage insertion;
-- `GetEntitiesAt(receiver.position)` point lookup;
-- one exact distance check per unordered candidate pair;
-- two independent directional `< GetRange()` tests.
-
-Explicit benchmark adaptations are documented: ARGoS 3D grid → Virtual Lab 2D benchmark world; Virtual Lab periodic wrapping/minimum-image geometry; equal message sizes/no occlusion to isolate spatial indexing/routing.
-
-A dedicated transmitter-range brute-force oracle verified exact deterministic routes for both equal and heterogeneous transmitter ranges, including uniform, clustered and periodic-boundary cases.
+#173 / PR #180 implemented benchmark-only faithful transmitter-owned Range-and-Bearing spatial routing based on maintained ARGoS behavior: range-independent grid resolution, transmitter coverage insertion, receiver point lookup, one candidate-pair distance calculation, and directional transmitter-range tests.
 
 Durable result:
 
 `docs/NEIGHBOUR_SEARCH_ARGOS_RAB_RESULT_2026-09-15.md`
 
-Evidence:
+### #174 — multi-resolution periodic grid
 
-- code-head performance run `34942513488`, artifact `10386270725`, fully green;
-- final-head normal PR workflow `34942954512`, green;
-- final-head performance workflow `34942954496`, fully green after unchanged retries of two unrelated browser-profile flakes;
-- PR #180 squash-merged as `cc5d9868d304eef61b6a1898ad5b1a0d78e13f51`;
-- post-merge production workflow `34943376032` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
-
-No production neighbour backend changed in #173. The broader faithful RAB comparison is completed in #177 below.
-
-### #174 — exact multi-resolution periodic-grid candidate completed
-
-#174 / PR #181 implemented the first serious generic multi-radius challenger while preserving the original #25 invariant: hierarchy geometry is simulator infrastructure, one hierarchy is rebuilt once, and arbitrary simultaneous scientific query radii select among already-built levels without radius-triggered rebuilding.
-
-The benchmark-only hierarchy starts at `4 * ceil(sqrt(N))` cells per axis and approximately halves resolution per level down to one cell. Every agent is indexed once per level; selected-level candidates are filtered by the exact periodic minimum-image test and returned in deterministic sorted order. The finest-level multiplier is an initial internal benchmark policy, not a scientific parameter or declared optimum.
-
-Every frozen #169 smoke scenario/radius matched `BruteForceNeighbourIndex` exactly. The benchmark also asserts that hierarchy geometry remains unchanged across the complete ordered simultaneous-radius set. A separate radius-matched per-radius grid remains a diagnostic performance reference only.
-
-Representative same-run evidence from performance workflow `34944939979`, artifact `10386334821`:
-
-- uniform multi-radius: aggregate query time -29.8% vs current grid; rebuild+query -15.8%;
-- uniform wide-radius-ratio: query -53.3%; rebuild+query -47.6%;
-- clustered multi-radius: query -26.0%; rebuild+query -20.0%;
-- periodic boundary bands: query -1.6%; rebuild+query +18.8%;
-- small single-radius: query +31.4%; rebuild+query +120.0%.
-
-The cost is substantial: smoke fixtures use 6–8 levels / index entries per agent and rebuild time is roughly 4.9–10.9× the current single-level grid. The candidate therefore remains promising but **is not yet a production winner**; full candidate comparison and rebuild/query/end-to-end accounting remain required.
+The exact hierarchy preserved radius-independent infrastructure geometry and supported arbitrary simultaneous query radii, but paid substantial rebuild/storage cost. It remained a serious candidate through the common tournament rather than being promoted from its own smoke benchmark.
 
 Durable result:
 
 `docs/NEIGHBOUR_SEARCH_MULTI_RESOLUTION_RESULT_2026-09-15.md`
 
-PR #181 squash-merged as `6298fba15ae474cc98c3b5eaca6562ebd236a847`. Normal PR workflow `34944939995` and full performance workflow `34944939979` passed on the code head; the final PR commit was documentation-only. Post-merge production workflow `34945372768` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+### #175 / #185 — adaptive periodic BVH
 
-Production `PeriodicGridNeighbourIndex` remains unchanged.
-
-### #175 — exact adaptive periodic BVH candidate completed
-
-#175 / PR #182 implemented the second serious generic candidate: a deterministic balanced 2D BVH/k-d-style tree built from physical positions only and reused unchanged for every simultaneous query radius.
-
-The benchmark-only tree uses widest-bounding-box-axis median splits and a fixed internal leaf capacity of 8. Periodic queries use only translated arena images required when a search circle crosses a boundary; duplicate candidates are removed, exact periodic minimum-image filtering is authoritative, and results remain deterministically sorted. The leaf capacity is benchmark infrastructure, not an experiment-visible or scientific parameter.
-
-Every frozen #169 smoke scenario/radius matched `BruteForceNeighbourIndex` exactly. Final-head dedicated benchmark `34946443310` passed and retained artifact `10387037408`; standard PR workflow `34946443238` and full performance/browser workflow `34946443341` also passed.
-
-The larger #176 tournament subsequently exposed a tiny floating-point periodic-boundary broad-phase omission that the frozen smoke matrix had not reached. #185 corrected the BVH pruning conservatively without changing the authoritative minimum-image membership test, and added an exhaustive N=5,000 boundary regression: 25,000 queries over radii 0.1, 0.25, 1, 4 and 10, all exactly equal to brute force. The corrected candidate is the one used by the final #176 tournament.
-
-Representative BVH query results versus the current grid from the retained smoke evidence:
-
-- uniform single small: +29.9% slower;
-- uniform multi-radius: +2.0% slower;
-- uniform wide-radius ratio: 17.0% faster;
-- clustered multi-radius: 0.5% faster (effectively tied; rebuild+query +0.6%);
-- periodic boundary bands: 26.5% faster.
-
-Its index-entry proxy is roughly 1.2–1.4 entries per agent in these fixtures, substantially lower than the 6–8 entries per agent of the #174 hierarchy. Rebuild cost is generally much closer to the current grid than the multi-resolution hierarchy, while query performance is mixed. This makes BVH a serious low-storage/general finalist, **not a declared winner from #175 alone**.
+#175 introduced the deterministic balanced periodic BVH. #185 later corrected a floating-point periodic-boundary broad-phase omission found by the larger #176 tournament. The correction made pruning conservative while leaving exact minimum-image final membership authoritative; an exhaustive N=5,000 periodic-boundary regression checked 25,000 queries over radii 0.1, 0.25, 1, 4 and 10 against brute force.
 
 Durable result:
 
 `docs/NEIGHBOUR_SEARCH_ADAPTIVE_BVH_RESULT_2026-09-15.md`
 
-PR #182 squash-merged as `b1cd5f518a1822fd64db333f4b6f444119ed2735`. Post-merge dedicated benchmark `34946622192` passed. Post-merge production workflow `34946622156` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke. #185's corrected BVH is merged with #176 in `f0c3b2c3bb1ed2c44db4b4581437c1b01baaaf27`.
+### #176 — common generic tournament
 
-Production `PeriodicGridNeighbourIndex` remains unchanged.
-
-### #176 — common generic neighbour tournament completed
-
-#176 / #183 / PR #184 ran the corrected generic candidates under one common deterministic native harness across 34 scaling/crossover scenarios spanning N, density, single/multiple/wide radius sets, uniform/clustered/periodic-boundary occupancy, rebuild cost, query cost, index-size proxy and representative observation/controller-path timing.
-
-Three independent final-head attempts were retained. Despite GitHub scheduling them on three different AMD EPYC host models, 31/34 scenarios selected the same generic winner in all three attempts. The three unstable near-crossover cases are explicitly recorded in the report and must not be used as sharp selector thresholds.
-
-Median winners across the 34 scenarios:
+Three retained attempts over 34 scaling/crossover scenarios produced median winners:
 
 - adaptive periodic BVH: **26/34**;
 - multi-resolution periodic grid: **5/34**;
-- current production grid: **3/34**.
+- original current periodic grid: **3/34**.
 
-There is therefore **no universal generic winner**. BVH is the strongest broad/default candidate from the native tournament; the current grid retains legitimate low-overhead single-radius/sparse winning regions; multi-resolution has real specialist wins for wide radius ratios, including a strong dense wide-radius regime. Four representative existing observation/controller-path anchors all favored BVH.
-
-The radius-matched/Violet-like grid remains a diagnostic performance reference only, not an admissible generic backend, because its geometry is constructed from scientific query radius.
+The tournament showed no universal winner but made BVH the strongest broad/default candidate. The current grid retained narrow low-overhead crossover regions; multi-resolution retained some specialized wide-radius wins.
 
 Durable result:
 
 `docs/NEIGHBOUR_SEARCH_TOURNAMENT_2026-09-15.md`
 
-Evidence:
+### #177 — faithful transmitter-range RAB comparison
 
-- final-head three-attempt workflow run `34949378085`, retained artifacts `10389135146`, `10388283977`, `10389230424`;
-- report-bearing PR-head tournament `34950490008`, standard Rust/WASM workflow `34950490048`, performance/browser workflow `34950490056`, and BVH benchmark `34950490023` all passed;
-- PR #184 squash-merged as `f0c3b2c3bb1ed2c44db4b4581437c1b01baaaf27`;
-- post-merge main tournament `34950718323` passed;
-- post-merge BVH benchmark `34950718229` passed;
-- post-merge production workflow `34950718319` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+Under the same directed transmitter-owned-range relation, combined rebuild+route winners were:
 
-No production backend or automatic selector changed in #176. Production/WASM integration and selector policy remain #178 work.
-
-### #177 — faithful transmitter-range RAB comparison completed
-
-#177 / #186 / PR #188 compared the faithful ARGoS RAB spatial mechanism against the already-existing exact generic backends under the same directed transmitter-owned-range relation. The generic adapters query at the maximum transmitter range and then apply the exact transmitter-owned-range filter; no new RAB-specific BVH/grid architecture and no extra real-experiment anchors were introduced.
-
-The 34-case panel mirrors the #176 mechanical regime map with equal range 1, heterogeneous 0.25/1/4 and heterogeneous 0.1/1/10 workloads. Full equality is checked for all N<=1,000 states, deterministic brute-force probes guard larger states, and an additional exhaustive N=5,000 periodic-boundary regression checks every receiver for all three range workloads.
-
-Combined rebuild+route winners in the retained comparison:
-
-- adaptive periodic BVH adapter: **23/34**;
+- BVH generic adapter: **23/34**;
 - faithful ARGoS RAB: **5/34**;
 - current periodic-grid adapter: **3/34**;
-- multi-resolution periodic-grid adapter: **3/34**.
+- multi-resolution adapter: **3/34**.
 
-Faithful ARGoS is genuinely competitive for simple uniform modest-range RAB and wins several equal-range cases by modest margins. It is not a robust general winner: transmitter coverage stamping creates strong storage/rebuild amplification as ranges, density, clustering or boundary concentration increase. Representative index-entry counts at N=5,000,d=1 are 44,578 for faithful ARGoS with equal range 1 and 737,286 for heterogeneous 0.1/1/10, versus 7,047 for BVH and 5,000 for the current grid.
+Faithful ARGoS remained competitive for a few simple modest-range cases but suffered strong coverage-stamping storage/rebuild amplification. This removed the performance case for a separate production RAB spatial backend.
 
 Durable result:
 
 `docs/NEIGHBOUR_SEARCH_RAB_COMPARISON_2026-09-15.md`
 
-Evidence:
+### #191 — independent environment-size 2×2×2×2 decision matrix
 
-- retained comparison run `34952716545`, artifact `10389886882`;
-- PR #188 squash-merged as `ba961a3d719bdafda0584c1e8519900a05e407f1`;
-- final-head standard build, dedicated comparison, generic tournament and full browser/WASM performance workflow passed;
-- post-merge dedicated RAB comparison `34953865476` passed;
-- post-merge generic tournament `34953865468` passed;
-- post-merge production workflow `34953865376` passed build, Pages deployment, functional browser smoke and responsive/focus smoke.
+#191 / PR #192 removed the remaining environment-size/local-density confound by keeping the occupied swarm footprint fixed while independently changing periodic environment extent.
 
-Recommendation for #178: retain faithful ARGoS as benchmark/reference evidence, but do not maintain a separate production RAB spatial backend solely for routing performance. Implement transmitter-owned RAB routing through the selected generic exact infrastructure unless a future communication capability adds semantics the generic abstraction cannot express.
+At **high scale**, all eight winners were stable across all three runs:
 
-No production neighbour backend changed in #177.
+- BVH: **7/8**;
+- original current grid: **1/8**;
+- multi-resolution: **0/8**.
 
-### Agreed execution sequence under #168
+The only robust non-BVH high-scale cell was low environment + low local density + single radius, where the current grid beat BVH by 1.43×. Holding N, local spacing and radius fixed but increasing the environment side 4× flipped that controlled pair to BVH, which beat second-place multi-resolution by 1.42×. Thus the isolated grid crossover did not justify multiple normal production engines or an automatic/user-visible selector.
 
-- **#174 / #168.4 — multi-resolution periodic grid. Completed.** Exact benchmark-only candidate retained; production unchanged.
-- **#175 / #168.5 — adaptive tree/BVH. Completed.** Exact low-storage benchmark-only candidate retained; #185 follow-up exactness fix completed; production unchanged.
-- **#176 / #168.6 — generic tournament. Completed.** No universal winner; BVH strongest broad generic candidate, current grid and multi-resolution retain distinct winning regions; production unchanged.
-- **#177 / #168.7 — faithful transmitter-range RAB comparison. Completed.** Faithful ARGoS wins a few simple/modest-range regimes but does not justify a separate production spatial backend solely for routing performance.
-- **#178 / #168.8 — production decision/integration. Next performance ticket.** Select one or several justified generic backends, deterministic `auto` policy if warranted, provenance, and exact RAB adapter behavior; validate in production/WASM.
-- **#179 / #168.9 — persistent scalability Study.** Deferred until Studies/results infrastructure is mature.
+Durable result:
 
-Each child is a separate measured/tested checkpoint. Do not promote a candidate from its own implementation ticket merely because it looks promising.
+`docs/NEIGHBOUR_SEARCH_ENVIRONMENT_SIZE_MATRIX_2026-09-15.md`
+
+### #178 / #193 — production integration
+
+Owner decision: the evidence is sufficient to select one normal backend. #193 / PR #194 promotes the corrected exact adaptive periodic BVH into the production kernel, switches native/WASM `Simulation` to it, preserves the former grid as reference/fallback infrastructure, exposes stable provenance, and introduces no user-visible selector or tuning.
+
+The production integration is accepted only with green Rust/native exactness, WASM/browser performance regression, generic/canonical/RAB regressions, Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+
+#168 and #178 close after that verified integration. #179 remains a separate deferred future Study and is not part of the production switch.
+
+## Performance frontier after neighbour-search integration
+
+- **#56:** remains the living performance umbrella.
+- **#168:** comparative neighbour-search architecture investigation is complete after #193 verification.
+- **#179 / #168.9:** persistent neighbour-search scalability benchmark as a reproducible Study is deferred until Studies/results infrastructure is mature.
+
+Do not re-open backend selection from isolated microbenchmarks without new materially different evidence or semantics.
 
 ## Near-term parallel product/research lanes
 
-- **#45 / #162:** production Virtual Lab OAuth/login surface and explicit enrollment policy. Current Supabase baseline has only the owner Professor + Student test identities; no unknown accounts were present at audit time.
+- **#45 / #162:** production Virtual Lab OAuth/login surface and explicit enrollment policy. Current Supabase baseline at audit time had only the owner Professor + Student test identities.
 - **#3 / #4:** Studies and local result/provenance infrastructure.
 - **#6 / #166:** first explicit selected Study-result → AI handoff contract.
 - **#119 / #120:** Research Notes/Documents and later AI synthesis; important near-future work after stable Study/result identities.
@@ -261,19 +179,21 @@ Each child is a separate measured/tested checkpoint. Do not promote a candidate 
 
 The Professor approved both current Grok capability requests for the informed-robot aggregation experiment on 15 Sep 2026. They are at the **developer-design discussion** stage only; approval does not itself authorize implementation.
 
-- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`, lifecycle hook `control`. Professor note: the generic capability must support **different probability distributions** while preserving simulator-owned deterministic/reproducible RNG.
-- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — `initialization / heterogeneous_agent_state`, lifecycle hook `initialize`. Professor note: this must become a **generic heterogeneous swarm initialization capability**, not an `informed` boolean; heterogeneity may include information/private state and potentially heterogeneous sensors/capabilities.
+- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`, lifecycle hook `control`. Requirement: generic simulator-owned deterministic/reproducible RNG with different probability distributions.
+- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — `initialization / heterogeneous_agent_state`, lifecycle hook `initialize`. Requirement: generic heterogeneous swarm initialization beyond a boolean flag, capable of representing different private information and later heterogeneous sensors/capabilities.
 
-Neither request yet has a developer design conclusion, explicit implementation approval, GitHub implementation issue/handoff, or development start. Durable approval record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
+Neither request has a developer design conclusion, explicit implementation approval, implementation handoff, or development start. Durable approval record:
 
-#57 is the likely generic architecture discussion vehicle for the RNG request, but no coding starts until the developer design is discussed and the owner explicitly approves implementation.
+`docs/CAPABILITY_APPROVALS_2026-09-15.md`
+
+#57 is the likely generic architecture discussion vehicle for the RNG request, but no coding starts until developer design is discussed and the owner explicitly approves implementation.
 
 ## Living architecture / infrastructure parents
 
 - **#2:** scientific validation/reproducibility guardrails. Keep open as a living correctness umbrella; concrete tests belong in the implementation child that needs them.
 - **#65:** world/environment capabilities and sensor queries. Keep open as a living architecture epic; concrete capabilities get focused children.
 - **#124:** artifact capability registry/run lifecycle. #126 remains blocked until a concrete owner-approved optional executable artifact exists; #127 is future Study run semantics.
-- **#57:** canonical deterministic domain-separated RNG architecture; now directly relevant to the approved RNG capability request, but implementation still awaits developer design + explicit owner approval.
+- **#57:** canonical deterministic domain-separated RNG architecture; relevant to the approved RNG request, but implementation still awaits developer design + explicit owner approval.
 - **#8/#9/#102:** future native/HPC, richer physics/heterogeneity, and numerical-integrator evaluation.
 
 ## Professor capability-request loop — durable boundary
@@ -328,16 +248,17 @@ When sources disagree:
 
 1. explicit current owner instruction;
 2. `PROJECT_CONTROL.md` for priority/sequencing;
-3. `docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md` for neighbour-search architecture/investigation state;
-4. `docs/NEIGHBOUR_SEARCH_BENCHMARK_CONTRACT.md` for the frozen comparative generic contract/matrix rules;
-5. current dedicated closeout/performance design documents;
-6. `PROJECT_STATE.md` for accepted technical state/evidence;
-7. current design documents;
-8. active issue scope;
-9. older issues/chats as history only.
+3. `docs/NEIGHBOUR_SEARCH_PRODUCTION_INTEGRATION_2026-09-15.md` for the selected neighbour production architecture;
+4. `docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md` and the dedicated #176/#177/#191 reports for investigation history/evidence;
+5. `docs/NEIGHBOUR_SEARCH_BENCHMARK_CONTRACT.md` for the frozen comparative generic contract/matrix rules;
+6. current dedicated closeout/performance design documents;
+7. `PROJECT_STATE.md` for accepted technical state/evidence;
+8. current design documents;
+9. active issue scope;
+10. older issues/chats as history only.
 
 Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#177 is complete and production remains unchanged. The generic tournament shows BVH as the strongest broad candidate with current-grid and multi-resolution crossover regions; the faithful RAB comparison shows no performance justification for a separate production ARGoS-style spatial backend. The next performance ticket is #178 evidence-backed production integration/`auto` decision, followed by #179 persistent Study. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
+**The neighbour-search production decision is adaptive periodic BVH (`adaptive-periodic-bvh/v1`): #193 / PR #194 integrates the corrected exact BVH into native/WASM `Simulation` with no selector or user tuning, while the former grid remains reference/fallback infrastructure and faithful ARGoS remains benchmark-only. #168/#178 close after verified integration; #179 remains deferred. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
