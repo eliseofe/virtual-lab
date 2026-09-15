@@ -14,72 +14,121 @@ The backlog was audited on 15 Sep 2026. Historical Round-1/integration shells #1
 
 ## Active performance frontier — #56 / #168
 
-The owner promoted simulator performance back to active work, specifically the strong dependence on neighbour density / interaction radius.
+Neighbour discovery is an active first-class simulator architecture investigation.
 
-### #165 measurement result — completed
+### Production baseline — unchanged
 
-#165 added a deterministic N=5,000 profiler and compared the current periodic grid (`ceil(sqrt(N))` cells per axis) with half-resolution, double-resolution and radius-matched internal geometries. All alternatives were checked against the brute-force neighbour oracle and returned identical sorted neighbour sets.
+The production backend remains the long-standing #25 / PR #34 `PeriodicGridNeighbourIndex`:
 
-PR #167 squash-merged as `bb83b7f774504924a396fc9c961f9e45eaa6df45`. Final-head normal PR workflow `34906284691` passed. Performance workflow `34906284696` hit the known Chrome `DevToolsActivePort` startup race on its first attempt; the unchanged failed-job rerun passed completely. Main production workflow `34906602411` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke. Primary measurement artifact: performance run `34905824329`, artifact `10371728802`.
+- radius-independent grid geometry;
+- `cells_per_axis = ceil(sqrt(N))`;
+- one positional cell per agent;
+- arbitrary receiver-side query radii served from one rebuilt index;
+- exact periodic minimum-image filtering;
+- deterministic sorted output.
 
-Key result: the current one-cell-per-agent grid introduces a material avoidable penalty when the query radius spans many small grid cells. The radius-matched candidate kept normal queries at 9 visited cells and was about 2–4× faster in the diagnostic query sweep across all seven measured density/radius cases. Dense experiments still retain unavoidable cost proportional to the actual returned-neighbour count and controller work.
+**No radius-coupled production replacement was ever merged.** The post-#165 radius-aware proposal was stopped before implementation and superseded by #168.
+
+Brute force remains permanent hidden correctness/debug infrastructure and is not intended as a normal Lab user option.
+
+### #165 — density/resolution measurement completed
+
+#165 / PR #167 was measurement-only. It compared the current single-level resolution with half, double and radius-matched/Violet-like diagnostic grids at N=5,000, all checked against brute force.
+
+Result: the current approximately-one-cell-per-agent resolution can create avoidable bucket-lookup work when a radius spans many small cells. The radius-matched diagnostic kept ordinary queries near a 3×3 stencil and was roughly 2–4× faster in the measured query sweeps. This is evidence about the current resolution heuristic, not justification to make one scientific radius define the general index.
+
+PR #167 squash-merged as `bb83b7f774504924a396fc9c961f9e45eaa6df45`. Main workflow `34906602411` passed. Primary evidence: performance run `34905824329`, artifact `10371728802`.
 
 Detailed evidence: `docs/PERFORMANCE_NEIGHBOUR_DENSITY_2026-09-15.md`.
 
-### #168 is now a serious architecture investigation, not a radius-coupled implementation
+### #168 — comparative architecture investigation
 
-The original #25 design rule remains authoritative: **scientific radii and spatial-index geometry are separate concerns, and one built index architecture must support arbitrary simultaneous radii without experiment-author tuning.**
-
-The narrow proposal to implement a production grid configured from one query radius is superseded. #165 proved that the current single-level resolution is inefficient in some regimes; it did not prove that production should couple itself to one scientific radius.
-
-Authoritative investigation document:
+Authoritative history/design record:
 
 `docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
 
-#168 compares exact strategies under one correctness contract:
+The investigation now deliberately separates two semantic families.
 
-- brute force — oracle / small-N baseline;
-- current single-level periodic grid — production baseline;
-- radius-matched single grid — Violet-like performance reference, not assumed general target;
-- ARGoS-style coverage stamping — first experimental candidate now measured in #171;
-- multi-resolution / hierarchical periodic grids — next serious candidate;
-- adaptive tree / BVH-family indexing — later candidate.
+**Generic receiver-radius tournament:**
 
-The multi-resolution strategy is currently the strongest architectural hypothesis, but **there is no declared winner**. Every strategy must return the exact same periodic neighbour set and deterministic ordering as brute force, including when several different radii are queried during the same control update.
+1. current production single-level periodic grid — general baseline;
+2. radius-matched/Violet-like single grid — one-radius performance reference;
+3. multi-resolution/hierarchical periodic grid — serious general candidate;
+4. adaptive tree/BVH-family index — serious general candidate;
+5. brute force — hidden oracle only.
 
-The investigation should eventually support a common internal strategy interface. If evidence shows different strategies dominate different workload regions, production may keep several exact implementations with an ordinary-user `auto` policy and an expert benchmarking override. Strategy/version must be provenance; strategy choice must never change scientific semantics.
+**Faithful transmitter-range RAB comparison:**
 
-Once Studies/results exist, the complete scalability matrix should become a persistent Virtual Lab Study covering N, density, one/multiple radii, spatial heterogeneity, rebuild/query decomposition, memory and end-to-end throughput. Publication/novelty claims require a separate literature review; that review is explicitly deferred.
+- ARGoS-style Range-and-Bearing semantics are evaluated separately because each transmitter owns its range and receivers perform point/location lookup rather than `query(receiver, radius)` scans.
+- Equal transmitter ranges provide a bridge to ordinary fixed-radius discovery; heterogeneous transmitter ranges exercise the genuine RAB case.
 
-Proceed by focused child issues under normal execution granularity; do not change the production default before the comparative investigation is complete.
+Production remains unchanged until the evidence-backed integration decision in #178.
 
-### #169 contract/harness checkpoint — completed
+### #169 — common contract/harness completed
 
-#169 froze the comparative contract before any competing implementation was allowed to enter the tournament. PR #170 squash-merged as `70dda6c40039a7e814c75668d7008b4fef8cdf03`.
+#169 / PR #170 froze the generic comparative contract before candidate implementation.
 
 Durable artifacts:
 
-- `docs/NEIGHBOUR_SEARCH_BENCHMARK_CONTRACT.md` — exact semantic, timing, fairness and reporting contract;
-- `benchmarks/neighbour_search_matrix.json` — machine-readable full-tournament axes and deterministic CI smoke scenarios;
-- `crates/kernel/examples/neighbour_strategy_benchmark.rs` — candidate-independent baseline/oracle harness.
+- `docs/NEIGHBOUR_SEARCH_BENCHMARK_CONTRACT.md`;
+- `benchmarks/neighbour_search_matrix.json`;
+- `crates/kernel/examples/neighbour_strategy_benchmark.rs`.
 
-The frozen smoke matrix explicitly covers single and simultaneous multiple radii, a wide smallest/largest-radius ratio, clustered occupancy and periodic-boundary bands. One candidate rebuild is reused across each ordered radius set. The current production grid matched `BruteForceNeighbourIndex` exactly for every agent/radius in all five smoke scenarios.
+The matrix covers single and simultaneous multiple radii, wide radius ratios, clustered occupancy and periodic boundaries. One candidate rebuild serves the complete ordered radius set; results are accepted only after exact brute-force equality.
 
-PR performance workflow `34909595098` passed the new contract smoke plus the full existing native/WASM/browser performance tail; evidence artifact `10373957403`. Post-merge production workflow `34909748448` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+PR #170 squash-merged as `70dda6c40039a7e814c75668d7008b4fef8cdf03`. Performance workflow `34909595098` and post-merge production workflow `34909748448` passed.
 
-### #171 ARGoS-style coverage-stamping candidate — completed
+### #171 — fixed-halo generic coverage adaptation retired
 
-#171 / PR #172 tested the transferable ARGoS coverage-stamping mechanism without importing a privileged scientific communication radius into the generic receiver-radius `NeighbourIndex` contract. The experimental candidate kept the current radius-independent grid resolution, stamped each agent into a simulator-owned one-cell halo, reduced the receiver-side query span, then deterministically deduplicated candidates and applied the exact minimum-image distance test.
+#171 / PR #172 tested a hybrid fixed-halo coverage adaptation: simulator-owned one-cell stamping plus receiver-side multi-cell radius scans. It was exact but produced heavy duplicate candidate work and was slower than the current grid in every nontrivial multi-radius smoke case.
 
-The candidate was exact on every frozen #169 smoke scenario/radius using one rebuild across the ordered radius set. However, it normally created **9 index entries per agent** and duplicate stamped references dominated the nontrivial cases. Relative to the current grid, all-radii query time was about 2.14x slower for uniform multi-radius, 3.08x slower for the wide-radius-ratio case, 3.34x slower for clustered multi-radius and 2.28x slower for periodic boundary bands. Only the tiny single-radius case showed a small ~7% query win, while rebuild was already ~6.47x slower.
+This implementation was **not faithful ARGoS RAB**. It has been removed from active candidate code by #173 and is not a tournament finalist. Its evidence remains only as historical engineering evidence:
 
-This is a result about the **generic fixed radius-independent halo adaptation**, not a claim that literal ARGoS range-and-bearing is inefficient. ARGoS's transmitter-owned range semantics make range-specific coverage insertion natural; Virtual Lab's generic service deliberately supports unrelated receiver-side radii against one physical state.
+`docs/NEIGHBOUR_SEARCH_FIXED_HALO_ADAPTATION_RESULT_2026-09-15.md`
 
-Durable result: `docs/NEIGHBOUR_SEARCH_ARGOS_COVERAGE_RESULT_2026-09-15.md`.
+Do not use #171 to make conclusions about ARGoS RAB.
 
-PR #172 squash-merged as `e459f02b7cfca996c2266620f45960f05a3839d1`. Final-head performance workflow `34934460319` passed. Earlier evidence workflow `34934226794` retained artifact `10382970942`. Post-merge production workflow `34934579845` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+### #173 — faithful ARGoS RAB benchmark completed
 
-Decision: preserve this candidate/evidence as a permanent experimental reference, do not promote it to the production general backend, and move next to a focused multi-resolution/hierarchical periodic-grid candidate when authorized.
+#173 / PR #180 replaced the rejected fixed-halo candidate with a benchmark-only faithful transcription of the maintained ARGoS Range-and-Bearing spatial-index/routing mechanism.
+
+Source fidelity was checked directly against `ilpincy/argos3` commit `4bb398cd6bfdd09fc919f24c9cccbff38370849b`:
+
+- grid resolution independent of transmitter range;
+- transmitter-owned ranges;
+- `ForCellsInBoxRange(...)` coverage insertion;
+- `GetEntitiesAt(receiver.position)` point lookup;
+- one exact distance check per unordered candidate pair;
+- two independent directional `< GetRange()` tests.
+
+Explicit benchmark adaptations are documented: ARGoS 3D grid → Virtual Lab 2D benchmark world; Virtual Lab periodic wrapping/minimum-image geometry; equal message sizes/no occlusion to isolate spatial indexing/routing.
+
+A dedicated transmitter-range brute-force oracle verified exact deterministic routes for both equal and heterogeneous transmitter ranges, including uniform, clustered and periodic-boundary cases.
+
+Durable result:
+
+`docs/NEIGHBOUR_SEARCH_ARGOS_RAB_RESULT_2026-09-15.md`
+
+Evidence:
+
+- code-head performance run `34942513488`, artifact `10386270725`, fully green;
+- final-head normal PR workflow `34942954512`, green;
+- final-head performance workflow `34942954496`, fully green after unchanged retries of two unrelated browser-profile flakes;
+- PR #180 squash-merged as `cc5d9868d304eef61b6a1898ad5b1a0d78e13f51`;
+- post-merge production workflow `34943376032` passed build, GitHub Pages deployment, functional deployed-browser smoke and responsive/focus smoke.
+
+No production neighbour backend changed in #173. No winner is declared from the small smoke-matrix RAB timings; the broader faithful RAB comparison belongs to #177.
+
+### Agreed execution sequence under #168
+
+- **#174 / #168.4 — multi-resolution periodic grid.** Benchmark-only exact generic candidate. **Next performance ticket.**
+- **#175 / #168.5 — adaptive tree/BVH.** Benchmark-only exact generic candidate.
+- **#176 / #168.6 — generic tournament.** Current vs Violet reference vs multi-resolution vs tree/BVH; brute force hidden oracle.
+- **#177 / #168.7 — faithful transmitter-range RAB comparison.** Compare exact structures under genuine RAB semantics, including heterogeneous ranges.
+- **#178 / #168.8 — production decision/integration.** Select one or several justified backends, any deterministic `auto` policy, provenance, and whether a specialized RAB backend is retained.
+- **#179 / #168.9 — persistent scalability Study.** Deferred until Studies/results infrastructure is mature.
+
+Each child is a separate measured/tested checkpoint. Do not promote a candidate from its own implementation ticket merely because it looks promising.
 
 ## Near-term parallel product/research lanes
 
@@ -93,9 +142,9 @@ Decision: preserve this candidate/evidence as a permanent experimental reference
 
 ## Parallel research-AI capability requests — approved, design pending
 
-The Professor approved both current Grok capability requests for the informed-robot aggregation experiment on 15 Sep 2026. They are now at the **developer-design discussion** stage only; approval does not itself authorize implementation.
+The Professor approved both current Grok capability requests for the informed-robot aggregation experiment on 15 Sep 2026. They are at the **developer-design discussion** stage only; approval does not itself authorize implementation.
 
-- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`, lifecycle hook `control`. Professor note: the generic capability must support **different probability distributions**. The design must preserve simulator-owned deterministic/reproducible RNG.
+- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — `controller / stochasticity.rng`, lifecycle hook `control`. Professor note: the generic capability must support **different probability distributions** while preserving simulator-owned deterministic/reproducible RNG.
 - `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — `initialization / heterogeneous_agent_state`, lifecycle hook `initialize`. Professor note: this must become a **generic heterogeneous swarm initialization capability**, not an `informed` boolean; heterogeneity may include information/private state and potentially heterogeneous sensors/capabilities.
 
 Neither request yet has a developer design conclusion, explicit implementation approval, GitHub implementation issue/handoff, or development start. Durable approval record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
@@ -130,7 +179,7 @@ Current deployed capability-loop foundation includes #133, #135, #139, #141 and 
 
 While building the simulator, developer-side ChatGPT must not independently invent or derive the scientific model being simulated. Scientific equivalence, paper-specific equations/parameters, controller logic, retuning and model analysis belong to the Professor/research-AI discussion unless the owner explicitly authorizes scientific reasoning.
 
-Software performance work may measure and optimize simulator infrastructure while preserving exact scientific semantics. Query radii are scientific inputs; neighbour-index strategies may read already-declared query scales only to route exact infrastructure work, but no scientific radius may silently become the one global index-definition parameter.
+Software performance work may measure and optimize simulator infrastructure while preserving exact scientific semantics. Query/transmitter ranges are declared scientific inputs; infrastructure may use them only according to the explicitly chosen exact query semantics. No scientific radius may silently become the one global generic index-definition parameter.
 
 For paper-driven capabilities, apply `docs/CAPABILITY_GENERALIZATION_GATE.md`. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, scientific timing/integration semantics, and rendering as an observer unless explicitly approved otherwise.
 
@@ -163,7 +212,7 @@ When sources disagree:
 1. explicit current owner instruction;
 2. `PROJECT_CONTROL.md` for priority/sequencing;
 3. `docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md` for neighbour-search architecture/investigation state;
-4. `docs/NEIGHBOUR_SEARCH_BENCHMARK_CONTRACT.md` for the frozen comparative neighbour-search contract/matrix rules;
+4. `docs/NEIGHBOUR_SEARCH_BENCHMARK_CONTRACT.md` for the frozen comparative generic contract/matrix rules;
 5. current dedicated closeout/performance design documents;
 6. `PROJECT_STATE.md` for accepted technical state/evidence;
 7. current design documents;
@@ -174,4 +223,4 @@ Surface material unresolved contradictions instead of guessing.
 
 ## Current one-line status
 
-**#169 and #171 are complete. The frozen exact multi-radius tournament rejected the generic fixed-halo ARGoS-style adaptation as a general performance winner despite exact semantics; the next performance candidate is multi-resolution/hierarchical periodic grids. The two Grok aggregation capability requests are Professor-approved with important generalization notes but remain design-pending and are not implementation-authorized. #162/#166 remain parallel near-term lanes.**
+**#173 is complete: the rejected fixed-halo adaptation is removed from active code and faithful ARGoS RAB is implemented, exact, documented and production-verified as a separate transmitter-range benchmark family. Production generic neighbour search remains unchanged. The next performance child is #174 multi-resolution periodic grids; #175–#179 define the remaining tournament/decision/Study sequence. The two Grok aggregation capability requests are Professor-approved but design-pending and not implementation-authorized.**
