@@ -1,0 +1,47 @@
+name: Canonical neighbour regime matrix
+
+on:
+  pull_request:
+    paths:
+      - 'crates/kernel/**'
+      - '.github/workflows/neighbour-canonical-regime-matrix.yml'
+      - 'docs/NEIGHBOUR_SEARCH_*'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/kernel/**'
+      - '.github/workflows/neighbour-canonical-regime-matrix.yml'
+      - 'docs/NEIGHBOUR_SEARCH_*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Record runner environment
+        run: |
+          {
+            echo "utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            uname -a
+            rustc --version --verbose
+            cargo --version
+            lscpu
+          } > canonical-neighbour-regime-environment.txt
+      - name: Run canonical 2x2x2 regime matrix
+        run: |
+          set -o pipefail
+          cargo run --release -p vlab-kernel --example neighbour_canonical_regime_matrix | tee canonical-neighbour-regime-matrix.txt
+      - name: Upload matrix evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-neighbour-regime-matrix-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          path: |
+            canonical-neighbour-regime-matrix.txt
+            canonical-neighbour-regime-environment.txt
+          retention-days: 90
