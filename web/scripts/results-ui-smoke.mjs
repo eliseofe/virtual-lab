@@ -91,6 +91,27 @@ async function waitReady(send) {
   throw new Error("browser did not reach Results-ready state");
 }
 
+async function layoutState(send) {
+  return JSON.parse(await evaluate(send, `JSON.stringify((() => {
+    const grid = document.querySelector('.simulation-results-grid');
+    const arena = document.querySelector('.canvas-wrap').getBoundingClientRect();
+    const results = document.querySelector('#live-results').getBoundingClientRect();
+    return {
+      columns: getComputedStyle(grid).gridTemplateColumns,
+      beside: results.left >= arena.right - 2 && Math.abs(results.top - arena.top) <= 2,
+      stacked: results.top >= arena.bottom - 2,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      scrollWidth: document.documentElement.scrollWidth,
+      arenaWidth: Math.round(arena.width),
+      arenaHeight: Math.round(arena.height),
+      resultsWidth: Math.round(results.width),
+      resultsRight: Math.ceil(results.right),
+      resultsLeft: Math.floor(results.left)
+    };
+  })())`));
+}
+
 let cdp;
 try {
   const port = await waitForPort();
@@ -148,28 +169,23 @@ try {
     throw new Error(`Results rendering/status regression: ${JSON.stringify(desktop)}`);
   }
 
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 720, height: 720, deviceScaleFactor: 1, mobile: true, screenWidth: 720, screenHeight: 720 });
+  await sleep(180);
+  const foldable = await layoutState(cdp.send);
+  if (!foldable.beside || foldable.stacked || foldable.scrollWidth > foldable.width + 1 || foldable.resultsRight > foldable.width + 1 || foldable.resultsLeft < -1) {
+    throw new Error(`square/foldable Results must remain beside the simulation: ${JSON.stringify(foldable)}`);
+  }
+
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, screenWidth: 390, screenHeight: 844 });
   await sleep(180);
-  const mobile = JSON.parse(await evaluate(cdp.send, `JSON.stringify((() => {
-    const grid = document.querySelector('.simulation-results-grid');
-    const arena = document.querySelector('.canvas-wrap').getBoundingClientRect();
-    const results = document.querySelector('#live-results').getBoundingClientRect();
-    return {
-      columns: getComputedStyle(grid).gridTemplateColumns,
-      stacked: results.top >= arena.bottom - 2,
-      width: window.innerWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-      resultsRight: Math.ceil(results.right),
-      resultsLeft: Math.floor(results.left)
-    };
-  })())`));
-  if (!mobile.stacked || mobile.scrollWidth > mobile.width + 1 || mobile.resultsRight > mobile.width + 1 || mobile.resultsLeft < -1) {
-    throw new Error(`mobile Results reflow failed: ${JSON.stringify(mobile)}`);
+  const mobile = await layoutState(cdp.send);
+  if (!mobile.stacked || mobile.beside || mobile.scrollWidth > mobile.width + 1 || mobile.resultsRight > mobile.width + 1 || mobile.resultsLeft < -1) {
+    throw new Error(`narrow-phone Results reflow failed: ${JSON.stringify(mobile)}`);
   }
   if (cdp.exceptions.length) throw new Error(`browser exceptions: ${JSON.stringify(cdp.exceptions)}`);
 
-  console.log(JSON.stringify({ desktop, mobile }, null, 2));
-  console.log("Live Results smoke verified co-location, complete sample retention, configurable multi-panel bindings, rendered plots, and mobile reflow.");
+  console.log(JSON.stringify({ desktop, foldable, mobile }, null, 2));
+  console.log("Live Results smoke verified co-location, complete sample retention, configurable multi-panel bindings, square/foldable side-by-side layout, and narrow-phone stacking.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
