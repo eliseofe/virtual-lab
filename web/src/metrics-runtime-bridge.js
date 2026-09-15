@@ -68,6 +68,12 @@ function syncMetricsAuthoringUi({ error = null } = {}) {
   }
 }
 
+function failMetrics(message) {
+  metricsApplyPending = false;
+  syncMetricsAuthoringUi({ error: message || "Metrics runtime error" });
+  dispatch("vlab:metrics-error", { message: message || "Metrics runtime error" });
+}
+
 function settlePiggybackFromFeedback() {
   if (!metricsPiggybackPending) return;
   const setupState = document.querySelector("#setup-feedback")?.dataset.state;
@@ -159,7 +165,7 @@ for (const feedback of [document.querySelector("#setup-feedback"), document.quer
 
 document.addEventListener("vlab:apply-metrics", () => {
   if (!activeSimulationWorker) {
-    dispatch("vlab:metrics-error", { message: "Simulation worker is not ready." });
+    failMetrics("Simulation worker is not ready.");
     return;
   }
   try {
@@ -169,10 +175,7 @@ document.addEventListener("vlab:apply-metrics", () => {
       parameters: activeParameters,
     });
   } catch (error) {
-    metricsApplyPending = false;
-    dispatch("vlab:metrics-error", {
-      message: error instanceof Error ? error.message : String(error),
-    });
+    failMetrics(error instanceof Error ? error.message : String(error));
   }
 });
 
