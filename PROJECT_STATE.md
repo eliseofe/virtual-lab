@@ -2,7 +2,7 @@
 
 Updated: **16 September 2026**
 
-This is the durable current technical state/evidence for future ChatGPT/Work/human sessions. Read `AGENTS.md`, then `PROJECT_CONTROL.md`, before this file. Older implementation history remains available in Git history and date-stamped/archive documents.
+This is the durable current technical state/evidence for future ChatGPT/Work/human sessions. Read `AGENTS.md`, then `PROJECT_CONTROL.md`, before this file. Older implementation history remains available in Git history, closed issues and date-stamped/archive documents.
 
 ## Repository and production
 
@@ -26,60 +26,37 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Metrics measurement phase: `post-physics-wrapped-state/1`
 - Production neighbour strategy: `adaptive-periodic-bvh/v1`
 
+## Current product checkpoint
+
+**#149 — Professor promotion of an accepted Experiment revision to Showcase is complete and deployed.** There is no automatically activated next implementation ticket. The next intended checkpoint is a short owner/design discussion for **#207 — UI/UX refinement round 2**; implementation of that lane remains intentionally unstarted until the owner activates it.
+
 ## #195 — Metrics + live Results epic — complete and externally accepted
 
-All six children are complete/deployed/accepted as applicable. #201 was the terminal internal acceptance child; no new science or runtime feature was added by #201.
-
-On 16 September 2026 the owner also completed a real black-box research-AI acceptance outside the implementation harness. The external research AI read the relevant paper material, extracted three candidate metrics, correctly distinguished their run dependence, suggested the same two metrics the owner wanted, authored them through the deployed MCP/Connector, and the resulting Experiment ran correctly in the Lab. The owner then asked the research AI to explain an observed plateau; it returned to the implemented formula and gave the owner the expected scientific explanation. The owner declared this a complete end-to-end success.
-
-This is strong product acceptance of the intended research loop:
-
-`paper/scientific context → research AI → Metrics authoring → stored Experiment → Virtual Lab execution/Results → scientific interpretation back in research AI`.
-
-### #196 — four compulsory artifacts — complete/deployed
-
-Canonical required artifacts are exactly:
+The canonical runnable Experiment has four compulsory authored artifacts:
 
 1. `configuration`
 2. `initialization`
 3. `controller`
 4. `metrics`
 
-An empty Metrics artifact is valid. Metrics is a read-only scientific observer and executes at the versioned measurement point `post-physics-wrapped-state/1`. Existing legacy Experiments were backfilled without changing their scientific revisions.
+Metrics is a read-only scientific observer. An empty Metrics artifact is valid. Stable metric IDs, exact scientific sampling, worker/UI transport, live Results, local persistence and fine-grained research-AI authoring are all deployed.
 
-Primary #196 merge: `bad877a5c8b60391f12617779763b725f1167bc0`; migration-order repair: `082365d0861cda618e68e91960cf2cd949992f00`.
+On 16 September 2026 the owner completed a real black-box research-AI acceptance outside the implementation harness. The external research AI read the relevant paper material, extracted candidate metrics, authored the intended metrics through the deployed MCP/Connector, and the resulting Experiment ran correctly in the Lab. The owner then asked the research AI to explain an observed plateau and received the expected formula-based scientific explanation. The owner declared the paper/scientific-context → AI authoring → Virtual Lab execution/results → AI interpretation loop a complete end-to-end success.
 
-### #197 — multi-metric runtime buffering — complete/deployed/recertified
+### Accepted Active Elastic fixture
 
-Runtime executes multiple Metrics IR definitions with independent exact periodic/final policies. Periods that cannot be scheduled exactly on the simulation timestep are rejected rather than rounded.
+The owner-authorized acceptance fixture remains authoritative:
 
-Samples carry stable metric ID + scientific time. Runtime queue capacity is 262,144 samples; overflow state is explicit. Worker→UI batches are bounded at 4,096 samples on roughly 100 ms wall-clock cadence. No durable disk/database write occurs on the simulator hot path.
+- `polarization`: `psi = ||sum_i heading_i|| / N`, sampled every `0.1 s` for Virtual Lab acceptance/display. The cadence is a product/integration choice and is not claimed as the source paper's analysis/output cadence.
+- `angular_momentum`: separately owner-authorized normalized instantaneous milling/angular-momentum complement.
 
-Primary merge: `95d3e64e4ccb79ef4551411f0f19cdba78d31c32`; production packaging recertification: `a87ad175f3527b404fcf7adf096cb6cb0a1d882e`.
-
-### #198 — co-located live Results — complete/deployed/owner-accepted
-
-Results remain on the Experiment screen beside/below the running simulation. Generic time-series panels bind one or more stable metric IDs; the same metric may appear in multiple panels; colors are deterministic by metric ID. Pan/zoom/inspection is supported, rendering is throttled independently from scientific sampling, and display reduction never mutates retained samples.
-
-The built-in Active Elastic acceptance fixture contains two owner-authorized live metrics:
-
-- `polarization` — `psi = ||sum_i heading_i|| / N`, sampled every `0.1 s` for Virtual Lab acceptance/display. This cadence is not claimed to reproduce the paper's analysis/output cadence.
-- `angular_momentum` — separately owner-authorized normalized instantaneous milling/angular-momentum complement. It is not claimed as a verbatim second equation from Ferrante et al. PRL.
-
-Owner phone acceptance on 16 September 2026 confirmed the deployed two-metric live Results behavior, panel creation/reuse/multi-series behavior, stable colors and usable foldable layout. Do not ask for the polarization formula or cadence again.
-
-Key merges: `3197b937a00dbdc7c91fccfc571dfe54fd73ea5a` initial UI; `7b6c62e094d00a88f68126e056180d0baf73a191` two-real-metric generalization; `f1cd52a598e31dfbd5397e658023da427d74be9f` obsolete registry-v2 cleanup.
-
-Later UI polish is tracked under #207 — UI/UX refinement round 2, including discoverability of the metric selector and a clear return-to-follow-live interaction after plot pan/zoom.
+Do not ask for these definitions again and do not alter them without explicit owner authorization.
 
 ### #199 — local single-run result persistence — complete/deployed
 
-Primary persistence merge PR #225: `c39979ee15d4682497d9a96f08a0c661c9424f79`.
-Final package-semantics cleanup PR #227: `7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d`.
+The canonical scientific result is ordinary user-visible files under a user-selected Virtual Lab workspace root where writable-directory access is supported. Browser-private storage is not the scientific archive.
 
-The canonical scientific result is ordinary user-visible files under a user-selected Virtual Lab workspace root where writable-directory access is supported. Browser-private storage is not the scientific archive. IndexedDB may remember a directory handle only; it does not contain the metric sample data.
-
-For a selected Experiment, standalone run output is flat:
+Standalone run output is flat:
 
 ```text
 <VirtualLab root>/
@@ -92,81 +69,103 @@ For a selected Experiment, standalone run output is flat:
       ...
 ```
 
-There is **no per-run directory**. Each metric file is named from its stable metric ID plus a six-digit increasing run number. Multiple metric files with the same suffix belong to the same run. Existing runs are never overwritten. Compact Lab-managed reproducibility/debugging bookkeeping lives under `<Experiment>/.vlab/`, outside ordinary `runs/`.
+There is no per-run directory. Metric files use stable metric ID + increasing six-digit run number. Existing runs are never overwritten. Compact Lab bookkeeping stays under `<Experiment>/.vlab/`. `Download experiment package` is a secondary whole-Experiment export using the same hierarchy. Future Studies use flat metric files directly under `<Experiment>/studies/<Study>/`, with no additional `runs/` layer.
 
-Persistence behavior:
+Primary persistence PRs: #225 and #227. Production acceptance included two consecutive durable runs without overwrite or per-run directories.
 
-- default flush cadence: 5 s, user-adjustable independently from scientific sampling;
-- flushes are asynchronous and outside the simulation hot path;
-- pause flushes without ending the run;
-- restart/reconfiguration/completion/runtime failure records explicit terminal state;
-- pending persistence is bounded; if storage falls behind to the bound the Lab pauses rather than silently dropping scientific data;
-- `Download experiment package` packages all completed retained standalone runs for the selected Experiment using the same flat hierarchy plus compact `.vlab/` bookkeeping;
-- package export is secondary and is not the canonical automatic-persistence path where direct folder writing exists.
+### #200 — MCP/Connector Metrics + Results authoring — complete/deployed
 
-Production verification includes two consecutive runs producing the expected flat metric files without overwrite or run subdirectories. The owner could not exercise the writable-directory path on the phone and explicitly allowed a later desktop spot-check to remain non-blocking.
+The deployed connector exposes fine-grained read/create/update/remove metric operations plus upsert/remove time-series Results panel bindings. Metric identity remains stable across updates. Results presentation state is separate from scientific Experiment revision state.
 
-### #200 — MCP/Connector fine-grained Metrics + Results authoring — complete/deployed
+Current production contract:
 
-PR #231 merged as `31239dea1174cddf0c4d2d5578034ca55e6b941d`.
+- MCP server `3.0.0`;
+- interface `8`;
+- authoring `vlab.authoring/0.6`;
+- Experiment artifacts `vlab.experiment-artifacts/3`;
+- Results presentation `vlab.results-presentation/1`;
+- Edge Function version `16`.
 
-The deployed MCP/Connector exposes `author_metrics_results` for fine-grained read/create/update/remove metric operations plus upsert/remove time-series Results panel bindings. Metric identity remains stable across updates; changing identity requires explicit remove/create. Removing a metric prunes it from saved Results panels. Panel bindings can reference multiple metric IDs, and one metric can appear in multiple panels.
+Research AI still has no GitHub/repository/shell/deployment/admin/simulator-development privilege.
 
-Results presentation state is persisted separately in `public.experiment_results_presentations` under schema `vlab.results-presentation/1`. Presentation edits have their own optimistic revision and do **not** increment the scientific Experiment revision. RLS permits visible reads and owner-only writes.
+## #149 — Professor promotion to Showcase — complete/deployed
 
-The authoring contract is `vlab.authoring/0.6`; MCP server `3.0.0`; interface `8`. Existing four-artifact whole-Experiment authoring and bounded legacy three-source compatibility remain available. Unsupported metric capabilities continue to return compile/contract diagnostics and, for Professor users, the existing capability-request path rather than granting simulator-development access.
+### Product/data model
 
-The browser loads a saved connector-authored Results presentation when one exists; with no saved presentation it preserves the normal default Results layout. No arbitrary plotting code and no Study behavior were added.
+Showcase is public curation/publication, not an `experiment_collections` row. The deployed model is:
 
-PR head `9524bf9ab63baab599e2660723049c8e6857d640` passed Round 1A run `35082298949` and performance run `35082298960`. After merge, production Pages run `35083140486` passed build, deploy and all deployed browser smoke checks. Supabase `experiment-mcp` is ACTIVE at Edge Function version `16`, pinned to the merged #200 commit.
+`owned saved Experiment revision → immutable curated snapshot → reversible Showcase publication state`
 
-### #201 — final end-to-end acceptance — complete
+Implementation uses the existing `preserved_experiment_snapshots` foundation with `snapshot_kind = 'curated'`, extended to preserve description and the current generic artifact representation. `public.showcase_entries` stores publication state separately from the immutable snapshot.
 
-The already-authorized `polarization` fixture was reused exactly; no scientific definition, sampling policy or controller behavior was changed.
+Promotion semantics:
 
-Terminal evidence:
+- Professor must own an active saved Experiment and provide the expected exact revision;
+- promotion freezes title, description, schema/interface metadata and complete generic authored artifacts into an immutable curated snapshot;
+- promotion does not change the source Experiment revision;
+- later source edits do not change the published snapshot;
+- if a newer revision is promoted, the old active publication is marked removed and the newer exact snapshot becomes active;
+- removing from Showcase marks publication removed without deleting the source Experiment or historical curated snapshot;
+- public discovery returns only active curated snapshots;
+- signed-in users may copy a Showcase Experiment into private work rather than overwrite the canonical publication.
 
-- source/compiler: built-in Metrics contains `polarization` with `every(0.1)` and the accepted formula; generic tests compile it alongside `angular_momentum`;
-- deployed execution: production run `35083140486` emitted both real metrics live and polarization samples at exact 0.1 s scientific-time increments while retaining the running simulation;
-- Results: the same deployed smoke verified generic panel creation, separate panels, multi-series combination, metric reuse and stable automatic colors;
-- restart/current-run: the Metrics bridge resets retained current-run samples on restart/reconfiguration via explicit metric-reset events; production smoke verified restart controls;
-- persistence: production smoke produced two consecutive durable flat-file runs with `polarization_000001.csv`, `angular_momentum_000001.csv`, `polarization_000002.csv`, `angular_momentum_000002.csv`, with no per-run directories and no overwrite;
-- MCP: Supabase `experiment-mcp` was rechecked during #201 and is ACTIVE at version `16`, pinned to `31239dea1174cddf0c4d2d5578034ca55e6b941d`; #200 contract tests cover fine-grained metric create/update/remove, stable identity and generic Results panel bindings;
-- performance: run `35082298960` recorded deterministic trajectory equivalence with Metrics, zero dropped samples in profiled cases, bounded transport and asynchronous persistence. In the recorded 500-agent / 2000-tick / 3-repetition profile, four metrics sampled at 0.1 s transported 800 samples with about 0.8 ms measured transport time; serialization of 262,144 persistence samples took about 123 ms outside simulation execution.
+### Authorization/security boundary
 
-No missing generic simulator capability was exposed. #201 and parent #195 are closed.
+- `promote_experiment_to_showcase(uuid,bigint)` and `remove_experiment_from_showcase(uuid)` are `SECURITY DEFINER` RPCs that explicitly require `auth.uid()` and `profiles.role = 'professor'` in their bodies.
+- `list_showcase_experiments()` is intentionally public/read-only and may be called anonymously.
+- `showcase_entries` has RLS enabled and direct table privileges are revoked from `anon` and `authenticated`; public discovery happens only through the read-only listing RPC.
+- research AI receives no Showcase curator/admin privilege.
 
-## Current frontier — #149 — Professor promotion to Showcase
+During terminal verification on 16 September 2026, Supabase inspection found that default function grants had left explicit anonymous `EXECUTE` privileges on the promote/remove RPCs despite the internal authentication/Professor guard. There was no operational authorization bypass because the functions rejected null/non-Professor callers, but the privilege surface was broader than intended. A terminal hardening migration explicitly revoked `anon` and `PUBLIC` execute on promote/remove. Verification after the migration returned:
 
-Owner direction is to make the accepted AI-authored paper Experiment promotable to Showcase without requiring further paper-faithfulness tuning first, and to make publication reversible.
+- anonymous promote: `false`;
+- authenticated promote: `true`;
+- anonymous remove: `false`;
+- authenticated remove: `true`.
 
-Architecture audit on 16 September 2026 established that Showcase should **not** be modeled as an ordinary `experiment_collections` row:
+The Supabase security advisor now reports only intentional architecture warnings for the public listing `SECURITY DEFINER` RPC and authenticated Professor-gated curation RPCs, plus unrelated pre-existing Auth password-protection advice. RLS-without-policy notices for snapshot/showcase tables are intentional because direct table access is revoked and access is through explicitly guarded RPCs.
 
-- collections are private owner organization with owner-only RLS;
-- Showcase is public curation/publication;
-- changing the live Experiment row's `visibility` would bump its scientific revision even though no science changed;
-- publishing the mutable live row would allow later edits to silently change what the curated Showcase item means.
+### Implementation/deployment evidence
 
-Therefore the bounded implementation should publish an **immutable exact-revision curated snapshot** plus separate reversible Showcase publication state. Removing an item from Showcase removes only its public publication state/history; it does not delete or mutate the source Experiment. Re-promotion is allowed later.
-
-The existing `preserved_experiment_snapshots` model already has a `curated` snapshot kind and is the natural foundation; extend it to preserve the current generic four-artifact representation rather than creating a competing Experiment format.
+- PR **#234 — Add reversible Professor promotion to Showcase** merged as `7fdc6685ab2351081487e7a2d7904b5354466e70`.
+- Main Pages run `35121772061` completed successfully after PR #234.
+- PR **#235 — Place Showcase curation in Professor mode** merged as `192669d1fc1999064467a8fd4e0883855b38f613`.
+- Main Pages run `35122267503` completed successfully after the final placement repair.
+- Production Supabase verification confirms `showcase_entries` plus promote/remove/list RPCs are present.
+- At terminal verification there are zero active Showcase entries. This is valid: #149 implements the Professor curation capability; it does not auto-publish eligible Experiments. The accepted AI-authored paper Experiment is now eligible for explicit normal Professor promotion.
 
 ## UI/UX refinement state — #207 — UI/UX refinement round 2
 
-#207 is a likely next lane after Showcase, but the owner wants a design discussion before activation. Preserve the concrete observations already recorded:
+#207 is the likely next product lane but is not implementation-activated. The owner wants a short design discussion first.
 
-- **#208 — unify Experiment identity and Save/Persistence/organization**;
-- **#209 — reconcile Account and Professor entry surfaces**;
-- **#210 — remove unnecessary microcopy and strengthen responsive hierarchy**;
+Preserved observations:
+
+- #208 — unify Experiment identity and Save/Persistence/organization;
+- #209 — reconcile Account and Professor entry surfaces;
+- #210 — remove unnecessary microcopy and strengthen responsive hierarchy;
 - Results series selection works but lacks sufficient affordance;
 - plot interaction can detach from the live edge without an obvious follow-live control;
-- more deliberate Results panel arrangement/resizing can be designed as presentation state.
+- richer Results panel arrangement/resizing should remain presentation state rather than scientific definition.
 
-New owner requirement: the UI/UX round must **not freeze the UI**. It should establish stable compositional regions, reusable interaction patterns, progressive disclosure and responsive hierarchy so later additions such as Studies, richer Results and research-memory surfaces can be added without repeatedly redesigning unrelated sections.
+The round must not freeze the UI around the current feature set. It must establish stable compositional regions, reusable interaction patterns and progressive disclosure so Studies, richer Results, research memory and future Professor workflows can be added without repeated whole-page redesigns.
 
 ## Editor lane — #202 — code authoring ergonomics
 
-#202 remains separate: **#203 — highlighting/editor foundation**, **#204 — outline/navigation/folding/search**, **#205 — diagnostics/completion**. Large Metrics source remains one scientific artifact; editor ergonomics must not fragment it merely for presentation.
+Separate authoring-ergonomics epic:
+
+- #203 — highlighting/editor foundation;
+- #204 — outline/navigation/folding/search;
+- #205 — diagnostics/completion.
+
+Large Metrics source remains one scientific artifact; editor ergonomics must not fragment it merely for presentation.
+
+## Studies boundary — #3
+
+Experiment Results answer: **what happened during this run?**
+
+Studies answer: **what happened across runs/conditions?**
+
+Future Study work composes existing stable metric identities, run identities and flat-file persistence instead of creating an incompatible result architecture.
 
 ## Professor capability-request loop
 
@@ -185,7 +184,7 @@ Durable record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
 
 ## Neighbour-search / performance state
 
-Production `Simulation` uses `adaptive-periodic-bvh/v1` with exact receiver-radius membership, arbitrary simultaneous query radii, periodic minimum-image geometry and deterministic sorted neighbour indices.
+Production Simulation uses `adaptive-periodic-bvh/v1` with exact receiver-radius membership, arbitrary simultaneous query radii, periodic minimum-image geometry and deterministic sorted neighbour indices.
 
 `PeriodicGridNeighbourIndex` remains the exact reference/fallback and `BruteForceNeighbourIndex` the hidden correctness oracle. #56 — Simulator performance profiling and optimization remains a living umbrella; #179 — encode the benchmark as a persistent Study is deferred until Study infrastructure exists.
 
