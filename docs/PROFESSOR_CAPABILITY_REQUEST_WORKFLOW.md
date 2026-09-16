@@ -1,67 +1,61 @@
 # Professor capability-request workflow
 
-Status: product/architecture decision, 14 September 2026.
+Status: **deployed baseline and standing development boundary, updated 16 September 2026**.
 
-This document records the intended first version of the paper-to-experiment extension loop. It deliberately keeps the policy simple.
+This document records the paper-to-Experiment extension loop when a research AI discovers that the current Virtual Lab cannot express a required simulator capability.
 
-## Existing structural boundary
+## Structural boundary
 
-The Supabase Experiment MCP is already an experiment-domain interface. An AI client such as Grok or Claude can create/read/edit experiment records and collections exposed by MCP. It has no GitHub, repository, shell, deployment, simulator-source, arbitrary SQL, filesystem, or Supabase-admin capability.
+The authenticated Experiment MCP is an Experiment-domain interface. Research AI clients can create/read/edit supported Experiment content and, for Professor users, preserve/request missing capability. They have no GitHub, repository, shell, deployment, simulator-source, arbitrary SQL, arbitrary filesystem or Supabase-admin capability.
 
-That boundary is structural: simulator-development actions are absent from the MCP. Do not add a second policy layer that tries to classify such actions as allowed/forbidden; they are simply outside this interface.
+That boundary is structural. Missing simulator functionality is not “allowed through prompt”; it is absent until implemented by the trusted developer workflow.
 
 ## Roles
 
-The registry will distinguish at least two authenticated experiment-domain roles:
+Current registry roles include:
 
 - `student`
-- `professor` / `curator`
+- `professor`
 
-For initial owner testing, one of the owner's existing authenticated identities should be promoted to professor/curator while the other remains an ordinary student identity. This allows both paths to be tested with real AI clients.
+Professor is a strict superset of Student for ordinary Experiment-domain behavior plus explicit Professor surfaces such as the capability-request workflow. Professor role never implies simulator-development authority.
 
-Professor/curator remains an experiment-domain role. It does not imply simulator-development access.
+## Unsupported Experiment capabilities
 
-## Unsupported experiment capabilities
+Validation answers whether requested Experiment semantics fit the active versioned Virtual Lab capability contract. It must not decide whether a missing scientific feature is desirable or fabricate a substitute.
 
-Validation should answer only whether an experiment requirement is currently supported by the active Virtual Lab authoring/runtime capability contract. It must not try to decide whether a missing capability is scientifically reasonable, architecturally desirable, or likely to be implemented.
-
-Initial policy:
+Current policy:
 
 ```text
 capability exists
-    -> allowed
+    -> author/validate normally
 
 capability missing + professor
-    -> preserve the experiment intent/draft and create a capability request
+    -> preserve intent/draft and create durable capability request
 
 capability missing + student
-    -> reject as unsupported; no capability request in the first version
+    -> report unsupported; no request action in the current first version
 ```
 
-There is no `requestable vs forbidden` classifier for missing experiment capabilities in the first version. For a professor, a missing experiment capability is requestable by default. For a student, missing capabilities are not requestable yet. Student requests may be revisited later.
+## Durable capability request
 
-## What a capability request is
+A request is a first-class Supabase domain row with stable identity and retained context. The deployed model preserves information such as:
 
-A capability request is a first-class Supabase registry/domain row, not a GitHub issue and not free-form chat state.
+- request identity/timestamps;
+- authenticated requester identity/role;
+- originating Experiment/revision when available;
+- preserved draft artifacts/intent;
+- capability domain/name/summary;
+- requested lifecycle hook;
+- status;
+- Professor review note/identity/time where applicable;
+- linked GitHub engineering issue/PR once trusted development begins;
+- implemented capability/contract version when completed.
 
-It should have a stable request ID and retain enough provenance to reconnect the request to the paper/experiment that exposed the gap. The first useful schema should contain, at minimum:
+The request does not contain or grant repository credentials.
 
-- request ID and timestamps;
-- authenticated requester identity and role;
-- originating experiment/draft ID and revision when available;
-- capability domain, for example `world-builder`, `observation`, `action`, `intrinsic`, or another future typed extension point;
-- concise requested capability name/summary;
-- short motivation/context produced from the experiment discussion;
-- lifecycle status;
-- optional professor/developer notes;
-- optional linked GitHub issue/PR once development begins;
-- implemented contract/capability version and completion timestamp once available.
+## Lifecycle
 
-Do not expose GitHub credentials or repository-development operations through this row or through the professor MCP.
-
-## Capability-request lifecycle
-
-Keep the initial state machine small:
+Current lifecycle vocabulary is:
 
 ```text
 requested
@@ -75,92 +69,91 @@ in_progress
 implemented
 ```
 
-`approved` means "approved for development / queued". It does not itself execute repository work.
+`approved` means approved by the Professor to enter developer design/queue. It **does not** authorize code implementation by itself.
 
-If implementation reveals that a request must be reformulated, notes can be attached and the request can remain approved/in progress rather than inventing a complex workflow immediately.
+The developer-side standing boundary is:
 
-## Professor-mode request inbox
+`approved request → developer design discussion → explicit owner implementation approval → trusted developer implementation/deploy/verification → implemented`
 
-Professor mode in the production Virtual Lab should include a simple, polished capability-request viewer/inbox. The professor should not need to ask an AI chat to enumerate raw Supabase rows every time.
+## Professor inbox — deployed
 
-The initial viewer should support:
+The production Lab includes the Professor-only request inbox/triage path implemented under #139 / #58.3.
 
-- list requests, newest first, with status filters;
-- clearly show originating experiment/draft and capability domain;
-- open a request to read its description/context and linked experiment;
-- `Approve for development` and `Decline` actions while status is `requested`;
-- show `approved`, `in progress`, and `implemented` state visibly;
-- show linked GitHub issue/PR and implemented capability/contract version once the development side has supplied them;
-- optionally jump back to/revalidate the originating experiment after implementation.
+Professor can review pending requests and transition only `requested → approved` or `requested → declined` through the user-facing triage flow, with durable reviewer/time/note data. Student users cannot read the Professor queue or triage requests.
 
-The viewer is an experiment/product administration surface backed by Supabase. It must not embed GitHub credentials or turn the professor browser into a simulator-development client.
+This UI remains an Experiment/product administration surface. It does not embed GitHub credentials or turn the browser into a simulator-development client.
 
-## Development handoff from ChatGPT
+## Research-AI request action — deployed
 
-The development side is separate from Grok/Claude's Experiment MCP.
+Professor-authenticated MCP exposes `request_capability` under `vlab.capability-request/1`.
 
-A normal owner workflow should be possible from this ChatGPT development interface:
+The active authoring contract can signal requestable unsupported-capability behavior for Professor users. The AI preserves the original Experiment/draft intent rather than rewriting the science to fit current simulator limitations.
 
-1. owner says to inspect capability requests, or to take a particular/next approved request;
-2. ChatGPT reads the approved Supabase request through the developer-side Supabase connection;
-3. ChatGPT creates or links the corresponding GitHub engineering issue when implementation actually begins;
-4. the Supabase request status is changed to `in_progress` and stores the GitHub issue link;
-5. implementation proceeds through the normal repository/PR/test/deploy workflow;
-6. only after the capability is deployed and advertised by the active authoring/runtime contract does ChatGPT mark the request `implemented`;
-7. the request row records the relevant PR/issue and implemented contract/capability version;
-8. Professor mode then shows the completed state automatically from Supabase.
+Current lifecycle-hook vocabulary exposed by the request path includes:
 
-This means the Professor UI can initiate the human decision by approving/queuing a request, while actual simulator development remains in the engineering interface. No manual copying of request details into chat should be required.
+`setup | initialize | control | measure | finalize`
 
-A convenience command such as "implement the next approved capability request" should eventually be enough for the owner in the developer chat once the Supabase developer connection and request schema exist.
+## Development handoff
 
-## What counts as an experiment capability
+Trusted developer work is separate from research-AI MCP.
 
-The professor may request any capability needed to express an experiment through the Virtual Lab model, including future classes such as:
+When the owner asks to take an approved request, developer-side ChatGPT should:
 
-- world/setup construction: gradients, sites, regions, raster/image worlds, obstacles, resources, boundaries, placement primitives;
-- observations/sensors available to agents;
-- actions/actuators available to agents;
-- simulator-owned stochastic or local intrinsic operations exposed through the authoring contract;
-- other typed, versioned experiment-domain extension points introduced by the simulator architecture.
+1. read the approved Supabase request and its preserved context;
+2. perform the software-generalization/refactor gate;
+3. discuss the architecture/design with the owner where required;
+4. obtain explicit owner implementation approval;
+5. create/link the GitHub engineering issue and mark the request `in_progress` only when implementation actually begins;
+6. implement/test/deploy through the normal repository workflow;
+7. mark the request `implemented` only after the active deployed capability contract advertises it;
+8. leave the originating Experiment/draft ready for research-AI revalidation.
 
-The professor-facing AI may formulate the missing requirement and submit the request. It does not implement the capability.
+No manual copying of request details should be required when developer tooling can read the durable row.
 
-## Paper-to-experiment loop
+## What counts as an Experiment capability
 
-Intended workflow once professor identity and capability requests are implemented:
+Potential capability domains include, for example:
 
-1. Professor discusses a paper with Grok/Claude and asks it to create a Virtual Lab experiment.
-2. The AI reads the current authoring/capability contract through MCP.
-3. Supported portions are authored normally.
-4. If a required experiment capability is missing, validation identifies the missing capability/domain.
-5. Because the authenticated role is professor, the experiment intent is preserved as a non-runnable draft if necessary and a durable Supabase capability request is created.
-6. The request appears in the Professor-mode inbox as `requested`.
-7. The professor approves or declines it. Approval moves it to `approved`; it does not grant Grok/Claude development privileges.
-8. The development workflow later takes an approved request, links a GitHub issue, and marks it `in_progress`.
-9. Once the new capability is implemented, tested and deployed, the versioned authoring contract advertises it and the request is marked `implemented`.
-10. The originating draft is revalidated; the AI can then complete/use the experiment without changing its basic workflow.
-11. An accepted professor-owned experiment may later be promoted into the public Showcase/curated collection under the professor/curator workflow.
+- world/environment/setup construction;
+- observations/sensors;
+- actions/actuators;
+- simulator-owned stochastic/intrinsic operations;
+- per-agent initialization/state representation;
+- future registered measurement/lifecycle extension points.
 
-This loop lets papers drive simulator development empirically: each paper either maps to current capabilities or produces a concrete missing-capability request.
+The research AI can describe the missing requirement. It cannot implement the simulator capability.
 
-## Example
+## Scientific guardrail
 
-If a paper requires a continuous environmental gradient and the active contract has no gradient world-builder capability:
+A missing capability is not permission to replace the requested science with a nearby model or convenient approximation. The Professor/research AI preserves scientific intent; the developer designs the generic software capability; the owner explicitly approves implementation.
 
-- professor identity: preserve the draft and create a Supabase request for the missing world/setup capability;
-- the request appears in Professor mode;
-- professor chooses `Approve for development`;
-- later the developer-side ChatGPT workflow takes that approved request and implements it through GitHub;
-- after deployment, the request becomes `implemented` and the draft can be revalidated;
-- student identity: report that the experiment cannot currently be expressed and do not create a request.
+Likewise, when a definition has already been owner-authorized and is supported, do not create a duplicate capability request or ask the owner to repeat it.
 
-The AI does not decide whether gradients are a good feature. The authenticated role determines whether the missing capability can enter the request queue; the professor decides whether the queued request should actually be developed.
+## Current approved requests
 
-## Related issues
+Two Professor-approved requests remain **not implementation-authorized**:
 
-- #45 — professor/curator identity, curation and Showcase workflows;
-- #58 — capability registry and durable missing-capability request lifecycle;
-- #65 — first-class world/environment/setup architecture, including gradients and other environment primitives;
-- #46 — production registry integration;
-- #55 — authoring contract and validation boundary.
+- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — generic simulator-owned controller stochasticity/RNG distributions;
+- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — generic heterogeneous agent initialization/state.
+
+Their durable design checkpoint is `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
+
+Do not implement either request merely because its registry status is `approved`.
+
+## Paper-to-Experiment loop
+
+Current intended loop:
+
+1. Professor discusses a paper/hypothesis with a research AI.
+2. AI reads the current authoring/capability contract through MCP.
+3. Supported Experiment artifacts/Metrics/Results bindings are authored normally.
+4. If a required simulator capability is absent, validation exposes that gap.
+5. Professor-authenticated AI preserves the intent/draft and creates a capability request.
+6. Request appears in the Professor inbox.
+7. Professor approves/declines.
+8. Approved request waits for developer design + explicit owner implementation authorization.
+9. Trusted developer implements/deploys if authorized.
+10. Deployed versioned contract advertises the capability; request is marked implemented.
+11. Research AI revalidates/completes the originating Experiment.
+
+This lets real papers expose simulator gaps without giving research AI development privileges or encouraging paper-specific hacks.
