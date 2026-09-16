@@ -1,4 +1,7 @@
 import "./registry-ui-v3.js";
+import "./professor-inbox.js";
+import "./professor-development-links.js";
+import "./showcase.js";
 import "./results-presentation-bridge.js";
 import "./authoring-workspace.js";
 import "./collection-organization.js";
