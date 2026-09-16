@@ -16,9 +16,9 @@ Showcase is public curation/publication, not an ordinary private `experiment_col
 
 Implementation evidence is PR **#234 — Add reversible Professor promotion to Showcase** plus PR **#235 — Place Showcase curation in Professor mode**. Production Pages run `35122267503` passed after the final UI-placement repair. The production Supabase schema contains `showcase_entries` plus the promote/remove/list RPCs. A terminal privilege hardening pass explicitly revoked anonymous `EXECUTE` on the promote/remove RPCs; the public listing RPC remains intentionally callable by anonymous visitors.
 
-There is currently **no automatically activated next implementation ticket**. The next intended product checkpoint is a short owner/design discussion for **#207 — UI/UX refinement round 2**. Do not begin #207 implementation until that discussion activates the lane.
+**#207 — UI/UX refinement round 2 is now the active product-refinement lane.** The owner is not expected to design the interface. Product-design decisions belong to the developer/design specialist; owner feedback is empirical product feedback only. Product Design / Work usage is capped at two bounded rounds: one live-product audit/design pass, then one deployed verification/correction pass. Implementation, repository work, ordinary tests and deployment should remain outside Work whenever normal development tooling can do them. There is no third Product Design round in this epic.
 
-Other existing candidate lanes remain **#202 — code authoring ergonomics** and **#3 — Studies / reproducible multi-run investigations**.
+Other existing candidate lanes remain **#202 — code authoring ergonomics** and **#3 — Studies / reproducible multi-run investigations**, to follow only after the current #207 lane reaches its terminal checkpoint or is explicitly stopped.
 
 ## Canonical Experiment and Results model
 
@@ -133,9 +133,9 @@ Approved direction applies across Configuration, Initialization, Controller, Met
 
 Children: **#203 — editor foundation/highlighting**, **#204 — navigation/folding/search**, **#205 — diagnostics/completion**.
 
-## Owner-feedback UI/UX refinement lane — #207 — UI/UX refinement round 2
+## Active UI/UX refinement lane — #207 — UI/UX refinement round 2
 
-**Not yet implementation-activated. Discuss design with the owner first.**
+**Activated. The owner is not the UI/UX designer and should not be asked to invent aesthetic/layout solutions.** The developer/design specialist owns design decisions. Owner feedback is used as product evidence when a working interaction is awkward, hidden, separated from related state, or otherwise wrong in actual use.
 
 Preserve these concrete observations for the coherent refinement round rather than patching them piecemeal into unrelated tickets:
 
@@ -144,9 +144,24 @@ Preserve these concrete observations for the coherent refinement round rather th
 - **#210 — remove unnecessary microcopy, strengthen typography/hierarchy and verify deliberate desktop/mobile layouts**;
 - Results metric/series selection lacks sufficient affordance even though multi-series binding works;
 - touching/panning a live plot leaves follow-live mode without an obvious control for returning to the live edge;
-- later Results workspace polish may include deliberate side-by-side/stacked/tabbed layout, rearrangement and resizing while remaining presentation state rather than scientific definition.
+- later Results workspace polish may include deliberate side-by-side/stacked/tabbed layout, rearrangement and resizing while remaining presentation state rather than scientific definition;
+- simulation and live Results must remain visually usable together;
+- primary run/simulation controls must remain spatially close to the simulator they operate.
 
 This refinement round must produce an extensible UI architecture, not a frozen screenshot. New future capabilities should attach to stable workspace regions and interaction patterns without forcing another redesign of unrelated existing sections.
+
+### Bounded specialist budget
+
+Use the Product Design specialist in Work for at most two rounds total:
+
+1. **Round 1 — live audit/design direction:** inspect production deliberately on desktop and mobile, identify the highest-impact structural and visual improvements, and produce one prioritized implementation direction. Avoid prolonged alternative generation and speculative feature invention.
+2. **Round 2 — deployed verification/correction:** after Round 1 implementation reaches production, inspect the live result once. If there are material regressions or clear usability failures, perform one bounded corrective batch and verify it.
+
+There is no third Product Design round under #207. Residual aesthetic polish is deferred unless it is a concrete usability defect. Do not introduce Figma, Mobbin, Canva or another design platform merely for this epic.
+
+Implementation, repository changes, ordinary tests and deployment should stay outside Work whenever normal development tooling can perform them. Keep changes reviewable/reversible, preserve scientific/runtime semantics, and correct or revert any redesign that materially worsens a working interaction.
+
+Terminal completion requires the unified Experiment/save workflow, reconciled Account/Professor entry model, reduced clutter/stronger hierarchy, deliberate desktop/mobile usability, clear Results metric selection, an obvious Follow live recovery state/action, preserved simulator/run-control/Results proximity, extensibility for future modules, and verified production behavior without a material regression.
 
 ## Studies boundary — #3 — reproducible multi-run investigations
 
