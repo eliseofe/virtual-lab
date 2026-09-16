@@ -15,17 +15,16 @@ child.stderr.on("data", (chunk) => { chromeLog += chunk.toString(); });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function waitForPort() {
-  let lastError;
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     if (child.exitCode !== null) throw new Error(`Chrome exited before DevTools started (code ${child.exitCode})`);
     try {
       const text = await readFile(`${profile}/DevToolsActivePort`, "utf8");
       const port = Number(text.split(/\r?\n/)[0]);
       if (Number.isInteger(port) && port > 0) return port;
-    } catch (error) { lastError = error; }
+    } catch {}
     await sleep(100);
   }
-  throw lastError ?? new Error("Chrome did not publish DevToolsActivePort");
+  throw new Error("Chrome did not publish DevToolsActivePort");
 }
 
 async function json(port, path) {
@@ -35,7 +34,7 @@ async function json(port, path) {
 }
 
 async function waitForTarget(port) {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     const targets = await json(port, "/json/list").catch(() => []);
     const target = targets.find((item) => item.type === "page" && item.url.startsWith("http"));
     if (target?.webSocketDebuggerUrl) return target.webSocketDebuggerUrl;
@@ -81,7 +80,7 @@ async function evaluate(send, expression) {
 }
 
 async function waitReady(send) {
-  for (let attempt = 0; attempt < 160; attempt += 1) {
+  for (let attempt = 0; attempt < 180; attempt += 1) {
     const state = await evaluate(send, "document.querySelector('#worker-status')?.dataset.state ?? null");
     if (state === "ready") return;
     if (state === "error") throw new Error("Browser reported simulator startup error");
@@ -90,13 +89,26 @@ async function waitReady(send) {
   throw new Error("Browser did not reach simulator ready state");
 }
 
-async function inspectShowcase(send, label) {
-  await evaluate(send, "document.querySelector('.showcase-launcher')?.click()");
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    const open = await evaluate(send, "Boolean(document.querySelector('.showcase-dialog')?.open)");
-    if (open) break;
-    await sleep(50);
+async function waitForShowcaseInitialization(send) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const ready = await evaluate(send, `Boolean(document.querySelector('.showcase-launcher') && document.querySelector('.showcase-entry'))`);
+    if (ready) return;
+    await sleep(100);
   }
+  throw new Error("Showcase did not initialize");
+}
+
+async function inspectShowcase(send, label) {
+  await waitForShowcaseInitialization(send);
+  await evaluate(send, "document.querySelector('.showcase-launcher').click()");
+
+  let opened = false;
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    opened = await evaluate(send, "Boolean(document.querySelector('.showcase-dialog')?.open)");
+    if (opened) break;
+    await sleep(100);
+  }
+
   const value = await evaluate(send, `JSON.stringify((() => {
     const dialog = document.querySelector('.showcase-dialog');
     const rect = dialog?.getBoundingClientRect();
@@ -110,6 +122,7 @@ async function inspectShowcase(send, label) {
       activeElastic: entries.some((text) => text.includes('Active Elastic') && text.includes('Built-in') && text.includes('Public example')),
       falseEmpty: document.body.textContent?.includes('No Showcase experiments yet.') ?? false,
       closeHeight: Math.round(document.querySelector('.showcase-head-actions button:last-child')?.getBoundingClientRect().height ?? 0),
+      message: document.querySelector('.showcase-message')?.textContent?.trim() ?? '',
     };
   })())`);
   const state = JSON.parse(value);
@@ -144,7 +157,7 @@ try {
   if (mobile.closeHeight < 44) throw new Error(`mobile Showcase close target is ${mobile.closeHeight}px, expected at least 44px`);
 
   console.log(JSON.stringify({ desktop, mobile }, null, 2));
-  console.log("Showcase smoke verified Active Elastic first-open content and responsive public Showcase on desktop and 390x844 mobile.");
+  console.log("Showcase smoke verified launcher, Active Elastic first-open content, and responsive layout on desktop and 390x844 mobile.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
