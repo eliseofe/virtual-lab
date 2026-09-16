@@ -26,9 +26,15 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Metrics measurement phase: `post-physics-wrapped-state/1`
 - Production neighbour strategy: `adaptive-periodic-bvh/v1`
 
-## #195 Metrics + live Results epic — complete
+## #195 — Metrics + live Results epic — complete and externally accepted
 
-All six children are complete/deployed/accepted as applicable. #201 is the terminal acceptance child; no new science or runtime feature was added by #201.
+All six children are complete/deployed/accepted as applicable. #201 was the terminal internal acceptance child; no new science or runtime feature was added by #201.
+
+On 16 September 2026 the owner also completed a real black-box research-AI acceptance outside the implementation harness. The external research AI read the relevant paper material, extracted three candidate metrics, correctly distinguished their run dependence, suggested the same two metrics the owner wanted, authored them through the deployed MCP/Connector, and the resulting Experiment ran correctly in the Lab. The owner then asked the research AI to explain an observed plateau; it returned to the implemented formula and gave the owner the expected scientific explanation. The owner declared this a complete end-to-end success.
+
+This is strong product acceptance of the intended research loop:
+
+`paper/scientific context → research AI → Metrics authoring → stored Experiment → Virtual Lab execution/Results → scientific interpretation back in research AI`.
 
 ### #196 — four compulsory artifacts — complete/deployed
 
@@ -64,7 +70,7 @@ Owner phone acceptance on 16 September 2026 confirmed the deployed two-metric li
 
 Key merges: `3197b937a00dbdc7c91fccfc571dfe54fd73ea5a` initial UI; `7b6c62e094d00a88f68126e056180d0baf73a191` two-real-metric generalization; `f1cd52a598e31dfbd5397e658023da427d74be9f` obsolete registry-v2 cleanup.
 
-Later UI polish is tracked under #207, including discoverability of the metric selector and a clear return-to-follow-live interaction after plot pan/zoom.
+Later UI polish is tracked under #207 — UI/UX refinement round 2, including discoverability of the metric selector and a clear return-to-follow-live interaction after plot pan/zoom.
 
 ### #199 — local single-run result persistence — complete/deployed
 
@@ -128,28 +134,39 @@ Terminal evidence:
 - MCP: Supabase `experiment-mcp` was rechecked during #201 and is ACTIVE at version `16`, pinned to `31239dea1174cddf0c4d2d5578034ca55e6b941d`; #200 contract tests cover fine-grained metric create/update/remove, stable identity and generic Results panel bindings;
 - performance: run `35082298960` recorded deterministic trajectory equivalence with Metrics, zero dropped samples in profiled cases, bounded transport and asynchronous persistence. In the recorded 500-agent / 2000-tick / 3-repetition profile, four metrics sampled at 0.1 s transported 800 samples with about 0.8 ms measured transport time; serialization of 262,144 persistence samples took about 123 ms outside simulation execution.
 
-No missing generic simulator capability was exposed. #201 therefore passes and parent #195 satisfies its completion conditions.
+No missing generic simulator capability was exposed. #201 and parent #195 are closed.
 
-## Current frontier after #195
+## Current frontier — #149 — Professor promotion to Showcase
 
-There is no automatically selected substantial implementation ticket. The owner must choose/reprioritize the next lane. Existing candidate lanes recorded in `PROJECT_CONTROL.md` are #207 UI/UX refinement, #202 editor ergonomics and later Studies/multi-run analysis.
+Owner direction is to make the accepted AI-authored paper Experiment promotable to Showcase without requiring further paper-faithfulness tuning first, and to make publication reversible.
 
-Do not begin one merely because #195 is complete.
+Architecture audit on 16 September 2026 established that Showcase should **not** be modeled as an ordinary `experiment_collections` row:
 
-## UI/UX refinement state
+- collections are private owner organization with owner-only RLS;
+- Showcase is public curation/publication;
+- changing the live Experiment row's `visibility` would bump its scientific revision even though no science changed;
+- publishing the mutable live row would allow later edits to silently change what the curated Showcase item means.
 
-#207 is the later consolidated refinement epic. Preserve owner observations rather than patching them piecemeal into unrelated tickets:
+Therefore the bounded implementation should publish an **immutable exact-revision curated snapshot** plus separate reversible Showcase publication state. Removing an item from Showcase removes only its public publication state/history; it does not delete or mutate the source Experiment. Re-promotion is allowed later.
 
-- Experiment identity and Save/Persistence/organization surfaces need consolidation (#208);
-- Account and Professor entry surfaces need reconciliation (#209);
-- unnecessary microcopy and weak responsive hierarchy need cleanup (#210);
+The existing `preserved_experiment_snapshots` model already has a `curated` snapshot kind and is the natural foundation; extend it to preserve the current generic four-artifact representation rather than creating a competing Experiment format.
+
+## UI/UX refinement state — #207 — UI/UX refinement round 2
+
+#207 is a likely next lane after Showcase, but the owner wants a design discussion before activation. Preserve the concrete observations already recorded:
+
+- **#208 — unify Experiment identity and Save/Persistence/organization**;
+- **#209 — reconcile Account and Professor entry surfaces**;
+- **#210 — remove unnecessary microcopy and strengthen responsive hierarchy**;
 - Results series selection works but lacks sufficient affordance;
-- plot interaction can detach from the live edge without an obvious follow-live state/control;
-- more deliberate Results panel arrangement/resizing can be designed in the same later pass.
+- plot interaction can detach from the live edge without an obvious follow-live control;
+- more deliberate Results panel arrangement/resizing can be designed as presentation state.
 
-## Editor lane
+New owner requirement: the UI/UX round must **not freeze the UI**. It should establish stable compositional regions, reusable interaction patterns, progressive disclosure and responsive hierarchy so later additions such as Studies, richer Results and research-memory surfaces can be added without repeatedly redesigning unrelated sections.
 
-#202 remains separate: #203 highlighting/editor foundation; #204 outline/navigation/folding/search; #205 diagnostics/completion. Large Metrics source remains one scientific artifact; editor ergonomics must not fragment it merely for presentation.
+## Editor lane — #202 — code authoring ergonomics
+
+#202 remains separate: **#203 — highlighting/editor foundation**, **#204 — outline/navigation/folding/search**, **#205 — diagnostics/completion**. Large Metrics source remains one scientific artifact; editor ergonomics must not fragment it merely for presentation.
 
 ## Professor capability-request loop
 
@@ -170,7 +187,7 @@ Durable record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
 
 Production `Simulation` uses `adaptive-periodic-bvh/v1` with exact receiver-radius membership, arbitrary simultaneous query radii, periodic minimum-image geometry and deterministic sorted neighbour indices.
 
-`PeriodicGridNeighbourIndex` remains the exact reference/fallback and `BruteForceNeighbourIndex` the hidden correctness oracle. #56 remains the living performance umbrella; #179 is deferred until Study infrastructure exists.
+`PeriodicGridNeighbourIndex` remains the exact reference/fallback and `BruteForceNeighbourIndex` the hidden correctness oracle. #56 — Simulator performance profiling and optimization remains a living umbrella; #179 — encode the benchmark as a persistent Study is deferred until Study infrastructure exists.
 
 ## Scientific guardrail
 
@@ -184,4 +201,4 @@ Standing observation gatekeeper: global position is disallowed as a robotics con
 
 ## Success reporting
 
-GitHub issue #145 is the global success-only completion stream. Never post partial/failing/retrying work there. Append one `[SUCCESS REPORT]` comment only after the full ticket lifecycle reaches verified terminal success.
+GitHub issue #145 — success-only completion reports is the global success-only completion stream. Never post partial/failing/retrying work there. Append one `[SUCCESS REPORT]` comment only after the full ticket lifecycle reaches verified terminal success.
