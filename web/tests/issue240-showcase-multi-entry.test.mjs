@@ -24,9 +24,10 @@ test("#240 destructive curation is bound to the specific Showcase entry", () => 
   assert.match(clarity, /data-showcase-legacy-remove/);
 });
 
-test("#240 opening a Showcase URL starts its runnable demonstration once ready", () => {
+test("#240 opening a Showcase URL starts only after the selected snapshot is installed", () => {
   assert.match(clarity, /async function startActiveShowcase/);
   assert.match(clarity, /if \(!activeShowcaseId\(\)\) return/);
+  assert.match(clarity, /if \(!current\.hidden && !runButton\.disabled\)/);
   assert.match(clarity, /runButton\.click\(\)/);
 });
 
