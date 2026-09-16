@@ -6,6 +6,7 @@ import "./authoring-workspace.js";
 import "./collection-organization.js";
 import "./experiment-management.js";
 import "./ux-hardening.js";
+import "./ui-clarity.js";
 
 const utilityDialog = document.querySelector("#workspace-utilities");
 const utilityContent = document.querySelector("#workspace-utility-content");
