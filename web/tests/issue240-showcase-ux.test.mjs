@@ -30,3 +30,8 @@ test("#240 curation stays inside Showcase instead of being buried in Account or 
   assert.match(placement, /showcase-shell/);
   assert.match(placement, /insertBefore\(curation, message\)/);
 });
+
+test("#240 Showcase mobile header actions meet the 44px touch-target floor", () => {
+  assert.match(placement, /showcase-head-actions button/);
+  assert.match(placement, /min-height:\s*44px/);
+});
