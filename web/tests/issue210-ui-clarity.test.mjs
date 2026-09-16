@@ -52,4 +52,5 @@ test("#210 preserves deliberate mobile hierarchy instead of only shrinking deskt
   assert.match(clarity, /@media \(max-width: 720px\)/);
   assert.match(clarity, /h1 \{[\s\S]*font-size: clamp\(29px, 9vw, 36px\)/);
   assert.match(clarity, /\.experiment-panel,[\s\S]*\.stage-panel,[\s\S]*#authoring-workbench \{[\s\S]*padding: 14px/);
+  assert.match(clarity, /\.authoring-tab \{[\s\S]*min-height: 44px/);
 });

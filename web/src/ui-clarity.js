@@ -174,7 +174,7 @@ if (!document.querySelector("style[data-vlab-ui-clarity]")) {
     }
 
     html[data-vlab-ui-clarity="true"] .authoring-tab {
-      min-height: 40px;
+      min-height: 44px;
       padding-inline: 13px;
       font-size: 13px;
     }
