@@ -10,14 +10,15 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Production Lab: `https://eliseofe.github.io/virtual-lab/`
 - Supabase project: `izdmmudfrmqhvlgepwes`
 - Experiment MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
-- Experiment MCP Edge Function: version 15
-- MCP server version: **2.5.0**
-- MCP health interface: **7**
+- Experiment MCP Edge Function: version 16
+- MCP server version: **3.0.0**
+- MCP health interface: **8**
 - Capability request interface: `vlab.capability-request/1`
 - Registry schema: `vlab.registry-experiment/3`
 - Experiment artifact interface: `vlab.experiment-artifacts/3`
-- Authoring contract: `vlab.authoring/0.5`
-- Experiment interface: **7**
+- Authoring contract: `vlab.authoring/0.6`
+- Experiment interface: **8**
+- Results presentation schema: `vlab.results-presentation/1`
 - Runtime contract: `vlab.runtime/0.2`
 - Artifact capability contract: `vlab.artifact-capabilities/0.3`
 - Environment capability contract: `vlab.environment-capabilities/0.1`
@@ -134,13 +135,33 @@ Final production Pages run `35033123628` at `7fdff0d78c2192d45cb23e8c7e076bbbf33
 
 The owner could not directly exercise the writable-directory path on the phone and explicitly allowed that desktop spot-check to remain a future non-blocking check. #199 is therefore complete/deployed and no longer blocks the roadmap.
 
+### #200 — MCP/Connector fine-grained Metrics + Results authoring — complete/deployed
+
+PR #231 merged as `31239dea1174cddf0c4d2d5578034ca55e6b941d`.
+
+The deployed MCP/Connector now exposes `author_metrics_results` for fine-grained read/create/update/remove metric operations plus upsert/remove time-series Results panel bindings. Metric identity remains stable across updates; changing identity requires explicit remove/create. Removing a metric prunes it from saved Results panels. Panel bindings can reference multiple metric IDs, and one metric can appear in multiple panels.
+
+Results presentation state is persisted separately in `public.experiment_results_presentations` under schema `vlab.results-presentation/1`. Presentation edits have their own optimistic revision and do **not** increment the scientific Experiment revision. RLS permits visible reads and owner-only writes. The production migration was applied successfully and the table exists.
+
+The authoring contract is now `vlab.authoring/0.6`; MCP server `3.0.0`; interface `8`. Existing four-artifact whole-Experiment authoring and bounded legacy three-source compatibility remain available. Unsupported metric capabilities continue to return compile/contract diagnostics and, for Professor users, the existing capability-request path rather than granting simulator-development access.
+
+The browser loads a saved connector-authored Results presentation when one exists; with no saved presentation it preserves the normal default Results layout. No arbitrary plotting code and no Study behavior were added.
+
+#### #200 verification evidence
+
+PR head `9524bf9ab63baab599e2660723049c8e6857d640` passed Round 1A run `35082298949` and performance run `35082298960`. The tests cover metric mutation, stable IDs, validation failures, multi-series and reused panel bindings, pruning, migration separation, contract versioning and browser wiring.
+
+After merge, production Pages run `35083140486` at `31239dea1174cddf0c4d2d5578034ca55e6b941d` passed build, deploy and all deployed browser smoke checks.
+
+Supabase `experiment-mcp` was deployed as Edge Function version `16`, pinned to the exact merged #200 commit. The production `experiment_results_presentations` migration is present; a post-migration security-advisor run reported no finding against the new table. The only reported database RLS notice concerns the pre-existing `preserved_experiment_snapshots` table, and the separate Auth warning concerns leaked-password protection.
+
+No owner interaction is required for #200 completion. The next ticket is the explicitly scientific #201 acceptance fixture.
+
 ## Current frontier
 
-**#196, #197, #198 and #199 are complete/deployed. The active next substantial implementation ticket is #200 / #195.5: MCP/Connector fine-grained Metrics + Results binding authoring.**
+**#196, #197, #198, #199 and #200 are complete/deployed. The active next substantial ticket is #201 / #195.6: final owner-defined scientific end-to-end acceptance for #195.**
 
-Then #201 performs the final owner-defined scientific end-to-end acceptance for #195.
-
-Do not start #200 or #201 merely because this state file is read; obey `PROJECT_CONTROL.md` and the current owner instruction.
+Do not start #201 merely because this state file is read; obey `PROJECT_CONTROL.md` and the current owner instruction. #201's scientific definition/cadence must come from the owner/research-AI workflow rather than developer invention.
 
 ## UI/UX refinement state
 
