@@ -28,7 +28,11 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 
 ## Current product checkpoint
 
-**#149 — Professor promotion of an accepted Experiment revision to Showcase is complete and deployed.** There is no automatically activated next implementation ticket. The next intended checkpoint is a short owner/design discussion for **#207 — UI/UX refinement round 2**; implementation of that lane remains intentionally unstarted until the owner activates it.
+**#207 — UI/UX refinement round 2 is active. #208 — unified Experiment identity/save/persistence/organization is complete and deployed.**
+
+The first Product Design / Work session for #207 has been consumed. It produced useful desktop findings but could not emulate a mobile viewport. Do not spend another Work session trying to complete that audit. Normal production Chrome/DevTools testing now covers desktop and mobile responsiveness. At most one Product Design / Work session remains for the final post-implementation verification/correction checkpoint.
+
+Remaining #207 work: Results series-selection affordance, explicit Follow live recovery, #209 Account/Professor entry reconciliation, and #210 hierarchy/microcopy/responsive cleanup.
 
 ## #195 — Metrics + live Results epic — complete and externally accepted
 
@@ -134,20 +138,58 @@ The Supabase security advisor now reports only intentional architecture warnings
 - Production Supabase verification confirms `showcase_entries` plus promote/remove/list RPCs are present.
 - At terminal verification there are zero active Showcase entries. This is valid: #149 implements the Professor curation capability; it does not auto-publish eligible Experiments. The accepted AI-authored paper Experiment is now eligible for explicit normal Professor promotion.
 
-## UI/UX refinement state — #207 — UI/UX refinement round 2
+## #207 UI/UX refinement state — active
 
-#207 is the likely next product lane but is not implementation-activated. The owner wants a short design discussion first.
+The owner is not the UI/UX designer. The developer/design specialist owns design decisions; owner feedback is empirical use evidence, not a requirement to invent layouts or aesthetic solutions.
 
-Preserved observations:
+### Product Design / Work budget
 
-- #208 — unify Experiment identity and Save/Persistence/organization;
+The first Work/Product Design session has been consumed. It established useful desktop evidence:
+
+- Experiment identity duplicated;
+- Account/role terminology confusing;
+- Results series selection works but has weak affordance;
+- live-plot interaction lacks an explicit Follow live recovery action;
+- persistence/save workflow was fragmented from Experiment identity.
+
+Work could not perform the requested mobile audit because its browser exposed no viewport emulation. This is not an open blocker and is not grounds for another audit session: responsive/mobile acceptance is handled by the normal deployed Chrome/DevTools harness. At most one Work/Product Design session remains for final post-implementation verification/correction after #207 implementation children are complete.
+
+### #208 — unified Experiment management — complete/deployed
+
+The deployed Experiment surface now owns the coherent user workflow:
+
+`current Experiment identity + switch → save/save-as-new → organization`
+
+Presentation behavior:
+
+- the redundant visible `experiment-select` and duplicate explanatory hint are suppressed;
+- `Switch experiment` is the single visible experiment-change action;
+- Save and Save as new are presented with the Experiment instead of in a separate bottom Authoring persistence block;
+- signed-out users receive a direct `Sign in to save` action;
+- Built-in / No collection metadata is not redundantly repeated;
+- the legacy Authoring persistence host remains only as a compatibility implementation detail and is hidden from the user;
+- collection organization and existing persistence/revision/concurrency semantics are preserved;
+- the adapter remains presentation-only and does not alter simulator, controller, Metrics, Supabase or scientific contracts.
+
+Implementation evidence:
+
+- PR **#237 — Unify Experiment identity and persistence workflow (#208)** merged as `2df7a057859b56e9cb9871a8414f26c36d9fd147`.
+- The first production deployment exposed a browser main-thread regression: a MutationObserver watching the Experiment subtree unconditionally reassigned the `Switch experiment` text from inside its own callback, allowing a self-triggering mutation loop. Static/unit tests remained green, while independent browser jobs stalled.
+- PR **#238 — Fix #208 Experiment observer self-trigger loop** made observer-side text/metadata writes idempotent and added a regression invariant. It merged as `7443be5204941d9515fbd1bc29c7388d4a2b6640`.
+- Production Pages run **`35143386321`** for the repaired main completed build, deploy and the entire browser smoke suite successfully.
+- Deployed smoke verified simulator ready/editors, built-in metrics end to end, live Results UI, local result persistence, and responsive hierarchy/focus behavior.
+- Results smoke explicitly passed 390×844 narrow-phone stacking with `scrollWidth = 390` and no horizontal overflow.
+- Responsive smoke explicitly passed 390×844 phone emulation with unified Experiment management visible, duplicate selector and legacy persistence hidden, redundant location hidden, `Switch experiment` visible, `Sign in to save` visible at 44px height, all primary controls at least 44px, all authoring tabs 44px, and no horizontal overflow.
+- PR **#239 — Bound Pages smoke and recover #208 deployment queue** adds a fresh Pages concurrency generation and a 12-minute deployed-smoke timeout. This prevents a future browser regression from holding the verification lane indefinitely; it changes no product semantics.
+
+### Remaining #207 frontier
+
+- focused Results metric/series-selection affordance;
+- explicit Follow live recovery after the user detaches a live plot from the live edge;
 - #209 — reconcile Account and Professor entry surfaces;
-- #210 — remove unnecessary microcopy and strengthen responsive hierarchy;
-- Results series selection works but lacks sufficient affordance;
-- plot interaction can detach from the live edge without an obvious follow-live control;
-- richer Results panel arrangement/resizing should remain presentation state rather than scientific definition.
+- #210 — remove unnecessary microcopy, strengthen hierarchy/typography and verify deliberate desktop/mobile layouts.
 
-The round must not freeze the UI around the current feature set. It must establish stable compositional regions, reusable interaction patterns and progressive disclosure so Studies, richer Results, research memory and future Professor workflows can be added without repeated whole-page redesigns.
+The round must not freeze the UI around the current feature set. Stable compositional regions, reusable interaction patterns and progressive disclosure must allow Studies, richer Results, research memory and future Professor workflows to attach without repeated whole-page redesigns.
 
 ## Editor lane — #202 — code authoring ergonomics
 
