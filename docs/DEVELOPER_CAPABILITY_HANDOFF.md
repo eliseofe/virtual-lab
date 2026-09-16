@@ -94,7 +94,7 @@ Include only what is necessary, such as:
 - concise developer-written software scope;
 - completion gate requiring deployed contract advertisement.
 
-Do not automatically publish:
+Do NOT automatically copy or publish:
 
 - full `draft_artifacts`;
 - full draft description/context;
