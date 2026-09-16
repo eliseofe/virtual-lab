@@ -2,6 +2,8 @@
 
 This document contains requirements whose violation can invalidate scientific results even if the software appears to work.
 
+Current sequencing is controlled by `PROJECT_CONTROL.md`. Accepted technical/scientific fixture state is recorded in `PROJECT_STATE.md`.
+
 ## Agent contract
 
 An agent is stateful and encapsulated.
@@ -10,122 +12,129 @@ An agent is stateful and encapsulated.
 action = agent.step(observation)
 ```
 
-- `observation` is local and produced by the simulator according to the experiment's observation model.
+- `observation` is local and produced by the simulator according to the Experiment's observation model.
 - The agent owns private internal state.
 - Only the agent/controller may mutate its private state.
 - The simulator/environment may not write into private controller state.
-- The controller returns an action. It does not directly update position, velocity, heading, or other world state.
-- The controller has no direct reference to the environment, simulator, global agent collection, RNG, seed, clock, network, or filesystem.
-
-A read-only instrumentation interface may later expose selected private state for debugging/metrics only when explicitly declared by the experiment; observation/control semantics remain unchanged.
+- The controller returns an action; it does not directly update world/physical state.
+- The controller has no direct reference to global world state, the global agent collection, host RNG/seed, arbitrary clock, network, filesystem or simulator object.
+- Global position is not a robotics controller observation capability unless the owner explicitly changes that gatekeeper decision.
 
 ## Randomness contract
 
 Randomness belongs to the simulator.
 
-- Seeds and PRNG streams are simulator/run configuration.
-- Sensing noise is applied while the simulator constructs observations.
-- Actuation noise is applied by the simulator when actions are applied.
-- Random initial conditions are created by the simulator.
-- Probabilistic controller rules must preserve simulator ownership of sampling/reproducibility.
-- Re-running the same immutable experiment revision with the same run seed and execution semantics should reproduce the same scientific trajectory within the reproducibility guarantees documented for that backend.
+- Seeds/PRNG streams are simulator/run configuration.
+- Random initialization, sensing noise, actuation noise and stochastic sampling remain simulator-owned.
+- A future controller stochasticity API must expose simulator-owned deterministic/reproducible sampling rather than a private host RNG.
+- Re-running the same exact scientific definition/seed/execution semantics should reproduce the same scientific trajectory within the documented backend guarantees.
 
-## Physics contract
+## Physics and action contract
 
-Physics is independent from control.
+Physics is independent from control. The initial engine may use simple kinematics, but the controller boundary does not depend on one physical model.
 
-The initial engine may implement simple kinematics. The architecture must support later replacement/addition of dynamic physics without redefining the fundamental controller API.
+At a control event:
 
-Physics owns physical variables. Whether heading, velocity, angular velocity, acceleration, motor commands, etc. are exposed through observations/actions depends on the chosen model.
-
-## Control contract
-
-Control has its own update period. At a control event:
-
-1. simulator constructs each agent's permitted observation;
+1. simulator constructs each agent's permitted local observation;
 2. controller executes against that observation and private state;
 3. controller returns an action;
-4. simulator stores/applies the action according to the active physics/actuation model.
+4. environment/simulator interprets and applies the action under the active physics/actuation model.
 
-The action may remain active between control updates.
+The controller never applies actions directly to world state.
 
 ## Visualization contract
 
-Visualization is a pure observer of simulation state.
+Visualization is a pure observer.
 
-- Turning visualization on/off cannot change results.
-- Rendering frequency cannot affect physics/control scheduling.
-- Headless mode is scientifically equivalent to visual mode for the same run configuration.
-- Replay may render recorded state after execution; it need not rerun the scientific simulation.
+- Turning visualization on/off cannot change scientific results.
+- Rendering frequency cannot affect physics/control/metric scheduling.
+- Display decimation cannot delete or mutate retained scientific samples.
+- Headless execution, when used, must preserve the same scientific semantics for the same run definition.
+
+## Experiment artifact contract
+
+A runnable Experiment currently has four compulsory scientific/authoring artifacts:
+
+1. Configuration
+2. Initialization
+3. Controller
+4. Metrics
+
+Metrics is compulsory because measurement belongs to the single-run Experiment definition. Its content may validly contain zero metric definitions.
+
+Results panel layout is separate presentation/workspace state and does not create a new scientific Experiment revision.
 
 ## Metrics contract
 
-Collective metrics are separate from controllers.
+Metrics are measurement apparatus, not controller perception.
 
-Metrics observe read-only scientific state. They may use global state because they are measurement apparatus, not agent perception. Metric access must never leak back into the controller.
+They observe a versioned read-only global scientific snapshot and cannot mutate agents/world/actions, consume arbitrary host state, use arbitrary RNG, access controller-private state, filesystem or network, or grant new simulator capability.
 
-Conceptually:
+Current Metrics language: `python-vlab-metrics/0.1`.
+
+Current measurement point: `post-physics-wrapped-state/1`.
+
+Current supported metric sampling declarations include exact periodic `every(seconds)` and `final()`. Runtime rejects a periodic cadence that cannot be scheduled exactly on the simulation timestep rather than silently rounding it.
+
+Metric evaluation cadence, worker/UI transfer cadence, plot redraw cadence and persistence flush cadence are independent.
+
+## Owner/research-AI scientific authority
+
+Developer-side ChatGPT/implementation agents may reason about software architecture, compilers, persistence, buffering, UI transport and correctness tests. They must **not independently invent or derive new paper-specific scientific definitions**, including:
+
+- model equations or transformations;
+- controller laws;
+- metric formulas;
+- scientific parameter values/retuning;
+- paper-specific sampling semantics;
+- claims that one scientific formulation is equivalent to another.
+
+When a requested Experiment requires scientific content, that content must come from the owner/research-AI scientific workflow or a previously explicit owner authorization.
+
+Once a scientific definition is explicitly owner-authorized and durably recorded, implementation/acceptance work may reuse it exactly. Do **not** ask the owner to repeat it merely because an older issue still says “owner input required.” Do not modify the accepted definition without new authorization.
+
+## Active Elastic accepted fixture
+
+For the current #195/#201 integration acceptance, the required scientific input already exists.
+
+Owner-authorized polarization metric:
 
 ```text
-metric.observe(read_only_snapshot)
-metric.finalize() -> result
+metric id: polarization
+psi = ||sum_i heading_i|| / N
 ```
 
-Metrics may sample at their own configured interval.
+It observes the read-only agent headings and agent count through the Metrics snapshot contract.
+
+For Virtual Lab product/integration acceptance it is sampled every `0.1 s`. This cadence is explicitly an acceptance/display choice and is **not** asserted to reproduce the paper's analysis/output sampling cadence.
+
+The built-in Active Elastic also contains an owner-authorized `angular_momentum` normalized instantaneous milling complement. It may be used as the already-approved second series for generic Results acceptance; it is not claimed as a verbatim second order-parameter equation printed in Ferrante et al. PRL.
+
+Owner accepted the deployed two-metric Results behavior on phone on 16 September 2026. #201 therefore verifies this existing fixture end to end; it does not reopen its scientific definition.
 
 ## Observation and neighbourhood contract
 
-Agent perception is part of the scientific model. The experiment must define what is observable, in what coordinate frame, with what range/topology, and with what sensing noise. Optimized neighbourhood lookup is an implementation detail.
+Agent perception is part of the scientific model. The Experiment must define what is observable, in what coordinate frame/range/topology and with what sensing semantics.
 
-A brute-force neighbour-query implementation should serve as a correctness oracle. Any optimized spatial hash/grid/index must return scientifically equivalent observations for the same state and observation model.
-
-## Action contract
-
-The agent proposes an action; the simulator interprets and applies it under the selected physics/actuation model. This boundary allows the same controller concept to coexist with different physical models where scientifically meaningful.
+Optimized neighbour lookup is an implementation detail. Production uses `adaptive-periodic-bvh/v1`; exact reference/oracle paths remain available for correctness testing. Optimization must preserve the same scientifically defined neighbour membership/order semantics required by the controller runtime.
 
 ## Controller authoring contract
 
-Researcher-facing controller source must remain readable and recognizable. Initial direction: a constrained Python subset compiled before a run.
+Researcher-facing controller source is a constrained Python-compatible authoring language compiled before execution. Python is not interpreted across the simulator boundary per agent/control step.
 
-The intended pipeline is:
-
-```text
-Python-like source
- -> parser / AST
- -> allowed-subset validation
- -> scientific/type validation
- -> controller IR
- -> executable target
-```
-
-During a run, the scientific kernel must not rely on a Python interpreter call per agent or per control tick. Python is an authoring language; efficient compiled controller logic is the execution representation.
-
-The controller language/IR must preserve the scientific boundaries above. Compiler convenience must never grant controllers hidden access to simulator state, randomness, or action application.
-
-## Active Elastic Model as Round 1 validation
-
-The first reference experiment should implement the Active Elastic Model described in:
-
-- Ferrante et al., PRL 111, 268302 (2013), DOI 10.1103/PhysRevLett.111.268302
-- Ferrante et al., NJP 15, 095011 (2013), DOI 10.1088/1367-2630/15/9/095011
-
-AEM is chosen because coherent translating/rotating behavior emerges from elastic interactions without explicit heading alignment. A plausible flock-like animation is not sufficient validation.
-
-Implementation must derive and document equations, initial topology, parameter conventions, noise semantics, and integration assumptions from the papers. Where PRL/NJP differ in purpose or presentation, record which formulation Round 1 reproduces.
-
-The displayed Python controller should be recognizable as the scientific local rule. Environment/physics responsibilities remain outside the controller.
+Compiler convenience must never grant hidden access to simulator state, randomness or action application.
 
 ## Validation philosophy
 
-Every optimization must have a correctness oracle where feasible.
+Every optimization or adapter should have a correctness oracle/test where feasible. Examples include:
 
-Examples:
-
-- spatial hash neighbor sets compared with brute force;
-- headless trajectory compared with visual trajectory for identical seed;
-- render-rate changes tested independently from control/physics scheduling;
-- deterministic seed tests;
-- controller compilation tests from source → IR → executable behavior;
+- optimized neighbour sets against exact reference/brute force;
+- render-on/off trajectory identity for identical seed/configuration;
+- metric-on/off trajectory identity when Metrics is observational;
+- persistence flush cadence changes not altering scientific samples/trajectory;
+- controller/initializer/metrics compiler validation from source to runtime representation;
 - environment unable to mutate controller-private state;
 - controller unable to mutate world state directly;
-- deliberately broken AEM controller produces changed/failing behavior rather than being masked by renderer or hard-coded dynamics.
+- stale scientific revisions rejected rather than overwritten.
+
+Scientific correctness and software correctness are distinct: the implementation agent can prove that the Lab executes an accepted formula correctly, but it must not silently decide what the formula should have been.
