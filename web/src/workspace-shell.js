@@ -4,6 +4,7 @@ import "./showcase-professor-placement.js";
 import "./results-presentation-bridge.js";
 import "./authoring-workspace.js";
 import "./collection-organization.js";
+import "./experiment-management.js";
 import "./ux-hardening.js";
 
 const utilityDialog = document.querySelector("#workspace-utilities");
