@@ -2,36 +2,47 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const clarity = readFileSync(new URL("../src/showcase-clarity.js", import.meta.url), "utf8");
+const showcase = readFileSync(new URL("../src/showcase.js", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../src/workspace-shell.js", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../../supabase/migrations/20260916221000_showcase_unified_sources.sql", import.meta.url), "utf8");
 
-test("#240 multi-entry clarity layer is loaded with the Showcase shell", () => {
-  assert.match(shell, /import "\.\/showcase-clarity\.js"/);
+test("#240 Showcase behavior is implemented in one module without a synthetic clarity adapter", () => {
+  assert.doesNotMatch(shell, /showcase-clarity\.js/);
+  assert.match(shell, /import "\.\/showcase\.js"/);
 });
 
 test("#240 Showcase cards explain that selection opens and runs an Experiment", () => {
-  assert.match(clarity, /Open & run/);
-  assert.match(clarity, /Loaded in Lab/);
-  assert.match(clarity, /aria-current/);
-  assert.match(clarity, /Open \$\{entry\.title\} in Lab and run it/);
+  assert.match(showcase, /Open & run/);
+  assert.match(showcase, /Loaded in Lab/);
+  assert.match(showcase, /aria-current/);
+  assert.match(showcase, /Open \$\{entry\.title\} in Lab and run it/);
 });
 
-test("#240 destructive curation is bound to the specific Showcase entry", () => {
-  assert.match(clarity, /showcase-entry-remove/);
-  assert.match(clarity, /Remove \$\{entry\.title\} from Showcase/);
-  assert.match(clarity, /Remove “\$\{entry\.title\}” from Showcase\?/);
-  assert.match(clarity, /p_experiment_id: entry\.source_experiment_id/);
-  assert.match(clarity, /data-showcase-legacy-remove/);
+test("#240 destructive curation is bound to the Showcase entry, not its source type", () => {
+  assert.match(showcase, /showcase-entry-remove/);
+  assert.match(showcase, /Remove \$\{entry\.title\} from Showcase/);
+  assert.match(showcase, /Remove “\$\{entry\.title\}” from Showcase\?/);
+  assert.match(showcase, /remove_showcase_entry/);
+  assert.match(showcase, /p_showcase_id: entry\.showcase_id/);
+  assert.doesNotMatch(showcase, /if \(!entry\?\.source_experiment_id\) return/);
 });
 
-test("#240 opening a Showcase URL starts only after the selected snapshot is installed", () => {
-  assert.match(clarity, /async function startActiveShowcase/);
-  assert.match(clarity, /if \(!activeShowcaseId\(\)\) return/);
-  assert.match(clarity, /if \(!current\.hidden && !runButton\.disabled\)/);
-  assert.match(clarity, /runButton\.click\(\)/);
+test("#240 backend supports homogeneous Experiment and catalog Showcase sources", () => {
+  assert.match(migration, /source_key text/);
+  assert.match(migration, /showcase_entries_source_identity_check/);
+  assert.match(migration, /remove_showcase_entry\(p_showcase_id uuid\)/);
+  assert.match(migration, /promote_catalog_to_showcase/);
+});
+
+test("#240 opening a Showcase URL applies the selected snapshot before running it", () => {
+  assert.match(showcase, /applyExperimentArtifacts\(\{ artifacts: entry\.artifacts \}\)/);
+  assert.match(showcase, /applySetup\.click\(\)/);
+  assert.match(showcase, /await waitForSetupApplied\(\)/);
+  assert.match(showcase, /await startShowcaseRun\(\)/);
+  assert.match(showcase, /runButton\.click\(\)/);
 });
 
 test("#240 mobile entry actions retain explicit touch targets", () => {
-  assert.match(clarity, /@media \(max-width: 680px\)/);
-  assert.match(clarity, /\.showcase-entry-remove \{ min-height: 44px; width: 100%; \}/);
+  assert.match(showcase, /@media \(max-width: 680px\)/);
+  assert.match(showcase, /showcase-entry-remove \{ min-height: 44px/);
 });
