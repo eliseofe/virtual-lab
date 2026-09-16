@@ -42,6 +42,18 @@ If a material trigger is present, **stop before implementation and bring the own
 
 Even when individual requests look clean, perform the periodic architecture audit defined in `docs/CAPABILITY_GENERALIZATION_GATE.md`. The gate concerns software structure only; scientific generalization or model reasoning still requires explicit owner involvement.
 
+## UI architecture must remain evolvable
+
+UI/UX refinement is never a declaration that the interface is frozen. Virtual Lab will continue to gain substantial capabilities such as Studies, richer Results, research memory and additional Professor workflows.
+
+When changing UI architecture:
+
+- prefer stable compositional regions, reusable interaction patterns and bounded feature surfaces over one-off page rearrangements;
+- new capabilities should be able to plug into the existing shell/workspace without forcing unrelated sections through another full redesign;
+- do not preserve a poor abstraction merely to avoid change, but do not make today's exact feature set a hard-coded final layout;
+- treat responsive hierarchy, progressive disclosure and role-specific utilities as extensible product architecture rather than cosmetic cleanup;
+- preserve accepted scientific/runtime behavior while allowing the presentation layer to evolve continuously.
+
 ## Strategic vs opportunistic work
 
 The owner sometimes cannot immediately perform phone/browser/visual acceptance. Work done during that waiting period may still be useful and necessary, but it is **opportunistic parallel work**, not an implicit change of roadmap priority.
@@ -64,11 +76,9 @@ After meaningful work, leave the repository in a state that another context-free
 
 ## User-facing issue references
 
-Never refer to a GitHub issue by number alone in a user-facing explanation, recommendation, roadmap, status update, or choice. Always pair the number with a short semantic name, for example `#149 — Professor promotion to Showcase` or `#207 — UI/UX refinement`.
+Never refer to a GitHub issue by number alone when talking to the owner. The issue number may be included, but always pair it with a semantic description in the same reference, for example `#149 — Professor promotion to Showcase` rather than only `#149`.
 
-The number is useful as a locator, but the semantic description is mandatory. The owner should never need to scroll backward or open GitHub merely to remember what an issue number means.
-
-The same rule applies when presenting options: describe the work first, then include the issue number as secondary metadata. Do not ask the owner to choose between bare issue numbers.
+The owner should never need to scroll backward or remember an issue number to understand a status update, recommendation, choice, or next action.
 
 ## Source precedence
 
