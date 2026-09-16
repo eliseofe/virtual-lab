@@ -14,10 +14,11 @@ const list = dialog?.querySelector(".showcase-list");
 const curation = dialog?.querySelector(".showcase-curation");
 const message = dialog?.querySelector(".showcase-message");
 const refresh = dialog?.querySelector(".showcase-head-actions button");
+const current = document.querySelector(".showcase-current");
 const runButton = document.querySelector("#run");
 const runState = document.querySelector("#run-state");
 
-if (!dialog || !list || !curation || !message || !refresh || !runButton || !runState) {
+if (!dialog || !list || !curation || !message || !refresh || !current || !runButton || !runState) {
   throw new Error("Showcase clarity UI mismatch.");
 }
 
@@ -198,7 +199,7 @@ async function startActiveShowcase() {
   if (!activeShowcaseId()) return;
   const deadline = performance.now() + 15000;
   while (performance.now() < deadline) {
-    if (!runButton.disabled) {
+    if (!current.hidden && !runButton.disabled) {
       if (runState.textContent?.trim().toLowerCase() !== "running") runButton.click();
       return;
     }
