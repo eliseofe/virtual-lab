@@ -6,28 +6,17 @@ This file is the authoritative current roadmap / execution frontier for Virtual 
 
 ## Current strategic status
 
-**#195 — Experiment Metrics + live Results is complete.** All six children are complete/deployed/accepted as applicable:
+**#195 — Experiment Metrics + live Results is complete.** The complete four-artifact Experiment → live Results → local persistence → research-AI authoring loop is deployed and accepted.
 
-- **#196 / #195.1 — four compulsory Experiment artifacts: Configuration, Initialization, Controller, Metrics.**
-- **#197 / #195.2 — deterministic multi-metric runtime sampling, bounded buffering and batched worker→UI transport.**
-- **#198 / #195.3 — co-located live Results with generic multi-series time-series panels.**
-- **#199 / #195.4 — local-first single-run result persistence, flat user-visible metric files, async flushes and whole-Experiment package export.**
-- **#200 / #195.5 — MCP/Connector fine-grained Metrics + Results binding authoring end to end.**
-- **#201 / #195.6 — final end-to-end acceptance of the complete Metrics/Results path using the already owner-authorized Active Elastic fixture.**
+**#149 — Professor promotion of an accepted Experiment revision to Showcase is complete.** The deployed model is:
 
-The current bounded implementation frontier is **#149 — Professor promotion of an accepted Experiment revision to Showcase** under **#45 — Access, sharing, submission, curation and Showcase**.
+`owned saved Experiment revision → immutable curated snapshot → reversible Showcase publication state`
 
-Owner direction for Showcase promotion:
+Showcase is public curation/publication, not an ordinary private `experiment_collections` collection. Promotion freezes the exact saved scientific revision; later source edits do not mutate the curated item; removal only removes active publication state; a later exact revision may be promoted again. Public discovery is read-only. Signed-in users may save a private copy rather than mutate the Showcase item. Promotion/removal remain Professor-gated and do not expand research-AI privileges.
 
-- an owned saved Experiment revision may be explicitly promoted by a Professor/curator;
-- promotion must be reversible: the Professor can remove it from Showcase and may later promote again;
-- promotion must preserve the exact saved scientific revision rather than mutate it;
-- the first intended target is the newly accepted AI-authored paper Experiment; verbatim reproduction of the source paper is not a prerequisite provided the description is accurate;
-- implement Showcase as generally as the existing data model warrants. Do **not** force it into ordinary private collections merely because the word “collection” is convenient. Collections are personal organization; Showcase is curated public publication of an exact revision.
+Implementation evidence is PR **#234 — Add reversible Professor promotion to Showcase** plus PR **#235 — Place Showcase curation in Professor mode**. Production Pages run `35122267503` passed after the final UI-placement repair. The production Supabase schema contains `showcase_entries` plus the promote/remove/list RPCs. A terminal privilege hardening pass explicitly revoked anonymous `EXECUTE` on the promote/remove RPCs; the public listing RPC remains intentionally callable by anonymous visitors.
 
-After Showcase promotion is complete, stop. A likely next lane is **#207 — UI/UX refinement round 2**, but the owner wants a short design discussion before activating it.
-
-The UI/UX round must explicitly remain **evolvable rather than frozen**: establish stable compositional surfaces and interaction patterns so future capabilities such as Studies and richer Results can plug in without forcing unrelated sections through another whole-page redesign.
+There is currently **no automatically activated next implementation ticket**. The next intended product checkpoint is a short owner/design discussion for **#207 — UI/UX refinement round 2**. Do not begin #207 implementation until that discussion activates the lane.
 
 Other existing candidate lanes remain **#202 — code authoring ergonomics** and **#3 — Studies / reproducible multi-run investigations**.
 
@@ -57,26 +46,11 @@ The Active Elastic acceptance fixture used to close #195 is authoritative:
 - acceptance/display sampling cadence: every `0.1 s`;
 - the `0.1 s` cadence is a Virtual Lab product/integration acceptance choice and is **not** claimed to reproduce the paper's analysis/output cadence.
 
-This definition was owner-authorized during #198 and the deployed live behavior was owner-accepted on phone on 16 September 2026. The built-in Active Elastic also contains the separately owner-authorized `angular_momentum` complementary metric, used only as the already-approved second series for generic Results acceptance.
+This definition was owner-authorized during #198 and the deployed live behavior was owner-accepted on 16 September 2026. The built-in Active Elastic also contains the separately owner-authorized `angular_momentum` complementary metric, used only as the already-approved second series for generic Results acceptance.
 
 Do not invent, retune, reinterpret or replace either metric without explicit owner authorization.
 
-## #201 terminal acceptance evidence
-
-#201 introduced no new scientific definition or runtime feature. It accepted the already-deployed generic path end to end.
-
-Verified evidence:
-
-1. **Definition/runtime** — production source contains `polarization` exactly as recorded above; the Metrics compiler/runtime uses exact `0.1 s` periodic sampling at `post-physics-wrapped-state/1`.
-2. **Live Results** — production Pages run `35083140486` passed the deployed Active Elastic smoke: both real metrics emitted live samples, including polarization samples at `0.1, 0.2, 0.3, ...` scientific seconds; generic panel creation, combination, reuse and stable colors passed.
-3. **Restart/current-run semantics** — the Metrics runtime bridge clears current-run sample state on metric reset/restart and carries explicit reset reasons; the production smoke verified same-seed/new-seed restart controls.
-4. **Persistence** — the same production run verified two consecutive durable runs with flat files `polarization_000001.csv`, `angular_momentum_000001.csv`, `polarization_000002.csv`, `angular_momentum_000002.csv`, no per-run directories and no overwrite.
-5. **MCP/Connector** — production Supabase `experiment-mcp` is active at Edge Function version `16`, pinned to merged #200 commit `31239dea1174cddf0c4d2d5578034ca55e6b941d`; contract tests verify fine-grained create/update/remove metric authoring, stable metric IDs, ordered multi-series Results bindings, metric reuse and presentation revisions separate from scientific Experiment revisions.
-6. **Performance/non-blocking** — performance run `35082298960` verified deterministic trajectories with Metrics, zero dropped samples in the profiled cases, bounded batched transport and asynchronous persistence. At 500 agents / 2000 ticks / 3 repetitions, four metrics at 0.1 s produced 800 samples with about 0.8 ms measured transport time in the recorded run; the 262,144-sample persistence serialization profile completed in about 123 ms, separately from simulation execution.
-
-No missing generic simulator capability was exposed by this acceptance. #201 and parent #195 are closed.
-
-## Deployed #199 storage contract
+## Deployed local-result storage contract
 
 Single-run scientific results are local-first. The authoritative raw output is ordinary user-visible files under a user-selected Virtual Lab workspace root when writable-directory access is available. Browser-private storage is not the scientific archive.
 
@@ -99,7 +73,6 @@ Canonical organization:
 
 Rules:
 
-- the selected Lab Experiment is the parent directory;
 - standalone runs are flat files directly under `<Experiment>/runs/`;
 - never create one directory per simulation run;
 - stable metric ID + increasing run number associates files belonging to one run;
@@ -109,9 +82,7 @@ Rules:
 - `Download experiment package` is a secondary whole-Experiment export using the same hierarchy, not a replacement for automatic selected-folder persistence;
 - do not expose per-run ZIPs, per-run directories or one visible JSON manifest per run.
 
-#199 merged through PR #225 (`c39979ee15d4682497d9a96f08a0c661c9424f79`) plus package-semantics cleanup PR #227 (`7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d`). The direct selected-folder path remains available for a later desktop spot-check, explicitly non-blocking.
-
-## Deployed #200 connector contract
+## Deployed research-AI / MCP contract
 
 The deployed Virtual Lab MCP/Connector exposes the complete four-artifact Experiment model plus fine-grained Metrics and Results presentation authoring. An authorized research AI can:
 
@@ -132,7 +103,22 @@ Current production contract:
 - Results presentation schema `vlab.results-presentation/1`;
 - Supabase Edge Function version `16`.
 
-Research AI still receives no GitHub/repository/shell/deployment/admin/simulator-development privilege.
+Research AI still receives no GitHub/repository/shell/deployment/admin/simulator-development privilege and receives no Showcase curator privilege.
+
+## Showcase publication contract — #149 complete
+
+The production Showcase contract is intentionally separate from mutable Experiment visibility and private organization:
+
+- exact source Experiment identity + revision are preserved;
+- title, description and the complete generic authored artifact representation are frozen into an immutable `curated` snapshot;
+- `showcase_entries` stores reversible publication state and curator/time metadata;
+- active publication may be removed without deleting the snapshot or source Experiment;
+- promoting a newer exact revision supersedes the previous active publication while preserving history;
+- anonymous/public discovery uses the read-only `list_showcase_experiments()` RPC;
+- only authenticated Professor users may successfully invoke promote/remove, and the privilege surface now also explicitly denies anonymous execute on those curation RPCs;
+- ordinary users copy from Showcase into private work rather than overwriting the canonical item.
+
+The accepted AI-authored paper Experiment is now eligible for normal Professor promotion. Actual curation remains an explicit Professor action; successful implementation of #149 does not mean every eligible Experiment is automatically published.
 
 ## Separate editor lane — #202 — code authoring ergonomics
 
@@ -149,7 +135,9 @@ Children: **#203 — editor foundation/highlighting**, **#204 — navigation/fol
 
 ## Owner-feedback UI/UX refinement lane — #207 — UI/UX refinement round 2
 
-The deployed UI is functional but not final. Preserve these concrete owner observations for the later coherent redesign rather than patching them piecemeal into unrelated tickets:
+**Not yet implementation-activated. Discuss design with the owner first.**
+
+Preserve these concrete observations for the coherent refinement round rather than patching them piecemeal into unrelated tickets:
 
 - **#208 — unify Experiment identity and Save/Persistence/organization into one coherent workflow**;
 - **#209 — reconcile duplicate-looking Account and Professor entry surfaces**;
@@ -160,15 +148,13 @@ The deployed UI is functional but not final. Preserve these concrete owner obser
 
 This refinement round must produce an extensible UI architecture, not a frozen screenshot. New future capabilities should attach to stable workspace regions and interaction patterns without forcing another redesign of unrelated existing sections.
 
-The connected Product Design workflow may be used when #207 is deliberately activated, but discuss the current design and intended boundaries with the owner before implementation.
-
 ## Studies boundary — #3 — reproducible multi-run investigations
 
 Experiment Results answer: **what happened during this run?**
 
 Studies answer: **what happened across runs/conditions?**
 
-Future Study work composes the #199 run identities/file contract rather than inventing an incompatible result layer. The filesystem hierarchy remains Experiment-first.
+Future Study work composes the deployed run identities/file contract rather than inventing an incompatible result layer. The filesystem hierarchy remains Experiment-first.
 
 ## Parallel capability requests — approved for design only
 
