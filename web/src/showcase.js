@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.111.0";
 import { applyExperimentArtifacts, captureExperimentArtifacts } from "./experiment-artifacts.js";
 
 const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYik9zN7WA_r4ie2P5d";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYbJUyik9zN7WA_r4ie2P5d";
 const AUTH_STORAGE_KEY = "vlab-production-registry-auth-v1";
 const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 const SHOWCASE_QUERY = "showcase";
