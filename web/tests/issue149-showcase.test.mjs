@@ -46,5 +46,6 @@ test("#149 browser exposes public Showcase plus reversible Professor curation", 
   assert.match(showcase, /profile\?\.role === "professor"/);
   assert.match(showcase, /Save private copy/);
   assert.match(showcase, /Showcase · Read-only/);
-  assert.match(showcase, /Removal is reversible/);
+  assert.match(showcase, /remove\.textContent = "Remove from Showcase"/);
+  assert.match(showcase, /ui\.remove\.addEventListener\("click", \(\) => run\(removeCurrent\)\)/);
 });

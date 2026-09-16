@@ -1,8 +1,9 @@
 function placeShowcaseCuration() {
   const curation = document.querySelector(".showcase-curation");
-  const professorPanel = document.querySelector(".professor-panel");
-  if (!curation || !professorPanel || curation.parentElement === professorPanel) return;
-  professorPanel.append(curation);
+  const shell = document.querySelector(".showcase-shell");
+  const message = document.querySelector(".showcase-message");
+  if (!curation || !shell || !message || curation.parentElement === shell) return;
+  shell.insertBefore(curation, message);
 }
 
 const observer = new MutationObserver(placeShowcaseCuration);
