@@ -13,10 +13,12 @@ Completed and deployed children:
 - **#196 / #195.1** — four compulsory Experiment artifacts: Configuration, Initialization, Controller, Metrics.
 - **#197 / #195.2** — deterministic multi-metric runtime sampling, bounded buffering and batched worker→UI transport.
 - **#198 / #195.3** — co-located live Results with generic multi-series time-series panels.
-- **#199 / #195.4** — local-first single-run result persistence, flat user-visible metric files, async flushes and optional whole-Experiment package export.
+- **#199 / #195.4** — local-first single-run result persistence, flat user-visible metric files, async flushes and whole-Experiment package export.
 - **#200 / #195.5** — MCP/Connector fine-grained Metrics + Results binding authoring end to end.
 
-The next substantial ticket is **#201 / #195.6 — owner-defined scientific end-to-end acceptance for #195**.
+The next substantial ticket is **#201 / #195.6 — final end-to-end acceptance using the already owner-authorized Active Elastic polarization metric**.
+
+**#201 is not waiting for a new scientific definition.** The required scientific input was already supplied and accepted during #198. Do not ask the owner to redefine it.
 
 A separate editor ergonomics lane is #202. A separate owner-feedback UI/UX refinement lane is #207. Neither displaces #195 by default.
 
@@ -35,9 +37,24 @@ Metric evaluation cadence, UI refresh cadence and persistence flush cadence are 
 
 Results plot panels are presentation/workspace objects. A panel can bind one or more stable metric IDs; the same metric can appear in multiple panels. Reconfiguring plots must not create a new scientific Experiment revision.
 
+## Accepted scientific fixture for #201
+
+The existing Active Elastic acceptance fixture is authoritative for #201:
+
+- metric id: `polarization`;
+- name: Polarization order parameter;
+- definition: `psi = ||sum_i heading_i|| / N`;
+- observation: read-only headings of all agents plus agent count through the Metrics snapshot contract;
+- acceptance/display sampling cadence: every `0.1 s`;
+- that `0.1 s` cadence is a Virtual Lab product/integration acceptance choice and is **not** claimed to reproduce the paper's analysis/output cadence.
+
+This definition was owner-authorized during #198 and the deployed live behavior was owner-accepted on phone on 16 September 2026. The built-in Active Elastic also contains the separately owner-authorized `angular_momentum` complementary metric; it may be reused as the already-approved second series for generic panel-binding acceptance.
+
+#201 may verify the existing definitions and path end to end. It must not invent, retune, reinterpret, or replace either metric.
+
 ## Deployed #199 storage contract
 
-Single-run scientific results are local-first. The authoritative raw output is ordinary user-visible files under a user-selected Virtual Lab workspace root when the browser supports writable directory access. Browser-private storage is not the scientific archive.
+Single-run scientific results are local-first. The authoritative raw output is ordinary user-visible files under a user-selected Virtual Lab workspace root when writable-directory access is available. Browser-private storage is not the scientific archive.
 
 Canonical organization:
 
@@ -64,18 +81,15 @@ Rules:
 - stable metric ID + increasing run number associates files belonging to one run;
 - previous runs are never overwritten;
 - compact Lab-managed reproducibility/debugging bookkeeping stays out of the ordinary `runs/` directory;
-- future Studies must reuse the same single-run file/data contract under `<Experiment>/studies/<Study>/runs/`;
-- where direct writable-directory access is unavailable, the optional `Download experiment package` action packages all completed standalone runs currently retained for the selected Experiment using the same `<Experiment>/runs/` flat-file organization plus compact `<Experiment>/.vlab/` bookkeeping;
-- the package action is secondary and is not a substitute for automatic selected-folder persistence where that capability exists;
+- future Studies reuse the same single-run file/data contract under `<Experiment>/studies/<Study>/runs/`;
+- `Download experiment package` is a secondary whole-Experiment export using the same flat hierarchy, not a replacement for automatic selected-folder persistence;
 - do not expose per-run ZIPs, per-run directories or one visible JSON manifest per run.
 
-#199 initially merged through PR #225 as `c39979ee15d4682497d9a96f08a0c661c9424f79`. Owner phone review then clarified the package semantics; PR #227 replaced ambiguous `Download last run` behavior with whole-Experiment packaging and removed fallback terminology, merging as `7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d`.
-
-Production run `35033123628` passed build, Pages deploy, ordinary browser smoke, built-in real-metric smoke, live Results smoke, the dedicated local-result-persistence smoke, and responsive/focus smoke. The direct selected-folder path remains available for a later desktop spot-check by the owner, but that acceptance check is explicitly non-blocking; #199 is complete and the project moves on.
+#199 merged through PR #225 (`c39979ee15d4682497d9a96f08a0c661c9424f79`) plus package-semantics cleanup PR #227 (`7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d`). The direct selected-folder path remains available for a later desktop spot-check, explicitly non-blocking.
 
 ## Deployed #200 connector contract
 
-#200 completes the machine-readable authoring side of #195. The deployed Virtual Lab MCP/Connector now exposes the complete four-artifact Experiment model plus fine-grained Metrics and Results presentation authoring so an authorized research AI can:
+The deployed Virtual Lab MCP/Connector exposes the complete four-artifact Experiment model plus fine-grained Metrics and Results presentation authoring. An authorized research AI can:
 
 - discover supported Metrics syntax/capabilities;
 - create/update/remove metric definitions inside the compulsory Metrics artifact;
@@ -84,19 +98,35 @@ Production run `35033123628` passed build, Pages deploy, ordinary browser smoke,
 - receive validation/unsupported-capability diagnostics instead of fabricating behavior;
 - preserve a separate Results-presentation revision so plot/layout edits do not change the scientific Experiment revision.
 
-The deployed contract is MCP server `3.0.0`, interface `8`, authoring contract `vlab.authoring/0.6`, Results presentation schema `vlab.results-presentation/1`, and Supabase Edge Function version `16`.
+Current production contract:
 
-#200 merged through PR #231 as `31239dea1174cddf0c4d2d5578034ca55e6b941d`. PR Round 1A run `35082298949` and performance run `35082298960` passed. Production Pages run `35083140486` passed build, deploy and browser smoke. The production `experiment_results_presentations` migration is applied and the deployed Edge Function is pinned to the merged #200 commit.
+- MCP server `3.0.0`;
+- interface `8`;
+- authoring contract `vlab.authoring/0.6`;
+- Experiment artifact interface `vlab.experiment-artifacts/3`;
+- registry schema `vlab.registry-experiment/3`;
+- Results presentation schema `vlab.results-presentation/1`;
+- Supabase Edge Function version `16`.
 
-Research AI still receives no GitHub/repository/shell/deployment/admin/simulator-development privilege. Unsupported simulator capability requests continue through the Professor approval → developer design discussion → explicit owner implementation approval flow.
+#200 merged through PR #231 as `31239dea1174cddf0c4d2d5578034ca55e6b941d`; production Pages and MCP deployment are verified. Research AI still receives no GitHub/repository/shell/deployment/admin/simulator-development privilege.
 
-## Current next ticket — #201 / #195.6 scientific acceptance
+## Current next ticket — #201 / #195.6
 
-#201 is the final end-to-end scientific acceptance child for #195. Developer-side ChatGPT must not invent the mathematical definition, paper-specific sampling cadence or scientific interpretation of the acceptance metric. Those scientific choices require explicit owner/research-AI input.
+#201 is an **acceptance/integration ticket**, not a request to design new science.
 
-The Active Elastic showcase already contains owner-authorized polarization and rotation/milling metrics for product acceptance; that does not waive the general scientific guardrail.
+Use the already accepted `polarization` fixture above to verify the complete path:
 
-Stop after #201 is independently completed and verified; do not automatically begin a different substantial roadmap lane without a new owner instruction.
+1. Metrics artifact definition;
+2. live execution and timestamps;
+3. Results binding and optional already-approved second series;
+4. restart/current-run behavior;
+5. #199 persistence/package path;
+6. #200 MCP representation and fine-grained metric/panel authoring boundary;
+7. recorded performance/non-blocking behavior.
+
+If the existing path exposes a missing generic simulator capability, stop and route that gap through the established capability request/generalization process. Do not patch a paper-specific exception.
+
+When #201 passes, close #201 and close #195 if all epic completion conditions remain satisfied. Stop before beginning a different substantial roadmap lane unless the owner explicitly instructs otherwise.
 
 ## Separate editor lane — #202
 
@@ -118,17 +148,11 @@ The deployed UI is functional but not final. Preserve these concrete owner obser
 - #208 — unify Experiment identity and Save/Persistence/organization into one coherent workflow;
 - #209 — reconcile duplicate-looking Account and Professor entry surfaces;
 - #210 — remove unnecessary microcopy, strengthen typography/hierarchy and verify deliberate desktop/mobile layouts;
-- Results metric/series selection currently lacks clear affordance even though multi-series binding works;
-- touching/panning a live plot leaves follow-live mode without an obvious state/control for returning to the live edge;
-- later Results workspace polish may include deliberate side-by-side/stacked/tabbed layout, rearrangement and resizing, while remaining presentation state rather than scientific definition.
+- Results metric/series selection lacks sufficient affordance even though multi-series binding works;
+- touching/panning a live plot leaves follow-live mode without an obvious control for returning to the live edge;
+- later Results workspace polish may include deliberate side-by-side/stacked/tabbed layout, rearrangement and resizing while remaining presentation state rather than scientific definition.
 
 The connected Product Design workflow may be used when #207 is deliberately activated, but #207 is not the current implementation frontier.
-
-## Neighbour-search / performance state
-
-Production native/WASM `Simulation` uses `adaptive-periodic-bvh/v1`, preserving exact receiver-radius membership, arbitrary simultaneous radii, periodic minimum-image geometry and deterministic sorted neighbour indices.
-
-Retained alternatives: `PeriodicGridNeighbourIndex` as exact reference/fallback and `BruteForceNeighbourIndex` as hidden correctness oracle. #56 remains the living performance umbrella. #179 remains deferred until Studies exist.
 
 ## Studies boundary
 
@@ -136,7 +160,7 @@ Experiment Results answer: **what happened during this run?**
 
 Studies answer: **what happened across runs/conditions?**
 
-Future Study work must compose the #199 run identities/file contract rather than inventing an incompatible result layer. Relevant future work includes #3 Study foundation, #4 Study storage, #127 resume/checkpoint semantics, #6/#166 selected Study-result → AI, and #179 persistent neighbour benchmark Study.
+Future Study work composes the #199 run identities/file contract rather than inventing an incompatible result layer. The filesystem hierarchy is Experiment-first: standalone runs and `studies/` are siblings under the selected Experiment.
 
 ## Parallel capability requests — approved for design only
 
@@ -149,7 +173,9 @@ Durable record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`. No coding begins unti
 
 ## Scientific / architecture guardrail
 
-Developer-side ChatGPT must not independently invent or derive scientific models, paper-specific equations/parameters, controller logic, metric formulas, scientific sampling semantics, retuning or claims of scientific equivalence.
+Developer-side ChatGPT must not independently invent or derive new scientific models, paper-specific equations/parameters, controller logic, metric formulas, scientific sampling semantics, retuning or claims of scientific equivalence.
+
+Already owner-authorized scientific definitions may be reused **exactly as recorded** for implementation/acceptance. Reuse is not a reason to ask the owner to repeat the definition, and it is not permission to modify it.
 
 Software architecture/performance work may design compilers, buffering, persistence, UI transport, file formats and editor tooling while preserving scientific semantics. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, explicit metric read-only observation boundaries, scientific timing/integration semantics and rendering as an observer.
 
@@ -173,7 +199,9 @@ When sources disagree:
 
 1. explicit current owner instruction;
 2. this `PROJECT_CONTROL.md`;
-3. focused current architecture/design docs;
-4. `PROJECT_STATE.md` technical evidence;
-5. current issue;
-6. older chats/issues/history.
+3. `PROJECT_STATE.md` accepted technical state/evidence and recorded owner acceptance;
+4. relevant current design document;
+5. active issue scope/status;
+6. older issues, date-stamped planning documents and chats as history only.
+
+A stale lower-authority gate must be repaired, not used to make the owner repeat an already-recorded decision.
