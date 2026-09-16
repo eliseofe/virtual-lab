@@ -10,7 +10,7 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Production Lab: `https://eliseofe.github.io/virtual-lab/`
 - Supabase project: `izdmmudfrmqhvlgepwes`
 - Experiment MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
-- Experiment MCP Edge Function: version **16**
+- Experiment MCP Edge Function: version **16**, ACTIVE
 - MCP server version: **3.0.0**
 - MCP interface: **8**
 - Capability request interface: `vlab.capability-request/1`
@@ -26,7 +26,9 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Metrics measurement phase: `post-physics-wrapped-state/1`
 - Production neighbour strategy: `adaptive-periodic-bvh/v1`
 
-## Current #195 implementation state
+## #195 Metrics + live Results epic — complete
+
+All six children are complete/deployed/accepted as applicable. #201 is the terminal acceptance child; no new science or runtime feature was added by #201.
 
 ### #196 — four compulsory artifacts — complete/deployed
 
@@ -55,10 +57,10 @@ Results remain on the Experiment screen beside/below the running simulation. Gen
 
 The built-in Active Elastic acceptance fixture contains two owner-authorized live metrics:
 
-- `polarization` — **accepted scientific fixture for #201**: `psi = ||sum_i heading_i|| / N`, sampled every `0.1 s` for Virtual Lab acceptance/display. This cadence is not claimed to reproduce the paper's analysis/output cadence.
+- `polarization` — `psi = ||sum_i heading_i|| / N`, sampled every `0.1 s` for Virtual Lab acceptance/display. This cadence is not claimed to reproduce the paper's analysis/output cadence.
 - `angular_momentum` — separately owner-authorized normalized instantaneous milling/angular-momentum complement. It is not claimed as a verbatim second equation from Ferrante et al. PRL.
 
-Owner phone acceptance on 16 September 2026 confirmed the deployed two-metric live Results behavior, panel creation/reuse/multi-series behavior, stable colors and usable foldable layout. This owner acceptance is the scientific/product input required by #201; **do not ask for the polarization formula or cadence again**.
+Owner phone acceptance on 16 September 2026 confirmed the deployed two-metric live Results behavior, panel creation/reuse/multi-series behavior, stable colors and usable foldable layout. Do not ask for the polarization formula or cadence again.
 
 Key merges: `3197b937a00dbdc7c91fccfc571dfe54fd73ea5a` initial UI; `7b6c62e094d00a88f68126e056180d0baf73a191` two-real-metric generalization; `f1cd52a598e31dfbd5397e658023da427d74be9f` obsolete registry-v2 cleanup.
 
@@ -82,10 +84,6 @@ For a selected Experiment, standalone run output is flat:
       polarization_000002.csv
       angular_momentum_000002.csv
       ...
-    studies/
-      <Study>/
-        runs/
-          ...same flat single-run contract...
 ```
 
 There is **no per-run directory**. Each metric file is named from its stable metric ID plus a six-digit increasing run number. Multiple metric files with the same suffix belong to the same run. Existing runs are never overwritten. Compact Lab-managed reproducibility/debugging bookkeeping lives under `<Experiment>/.vlab/`, outside ordinary `runs/`.
@@ -114,26 +112,29 @@ The authoring contract is `vlab.authoring/0.6`; MCP server `3.0.0`; interface `8
 
 The browser loads a saved connector-authored Results presentation when one exists; with no saved presentation it preserves the normal default Results layout. No arbitrary plotting code and no Study behavior were added.
 
-PR head `9524bf9ab63baab599e2660723049c8e6857d640` passed Round 1A run `35082298949` and performance run `35082298960`. After merge, production Pages run `35083140486` passed build, deploy and all deployed browser smoke checks. Supabase `experiment-mcp` is Edge Function version `16`, pinned to the merged #200 commit.
+PR head `9524bf9ab63baab599e2660723049c8e6857d640` passed Round 1A run `35082298949` and performance run `35082298960`. After merge, production Pages run `35083140486` passed build, deploy and all deployed browser smoke checks. Supabase `experiment-mcp` is ACTIVE at Edge Function version `16`, pinned to the merged #200 commit.
 
-No owner interaction is required for #200 completion.
+### #201 — final end-to-end acceptance — complete
 
-## Current frontier — #201 / #195.6
+The already-authorized `polarization` fixture was reused exactly; no scientific definition, sampling policy or controller behavior was changed.
 
-**#196, #197, #198, #199 and #200 are complete/deployed. #201 is now ready for final end-to-end acceptance using the existing owner-authorized `polarization` fixture.**
+Terminal evidence:
 
-#201 is not scientifically blocked and does not require the owner to restate a formula or cadence. It must reuse exactly the accepted definition/cadence recorded above and verify the complete generic path through:
+- source/compiler: built-in Metrics contains `polarization` with `every(0.1)` and the accepted formula; generic tests compile it alongside `angular_momentum`;
+- deployed execution: production run `35083140486` emitted both real metrics live and polarization samples at exact 0.1 s scientific-time increments while retaining the running simulation;
+- Results: the same deployed smoke verified generic panel creation, separate panels, multi-series combination, metric reuse and stable automatic colors;
+- restart/current-run: the Metrics bridge resets retained current-run samples on restart/reconfiguration via explicit metric-reset events; production smoke verified restart controls;
+- persistence: production smoke produced two consecutive durable flat-file runs with `polarization_000001.csv`, `angular_momentum_000001.csv`, `polarization_000002.csv`, `angular_momentum_000002.csv`, with no per-run directories and no overwrite;
+- MCP: Supabase `experiment-mcp` was rechecked during #201 and is ACTIVE at version `16`, pinned to `31239dea1174cddf0c4d2d5578034ca55e6b941d`; #200 contract tests cover fine-grained metric create/update/remove, stable identity and generic Results panel bindings;
+- performance: run `35082298960` recorded deterministic trajectory equivalence with Metrics, zero dropped samples in profiled cases, bounded transport and asynchronous persistence. In the recorded 500-agent / 2000-tick / 3-repetition profile, four metrics sampled at 0.1 s transported 800 samples with about 0.8 ms measured transport time; serialization of 262,144 persistence samples took about 123 ms outside simulation execution.
 
-- Metrics source/compile/runtime;
-- live Results;
-- restart/current-run semantics;
-- #199 local persistence/package integration;
-- #200 MCP fine-grained metric/panel authoring boundary;
-- recorded performance/non-blocking behavior.
+No missing generic simulator capability was exposed. #201 therefore passes and parent #195 satisfies its completion conditions.
 
-If that acceptance exposes a missing generic simulator capability, use the capability-request/generalization process. Do not invent a paper-specific workaround.
+## Current frontier after #195
 
-When #201 passes, close #201 and close parent #195 if its completion conditions remain satisfied.
+There is no automatically selected substantial implementation ticket. The owner must choose/reprioritize the next lane. Existing candidate lanes recorded in `PROJECT_CONTROL.md` are #207 UI/UX refinement, #202 editor ergonomics and later Studies/multi-run analysis.
+
+Do not begin one merely because #195 is complete.
 
 ## UI/UX refinement state
 
