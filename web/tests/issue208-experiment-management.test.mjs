@@ -22,12 +22,15 @@ assert.match(management, /management\.slot\.append\(element\)/);
 assert.match(management, /legacyPersistence\.hidden = true/);
 assert.match(management, /experimentSelect\.hidden = true/);
 assert.match(management, /quickHint\.hidden = true/);
-assert.match(management, /browseButton\.textContent = "Switch experiment"/);
+assert.match(management, /function setText\(element, text\)/);
+assert.match(management, /if \(element && element\.textContent !== text\) element\.textContent = text/);
+assert.match(management, /setText\(browseButton, "Switch experiment"\)/);
+assert.doesNotMatch(management, /browseButton\.textContent = "Switch experiment"/);
 assert.match(management, /signIn\.textContent = "Sign in to save"/);
 assert.match(management, /accountButton\.click\(\)/);
-assert.match(management, /save\.textContent = "Save"/);
-assert.match(management, /saveAsNew\.textContent = "Save as new…"/);
-assert.match(management, /location\.dataset\.managementRedundant = String\(locationText === "Built-in" \|\| locationText === "No collection"\)/);
+assert.match(management, /setText\(save, "Save"\)/);
+assert.match(management, /setText\(saveAsNew, "Save as new…"\)/);
+assert.match(management, /if \(location\.dataset\.managementRedundant !== redundant\) location\.dataset\.managementRedundant = redundant/);
 assert.match(management, /experiment-location\[data-management-redundant="true"\]/);
 assert.match(management, /@media \(max-width: 680px\)/);
 assert.match(management, /min-height: 44px/);
@@ -41,4 +44,4 @@ for (const forbidden of ["supabase", "simulation-canvas", "metrics-source", "con
   assert.ok(!management.includes(forbidden), `#208 adapter must remain presentation-only and not touch ${forbidden}`);
 }
 
-console.log("Issue #208 unified Experiment identity/save/organization presentation invariants are locked.");
+console.log("Issue #208 unified Experiment identity/save/organization presentation invariants are locked with idempotent observer updates.");
