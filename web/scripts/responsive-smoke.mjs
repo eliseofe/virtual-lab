@@ -107,10 +107,18 @@ async function structure(send) {
     const authoring = document.querySelector('#authoring-workbench');
     const technical = document.querySelector('.technical-panel');
     const workspace = document.querySelector('.workspace');
+    const management = document.querySelector('.experiment-management');
+    const experimentSelect = document.querySelector('#experiment-select');
+    const legacyPersistence = document.querySelector('#authoring-persistence');
+    const redundantLocation = document.querySelector('.experiment-location');
+    const signInSave = document.querySelector('.experiment-sign-in-save');
+    const browse = document.querySelector('.experiment-browse');
     const before = (left, right) => Boolean(left && right && (left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING));
+    const visible = (element) => Boolean(element && !element.hidden && getComputedStyle(element).display !== 'none' && element.getClientRects().length);
     const visiblePanes = [...document.querySelectorAll('[data-authoring-artifact-pane]')]
       .filter((pane) => !pane.hidden && getComputedStyle(pane).display !== 'none').length;
     const height = (selector) => Math.round(document.querySelector(selector)?.getBoundingClientRect().height ?? 0);
+    const locationText = redundantLocation?.textContent?.trim() ?? '';
     return {
       width: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -122,6 +130,15 @@ async function structure(send) {
       technicalOpen: Boolean(technical?.open),
       filtersHidden: Boolean(document.querySelector('.experiment-browser-filters')?.hidden),
       canvasRight: Math.ceil(document.querySelector('#simulation-canvas')?.getBoundingClientRect().right ?? 0),
+      experimentManagement: {
+        visible: visible(management),
+        selectVisible: visible(experimentSelect),
+        legacyPersistenceVisible: visible(legacyPersistence),
+        redundantLocationVisible: (locationText === 'Built-in' || locationText === 'No collection') && visible(redundantLocation),
+        signInSaveVisible: visible(signInSave),
+        signInSaveHeight: Math.round(signInSave?.getBoundingClientRect().height ?? 0),
+        browseLabel: browse?.textContent?.trim() ?? null,
+      },
       controlHeights: {
         run: height('#run'),
         pause: height('#pause'),
@@ -152,9 +169,21 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
   if (state.topbarRole !== "status" || state.canvasDescribedBy !== "arena-instructions") {
     throw new Error(`${label}: semantic status/arena description wiring missing: ${JSON.stringify(state)}`);
   }
+  if (!state.experimentManagement.visible || state.experimentManagement.selectVisible || state.experimentManagement.legacyPersistenceVisible) {
+    throw new Error(`${label}: Experiment identity/persistence is not unified: ${JSON.stringify(state.experimentManagement)}`);
+  }
+  if (state.experimentManagement.redundantLocationVisible || state.experimentManagement.browseLabel !== "Switch experiment") {
+    throw new Error(`${label}: redundant Experiment identity remains visible: ${JSON.stringify(state.experimentManagement)}`);
+  }
+  if (!state.experimentManagement.signInSaveVisible) {
+    throw new Error(`${label}: signed-out Experiment surface lacks direct sign-in-to-save action: ${JSON.stringify(state.experimentManagement)}`);
+  }
   if (touch) {
     for (const [name, height] of Object.entries(state.controlHeights)) {
       if (height < 44) throw new Error(`${label}: ${name} touch target is ${height}px, expected at least 44px`);
+    }
+    if (state.experimentManagement.signInSaveHeight < 44) {
+      throw new Error(`${label}: sign-in-to-save touch target is ${state.experimentManagement.signInSaveHeight}px, expected at least 44px`);
     }
     if (state.tabHeights.some((height) => height < 44)) {
       throw new Error(`${label}: authoring tab touch target below 44px: ${JSON.stringify(state.tabHeights)}`);
@@ -258,7 +287,7 @@ try {
   await verifyAuthoringKeyboard(cdp.send);
 
   console.log(JSON.stringify({ desktop, mobile }, null, 2));
-  console.log("Responsive smoke verified simulation-first hierarchy, no mobile overflow, 44px primary targets, authoring keyboard semantics, and dialog focus entry/return.");
+  console.log("Responsive smoke verified unified Experiment management, simulation-first hierarchy, no mobile overflow, 44px primary targets, authoring keyboard semantics, and dialog focus entry/return.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
