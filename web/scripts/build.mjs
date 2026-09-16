@@ -7,13 +7,16 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.resolve(here, "..");
 const src = path.join(web, "src");
 const publicDir = path.join(web, "public");
+const viteReactDir = path.join(web, ".vite-react");
 const dist = path.join(web, "dist");
 const wasmJs = path.join(publicDir, "wasm", "vlab_kernel.js");
 const wasmBin = path.join(publicDir, "wasm", "vlab_kernel_bg.wasm");
+const reactRootJs = path.join(viteReactDir, "react-migration-root.js");
+const reactRootCss = path.join(viteReactDir, "react-migration-root.css");
 
-for (const required of [wasmJs, wasmBin]) {
+for (const required of [wasmJs, wasmBin, reactRootJs, reactRootCss]) {
   try { await stat(required); }
-  catch { throw new Error(`missing generated WASM artifact: ${required}. Run wasm-pack first.`); }
+  catch { throw new Error(`missing generated browser artifact: ${required}. Run the WASM and Vite builds first.`); }
 }
 
 async function filesUnder(root, relative = "") {
@@ -29,7 +32,7 @@ async function filesUnder(root, relative = "") {
 }
 
 const hash = createHash("sha256");
-for (const root of [src, publicDir]) {
+for (const root of [src, publicDir, viteReactDir]) {
   for (const relative of await filesUnder(root)) {
     hash.update(relative);
     hash.update(await readFile(path.join(root, relative)));
@@ -43,6 +46,7 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(assetDir, { recursive: true });
 await cp(src, assetDir, { recursive: true });
 await cp(publicDir, assetDir, { recursive: true });
+await cp(viteReactDir, assetDir, { recursive: true });
 
 let index = await readFile(path.join(src, "index.html"), "utf8");
 index = index
@@ -52,9 +56,15 @@ index = index
   .replace('src="./main.js"', `src="./${assetDirName}/main.js"`)
   .replace('src="./runtime-speed.js"', `src="./${assetDirName}/runtime-speed.js"`)
   .replace('src="./workspace-shell.js"', `src="./${assetDirName}/workspace-shell.js"`)
-  .replace("<head>", `<head>\n  <meta name="vlab-build" content="${token}">`);
+  .replace("<head>", `<head>\n  <meta name="vlab-build" content="${token}">`)
+  .replace("</head>", `  <link rel="stylesheet" href="./${assetDirName}/react-migration-root.css">\n</head>`)
+  .replace("</body>", `  <div id="react-migration-root" hidden aria-hidden="true"></div>\n  <script type="module" src="./${assetDirName}/react-migration-root.js"></script>\n</body>`);
 await writeFile(path.join(dist, "index.html"), index);
-await writeFile(path.join(dist, "build-manifest.json"), JSON.stringify({ token, assetDir: assetDirName }, null, 2));
+await writeFile(path.join(dist, "build-manifest.json"), JSON.stringify({
+  token,
+  assetDir: assetDirName,
+  reactMigrationRoot: "react-migration-root.js",
+}, null, 2));
 
 console.log(`Static production artifact built at ${dist}`);
 console.log(`Version-coherent asset directory: ${assetDirName}`);
