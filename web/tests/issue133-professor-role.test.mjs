@@ -10,6 +10,10 @@ const mcp = readFileSync(
   new URL("../../supabase/functions/experiment-mcp/index.ts", import.meta.url),
   "utf8",
 );
+const metricsResults = readFileSync(
+  new URL("../../supabase/functions/experiment-mcp/metrics-results-tools.ts", import.meta.url),
+  "utf8",
+);
 
 test("#133 profile role is server controlled and defaults to student", () => {
   assert.match(migration, /add column if not exists role text/i);
@@ -21,8 +25,8 @@ test("#133 profile role is server controlled and defaults to student", () => {
 
 test("#133 shared Student behavior remains one implementation as Professor-only tools are added later", () => {
   assert.match(mcp, /\.select\('id, display_name, role'\)/);
-  assert.match(mcp, /version: '2\.5\.0'/);
-  assert.match(mcp, /interface_version: '7'/);
+  assert.match(metricsResults, /MCP_SERVER_VERSION = '3\.0\.0'/);
+  assert.match(metricsResults, /MCP_INTERFACE_VERSION = '8'/);
 
   for (const tool of [
     "read_workspace",
@@ -35,6 +39,7 @@ test("#133 shared Student behavior remains one implementation as Professor-only 
     assert.equal(matches.length, 1, `${tool} must remain one shared implementation`);
   }
 
+  assert.match(metricsResults, /'author_metrics_results'/);
   assert.match(mcp, /if \(profile\.role === 'professor'\) \{/);
   assert.equal((mcp.match(/server\.registerTool\(/g) ?? []).length, 6);
 });

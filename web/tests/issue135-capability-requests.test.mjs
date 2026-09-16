@@ -10,6 +10,10 @@ const mcp = readFileSync(
   new URL("../../supabase/functions/experiment-mcp/index.ts", import.meta.url),
   "utf8",
 );
+const metricsResults = readFileSync(
+  new URL("../../supabase/functions/experiment-mcp/metrics-results-tools.ts", import.meta.url),
+  "utf8",
+);
 
 test("#135 capability requests are durable RLS-protected domain rows", () => {
   assert.match(migration, /create table if not exists public\.capability_requests/i);
@@ -46,6 +50,7 @@ test("#135 existing Student and Professor experiment tools remain one shared imp
     const matches = mcp.match(new RegExp(`server\\.registerTool\\(\\s*['\"]${tool}['\"]`, "g")) ?? [];
     assert.equal(matches.length, 1, `${tool} must remain one shared implementation`);
   }
+  assert.match(metricsResults, /'author_metrics_results'/);
 });
 
 test("#135 Professor gets one additional request tool while Student gets no request action", () => {
@@ -66,10 +71,11 @@ test("#135 request action preserves origin or draft without validating unsupport
 });
 
 test("#135 MCP interface advertises role-dependent capability requests without simulator access", () => {
-  assert.match(mcp, /version: '2\.5\.0'/);
-  assert.match(mcp, /interface_version: '7'/);
+  assert.match(metricsResults, /MCP_SERVER_VERSION = '3\.0\.0'/);
+  assert.match(metricsResults, /MCP_INTERFACE_VERSION = '8'/);
   assert.match(mcp, /capability_request_interface: CAPABILITY_REQUEST_INTERFACE/);
-  assert.match(mcp, /shared_tool_count: 5/);
-  assert.match(mcp, /professor_tool_count: 6/);
+  assert.match(mcp, /shared_tool_count: 6/);
+  assert.match(mcp, /professor_tool_count: 7/);
   assert.match(mcp, /simulator_access: false/);
+  assert.match(mcp, /requested_lifecycle_hook: z\.enum\(\['setup', 'initialize', 'control', 'measure', 'finalize'\]\)/);
 });

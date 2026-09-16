@@ -9,11 +9,17 @@ import { withSupabaseClient } from 'npm:@supabase/server/middleware/client'
 import { z } from 'npm:zod@4.1.13'
 
 import {
-  AUTHORING_CONTRACT,
   artifactsFromLegacySources,
   mergeLegacySourcesIntoArtifacts,
-  validateExperimentArtifacts,
 } from './authoring.js'
+import {
+  MCP_AUTHORING_CONTRACT as AUTHORING_CONTRACT,
+  MCP_INTERFACE_VERSION,
+  MCP_SERVER_VERSION,
+  readResultsPresentation,
+  registerMetricsResultsTool,
+  validateExperimentArtifactsV06 as validateExperimentArtifacts,
+} from './metrics-results-tools.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
@@ -102,6 +108,7 @@ function authoringInfo(includeContract: boolean, role: RegistryRole) {
     contract_version: AUTHORING_CONTRACT.contract_version,
     experiment_interface_version: AUTHORING_CONTRACT.experiment_interface_version,
     experiment_artifact_interface: AUTHORING_CONTRACT.experiment_artifact_interface,
+    results_presentation_interface: AUTHORING_CONTRACT.results_presentation.schema_version,
     capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
     validation_required_for_source_writes: true,
     invalid_write_policy: AUTHORING_CONTRACT.invalid_write_policy,
@@ -147,7 +154,7 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab experiment workspace',
       description:
-        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment and its ordered typed artifacts at the current revision. The artifacts array is canonical. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. The response also states the current role-dependent behavior for unsupported experiment capabilities. This tool never writes.',
+        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         lifecycle: z.enum(['active', 'archived', 'all']).default('active'),
@@ -168,7 +175,12 @@ function registerExperimentTools(
           .maybeSingle()
         if (error) return toolError('Could not read experiment.', error.message)
         if (!experiment) return toolError('Experiment was not found or is not visible to this user.')
-        return toolResult({ identity, authoring, experiment })
+        try {
+          const results_presentation = await readResultsPresentation(supabase, experiment_id)
+          return toolResult({ identity, authoring, experiment, results_presentation })
+        } catch (presentationError) {
+          return toolError('Could not read Results presentation.', presentationError instanceof Error ? presentationError.message : String(presentationError))
+        }
       }
 
       const { data: collections, error: collectionsError } = await supabase
@@ -251,7 +263,7 @@ function registerExperimentTools(
     {
       title: 'Create a new validated experiment',
       description:
-        'Create a brand-new owned experiment from an ordered typed artifacts array. Read the authoring contract first and preserve each artifact id/type/format. The artifacts array is canonical and validated before writing. During the v1→v2 transition only, an older client may instead supply all three legacy source arguments; they are converted to canonical artifacts. Do not supply both forms. Use collection_id to file the experiment or omit it for Unfiled.',
+        'Create a brand-new owned experiment from an ordered typed artifacts array. Read the authoring contract first and preserve each artifact id/type/format. The artifacts array is canonical and validated before writing. During the compatibility transition an older client may instead supply all three legacy source arguments; they are converted to canonical artifacts with an empty compulsory Metrics artifact. Do not supply both forms. Use author_metrics_results afterward to add/amend individual metrics and Results panels without rewriting unrelated artifacts.',
       inputSchema: {
         title: z.string().min(1).max(300),
         description: z.string().default(''),
@@ -310,7 +322,7 @@ function registerExperimentTools(
     {
       title: 'Edit, move, archive, or restore an experiment',
       description:
-        'Modify an owned experiment using optimistic concurrency. Always use the latest base_revision from read_workspace. To change scientific source, pass the complete canonical artifacts array. During the transition an older client may instead pass one or more legacy source arguments; they are merged into the canonical artifacts. Do not supply both forms. Artifact changes are validated as a complete experiment before writing. Set collection_id to move/unfile, or lifecycle to archive/restore. A stale revision is rejected.',
+        'Modify an owned experiment using optimistic concurrency. Always use the latest base_revision from read_workspace. To change scientific source wholesale, pass the complete canonical artifacts array. Prefer author_metrics_results for individual metric and Results-panel changes. During compatibility an older client may instead pass one or more legacy source arguments; they are merged into canonical artifacts. A stale revision is rejected.',
       inputSchema: {
         experiment_id: z.string().uuid(),
         base_revision: z.number().int().positive(),
@@ -441,6 +453,8 @@ function registerExperimentTools(
     },
   )
 
+  registerMetricsResultsTool(server, supabase, profile, clientId)
+
   if (profile.role === 'professor') {
     server.registerTool(
       'request_capability',
@@ -458,7 +472,7 @@ function registerExperimentTools(
           draft_description: z.string().max(20000).optional(),
           draft_artifacts: z.array(ARTIFACT_INPUT).optional(),
           requested_artifact_type: z.string().min(1).max(200).optional(),
-          requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'finalize']).optional(),
+          requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'measure', 'finalize']).optional(),
         },
         annotations: WRITE_ANNOTATIONS,
       },
@@ -562,7 +576,7 @@ const authenticatedMcp = pipeline(
 
     const server = new McpServer({
       name: 'virtual-lab-experiment-registry',
-      version: '2.5.0',
+      version: MCP_SERVER_VERSION,
     })
     registerExperimentTools(server, ctx.supabase, profile, email, clientId)
 
@@ -587,15 +601,16 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: true,
       service: 'virtual-lab-experiment-mcp',
-      interface_version: '7',
+      interface_version: MCP_INTERFACE_VERSION,
       experiment_artifact_interface: AUTHORING_CONTRACT.experiment_artifact_interface,
+      results_presentation_interface: AUTHORING_CONTRACT.results_presentation.schema_version,
       capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
       auth_implementation: 'supabase-jwks-middleware',
       authoring_contract_version: AUTHORING_CONTRACT.contract_version,
       validation_mode: AUTHORING_CONTRACT.validation_mode,
-      tool_count: 5,
-      shared_tool_count: 5,
-      professor_tool_count: 6,
+      tool_count: 6,
+      shared_tool_count: 6,
+      professor_tool_count: 7,
       simulator_access: false,
     })
   }
