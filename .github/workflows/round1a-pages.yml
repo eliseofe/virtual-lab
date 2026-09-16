@@ -16,9 +16,6 @@ permissions:
   id-token: write
 
 concurrency:
-  # v2 intentionally breaks out of the pre-fix concurrency group: #208 exposed
-  # that a browser process can wedge inside a smoke step before GitHub applies
-  # cancellation to the next queued run. Keep future runs bounded as well.
   group: virtual-lab-pages-v2-${{ github.ref }}
   cancel-in-progress: true
 
@@ -28,6 +25,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
 
       - name: Install Rust with WASM target
         uses: dtolnay/rust-toolchain@stable
@@ -45,12 +53,17 @@ jobs:
       - name: Test python-vlab compiler probe
         run: node --test web/tests/*.test.mjs
 
+      - name: Typecheck migrated frontend boundary
+        working-directory: web
+        run: npm run typecheck
+
       - name: Build Rust kernel for browser
         working-directory: crates/kernel
         run: wasm-pack build --release --target web --out-dir ../../web/public/wasm --out-name vlab_kernel
 
       - name: Build static browser artifact
-        run: node web/scripts/build.mjs
+        working-directory: web
+        run: npm run build
 
       - name: Verify coherent browser artifact
         run: node web/scripts/verify-dist.mjs
@@ -94,6 +107,17 @@ jobs:
               exit 0
             fi
             echo "Deployed browser check attempt $attempt failed; retrying after propagation delay."
+            sleep 5
+          done
+          exit 1
+      - name: Verify deployed React and Mantine coexistence boundary
+        run: |
+          URL="https://eliseofe.github.io/virtual-lab/"
+          for attempt in 1 2 3 4 5 6; do
+            if node web/scripts/frontend-foundation-smoke.mjs "$URL"; then
+              exit 0
+            fi
+            echo "Frontend foundation deployed-browser check attempt $attempt failed; retrying after propagation delay."
             sleep 5
           done
           exit 1

@@ -13,6 +13,7 @@ artifacts/
 # JS / frontend
 node_modules/
 dist/
+web/.vite-react/
 
 # Editors / OS
 .DS_Store
