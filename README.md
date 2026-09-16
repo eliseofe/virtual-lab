@@ -1,106 +1,159 @@
 # Virtual Lab
 
-A zero-cost, browser-first scientific laboratory for reproducible experiments on self-organized multi-agent systems, designed so that human researchers and AI research assistants can define experiments, execute them locally, inspect them visually, and exchange portable experiment/result artifacts without coupling the scientific system to any specific AI provider or cloud-compute vendor.
+A zero-cost, browser-first scientific laboratory for reproducible experiments on self-organized multi-agent systems. Human researchers and authorized AI research assistants can define versioned Experiments, run them locally, inspect live scientific metrics, preserve local results, and extend the simulator through explicit capability requests without coupling the scientific system to one AI provider or compute vendor.
+
+## Current state — 16 September 2026
+
+Virtual Lab is already a deployed working system, not the original Round 1 prototype plan.
+
+Current production capabilities include:
+
+- Rust/WebAssembly scientific kernel running locally in a Web Worker;
+- constrained Python-like Configuration, Initialization, Controller and Metrics authoring;
+- four compulsory Experiment artifacts with empty Metrics valid;
+- authenticated Supabase Experiment Registry integrated with production Lab;
+- authenticated provider-independent MCP Experiment authoring;
+- Professor capability-request workflow for unsupported simulator needs;
+- live co-located multi-metric Results with generic multi-series time-series panels;
+- local-first flat metric-file persistence under a user-selected workspace root;
+- whole-Experiment package export as a secondary convenience;
+- fine-grained MCP creation/update/removal of Metrics and Results panel bindings.
+
+The active frontier is **#201 / #195.6**, final end-to-end acceptance of the Metrics/Results path using the already owner-authorized Active Elastic polarization metric. It is not waiting for a new scientific formula.
+
+Current production Lab:
+
+`https://eliseofe.github.io/virtual-lab/`
 
 ## Vision
 
-The long-term goal is a **virtual research laboratory** in which a principal investigator, postdoc, student, or AI research assistant can:
+The long-term goal is a virtual research laboratory in which a PI, researcher, student or authorized AI research assistant can:
 
-1. Start from a scientific paper or an original hypothesis.
-2. Convert the scientific description into an explicit experiment specification: agent/controller rules, environment/physics, parameters, and collective metrics.
-3. Review and edit the scientific controller in a familiar researcher-facing language (initially a constrained Python subset).
-4. Run the experiment efficiently on the user's own machine, with live visualization or headless execution.
-5. Run multiple stochastic realizations and parameter sweeps in parallel.
-6. Compute collective metrics, aggregate statistics, make plots, and replay selected runs.
-7. Export compact, reproducible experiment and result bundles back to an AI assistant for scientific discussion.
-8. Collaborate with multiple researchers, each using their own AI account/provider and their own compute.
-9. Optionally add future execution backends such as native workstation execution, Slurm/HPC, cloud batch systems, or other providers without changing experiment semantics.
+1. start from a scientific paper or original hypothesis;
+2. express the scientific model as an explicit versioned Experiment;
+3. inspect/edit familiar researcher-facing source;
+4. run efficiently on researcher-owned compute;
+5. observe scientifically defined Metrics during a run;
+6. persist raw result data locally in ordinary files;
+7. organize reproducible multi-run Studies and parameter campaigns;
+8. compute/inspect aggregate results and reproducible figures;
+9. exchange selected compact scientific outputs with authorized AI clients;
+10. collaborate across independent human/AI identities;
+11. optionally add native/HPC/institutional backends without changing Experiment semantics.
 
-The project begins with collective-motion and swarm-systems experiments, but the architecture should remain general enough for other self-organized multi-agent systems.
+The project begins with collective-motion/swarm systems but keeps domain/compute/transport seams general.
 
 ## Hard invariants
 
-These are architectural requirements, not temporary MVP shortcuts.
+- **Zero incremental monetary cost is the required baseline.** Current lightweight registry/Auth/MCP uses Supabase Free; simulation compute and raw scientific data remain local.
+- **Compute is local by default.** Browser/WASM uses researcher-owned CPU.
+- **Raw scientific results are local-first.** Browser-private storage and Supabase are not the canonical bulk archive.
+- **AI-provider independence.** MCP/domain semantics are not tied to ChatGPT, Claude, Grok or another provider.
+- **Experiment domain is separate from simulator development.** Research AI authoring has no GitHub, shell, deployment or simulator-source privileges.
+- **Agent autonomy boundaries are scientific gatekeepers.** Controller receives local observation, owns private state and returns action; simulator owns world state, RNG, physics, perception and action application.
+- **Global position is not a controller observation capability** unless explicitly owner-approved in the future.
+- **Physics, control, rendering, metrics and persistence are separate scheduling concerns.** Rendering/storage cannot change scientific dynamics/sampling.
+- **Researcher-facing source is compiled before execution.** No per-agent/per-step host Python interpreter boundary.
+- **New paper-specific science is not invented by implementation agents.** Owner/research-AI scientific definitions are implemented as supplied; unsupported capabilities become explicit requests.
 
-- **Zero incremental monetary cost is the default operating mode.** The core laboratory requires no paid compute, no paid database, no paid object storage, no required OpenAI API, and no always-on backend.
-- **Compute is local by default.** Browser/edge execution uses the researcher's CPU. Large raw results remain local unless the researcher explicitly exports/shares them.
-- **AI-provider independence.** ChatGPT may be the first AI client, but the laboratory must not depend on a specific AI vendor, account, or protocol.
-- **Simulator independence from transport/storage.** GitHub may be the first collaboration/transport adapter; GitHub is not part of the scientific semantics.
-- **Scientific reproducibility and provenance.** Executed experiment revisions are immutable. Every run records enough provenance to reproduce the execution.
-- **Agent autonomy boundaries are scientific gatekeepers.** The agent receives a local observation, owns its private internal state, and returns an action. The simulator owns world state, stochastic sampling, physics, time, perception construction, and action application.
-- **Physics, control, visualization, and metrics are separate clocks/subsystems.** Rendering cannot change simulation results. Control updates need not occur at the physics integration frequency. A future physics model can change from kinematic to dynamic without rewriting the controller contract.
-- **Researcher-facing controller code is visible and editable.** Rust/WebAssembly may power the engine, but controllers are authored in a familiar language. The initial direction is a constrained Python subset compiled before execution, not interpreted across the simulator boundary at every control step.
+## Canonical Experiment model
 
-## Reference implementation and validation papers
+A runnable Experiment currently has exactly four compulsory core artifacts:
 
-### Violet
+1. Configuration
+2. Initialization
+3. Controller
+4. Metrics
 
-Violet (`m-rots/violet`) is a reference implementation and source of design lessons, not a required dependency. It contains useful ideas including deterministic seeded simulation, spatial-neighborhood acceleration, headless execution, heterogeneous agent classes, snapshots/metrics, and replay. The new laboratory may adapt MIT-licensed code or ideas where beneficial, while redesigning abstractions that do not fit the scientific contract.
+Metrics contains zero or more read-only scientific metric definitions. Results plot-panel layout is separate presentation/workspace state and therefore does not create a scientific Experiment revision.
 
-Repository: https://github.com/m-rots/violet
+Current canonical contracts include:
 
-### Active Elastic Model
+- registry: `vlab.registry-experiment/3`
+- Experiment artifacts: `vlab.experiment-artifacts/3`
+- authoring: `vlab.authoring/0.6`
+- Metrics: `python-vlab-metrics/0.1`
+- Results presentation: `vlab.results-presentation/1`
 
-The first validation experiment is the Active Elastic Model (AEM), because it is scientifically diagnostic: correct emergent behavior depends on simulator/controller semantics being correct, so it is a stronger test than a cosmetic flocking demo.
+## Scientific execution boundary
 
-- E. Ferrante, A. E. Turgut, M. Dorigo, C. Huepe, “Elasticity-Based Mechanism for the Collective Motion of Self-Propelled Particles with Springlike Interactions: A Model System for Natural and Artificial Swarms,” Physical Review Letters 111, 268302 (2013). DOI: 10.1103/PhysRevLett.111.268302
-- E. Ferrante, A. E. Turgut, M. Dorigo, C. Huepe, “Collective motion dynamics of active solids and active crystals,” New Journal of Physics 15, 095011 (2013). DOI: 10.1088/1367-2630/15/9/095011
-
-## Architecture at a glance
+Conceptually:
 
 ```text
-Human researcher
-      |
-      v
-AI client (ChatGPT / Claude / future)
-      |
-      v
-AI adapter (GitHub initially, MCP/HTTP/etc. later)
-      |
-      v
-Lab domain API / portable experiment contract
-      |
-      +-----------------------------+
-      |                             |
-      v                             v
-Experiment repository         Result/run artifacts
-      |                             |
-      v                             v
-ExecutionBackend              Export / analysis
-      |
-      +------------------+------------------+
-      |                  |                  |
-      v                  v                  v
-Browser/WASM       Native workstation    HPC/Slurm
-(initial)          (future)              (future)
+action = agent.step(local_observation)
 ```
 
-The stable seams are the **experiment/run formats**, **scientific controller contract**, **Lab domain API**, and **execution interfaces**. Hosting, GitHub, AI protocol, visualization technology, and compute backend are replaceable adapters.
+The simulator/environment owns global physical state, time/scheduling, neighbourhood queries, stochastic sampling, observations, action application and physics.
 
-## Roadmap
+Metrics are different from controller perception: they are read-only measurement apparatus and may inspect only the versioned global snapshot fields exposed by the Metrics contract. Metric access never leaks into controller observations.
 
-### Round 1 — tangible scientific kernel
+Visualization is observational only.
 
-A polished standalone GitHub Pages application that runs entirely in the browser and demonstrates the Active Elastic Model using the real scientific architecture. The user sees and edits the Python controller, applies the change, restarts, and observes the resulting behavior. The implementation uses a new scientific kernel rather than forcing Violet into the browser.
+## Registry and AI authoring
 
-Round 1 is complete only after closed-loop browser verification: build, deploy, open the deployed application, run the model, edit the controller, re-run, inspect errors/console/behavior, repair defects, and repeat until the implementation is fit for human scientific review.
+The canonical remote Experiment Registry is currently Supabase-backed. Production Virtual Lab and authenticated AI clients operate over the same versioned Experiment domain.
 
-### Round 2 — real experimental science
+AI-facing transport is the deployed Experiment MCP endpoint:
 
-Multiple runs/seeds, parameter sweeps, browser-local parallel execution, metric computation, aggregation/statistics, plots, and replay of selected realizations. This follows immediately after Round 1.
+`https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
 
-### Round 3 — AI ↔ lab experiment workflow
+Current MCP server is `3.0.0`, interface `8`. It supports whole-Experiment authoring plus fine-grained Metrics/Results binding authoring. Professor users can create durable requests for unsupported capabilities.
 
-A paper can be discussed with an AI assistant, converted to the portable experiment format, added to the experiment workspace through the initial GitHub adapter, and then selected/run in the lab. Results can be exported in a compact machine-readable bundle and returned to the AI.
+GitHub is the trusted simulator repository/CI/deployment workflow, **not** the normal research-AI Experiment transport.
 
-### Later
+## Local result storage
 
-Collaborative workspaces and identities; multiple human researchers each using their own AI provider/account; native/HPC execution adapters; richer physics engines; heterogeneous populations; richer experiment provenance; optional direct MCP/HTTP adapters; and additional simulator modules.
+Standalone metric output is deliberately simple and user-visible:
 
-## Project separation
+```text
+<VirtualLab root>/
+  <Experiment>/
+    runs/
+      polarization_000001.csv
+      angular_momentum_000001.csv
+      polarization_000002.csv
+      ...
+    studies/
+      <Study>/
+        runs/
+          ...same flat run-file contract...
+```
 
-This project is intentionally independent from the existing academic website and from any Vercel project. It has its own repository, build, deployment, issue tracker, and eventual domain. A future academic website may link to the lab as an external application, but Virtual Lab does not share code, build configuration, deployment state, storage, or runtime infrastructure with that website.
+There is no directory per simulation run. Files with the same numeric suffix belong to the same run. Compact machine-managed bookkeeping stays outside ordinary `runs/`.
+
+## Active Elastic scientific fixture
+
+Active Elastic remains the first scientific validation/showcase model, based on work by Ferrante, Turgut, Dorigo and Huepe.
+
+For the current Metrics/Results acceptance path, the owner has already authorized and accepted the deployed polarization metric:
+
+`psi = ||sum_i heading_i|| / N`
+
+sampled every `0.1 s` for Virtual Lab acceptance/display. That cadence is not claimed as the paper's analysis/output sampling cadence.
+
+The built-in showcase also contains a separately owner-authorized normalized instantaneous angular-momentum/milling complement used to verify generic multi-metric presentation.
+
+## Long-term research model
+
+The durable conceptual layers are:
+
+```text
+Experiment    one-run scientific definition
+Study         reproducible multi-run/condition investigation
+Research Note structured scientific memory
+Research Document paper/report/thesis narrative scope
+```
+
+Studies remain attached to/pinned against exact Experiment revision(s) and reuse stable Experiment metric IDs plus the local single-run storage contract.
 
 ## Start here
 
-Read `PROJECT_STATE.md`, then the documents under `docs/`, especially `docs/SCIENTIFIC_CONTRACT.md`, `docs/ARCHITECTURE.md`, `docs/ZERO_COST.md`, `docs/AI_LAB_PROTOCOL.md`, and `docs/ROADMAP.md`. The GitHub issues are the executable work plan.
+For any implementation session, read in this order:
+
+1. `AGENTS.md`
+2. `PROJECT_CONTROL.md`
+3. `docs/EXECUTION_GRANULARITY.md`
+4. `PROJECT_STATE.md`
+5. the active issue and relevant current design document
+
+`PROJECT_CONTROL.md` is the only repository document that decides the current strategic frontier. Older/date-stamped documents and closed issues are historical evidence, not competing live roadmaps.
