@@ -14,10 +14,9 @@ Completed and deployed children:
 - **#197 / #195.2** — deterministic multi-metric runtime sampling, bounded buffering and batched worker→UI transport.
 - **#198 / #195.3** — co-located live Results with generic multi-series time-series panels.
 - **#199 / #195.4** — local-first single-run result persistence, flat user-visible metric files, async flushes and optional whole-Experiment package export.
+- **#200 / #195.5** — MCP/Connector fine-grained Metrics + Results binding authoring end to end.
 
-The next substantial implementation ticket is **#200 / #195.5 — MCP/Connector fine-grained Metrics + Results binding authoring end to end**.
-
-After #200, **#201 / #195.6** is the owner-defined scientific end-to-end acceptance fixture. Do not start #201 before #200 is independently complete unless the owner explicitly reprioritizes.
+The next substantial ticket is **#201 / #195.6 — owner-defined scientific end-to-end acceptance for #195**.
 
 A separate editor ergonomics lane is #202. A separate owner-feedback UI/UX refinement lane is #207. Neither displaces #195 by default.
 
@@ -74,26 +73,30 @@ Rules:
 
 Production run `35033123628` passed build, Pages deploy, ordinary browser smoke, built-in real-metric smoke, live Results smoke, the dedicated local-result-persistence smoke, and responsive/focus smoke. The direct selected-folder path remains available for a later desktop spot-check by the owner, but that acceptance check is explicitly non-blocking; #199 is complete and the project moves on.
 
-## Current next ticket — #200 / #195.5
+## Deployed #200 connector contract
 
-#200 completes the machine-readable authoring side of #195. The Virtual Lab MCP/Connector must expose the complete four-artifact Experiment model plus fine-grained Metrics and Results presentation authoring so an authorized research AI can:
+#200 completes the machine-readable authoring side of #195. The deployed Virtual Lab MCP/Connector now exposes the complete four-artifact Experiment model plus fine-grained Metrics and Results presentation authoring so an authorized research AI can:
 
 - discover supported Metrics syntax/capabilities;
 - create/update/remove metric definitions inside the compulsory Metrics artifact;
 - specify supported sampling policies;
-- create/amend Results plot-panel bindings by stable metric IDs;
+- create/amend Results time-series panel bindings by stable metric IDs;
 - receive validation/unsupported-capability diagnostics instead of fabricating behavior;
-- author a paper-driven Experiment with sensible initial Results presentation.
+- preserve a separate Results-presentation revision so plot/layout edits do not change the scientific Experiment revision.
+
+The deployed contract is MCP server `3.0.0`, interface `8`, authoring contract `vlab.authoring/0.6`, Results presentation schema `vlab.results-presentation/1`, and Supabase Edge Function version `16`.
+
+#200 merged through PR #231 as `31239dea1174cddf0c4d2d5578034ca55e6b941d`. PR Round 1A run `35082298949` and performance run `35082298960` passed. Production Pages run `35083140486` passed build, deploy and browser smoke. The production `experiment_results_presentations` migration is applied and the deployed Edge Function is pinned to the merged #200 commit.
 
 Research AI still receives no GitHub/repository/shell/deployment/admin/simulator-development privilege. Unsupported simulator capability requests continue through the Professor approval → developer design discussion → explicit owner implementation approval flow.
 
-Stop after #200 is independently implemented, tested, deployed and verified. Do not roll #201 into it.
-
-## #201 scientific acceptance
+## Current next ticket — #201 / #195.6 scientific acceptance
 
 #201 is the final end-to-end scientific acceptance child for #195. Developer-side ChatGPT must not invent the mathematical definition, paper-specific sampling cadence or scientific interpretation of the acceptance metric. Those scientific choices require explicit owner/research-AI input.
 
 The Active Elastic showcase already contains owner-authorized polarization and rotation/milling metrics for product acceptance; that does not waive the general scientific guardrail.
+
+Stop after #201 is independently completed and verified; do not automatically begin a different substantial roadmap lane without a new owner instruction.
 
 ## Separate editor lane — #202
 
