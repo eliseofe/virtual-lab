@@ -119,14 +119,16 @@ async function inspectShowcase(send, label) {
       open: Boolean(dialog?.open),
       withinViewport: Boolean(rect && rect.left >= -1 && rect.right <= window.innerWidth + 1 && rect.top >= -1 && rect.bottom <= window.innerHeight + 1),
       entries,
-      activeElastic: entries.some((text) => text.includes('Active Elastic') && text.includes('Built-in') && text.includes('Public example')),
+      activeElastic: entries.some((text) => text.includes('Active Elastic') && text.includes('Curated') && text.includes('Open & run')),
+      homogeneous: entries.length >= 1 && entries.every((text) => text.includes('Curated') && text.includes('Open & run')),
       falseEmpty: document.body.textContent?.includes('No Showcase experiments yet.') ?? false,
+      syntheticBuiltin: entries.some((text) => text.includes('Built-in') || text.includes('Public example')),
       closeHeight: Math.round(document.querySelector('.showcase-head-actions button:last-child')?.getBoundingClientRect().height ?? 0),
       message: document.querySelector('.showcase-message')?.textContent?.trim() ?? '',
     };
   })())`);
   const state = JSON.parse(value);
-  if (!state.open || !state.withinViewport || !state.activeElastic || state.falseEmpty || state.scrollWidth > state.width + 1) {
+  if (!state.open || !state.withinViewport || !state.activeElastic || !state.homogeneous || state.syntheticBuiltin || state.falseEmpty || state.scrollWidth > state.width + 1) {
     throw new Error(`${label} Showcase UX failed: ${JSON.stringify(state)}`);
   }
   await evaluate(send, "document.querySelector('.showcase-dialog')?.close()");
@@ -157,7 +159,7 @@ try {
   if (mobile.closeHeight < 44) throw new Error(`mobile Showcase close target is ${mobile.closeHeight}px, expected at least 44px`);
 
   console.log(JSON.stringify({ desktop, mobile }, null, 2));
-  console.log("Showcase smoke verified launcher, Active Elastic first-open content, and responsive layout on desktop and 390x844 mobile.");
+  console.log("Showcase smoke verified homogeneous curated entries, Active Elastic presence, and responsive layout on desktop and 390x844 mobile.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
