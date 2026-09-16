@@ -68,7 +68,7 @@ These commands have different meanings.
 5. Present the design/refactor proposal to the owner when a design decision or generalization gate is material.
 6. Wait for **explicit owner implementation approval**.
 
-No GitHub implementation issue and no `in_progress` transition is required merely to inspect/design an approved request.
+No GitHub implementation issue and no `in_progress` transition is required merely to inspect/design an approved request. Moving through `approved -> in_progress` is the handoff checkpoint; reaching `implemented` is NOT part of this checkpoint and occurs only after the later implementation/deploy lifecycle succeeds.
 
 ### Implementation handoff procedure — only after explicit owner approval
 
@@ -96,7 +96,7 @@ Include only what is necessary, such as:
 
 Do NOT automatically copy or publish:
 
-- full `draft_artifacts`;
+- full `draft_artifacts` content;
 - full draft description/context;
 - requester identity;
 - Professor notes;
