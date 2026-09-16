@@ -141,3 +141,14 @@ jobs:
             sleep 5
           done
           exit 1
+      - name: Verify deployed Showcase first-open UX
+        run: |
+          URL="https://eliseofe.github.io/virtual-lab/"
+          for attempt in 1 2 3 4 5 6; do
+            if node web/scripts/showcase-ux-smoke.mjs "$URL"; then
+              exit 0
+            fi
+            echo "Showcase deployed-browser check attempt $attempt failed; retrying after propagation delay."
+            sleep 5
+          done
+          exit 1
