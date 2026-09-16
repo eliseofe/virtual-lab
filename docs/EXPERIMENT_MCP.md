@@ -1,10 +1,6 @@
 # Virtual Lab Experiment MCP
 
-Status: #43 transport/backend is implemented; #44 is validating the real student workflow before production Virtual Lab integration.
-
-## Purpose
-
-`experiment-mcp` is the restricted AI-facing adapter over the canonical experiment registry from #42. It exposes experiment-domain operations only. It is not a general Supabase MCP server and it is not a simulator-development interface.
+Status: production experiment-registry MCP is deployed and restricted to experiment-domain authoring. #200 extends the same boundary to fine-grained Metrics definitions and Results presentation bindings.
 
 Endpoint:
 
@@ -12,133 +8,119 @@ Endpoint:
 
 Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
+## Current contract
+
+After #200 the intended deployed contract is:
+
+- MCP server: `3.0.0`
+- Experiment interface: `8`
+- authoring contract: `vlab.authoring/0.6`
+- canonical Experiment artifacts: `vlab.experiment-artifacts/3`
+- registry schema: `vlab.registry-experiment/3`
+- Metrics language: `python-vlab-metrics/0.1`
+- Metrics IR: `vlab.metrics-ir/0.1`
+- Results presentation: `vlab.results-presentation/1`
+- capability requests: `vlab.capability-request/1`
+
+A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts` array is canonical. Legacy three-source arguments remain a bounded compatibility input and mechanically preserve/add the compulsory Metrics artifact rather than creating a second source of truth.
+
 ## Security model
 
-The Edge Function uses the project's publishable key plus the caller's Supabase Auth access token. It does not use a service-role or secret key.
+The Edge Function uses the caller's authenticated Supabase session and a user-scoped Supabase client. It does not use a service-role key for ordinary MCP operations. PostgreSQL RLS remains authoritative for collections, Experiments and Results presentation state. The authenticated user ID comes from the validated bearer token; callers cannot supply an arbitrary owner ID.
 
-The bearer token is validated with Supabase Auth and forwarded to a user-scoped Supabase client, so PostgreSQL RLS remains authoritative for every collection and experiment operation. The authenticated user ID is derived from the validated token; callers cannot supply an arbitrary owner ID.
+OAuth `client_id`, when present, is retained only as edit provenance and is not trusted as user identity.
 
-OAuth `client_id`, when present, is recorded only as edit provenance and is not trusted as user identity.
+The MCP remains deliberately narrower than a general Supabase, repository or simulator-development connector. It provides no GitHub, shell, arbitrary filesystem, arbitrary SQL, deployment/admin or simulator-source capability.
 
-## MCP transport and OAuth
+## Transport and OAuth
 
-The function uses Streamable HTTP through the official Model Context Protocol TypeScript SDK.
+The function uses Streamable HTTP through the official Model Context Protocol TypeScript SDK. It exposes:
 
-It exposes:
-
-- `/health` for transport health only;
+- `/health` for contract/deployment health;
 - `/.well-known/oauth-protected-resource` for protected-resource metadata;
 - the function root for MCP Streamable HTTP requests.
 
-Unauthenticated MCP requests return HTTP 401 with `WWW-Authenticate` pointing to the protected-resource metadata document. Supabase Auth is the OAuth 2.1 authorization server.
+Supabase Auth is the OAuth authorization server. Authentication and RLS are the enforcement layer; prompt text is not used as a security boundary.
 
-The deployed mock-sim at `https://eliseofe.github.io/virtual-lab-mock-sim/` provides the normal browser login/consent surface. Supabase OAuth 2.1 and Dynamic Client Registration are enabled.
-
-A real Claude Pro client has successfully completed OAuth, authenticated as a normal registry user, performed an authenticated read, and performed an authenticated write.
-
-### Connector refresh interoperability
-
-During #44, Grok exposed a recurring connector state where its connector-auth action reported connected but the following MCP initialize failed as unauthenticated. The server-side challenge handling was therefore hardened without changing the endpoint or experiment API:
-
-- missing bearer credentials and invalid/expired bearer credentials are now distinguished;
-- invalid/expired tokens receive a standard `error="invalid_token"` `WWW-Authenticate` challenge so clients can trigger token refresh/re-authorization correctly;
-- auth and metadata JSON responses use `Cache-Control: no-store` so stale challenges are not cached;
-- the Bearer scheme parser is case-insensitive;
-- `/health` exposes `auth_challenge_version: 2` for deployment verification.
-
-This is an interoperability hardening only. Authentication and RLS enforcement remain unchanged.
-
-## Compact student-facing tool surface
-
-Real-client testing during #44 showed that normal Claude asks for first-use authorization per tool. The initial 13-operation interface was therefore consolidated into five student-oriented tools without removing domain capability.
+## Shared tool surface
 
 ### `read_workspace`
 
-The single read/discovery entry point.
+Read/discovery entry point.
 
-- with no `experiment_id`: returns the authenticated identity, owned collections, and visible experiment summaries;
-- with `experiment_id`: returns the full visible experiment including configuration, initializer, controller source, and current revision;
-- can select active, archived, or all experiments;
-- can include visible non-owned experiments when requested;
-- never writes.
-
-AI clients should normally start here and re-read before revision-sensitive writes.
+Without `experiment_id`, returns authenticated identity, owned collections and visible Experiment summaries. With `experiment_id`, returns the visible Experiment at its current scientific revision, canonical ordered artifacts, and the separate current Results presentation. `include_authoring_contract=true` returns the complete machine-readable authoring contract/capabilities. This tool never writes.
 
 ### `manage_collection`
 
-One collection-management tool with `action=create|rename|delete`.
-
-- create requires `name`;
-- rename requires `collection_id` and `name`;
-- delete requires `collection_id`;
-- deleting a collection does not delete experiments; they become unfiled.
+Collection create/rename/delete for owned collections. Deleting a collection does not delete its Experiments; they become unfiled.
 
 ### `create_experiment`
 
-Creates a brand-new owned experiment from zero using the three exact student-editable source strings: configuration, initializer, and controller source.
+Creates a new owned Experiment from the complete canonical artifact array after validation. A legacy three-source compatibility form remains accepted for older clients and is normalized to the four compulsory artifacts with an empty Metrics artifact.
 
 ### `edit_experiment`
 
-Handles all ordinary revision-protected changes to an existing owned experiment:
+Revision-protected whole-Experiment edit for title/description, complete canonical artifacts, collection placement and lifecycle. The caller supplies the latest `base_revision`; stale writes are rejected.
 
-- title/description;
-- configuration source;
-- initializer source;
-- controller source;
-- moving to another collection or unfiling;
-- archive;
-- restore.
-
-The caller must supply the current `base_revision`. A stale revision is rejected instead of silently overwriting newer state.
+Fine-grained metric changes should use `author_metrics_results` rather than rewriting unrelated artifacts.
 
 ### `delete_experiment`
 
-Permanently deletes an eligible owned working experiment at the supplied current revision. It remains a separate tool because permanent deletion deserves its own explicit safety boundary. Preserved submission/curation snapshots are independent and survive where applicable.
+Permanently deletes an eligible owned working Experiment at its latest supplied revision. Preserved submission/curation snapshots remain independent.
 
-## Tool safety annotations
+### `author_metrics_results`
 
-The MCP descriptors explicitly mark:
+Fine-grained Metrics and Results authoring. Actions are:
 
-- `read_workspace` as read-only;
-- `create_experiment` and `edit_experiment` as non-destructive writes;
-- `manage_collection` and `delete_experiment` as potentially destructive.
+- `read`
+- `create_metric`
+- `update_metric`
+- `remove_metric`
+- `upsert_panel`
+- `remove_panel`
 
-These annotations are advisory to clients; client-side approval policy remains controlled by the AI client.
+Metric operations mutate only the compulsory Metrics artifact, then run the complete Experiment validation contract before writing. Metric definitions use stable IDs. `update_metric` must preserve the stable metric ID; changing identity requires an explicit remove/create operation. Unsupported syntax or capabilities return validation diagnostics rather than an inferred workaround.
+
+Results panels are presentation/workspace state, not scientific Experiment definition. A supported panel is currently a generic `time-series` panel with an ordered, non-empty list of stable metric IDs. Multiple metrics may share a panel, and the same metric may appear in multiple panels. Arbitrary plotting code is not part of the contract.
+
+Results presentation has its own optimistic revision. Panel edits therefore do **not** increment the scientific Experiment revision. Removing a metric also prunes saved bindings to that metric and removes any panel left empty by that removal.
+
+The browser loads a saved `vlab.results-presentation/1` layout for registry Experiments. No saved presentation means the normal Lab default layout remains in effect; a saved presentation with `panels=[]` is an explicit empty layout.
+
+## Professor-only capability request
+
+Professor profiles additionally receive `request_capability`. It records a durable missing-capability request while preserving the originating Experiment/draft. It does not implement simulator functionality.
+
+Lifecycle hook vocabulary is `setup | initialize | control | measure | finalize`.
+
+The standing boundary remains:
+
+`research AI request → Professor review → developer design discussion → explicit owner implementation approval → trusted developer implementation/deploy → research AI resumes`
+
+Professor approval of a request is not implementation authorization.
+
+## Validation and concurrency
+
+Scientific Experiment writes are validated against the currently advertised authoring contract before persistence. Unsupported simulator capabilities are surfaced explicitly. Experiment mutations use the scientific Experiment `revision`; Results presentation mutations use their independent presentation `revision`.
+
+This separation prevents a plot-layout change from masquerading as a scientific Experiment revision.
 
 ## Explicit non-capabilities
 
-There is no MCP tool for:
+The MCP has no tool for:
 
 - running or controlling the simulator;
-- observing simulator state, metrics, screenshots, plots, or results;
+- observing live simulator state or collected run data;
+- inventing or bypassing the supported scientific Metrics language;
+- arbitrary plotting/executable visualization code;
 - reading or changing simulator implementation;
-- accessing GitHub;
-- executing shell commands;
-- accessing arbitrary filesystem paths;
-- changing deployments;
-- executing arbitrary SQL;
-- retrieving Supabase project/admin secrets;
+- GitHub/repository operations;
+- shell execution;
+- arbitrary filesystem access;
+- deployments/admin operations;
+- arbitrary SQL or Supabase project secrets;
 - bypassing registry RLS.
-
-These capabilities are absent from the interface rather than forbidden only by prompt text.
-
-## #44 acceptance boundary
-
-The production Virtual Lab remains untouched until #44 passes owner acceptance.
-
-The required proof is:
-
-1. a real restricted AI client authenticates through OAuth;
-2. AI writes are visible in mock-sim;
-3. mock-sim writes are readable by the AI;
-4. create-from-zero, collection organization, archive/restore and eligible permanent delete work;
-5. stale writes are rejected;
-6. two genuinely distinct authenticated users remain isolated;
-7. the connector exposes only the five experiment tools above and no simulator-development capability;
-8. the deployed baseline remains within the zero-cost architecture.
-
-Only after that proof is owner-accepted may production integration proceed.
 
 ## Provider independence
 
-No provider-specific operation exists in the server. Any compatible MCP client implementing Streamable HTTP and OAuth can use the same endpoint. Claude and Grok are being used for owner acceptance because they provide two genuinely distinct real AI-client paths.
+No provider-specific experiment operation exists in the server. Any compatible MCP client implementing the required Streamable HTTP/OAuth flow can use the same endpoint and contract.
