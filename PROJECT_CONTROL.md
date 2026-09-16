@@ -8,18 +8,28 @@ This file is the authoritative current roadmap / execution frontier for Virtual 
 
 **#195 — Experiment Metrics + live Results is complete.** All six children are complete/deployed/accepted as applicable:
 
-- **#196 / #195.1** — four compulsory Experiment artifacts: Configuration, Initialization, Controller, Metrics.
-- **#197 / #195.2** — deterministic multi-metric runtime sampling, bounded buffering and batched worker→UI transport.
-- **#198 / #195.3** — co-located live Results with generic multi-series time-series panels.
-- **#199 / #195.4** — local-first single-run result persistence, flat user-visible metric files, async flushes and whole-Experiment package export.
-- **#200 / #195.5** — MCP/Connector fine-grained Metrics + Results binding authoring end to end.
-- **#201 / #195.6** — final end-to-end acceptance of the complete Metrics/Results path using the already owner-authorized Active Elastic fixture.
+- **#196 / #195.1 — four compulsory Experiment artifacts: Configuration, Initialization, Controller, Metrics.**
+- **#197 / #195.2 — deterministic multi-metric runtime sampling, bounded buffering and batched worker→UI transport.**
+- **#198 / #195.3 — co-located live Results with generic multi-series time-series panels.**
+- **#199 / #195.4 — local-first single-run result persistence, flat user-visible metric files, async flushes and whole-Experiment package export.**
+- **#200 / #195.5 — MCP/Connector fine-grained Metrics + Results binding authoring end to end.**
+- **#201 / #195.6 — final end-to-end acceptance of the complete Metrics/Results path using the already owner-authorized Active Elastic fixture.**
 
-There is **no automatically active next implementation ticket** after #195. Stop before starting another substantial lane until the owner chooses/reprioritizes it. Existing candidate lanes are:
+The current bounded implementation frontier is **#149 — Professor promotion of an accepted Experiment revision to Showcase** under **#45 — Access, sharing, submission, curation and Showcase**.
 
-- **#207** — consolidated owner-feedback UI/UX refinement;
-- **#202** — editor ergonomics/highlighting/navigation/diagnostics;
-- **Studies** — multi-run/condition orchestration and analysis, using the existing Experiment/run contracts.
+Owner direction for Showcase promotion:
+
+- an owned saved Experiment revision may be explicitly promoted by a Professor/curator;
+- promotion must be reversible: the Professor can remove it from Showcase and may later promote again;
+- promotion must preserve the exact saved scientific revision rather than mutate it;
+- the first intended target is the newly accepted AI-authored paper Experiment; verbatim reproduction of the source paper is not a prerequisite provided the description is accurate;
+- implement Showcase as generally as the existing data model warrants. Do **not** force it into ordinary private collections merely because the word “collection” is convenient. Collections are personal organization; Showcase is curated public publication of an exact revision.
+
+After Showcase promotion is complete, stop. A likely next lane is **#207 — UI/UX refinement round 2**, but the owner wants a short design discussion before activating it.
+
+The UI/UX round must explicitly remain **evolvable rather than frozen**: establish stable compositional surfaces and interaction patterns so future capabilities such as Studies and richer Results can plug in without forcing unrelated sections through another whole-page redesign.
+
+Other existing candidate lanes remain **#202 — code authoring ergonomics** and **#3 — Studies / reproducible multi-run investigations**.
 
 ## Canonical Experiment and Results model
 
@@ -64,13 +74,13 @@ Verified evidence:
 5. **MCP/Connector** — production Supabase `experiment-mcp` is active at Edge Function version `16`, pinned to merged #200 commit `31239dea1174cddf0c4d2d5578034ca55e6b941d`; contract tests verify fine-grained create/update/remove metric authoring, stable metric IDs, ordered multi-series Results bindings, metric reuse and presentation revisions separate from scientific Experiment revisions.
 6. **Performance/non-blocking** — performance run `35082298960` verified deterministic trajectories with Metrics, zero dropped samples in the profiled cases, bounded batched transport and asynchronous persistence. At 500 agents / 2000 ticks / 3 repetitions, four metrics at 0.1 s produced 800 samples with about 0.8 ms measured transport time in the recorded run; the 262,144-sample persistence serialization profile completed in about 123 ms, separately from simulation execution.
 
-No missing generic simulator capability was exposed by this acceptance. #201 and parent #195 may therefore be closed.
+No missing generic simulator capability was exposed by this acceptance. #201 and parent #195 are closed.
 
 ## Deployed #199 storage contract
 
 Single-run scientific results are local-first. The authoritative raw output is ordinary user-visible files under a user-selected Virtual Lab workspace root when writable-directory access is available. Browser-private storage is not the scientific archive.
 
-Standalone run organization:
+Canonical organization:
 
 ```text
 <VirtualLab root>/
@@ -82,9 +92,9 @@ Standalone run organization:
       ...
     studies/
       <Study>/
-        runs/
-          <metric-id>_000001.csv
-          ...
+        <metric-id>_000001.csv
+        <other-metric-id>_000001.csv
+        ...
 ```
 
 Rules:
@@ -95,7 +105,8 @@ Rules:
 - stable metric ID + increasing run number associates files belonging to one run;
 - previous runs are never overwritten;
 - compact Lab-managed reproducibility/debugging bookkeeping stays out of the ordinary `runs/` directory;
-- `Download experiment package` is a secondary whole-Experiment export using the same flat hierarchy, not a replacement for automatic selected-folder persistence;
+- future Studies reuse the same flat metric-file convention directly under `<Experiment>/studies/<Study>/` with no additional `runs/` layer;
+- `Download experiment package` is a secondary whole-Experiment export using the same hierarchy, not a replacement for automatic selected-folder persistence;
 - do not expose per-run ZIPs, per-run directories or one visible JSON manifest per run.
 
 #199 merged through PR #225 (`c39979ee15d4682497d9a96f08a0c661c9424f79`) plus package-semantics cleanup PR #227 (`7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d`). The direct selected-folder path remains available for a later desktop spot-check, explicitly non-blocking.
@@ -123,7 +134,7 @@ Current production contract:
 
 Research AI still receives no GitHub/repository/shell/deployment/admin/simulator-development privilege.
 
-## Separate editor lane — #202
+## Separate editor lane — #202 — code authoring ergonomics
 
 Approved direction applies across Configuration, Initialization, Controller, Metrics and future authored artifacts:
 
@@ -134,22 +145,24 @@ Approved direction applies across Configuration, Initialization, Controller, Met
 - source-linked diagnostics;
 - later lightweight contract-derived completion where justified.
 
-Children: #203 foundation/highlighting; #204 navigation/folding/search; #205 diagnostics/completion.
+Children: **#203 — editor foundation/highlighting**, **#204 — navigation/folding/search**, **#205 — diagnostics/completion**.
 
-## Owner-feedback UI/UX refinement lane — #207
+## Owner-feedback UI/UX refinement lane — #207 — UI/UX refinement round 2
 
 The deployed UI is functional but not final. Preserve these concrete owner observations for the later coherent redesign rather than patching them piecemeal into unrelated tickets:
 
-- #208 — unify Experiment identity and Save/Persistence/organization into one coherent workflow;
-- #209 — reconcile duplicate-looking Account and Professor entry surfaces;
-- #210 — remove unnecessary microcopy, strengthen typography/hierarchy and verify deliberate desktop/mobile layouts;
+- **#208 — unify Experiment identity and Save/Persistence/organization into one coherent workflow**;
+- **#209 — reconcile duplicate-looking Account and Professor entry surfaces**;
+- **#210 — remove unnecessary microcopy, strengthen typography/hierarchy and verify deliberate desktop/mobile layouts**;
 - Results metric/series selection lacks sufficient affordance even though multi-series binding works;
 - touching/panning a live plot leaves follow-live mode without an obvious control for returning to the live edge;
 - later Results workspace polish may include deliberate side-by-side/stacked/tabbed layout, rearrangement and resizing while remaining presentation state rather than scientific definition.
 
-The connected Product Design workflow may be used when #207 is deliberately activated.
+This refinement round must produce an extensible UI architecture, not a frozen screenshot. New future capabilities should attach to stable workspace regions and interaction patterns without forcing another redesign of unrelated existing sections.
 
-## Studies boundary
+The connected Product Design workflow may be used when #207 is deliberately activated, but discuss the current design and intended boundaries with the owner before implementation.
+
+## Studies boundary — #3 — reproducible multi-run investigations
 
 Experiment Results answer: **what happened during this run?**
 
@@ -161,7 +174,7 @@ Future Study work composes the #199 run identities/file contract rather than inv
 
 Professor-approved but **not implementation-authorized**:
 
-- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — controller stochasticity/RNG capability;
+- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — simulator-owned deterministic/reproducible controller RNG capability;
 - `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — heterogeneous agent initialization/state capability.
 
 Durable record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`. No coding begins until architecture is discussed and the owner explicitly authorizes implementation.
@@ -197,6 +210,6 @@ When sources disagree:
 3. `PROJECT_STATE.md` accepted technical state/evidence and recorded owner acceptance;
 4. relevant current design document;
 5. active issue scope/status;
-6. older issues, date-stamped planning documents and chats as history only.
+6. older issues, date-stamped documents and chats as history only.
 
 A stale lower-authority gate must be repaired, not used to make the owner repeat an already-recorded decision.
