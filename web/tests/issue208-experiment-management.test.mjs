@@ -27,7 +27,8 @@ assert.match(management, /signIn\.textContent = "Sign in to save"/);
 assert.match(management, /accountButton\.click\(\)/);
 assert.match(management, /save\.textContent = "Save"/);
 assert.match(management, /saveAsNew\.textContent = "Save as new…"/);
-assert.match(management, /locationText === "Built-in" \|\| locationText === "No collection"/);
+assert.match(management, /location\.dataset\.managementRedundant = String\(locationText === "Built-in" \|\| locationText === "No collection"\)/);
+assert.match(management, /experiment-location\[data-management-redundant="true"\]/);
 assert.match(management, /@media \(max-width: 680px\)/);
 assert.match(management, /min-height: 44px/);
 
