@@ -6,21 +6,20 @@ This file is the authoritative current roadmap / execution frontier for Virtual 
 
 ## Current strategic status
 
-The active product/scientific frontier is **#195 — Experiment Metrics + live Results**.
-
-Completed and deployed children:
+**#195 — Experiment Metrics + live Results is complete.** All six children are complete/deployed/accepted as applicable:
 
 - **#196 / #195.1** — four compulsory Experiment artifacts: Configuration, Initialization, Controller, Metrics.
 - **#197 / #195.2** — deterministic multi-metric runtime sampling, bounded buffering and batched worker→UI transport.
 - **#198 / #195.3** — co-located live Results with generic multi-series time-series panels.
 - **#199 / #195.4** — local-first single-run result persistence, flat user-visible metric files, async flushes and whole-Experiment package export.
 - **#200 / #195.5** — MCP/Connector fine-grained Metrics + Results binding authoring end to end.
+- **#201 / #195.6** — final end-to-end acceptance of the complete Metrics/Results path using the already owner-authorized Active Elastic fixture.
 
-The next substantial ticket is **#201 / #195.6 — final end-to-end acceptance using the already owner-authorized Active Elastic polarization metric**.
+There is **no automatically active next implementation ticket** after #195. Stop before starting another substantial lane until the owner chooses/reprioritizes it. Existing candidate lanes are:
 
-**#201 is not waiting for a new scientific definition.** The required scientific input was already supplied and accepted during #198. Do not ask the owner to redefine it.
-
-A separate editor ergonomics lane is #202. A separate owner-feedback UI/UX refinement lane is #207. Neither displaces #195 by default.
+- **#207** — consolidated owner-feedback UI/UX refinement;
+- **#202** — editor ergonomics/highlighting/navigation/diagnostics;
+- **Studies** — multi-run/condition orchestration and analysis, using the existing Experiment/run contracts.
 
 ## Canonical Experiment and Results model
 
@@ -37,26 +36,41 @@ Metric evaluation cadence, UI refresh cadence and persistence flush cadence are 
 
 Results plot panels are presentation/workspace objects. A panel can bind one or more stable metric IDs; the same metric can appear in multiple panels. Reconfiguring plots must not create a new scientific Experiment revision.
 
-## Accepted scientific fixture for #201
+## Accepted scientific fixture
 
-The existing Active Elastic acceptance fixture is authoritative for #201:
+The Active Elastic acceptance fixture used to close #195 is authoritative:
 
 - metric id: `polarization`;
 - name: Polarization order parameter;
 - definition: `psi = ||sum_i heading_i|| / N`;
 - observation: read-only headings of all agents plus agent count through the Metrics snapshot contract;
 - acceptance/display sampling cadence: every `0.1 s`;
-- that `0.1 s` cadence is a Virtual Lab product/integration acceptance choice and is **not** claimed to reproduce the paper's analysis/output cadence.
+- the `0.1 s` cadence is a Virtual Lab product/integration acceptance choice and is **not** claimed to reproduce the paper's analysis/output cadence.
 
-This definition was owner-authorized during #198 and the deployed live behavior was owner-accepted on phone on 16 September 2026. The built-in Active Elastic also contains the separately owner-authorized `angular_momentum` complementary metric; it may be reused as the already-approved second series for generic panel-binding acceptance.
+This definition was owner-authorized during #198 and the deployed live behavior was owner-accepted on phone on 16 September 2026. The built-in Active Elastic also contains the separately owner-authorized `angular_momentum` complementary metric, used only as the already-approved second series for generic Results acceptance.
 
-#201 may verify the existing definitions and path end to end. It must not invent, retune, reinterpret, or replace either metric.
+Do not invent, retune, reinterpret or replace either metric without explicit owner authorization.
+
+## #201 terminal acceptance evidence
+
+#201 introduced no new scientific definition or runtime feature. It accepted the already-deployed generic path end to end.
+
+Verified evidence:
+
+1. **Definition/runtime** — production source contains `polarization` exactly as recorded above; the Metrics compiler/runtime uses exact `0.1 s` periodic sampling at `post-physics-wrapped-state/1`.
+2. **Live Results** — production Pages run `35083140486` passed the deployed Active Elastic smoke: both real metrics emitted live samples, including polarization samples at `0.1, 0.2, 0.3, ...` scientific seconds; generic panel creation, combination, reuse and stable colors passed.
+3. **Restart/current-run semantics** — the Metrics runtime bridge clears current-run sample state on metric reset/restart and carries explicit reset reasons; the production smoke verified same-seed/new-seed restart controls.
+4. **Persistence** — the same production run verified two consecutive durable runs with flat files `polarization_000001.csv`, `angular_momentum_000001.csv`, `polarization_000002.csv`, `angular_momentum_000002.csv`, no per-run directories and no overwrite.
+5. **MCP/Connector** — production Supabase `experiment-mcp` is active at Edge Function version `16`, pinned to merged #200 commit `31239dea1174cddf0c4d2d5578034ca55e6b941d`; contract tests verify fine-grained create/update/remove metric authoring, stable metric IDs, ordered multi-series Results bindings, metric reuse and presentation revisions separate from scientific Experiment revisions.
+6. **Performance/non-blocking** — performance run `35082298960` verified deterministic trajectories with Metrics, zero dropped samples in the profiled cases, bounded batched transport and asynchronous persistence. At 500 agents / 2000 ticks / 3 repetitions, four metrics at 0.1 s produced 800 samples with about 0.8 ms measured transport time in the recorded run; the 262,144-sample persistence serialization profile completed in about 123 ms, separately from simulation execution.
+
+No missing generic simulator capability was exposed by this acceptance. #201 and parent #195 may therefore be closed.
 
 ## Deployed #199 storage contract
 
 Single-run scientific results are local-first. The authoritative raw output is ordinary user-visible files under a user-selected Virtual Lab workspace root when writable-directory access is available. Browser-private storage is not the scientific archive.
 
-Canonical organization:
+Standalone run organization:
 
 ```text
 <VirtualLab root>/
@@ -81,7 +95,6 @@ Rules:
 - stable metric ID + increasing run number associates files belonging to one run;
 - previous runs are never overwritten;
 - compact Lab-managed reproducibility/debugging bookkeeping stays out of the ordinary `runs/` directory;
-- future Studies reuse the same single-run file/data contract under `<Experiment>/studies/<Study>/runs/`;
 - `Download experiment package` is a secondary whole-Experiment export using the same flat hierarchy, not a replacement for automatic selected-folder persistence;
 - do not expose per-run ZIPs, per-run directories or one visible JSON manifest per run.
 
@@ -108,25 +121,7 @@ Current production contract:
 - Results presentation schema `vlab.results-presentation/1`;
 - Supabase Edge Function version `16`.
 
-#200 merged through PR #231 as `31239dea1174cddf0c4d2d5578034ca55e6b941d`; production Pages and MCP deployment are verified. Research AI still receives no GitHub/repository/shell/deployment/admin/simulator-development privilege.
-
-## Current next ticket — #201 / #195.6
-
-#201 is an **acceptance/integration ticket**, not a request to design new science.
-
-Use the already accepted `polarization` fixture above to verify the complete path:
-
-1. Metrics artifact definition;
-2. live execution and timestamps;
-3. Results binding and optional already-approved second series;
-4. restart/current-run behavior;
-5. #199 persistence/package path;
-6. #200 MCP representation and fine-grained metric/panel authoring boundary;
-7. recorded performance/non-blocking behavior.
-
-If the existing path exposes a missing generic simulator capability, stop and route that gap through the established capability request/generalization process. Do not patch a paper-specific exception.
-
-When #201 passes, close #201 and close #195 if all epic completion conditions remain satisfied. Stop before beginning a different substantial roadmap lane unless the owner explicitly instructs otherwise.
+Research AI still receives no GitHub/repository/shell/deployment/admin/simulator-development privilege.
 
 ## Separate editor lane — #202
 
@@ -152,7 +147,7 @@ The deployed UI is functional but not final. Preserve these concrete owner obser
 - touching/panning a live plot leaves follow-live mode without an obvious control for returning to the live edge;
 - later Results workspace polish may include deliberate side-by-side/stacked/tabbed layout, rearrangement and resizing while remaining presentation state rather than scientific definition.
 
-The connected Product Design workflow may be used when #207 is deliberately activated, but #207 is not the current implementation frontier.
+The connected Product Design workflow may be used when #207 is deliberately activated.
 
 ## Studies boundary
 
@@ -160,7 +155,7 @@ Experiment Results answer: **what happened during this run?**
 
 Studies answer: **what happened across runs/conditions?**
 
-Future Study work composes the #199 run identities/file contract rather than inventing an incompatible result layer. The filesystem hierarchy is Experiment-first: standalone runs and `studies/` are siblings under the selected Experiment.
+Future Study work composes the #199 run identities/file contract rather than inventing an incompatible result layer. The filesystem hierarchy remains Experiment-first.
 
 ## Parallel capability requests — approved for design only
 
