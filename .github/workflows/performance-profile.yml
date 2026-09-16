@@ -8,6 +8,11 @@ on:
       - 'crates/kernel/**'
       - 'benchmarks/neighbour_search_matrix.json'
       - 'web/src/**'
+      - 'web/package.json'
+      - 'web/package-lock.json'
+      - 'web/vite.config.ts'
+      - 'web/tsconfig.json'
+      - 'web/scripts/build.mjs'
       - 'web/scripts/performance-profile.mjs'
       - 'web/scripts/real-workload-isolation-profile.mjs'
       - 'web/scripts/controller-cost-profile.mjs'
@@ -27,6 +32,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
 
       - name: Install Rust with WASM target
         uses: dtolnay/rust-toolchain@stable
@@ -67,8 +83,13 @@ jobs:
         working-directory: crates/kernel
         run: wasm-pack build --release --target web --out-dir ../../web/public/wasm --out-name vlab_kernel
 
+      - name: Typecheck migrated frontend boundary
+        working-directory: web
+        run: npm run typecheck
+
       - name: Build static browser artifact
-        run: node web/scripts/build.mjs
+        working-directory: web
+        run: npm run build
 
       - name: Run browser/WASM profile
         run: |
