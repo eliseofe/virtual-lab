@@ -1,108 +1,122 @@
 # Developer capability-request handoff
 
-Status: implementation contract for #141 / #58.4.
+Status: **trusted development boundary, updated 16 September 2026**.
 
-This is the trusted bridge between a Professor-approved capability request and normal Virtual Lab GitHub engineering. It is intentionally outside the Experiment MCP and Professor browser.
+This is the bridge between a Professor-approved capability request and normal Virtual Lab GitHub engineering. It is intentionally outside the Experiment MCP and Professor browser.
 
-## Boundary
+## Critical approval boundary
 
-The research side ends at `approved`.
+The research side can move a request to `approved`, but **Professor approval is design/queue approval only. It is not implementation authorization.**
+
+Standing flow:
+
+```text
+research AI request
+  -> Professor review/approval
+  -> developer-side architecture/generalization review
+  -> design discussion with owner
+  -> explicit owner implementation approval
+  -> trusted GitHub/developer handoff
+  -> implementation/test/deploy
+  -> implemented
+```
+
+Do not create implementation work, claim the request `in_progress`, or begin coding solely because registry status is `approved`.
+
+## Roles and security boundary
 
 - Professor AI may create a durable request.
-- Professor may approve or decline it in the Lab.
-- Neither research AI nor the Professor browser may create GitHub work, write developer fields, or move a request to `in_progress`.
-- Developer-side ChatGPT uses its trusted Supabase and GitHub connections to perform the handoff.
+- Professor may approve/decline it in the Lab.
+- Neither research AI nor Professor browser may create GitHub engineering work, write developer fields, or move the request to `in_progress`.
+- Developer-side ChatGPT can read the private request through its trusted Supabase connection and discuss software design with the owner.
+- Only after explicit owner implementation approval may developer-side ChatGPT create/link the GitHub engineering issue and claim the request `in_progress`.
 
-The developer claim operation is `private.claim_capability_request_for_development(...)`. It is `SECURITY INVOKER`, has no execute grant for `public`, `anon`, `authenticated`, or `service_role`, and is intended for the privileged developer database connection only.
+The developer database claim operation remains a trusted developer-side function; it is not exposed through ordinary authenticated Experiment-domain clients.
 
-## Meaning of the lifecycle
+## Lifecycle meaning
 
 ```text
 requested -> approved -> in_progress -> implemented
              \-> declined
 ```
 
-For this document:
+- `requested` — research AI/Professor has recorded a missing capability.
+- `approved` — Professor agrees the request should enter developer design/queue. Implementation is **not yet authorized**.
+- `in_progress` — owner has explicitly authorized implementation, a trusted developer handoff has linked the GitHub engineering work, and coding/testing may proceed.
+- `implemented` — implementation is deployed/verified and the active versioned capability contract advertises it.
 
-- `approved` = Professor approved the need for development, but no engineering issue has been claimed yet.
-- `in_progress` = one GitHub engineering issue is durably linked and the request has entered the developer workflow.
-- `implemented` is NOT part of this checkpoint. It means a later checkpoint has verified that the capability is deployed and advertised by the active capability contract.
+If design discussion shows the request should be generalized/refactored/reformulated, keep it `approved` while the design is resolved; do not use `in_progress` as a substitute for owner approval.
 
 ## Context-free developer command
 
-A future developer chat should be able to receive:
+A future developer chat may receive:
 
-> implement the next approved capability request
+> inspect the next approved capability request
 
-and recover everything needed from the repository and Supabase without asking the owner to copy request details.
+or
 
-### Procedure
+> implement capability request <uuid>
 
-1. Read `AGENTS.md`, `PROJECT_CONTROL.md`, `PROJECT_STATE.md`, this document, and epic #58.
-2. Query `public.capability_requests` through the trusted developer Supabase connection for `status = 'approved'`, ordered by `reviewed_at ASC NULLS LAST, created_at ASC`; take one request unless the owner names a request ID.
-3. Before creating anything, search `eliseofe/virtual-lab` GitHub issues for the exact capability request UUID. If an existing implementation issue already identifies that request, reuse it rather than creating a duplicate.
-4. If no issue exists, create one GitHub engineering issue. The issue must contain the stable capability request UUID and only the technical summary needed to identify the work.
-5. Call `private.claim_capability_request_for_development(request_id, issue_number, issue_url, developer_notes)` through the trusted developer database connection.
-6. Verify the returned row is `in_progress`, has the expected GitHub issue number/URL, and has `development_started_at` set.
-7. Continue implementation only as a new substantial engineering checkpoint under `docs/EXECUTION_GRANULARITY.md`.
+These commands have different meanings.
 
-The database claim is retry-safe only for the exact already-linked issue. Retrying the same request+issue returns the existing `in_progress` row. A different issue or an invalid lifecycle state is rejected.
+### Inspect/design procedure
+
+1. Read `AGENTS.md`, `PROJECT_CONTROL.md`, `PROJECT_STATE.md`, `docs/CAPABILITY_GENERALIZATION_GATE.md`, this document and the relevant request record.
+2. Query the trusted Supabase connection for the named/next `approved` request.
+3. Recover the preserved private context/draft without copying sensitive material into public GitHub.
+4. Evaluate only the **software architecture/generalization** needed to support the requested science. Do not invent/derive the science itself.
+5. Present the design/refactor proposal to the owner when a design decision or generalization gate is material.
+6. Wait for **explicit owner implementation approval**.
+
+No GitHub implementation issue and no `in_progress` transition is required merely to inspect/design an approved request.
+
+### Implementation handoff procedure — only after explicit owner approval
+
+1. Confirm the exact request ID and the owner's explicit approval of the implementation/design.
+2. Search `eliseofe/virtual-lab` GitHub issues for the exact capability request UUID to avoid duplicates.
+3. Reuse an existing correct implementation issue if present; otherwise create one concise engineering issue containing the stable request UUID and non-sensitive technical scope.
+4. Call the trusted developer claim operation to link that issue and transition `approved -> in_progress`.
+5. Verify the returned request row has the expected GitHub issue identity and development-start metadata.
+6. Implement only the authorized capability scope as a substantial engineering ticket under `docs/EXECUTION_GRANULARITY.md`.
+7. Test/deploy/verify the actual capability and confirm that the active authoring/runtime contract advertises it.
+8. Only then mark the request `implemented` and record the implemented capability/contract version.
 
 ## Public GitHub issue content
 
-`eliseofe/virtual-lab` is public. A capability request may preserve unpublished research context or draft source. Therefore the GitHub issue is a pointer/engineering summary, not a mirror of the Supabase request.
+`eliseofe/virtual-lab` is public. Capability requests can preserve unpublished research context/source, so the GitHub issue is a pointer/engineering summary rather than a mirror of the Supabase row.
 
-By default include:
+Include only what is necessary, such as:
 
-- `Capability request ID: <uuid>` as an exact searchable marker;
-- capability domain and concise capability name;
-- requested artifact type and lifecycle hook when present;
-- originating Experiment ID/revision when useful and non-sensitive;
-- a short developer-written technical scope derived from the capability gap;
-- explicit acceptance criterion that the capability must eventually be advertised by the active versioned capability contract.
+- `Capability request ID: <uuid>` exact searchable marker;
+- capability domain and concise generic capability name;
+- requested artifact type/lifecycle hook when relevant;
+- originating Experiment ID/revision only when useful and non-sensitive;
+- concise developer-written software scope;
+- completion gate requiring deployed contract advertisement.
 
-Do NOT automatically copy into the public issue:
+Do not automatically publish:
 
-- full `draft_artifacts` content;
-- full draft description;
-- full free-form request context;
+- full `draft_artifacts`;
+- full draft description/context;
 - requester identity;
 - Professor notes;
-- unpublished paper text or other potentially private research material.
-
-The developer-side ChatGPT can read those fields privately from Supabase while implementing.
-
-## GitHub issue template
-
-```text
-CAPABILITY — <concise capability name>
-
-Capability request ID: <uuid>
-Parent lifecycle: #58
-
-Domain: <capability_domain>
-Artifact type: <requested_artifact_type or n/a>
-Lifecycle hook: <requested_lifecycle_hook or n/a>
-Origin: <experiment id/revision or n/a>
-
-Engineering scope
-<concise technical statement of the missing simulator capability; do not invent scientific semantics>
-
-Completion gate
-- implementation and tests complete;
-- deployed capability is advertised by the active authoring/runtime capability contract;
-- request is NOT marked implemented until that deployed-contract verification succeeds.
-```
+- unpublished paper text/private research material.
 
 ## Duplicate prevention
 
-Two layers prevent duplicate handoff:
+Before creating a GitHub issue, search for the exact request UUID. If an earlier attempt already created the correct issue, reuse it.
 
-1. developer procedure searches GitHub for the exact request UUID before issue creation;
-2. Supabase enforces unique `github_issue_number` and `github_issue_url`, while the claim function only accepts `approved` or an idempotent retry of the exact existing `in_progress` linkage.
+The database linkage/claim should be treated as authoritative for whether a request is already `in_progress`. A retry must not create a second implementation issue.
 
-If a GitHub issue is created but the database link step is interrupted, search by request UUID first and reuse that issue on retry.
+## Scientific/generalization guardrail
 
-## What this checkpoint does not do
+Capability implementation must add the **generic simulator/software capability** authorized by the owner, not a paper-specific hard-coded shortcut unless that is explicitly the approved architecture.
 
-It does not implement the requested capability, create a PR for that capability, mark the request implemented, verify deployed capability metadata, or revalidate the originating draft. Those are later engineering/completion steps.
+Developer-side ChatGPT may reason about interface design, compiler/runtime integration, deterministic RNG ownership, data structures and execution plumbing. It must not independently invent the missing scientific semantics that motivated the request.
+
+## Current approved-but-not-implementation-authorized requests
+
+- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — generic simulator-owned controller stochasticity/RNG distributions.
+- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — generic heterogeneous agent initialization/state.
+
+Their Professor approval does not authorize coding. Their durable notes live in `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
