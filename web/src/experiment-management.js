@@ -81,20 +81,24 @@ function signedIn() {
   return Boolean(signOut && !signOut.hidden);
 }
 
+function setText(element, text) {
+  if (element && element.textContent !== text) element.textContent = text;
+}
+
 function mirrorOperationalMessage() {
   const source = document.querySelector(".registry-message");
   if (!source || !signedIn()) {
-    management.status.textContent = "";
+    setText(management.status, "");
     management.status.dataset.state = "idle";
     return;
   }
   const state = source.dataset.state || "idle";
   if (state !== "error" && state !== "success") {
-    management.status.textContent = "";
+    setText(management.status, "");
     management.status.dataset.state = "idle";
     return;
   }
-  management.status.textContent = source.textContent?.trim() || "";
+  setText(management.status, source.textContent?.trim() || "");
   management.status.dataset.state = state;
 }
 
@@ -112,18 +116,19 @@ function simplifyIdentity() {
   experimentSelect.hidden = true;
   experimentSelect.setAttribute("aria-hidden", "true");
   if (quickHint) quickHint.hidden = true;
-  browseButton.textContent = "Switch experiment";
+  setText(browseButton, "Switch experiment");
 
   const location = document.querySelector(".experiment-location");
   const locationText = location?.textContent?.trim();
   if (location) {
-    location.dataset.managementRedundant = String(locationText === "Built-in" || locationText === "No collection");
+    const redundant = String(locationText === "Built-in" || locationText === "No collection");
+    if (location.dataset.managementRedundant !== redundant) location.dataset.managementRedundant = redundant;
   }
 
   const save = document.querySelector(".registry-save-actions .primary");
   const saveAsNew = document.querySelector(".registry-save-actions button:not(.primary)");
-  if (save) save.textContent = "Save";
-  if (saveAsNew) saveAsNew.textContent = "Save as new…";
+  setText(save, "Save");
+  setText(saveAsNew, "Save as new…");
 }
 
 function syncSignedOutState() {
