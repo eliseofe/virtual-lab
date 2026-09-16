@@ -7,6 +7,9 @@ const webRoot = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  },
   publicDir: false,
   build: {
     outDir: resolve(webRoot, '.vite-react'),
