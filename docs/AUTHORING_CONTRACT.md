@@ -1,108 +1,133 @@
 # Experiment Authoring Contract
 
-## Status quo
+Status: **current deployed contract, 16 September 2026**.
 
-Virtual Lab uses three student-editable source artifacts:
+Current machine-readable contract: `vlab.authoring/0.6`, exposed by production `experiment-mcp` server `3.0.0`, interface `8`.
 
-1. **configuration** — restricted Python-like `NAME = value` assignments, compiled by `web/src/config/compiler.js` to `vlab.config/0.2`;
-2. **initializer** — restricted Python-like function syntax, compiled/evaluated by `web/src/initializer/compiler.js` to deterministic initial state `vlab.initializer-state/0.2`;
-3. **controller** — `python-vlab/0.1`, compiled by `web/src/controller/compiler.js` to `vlab.controller-ir/0.1` and executed by the Rust/WASM kernel.
+## Canonical Experiment artifacts
 
-The controller source is not general Python. It is a deliberately constrained Python-compatible authoring language. The simulator owns the observation/action boundary and rejects unavailable host capabilities.
+A runnable Experiment has exactly four compulsory core artifacts:
 
-The current controller interface exposes only simulator capabilities: local heading, neighbouring agents' relative positions, the `Motion(forward, turning)` action, and the approved intrinsic set documented by the machine-readable contract.
+1. **Configuration** — restricted Python-like assignments; generic runtime/configuration inputs and experiment-defined parameters.
+2. **Initialization** — restricted Python-like initialization program; simulator-owned initialization RNG and placement/state construction.
+3. **Controller** — `python-vlab/0.1`; local observation → action program compiled before execution.
+4. **Metrics** — `python-vlab-metrics/0.1`; zero or more read-only scientific metric definitions in one compulsory artifact.
 
-## Science-free contract boundary
+The canonical registry representation is the ordered typed `artifacts[]` array under `vlab.experiment-artifacts/3` / `vlab.registry-experiment/3`.
 
-The MCP authoring contract contains **no scientific model, reference experiment, model equation, scientific parameter set, or model-specific controller source**. Its job is only to tell an AI how the Virtual Lab software interface works.
+An empty Metrics artifact is valid. Legacy three-source clients remain supported only as a bounded compatibility input; they normalize mechanically to the four-artifact model by adding/preserving Metrics. They are not a second source of truth.
+
+## Science-free software contract boundary
+
+The authoring contract contains **no paper-specific model, reference experiment, metric formula, scientific parameter values or scientific interpretation**. Its job is to describe what the Virtual Lab software can represent and validate.
 
 The contract may describe:
 
-- artifact/compiler versions;
+- artifact/language/compiler versions;
 - grammar and accepted source structure;
 - simulator-owned runtime requirements;
 - observation/action/intrinsic capabilities;
+- Metrics read-only snapshot capabilities;
+- lifecycle/measurement semantics;
 - forbidden capabilities;
 - diagnostic categories;
-- execution/security boundaries.
+- execution/security boundaries;
+- Results-presentation binding structure.
 
-Experiment-specific scientific parameter names and values are supplied by the student/AI conversation. The contract does not privilege the currently built-in experiment or any other scientific model.
+Scientific content comes from the researcher/research-AI workflow. Developer-side tooling validates support; it must not invent a substitute scientific model when requested semantics are unsupported.
 
-## Authoritative validation path
+## Validation path
 
-Issue #55 established server-side **compile-without-simulation** validation for AI-authored registry writes using byte-identical vendored copies of the production configuration, initializer and controller compiler modules.
+AI-authored Experiment writes use server-side **compile-without-simulation** validation aligned with the production browser/compiler contracts.
 
-Issue #63 adds one further shared software boundary: `web/src/runtime/contract.js` (`vlab.runtime/0.1`). The MCP vendors that file byte-identically and CI asserts parity, just like the three compiler modules.
+Validation covers, as applicable:
 
-Validation therefore covers:
+- configuration parsing and generic runtime requirements;
+- initialization parsing/evaluation under simulator-owned validation semantics;
+- initial-state/runtime compatibility;
+- controller parsing/type/capability validation;
+- environment/controller compatibility for registered environment capabilities;
+- Metrics parsing/type/capability validation;
+- stable metric IDs, name/unit metadata and supported sampling declarations.
 
-- configuration parsing;
-- simulator-generic runtime requirements;
-- initializer parsing/evaluation with a deterministic simulator-owned validation seed;
-- initial-state compatibility with the declared runtime arena;
-- controller parsing/type/capability validation using the numeric parameters present in that experiment's own configuration.
+Invalid writes are rejected with structured diagnostics. Validation does not run the scientific simulation and does not add missing scientific semantics.
 
-It does not inject model-specific scientific values and does not run the simulation.
+## Metrics contract
 
-Invalid source writes are rejected. The MCP returns structured diagnostics and the AI repairs the source conversationally before retrying.
+Metrics is compulsory as an Experiment artifact because measurement is part of the single-run Experiment definition. Its content may be empty.
 
-## Machine-readable contract
+Current language: `python-vlab-metrics/0.1`.
 
-`supabase/functions/experiment-mcp/authoring.js` exports `AUTHORING_CONTRACT` (`vlab.authoring/0.3`). `read_workspace(include_authoring_contract=true)` exposes it through the existing compact five-tool MCP.
+Current IR: `vlab.metrics-ir/0.1`.
 
-The science-neutral runtime contract currently requires these simulator interface fields in `config_source`:
+Current measurement phase: `post-physics-wrapped-state/1`.
 
-- `N` — positive integer agent count;
-- `ARENA_SIZE` — positive finite scalar;
-- `CONTROL_DT` — positive finite scalar compatible with the simulator integration step;
-- `SENSOR_NOISE` — non-negative finite scalar;
-- `EXPERIMENT_DURATION` — positive finite scalar;
-- `INTERACTION_RADIUS` — positive finite scalar used by neighbour observations;
-- `MAX_FORWARD_SPEED` — positive finite scalar actuator limit;
-- `MAX_ANGULAR_SPEED` — positive finite scalar actuator limit.
+Metric declaration shape:
 
-The simulator-owned integration and metric steps are exposed as runtime contract constants. Additional configuration names remain experiment-defined. Finite numeric values are automatically available to `python-vlab` controllers as scalar parameters.
+```python
+@metric(id="stable.id", name="Display name", unit=None, sampling=every(0.1))
+def metric(snapshot):
+    ...
+    return scalar
+```
 
-These names describe simulator/runtime interfaces, not any specific scientific model.
+Supported sampling forms are periodic `every(seconds)` and `final()`, subject to runtime exact-schedulability rules.
 
-## Production browser alignment
+Metrics observe a versioned read-only global snapshot. Current snapshot fields include scientific time, agent count and agent position/heading information required by the Metrics contract. This global measurement access does **not** become controller perception. Metrics cannot mutate simulation state, use arbitrary RNG, access controller-private state, filesystem, network or unrestricted simulator internals.
 
-The production browser now consumes the same generic runtime contract for experiment setup. This removes the old generic `compileSetup` dependency on Active-Elastic-specific parameter names.
+## Fine-grained MCP authoring
 
-The pre-#63 built-in Active Elastic source still uses its historical names. A temporary compatibility adapter exists **only in the production browser** so that the built-in experiment keeps its current behavior during this refactor. Those legacy model-specific aliases are deliberately absent from the MCP contract and runtime-contract vendor.
+The deployed `author_metrics_results` tool supports:
 
-Registry-authored experiments use the generic runtime names directly.
+- `read`
+- `create_metric`
+- `update_metric`
+- `remove_metric`
+- `upsert_panel`
+- `remove_panel`
 
-The key invariant is:
+Metric updates preserve stable metric identity. Changing an ID requires explicit remove/create. Removing a metric prunes saved Results bindings that refer to it.
 
-> An experiment must not be accepted as runnable by MCP and then fail production setup merely because the browser has hidden model-specific required keys unknown to the authoring contract.
+Whole-Experiment `create_experiment` / `edit_experiment` remain available for canonical artifact-array authoring. Fine-grained metric edits should use `author_metrics_results` so unrelated artifacts are not rewritten.
 
-If a genuinely required generic runtime setting is missing, validation rejects the write first with a structured `runtime-parameter` diagnostic.
+## Results presentation contract
 
-## Genuine owner acceptance fixture
+Results presentation is **not** part of the scientific Experiment revision.
 
-The owner used Grok on the VU identity to create a new experiment named `Simple Random Walk` without copying Active Elastic. The science-free `vlab.authoring/0.2` contract originally accepted it.
+Schema: `vlab.results-presentation/1`.
 
-That test exposed the hidden production mismatch: the experiment omitted generic runtime settings that the current kernel ultimately needs, while the browser still expected Active-Elastic-specific aliases.
+Initial supported panel type: `time-series`.
 
-Under `vlab.authoring/0.3`, the same old revision is intentionally rejected with a precise generic runtime diagnostic rather than being falsely accepted. Grok/Claude can then add the required simulator-runtime settings and retry conversationally.
+A panel has a stable presentation-local ID and an ordered non-empty list of stable metric IDs. Multiple metrics can share a panel; the same metric can appear in multiple panels.
 
-## Extensibility
+Presentation state has its own optimistic revision. Changing panels therefore does not increment the scientific Experiment revision. The browser loads saved connector-authored presentation state when present; otherwise it uses the normal Lab default layout.
 
-The contract presents observations, actions, and intrinsics as typed/versioned capability descriptors rather than treating today's vocabulary as permanent.
+No arbitrary plotting code is accepted through the MCP contract.
 
-Adding a future capability still requires simulator implementation and compiler support. Student-side AI cannot add simulator capabilities. Unsupported needs are surfaced as structured capability diagnostics and are tracked separately by issue #58 for the feature-request/triage workflow.
+## Capability requests
 
-The controller IR remains a versioned semantic boundary independent of the browser/WASM deployment target. Future native/HPC or export backends can consume the same experiment semantics without changing the student authoring model.
+Unsupported simulator capabilities are not emulated by the authoring layer.
 
-## Randomness
+For Professor users, supported validation paths can expose the durable `vlab.capability-request/1` request workflow. The lifecycle-hook vocabulary includes:
 
-Issue #63 does not refactor RNG ownership. The planned canonical RNG/domain-separated-stream refactor remains #57.
+```text
+setup | initialize | control | measure | finalize
+```
 
-## Issue boundaries
+Professor approval of a capability request is not implementation authorization. The standing handoff remains:
 
-- **#55 complete:** science-free authoring contract + parser/compiler validation.
-- **#63:** align authoring validity with the generic production runtime/setup boundary; eliminate false-positive valid experiments.
-- **#46 after #63:** production registry authentication/list/load/save/synchronization, decomposed into focused implementation passes.
+`research AI request → Professor review → developer design discussion → explicit owner implementation approval → trusted implementation/deploy → research AI resumes`
 
-Scientific validation or retuning of Active Elastic is outside these software-contract issues.
+## Security boundary
+
+Experiment-domain AI clients have no GitHub/repository, shell, deployment, arbitrary filesystem, arbitrary SQL, Supabase-admin or simulator-development privilege. They also do not receive general simulator-run/control or raw run-result access merely because they can author Experiment/Results definitions.
+
+## Current accepted scientific fixture
+
+The contract itself remains science-neutral. Separately, the product has an owner-authorized Active Elastic acceptance fixture used by #198/#201:
+
+- `polarization`
+- `psi = ||sum_i heading_i|| / N`
+- sampled every 0.1 s for Virtual Lab acceptance/display
+
+That scientific definition is recorded in `PROJECT_CONTROL.md` / `PROJECT_STATE.md`, not embedded as a generic requirement of `vlab.authoring/0.6`.
