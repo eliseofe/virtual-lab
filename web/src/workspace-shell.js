@@ -1,6 +1,7 @@
 import "./registry-ui-v3.js";
 import "./showcase.js";
 import "./showcase-professor-placement.js";
+import "./showcase-clarity.js";
 import "./results-presentation-bridge.js";
 import "./authoring-workspace.js";
 import "./collection-organization.js";
