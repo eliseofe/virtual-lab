@@ -1,120 +1,121 @@
 # Experiment Registry Backend
 
-Status: issue #42 deployed and validated. Production Virtual Lab is not connected by this work.
+Status: **production Supabase registry/Auth/MCP backend is deployed and integrated with Virtual Lab**.
 
-## Backend choice
+Current sequencing is in `PROJECT_CONTROL.md`; deployed versions/evidence are in `PROJECT_STATE.md`.
+
+## Backend
 
 Backend: Supabase Free plan.
 
-Deployed project:
-- organization: `SeldonTeam`;
-- project: `virtual-lab`;
-- region: `ap-south-1`;
-- project reference: `izdmmudfrmqhvlgepwes`.
+Production project:
+
+- project: `virtual-lab`
+- project reference: `izdmmudfrmqhvlgepwes`
+- region: `ap-south-1`
 
 The project reference is an identifier, not a secret.
 
-Current free-tier assumptions were verified against Supabase pricing/billing documentation before deployment. The experiment registry stores small text/metadata records and does not run simulations, so initial educational use is expected to remain far below free-tier limits. Re-check vendor limits periodically.
+Simulation compute remains local in the browser/WASM worker. Supabase stores lightweight Experiment/identity/presentation/capability-request state and serves the authenticated MCP Edge Function; it is not the scientific compute backend or bulk result-data store.
 
-Official references:
-- https://supabase.com/pricing
-- https://supabase.com/docs/guides/platform/billing-on-supabase
-- https://supabase.com/docs/guides/database/postgres/row-level-security
+## Current data model
 
-## Data model
+### `profiles`
 
-Canonical migration: `supabase/migrations/20260911193000_experiment_registry_v1.sql`.
+One registry profile per Supabase Auth user. Current experiment-domain roles include `student` and `professor`.
 
-### profiles
-One registry profile per Supabase Auth user. The Auth UUID is the stable authorization key; the display identity is provider-independent.
+### `experiment_collections`
 
-### experiment_collections
-One-level optional organization under each owner. Collections are not filesystem paths.
+Optional one-level organization under each owner. Collections are not filesystem paths.
 
-### experiments
-Canonical mutable working records containing owner, optional collection, compatibility markers, title/description, active/archived lifecycle, visibility marker, internal revision, actor provenance, and exactly the three student artifacts: configuration, initializer, and controller source.
+### `experiments`
 
-### preserved_experiment_snapshots
-Reserved independent snapshots for later submission/assessment/curation work. Their working-experiment reference uses `ON DELETE SET NULL`, so deleting a working copy cannot destroy a preserved snapshot.
+Canonical mutable working Experiment records with owner, optional collection, lifecycle/visibility, scientific revision and canonical ordered `artifacts[]`.
 
-Ordinary authenticated clients receive no access to preserved snapshots in #42. #45 owns professor/submission/curation permissions.
+Current required core artifacts are:
+
+1. configuration
+2. initialization
+3. controller
+4. metrics
+
+Current registry/artifact contracts are `vlab.registry-experiment/3` and `vlab.experiment-artifacts/3`. Legacy three-source fields remain compatibility mirrors/input only and must not discard Metrics.
+
+### `experiment_results_presentations`
+
+Non-scientific Results presentation state under `vlab.results-presentation/1`.
+
+It stores generic panel bindings by stable metric IDs with an independent optimistic presentation revision. Presentation changes do not bump the scientific Experiment revision.
+
+### `capability_requests`
+
+Durable Professor-originated requests for missing simulator/authoring capabilities. Request lifecycle is separate from trusted implementation authorization.
+
+### `preserved_experiment_snapshots`
+
+Independent preserved snapshots used by submission/assessment/curation architecture. Working-Experiment deletion must not silently destroy preserved snapshots.
 
 ## Authorization
 
-RLS is enabled on all exposed registry tables.
+RLS is the authoritative database boundary.
 
-- `anon` receives no registry-table privileges.
-- profiles are self-readable/self-editable only;
-- collections are owner-only;
-- private experiments are owner-only;
-- public experiments are readable by authenticated users;
-- experiment writes/deletes are owner-only;
-- preserved snapshots are unavailable to ordinary clients;
-- browser/AI clients never receive `service_role` credentials.
+- browser/AI clients do not receive `service_role` credentials;
+- private Experiment writes are owner-scoped;
+- visibility rules control readable non-owned Experiments;
+- Results-presentation writes are owner-scoped;
+- Professor-only capability request behavior is enforced by role/domain rules;
+- experiment-domain authentication never grants GitHub, shell, deployment or simulator-source rights.
 
-Authorization uses `auth.uid()` ownership predicates and does not rely on user-editable metadata.
+## Revision semantics
 
-## Collection ownership invariant
+Scientific Experiment changes use `experiments.revision` and optimistic concurrency. Stale writes are rejected.
 
-An experiment may reference only a collection owned by the same experiment owner. A database trigger enforces this invariant in addition to RLS/client checks.
+Results presentation has a separate revision because layout/panel edits are workspace state rather than scientific Experiment changes.
 
-## Revision and optimistic concurrency
+## Production clients
 
-Experiments start at revision `1`; accepted updates increment the revision atomically.
+Production Virtual Lab is connected to the registry and can list/load/save canonical Experiment artifacts.
 
-Clients update by both experiment ID and the base revision previously read. One updated row means success; zero updated rows means stale or inaccessible state and must be surfaced as a conflict rather than retried blindly.
+Production `experiment-mcp` provides authenticated AI-facing Experiment authoring over the same domain boundary.
 
-## Lifecycle
+Current MCP deployment:
 
-`active` experiments appear in the normal workspace. `archived` experiments remain stored and restorable.
+- server `3.0.0`
+- interface `8`
+- authoring `vlab.authoring/0.6`
+- Edge Function version `16`
 
-Permanent deletion is an explicit owner-controlled destructive action. Preserved snapshots remain intact even if the corresponding working experiment is deleted.
+The MCP is pinned to merged #200 commit `31239dea1174cddf0c4d2d5578034ca55e6b941d`.
 
-## Sharing boundary
+## Scientific result storage
 
-The schema reserves `private`, `shared`, and `public`, but #42 implements no user-to-user grant semantics yet. #45 owns explicit sharing/submission/curation authorization.
+Raw single-run metric data is **not** stored in Supabase as the canonical archive.
 
-## Realtime
+#199 establishes user-visible local filesystem persistence under:
 
-Realtime is optional. Revision-aware synchronization is the correctness mechanism. #44 may use Realtime, polling, or explicit refresh without changing the domain contract.
+```text
+<VirtualLab root>/
+  <Experiment>/
+    runs/
+      <metric-id>_000001.csv
+      ...
+    studies/
+      <Study>/
+        runs/
+          ...
+```
 
-## Deployment validation
+There is no per-run directory. Compact internal bookkeeping remains outside the ordinary `runs/` directory.
 
-The migration was deployed to the live Supabase project as `experiment_registry_v1`.
+## Security advisor state
 
-Validation used two temporary Auth identities, Student A and Student B, under the PostgreSQL `authenticated` role with authenticated JWT claims. All temporary identities and data were deleted afterward.
+After #200 migration, the new Results-presentation table had no security-advisor finding. Known project-level notices at that checkpoint were:
 
-Observed results:
+- `preserved_experiment_snapshots`: RLS enabled with no ordinary-client policy, an existing intentional/reviewable state;
+- leaked-password protection disabled: Auth hardening warning, independent of registry RLS isolation.
 
-1. Both Auth identities generated distinct registry profiles.
-2. Student A created a collection and private experiment and could read it.
-3. Student B saw zero rows for Student A's private experiment.
-4. Student B updated zero rows when attempting to modify Student A's private experiment.
-5. Student B created and read an independent private experiment.
-6. Student A saw zero rows for Student B's private experiment.
-7. Archiving an owned experiment advanced its internal revision.
-8. A write constrained to the stale prior revision updated zero rows.
-9. The three source artifacts round-tripped exactly into a preserved snapshot.
-10. Permanent deletion of the working experiment left the preserved snapshot intact.
-11. Temporary test users and data were cleaned up successfully.
+Re-run advisors after material DDL/auth changes.
 
-## Security advisor
+## Zero-cost boundary
 
-After migration, Supabase reported:
-
-- one `INFO` finding that `public.preserved_experiment_snapshots` has RLS enabled but no policies. This is intentional in #42: ordinary clients have no grants and #45 will introduce explicit policies;
-- one Auth warning that leaked-password protection is disabled. This is an account-level password-hardening setting, not an RLS isolation failure; reconsider it when end-user password authentication is configured.
-
-References:
-- https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
-- https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
-
-## Security boundary
-
-The registry has no GitHub repository credentials, deployment credentials, shell capability, arbitrary filesystem capability, or simulator execution API. Production simulator integration remains deferred to #46.
-
-## Acceptance state
-
-#42 backend requirements are satisfied: canonical remote storage, two-user isolation, collection organization, create/update/archive/delete primitives, internal revision protection, preserved-snapshot survival, and no simulator-development path have all been deployed and validated.
-
-Next: #43 exposes the same experiment-domain operations through an authenticated experiment-only MCP adapter, still without modifying the production simulator.
+The current architecture uses Supabase Free for lightweight collaboration/auth/MCP state while keeping simulation compute and raw scientific data local. Vendor limits should be rechecked periodically, but the baseline must not silently introduce a mandatory paid infrastructure dependency.
