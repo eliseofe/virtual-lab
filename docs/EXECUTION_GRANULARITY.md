@@ -37,3 +37,5 @@ If two changes truly cannot be deployed safely except atomically, document why b
 ## Reporting rule
 
 Never hand back a mixed status such as “part of A is live, part of B is coded, another layer is pending” when a cleaner ticket boundary was available. If work encounters a failure, finish or roll back to the current ticket boundary, state exactly what failed, and decide the repair within that ticket before advancing.
+
+When referring to GitHub work in owner-facing reports, pair every issue number with its semantic description. Never require the owner to remember or scroll back to decode a bare issue number.
