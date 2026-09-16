@@ -2,11 +2,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.111.0";
 import { applyExperimentArtifacts, captureExperimentArtifacts } from "./experiment-artifacts.js";
 
 const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYbJUyik9zN7WA_r4ie2P5d";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYik9zN7WA_r4ie2P5d";
 const AUTH_STORAGE_KEY = "vlab-production-registry-auth-v1";
 const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 const SHOWCASE_QUERY = "showcase";
-const BUILTIN_SHOWCASE_ID = "builtin-active-elastic";
+const CATALOG_SOURCE_PREFIX = "catalog:";
+const REGISTRY_SCHEMA_VERSION = "vlab.registry-experiment/3";
+const ARTIFACT_INTERFACE_VERSION = "vlab.experiment-artifacts/3";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { storageKey: AUTH_STORAGE_KEY },
@@ -17,31 +19,19 @@ const experimentPanel = experimentSelect?.closest(".experiment-panel");
 const accountPanel = document.querySelector(".registry-panel");
 const registrySaveState = document.querySelector(".registry-save-state");
 const applySetup = document.querySelector("#apply-setup");
+const setupFeedback = document.querySelector("#setup-feedback");
+const runButton = document.querySelector("#run");
+const runState = document.querySelector("#run-state");
 const metadataRevision = document.querySelector(".metadata-panel .panel-heading strong");
 const utilityLaunchers = document.querySelector(".utility-launchers");
 
-if (!experimentSelect || !experimentPanel || !accountPanel || !registrySaveState || !applySetup || !metadataRevision || !utilityLaunchers) {
+if (!experimentSelect || !experimentPanel || !accountPanel || !registrySaveState || !applySetup || !setupFeedback || !runButton || !runState || !metadataRevision || !utilityLaunchers) {
   throw new Error("Showcase integration UI mismatch.");
 }
 
-const BUILTIN_VALUE = experimentSelect.value;
-const BUILTIN_TITLE = experimentSelect.selectedOptions?.[0]?.textContent?.trim() || "Active Elastic";
-const builtinPayload = captureExperimentArtifacts();
-const builtinEntry = Object.freeze({
-  showcase_id: BUILTIN_SHOWCASE_ID,
-  source_experiment_id: null,
-  source_owner_id: null,
-  source_revision: null,
-  title: BUILTIN_TITLE,
-  description: "Canonical built-in Virtual Lab experiment.",
-  artifacts: builtinPayload.artifacts,
-  published_at: null,
-  builtin: true,
-});
-
 let sessionUser = null;
 let profile = null;
-let entries = [builtinEntry];
+let entries = [];
 let currentShowcase = null;
 let busy = false;
 
@@ -61,10 +51,15 @@ function installStyles() {
     .showcase-message:empty { display: none; }
     .showcase-message[data-state="error"] { color: #9e2d29; }
     .showcase-list { display: grid; align-content: start; gap: 8px; overflow: auto; padding: 0 18px 18px; }
+    .showcase-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: stretch; }
     .showcase-entry { display: grid; gap: 5px; width: 100%; padding: 11px 12px; text-align: left; border: 1px solid #dfe7ea; border-radius: 11px; background: #fff; }
     .showcase-entry:hover { background: #f6f9fa; }
     .showcase-entry strong { font-size: 13px; }
     .showcase-entry span { color: #718087; font-size: 10.5px; line-height: 1.4; }
+    .showcase-entry .showcase-entry-action { color: #315e71; font-size: 11px; font-weight: 750; }
+    .showcase-entry-row[data-active="true"] .showcase-entry { border-color: #7ea8ba; background: #f0f7fa; box-shadow: inset 3px 0 0 #4f8399; }
+    .showcase-entry-row[data-active="true"] .showcase-entry-action { color: #214c60; }
+    .showcase-entry-remove { min-width: 88px; padding-inline: 12px; }
     .showcase-current { display: grid; gap: 7px; padding: 10px 12px; border: 1px solid #c9dce4; border-radius: 11px; background: #f5fafc; }
     .showcase-current[hidden] { display: none !important; }
     .showcase-current-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
@@ -79,7 +74,9 @@ function installStyles() {
     @media (max-width: 680px) {
       .showcase-dialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
       .showcase-shell { min-height: min(620px, calc(100vh - 20px)); }
-      .showcase-curation-actions button { min-height: 44px; }
+      .showcase-head-actions button, .showcase-curation-actions button, .showcase-entry-remove { min-height: 44px; }
+      .showcase-entry-row { grid-template-columns: 1fr; }
+      .showcase-entry-remove { width: 100%; }
     }
   `;
   document.head.append(style);
@@ -124,10 +121,7 @@ function buildUi() {
   const promote = document.createElement("button");
   promote.type = "button";
   promote.className = "primary";
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.textContent = "Remove from Showcase";
-  curationActions.append(promote, remove);
+  curationActions.append(promote);
   curation.append(curationTitle, curationStatus, curationActions);
 
   const message = document.createElement("p");
@@ -162,9 +156,9 @@ function buildUi() {
   experimentPanel.append(current);
 
   return {
-    launcher, dialog, shell, refresh, close, message, list,
+    launcher, dialog, refresh, close, message, list,
     current, currentTitle, currentMeta, saveCopy, leave,
-    curation, curationStatus, promote, remove,
+    curation, curationStatus, promote,
   };
 }
 
@@ -180,6 +174,39 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(date);
+}
+
+function activeShowcaseId() {
+  return new URL(window.location.href).searchParams.get(SHOWCASE_QUERY);
+}
+
+function currentRegistryId() {
+  const value = experimentSelect.value;
+  return typeof value === "string" && value.startsWith("registry:") ? value.slice("registry:".length) : null;
+}
+
+function currentCatalogSource() {
+  if (currentRegistryId()) return null;
+  const value = experimentSelect.value?.trim();
+  if (!value) return null;
+  return {
+    key: `${CATALOG_SOURCE_PREFIX}${value}`,
+    title: experimentSelect.selectedOptions?.[0]?.textContent?.trim() || value,
+  };
+}
+
+function currentRegistryDirtyState() {
+  return registrySaveState.dataset?.state || "";
+}
+
+function activeEntryForExperiment(experimentId) {
+  if (!experimentId) return null;
+  return entries.find((entry) => entry.source_experiment_id === experimentId) || null;
+}
+
+function activeEntryForCatalog(sourceKey) {
+  if (!sourceKey) return null;
+  return entries.find((entry) => entry.source_key === sourceKey) || null;
 }
 
 async function loadSessionAndProfile() {
@@ -200,8 +227,7 @@ async function loadSessionAndProfile() {
 async function loadEntries() {
   const { data, error } = await supabase.rpc("list_showcase_experiments");
   if (error) throw error;
-  const curated = Array.isArray(data) ? data : [];
-  entries = [builtinEntry, ...curated];
+  entries = Array.isArray(data) ? data : [];
   renderList();
   await syncCurationUi();
   return entries;
@@ -209,37 +235,44 @@ async function loadEntries() {
 
 function renderList() {
   ui.list.replaceChildren();
+  const activeId = activeShowcaseId();
   for (const entry of entries) {
+    const row = document.createElement("div");
+    row.className = "showcase-entry-row";
+    row.dataset.active = entry.showcase_id === activeId ? "true" : "false";
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "showcase-entry";
+    button.dataset.showcaseId = entry.showcase_id;
+    button.setAttribute("aria-label", `Open ${entry.title} in Lab and run it`);
+    if (entry.showcase_id === activeId) button.setAttribute("aria-current", "page");
+
     const title = document.createElement("strong");
     title.textContent = entry.title;
     const meta = document.createElement("span");
-    if (entry.builtin) {
-      meta.textContent = "Built-in · Public example";
-    } else {
-      const date = formatDate(entry.published_at);
-      meta.textContent = `Curated · revision ${entry.source_revision}${date ? ` · ${date}` : ""}`;
-    }
-    button.append(title, meta);
+    const date = formatDate(entry.published_at);
+    const revision = entry.source_revision == null ? "" : ` · revision ${entry.source_revision}`;
+    meta.textContent = `Curated${revision}${date ? ` · ${date}` : ""}`;
+    const action = document.createElement("span");
+    action.className = "showcase-entry-action";
+    action.textContent = entry.showcase_id === activeId ? "Loaded in Lab" : "Open & run";
+    button.append(title, meta, action);
     button.addEventListener("click", () => openEntry(entry));
-    ui.list.append(button);
+    row.append(button);
+
+    if (profile?.role === "professor") {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "showcase-entry-remove";
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", `Remove ${entry.title} from Showcase`);
+      remove.addEventListener("click", () => run(() => removeEntry(entry, remove)));
+      row.append(remove);
+    }
+
+    ui.list.append(row);
   }
-}
-
-function currentRegistryId() {
-  const value = experimentSelect.value;
-  return typeof value === "string" && value.startsWith("registry:") ? value.slice("registry:".length) : null;
-}
-
-function currentRegistryDirtyState() {
-  return registrySaveState.dataset?.state || "";
-}
-
-function activeEntryForExperiment(experimentId) {
-  if (!experimentId) return null;
-  return entries.find((entry) => !entry.builtin && entry.source_experiment_id === experimentId) || null;
 }
 
 async function readCurrentOwnedExperiment() {
@@ -289,45 +322,48 @@ async function ensureCurrentSavedForPromotion() {
 
 async function syncCurationUi() {
   const professor = profile?.role === "professor";
-  ui.curation.hidden = !professor;
-  if (!professor) return;
+  ui.curation.hidden = !professor || Boolean(currentShowcase);
+  if (!professor || currentShowcase) return;
 
-  if (!currentRegistryId()) {
-    ui.curationStatus.textContent = `${BUILTIN_TITLE} is already in Showcase.`;
-    ui.promote.hidden = true;
-    ui.remove.hidden = true;
+  const registryId = currentRegistryId();
+  if (registryId) {
+    const experiment = await readCurrentOwnedExperiment();
+    if (!experiment) {
+      ui.curationStatus.textContent = "Open one of your Experiments to curate it.";
+      ui.promote.hidden = true;
+      return;
+    }
+
+    const state = currentRegistryDirtyState();
+    const active = activeEntryForExperiment(experiment.id);
+    if (active?.source_revision === experiment.revision && state === "saved") {
+      ui.curationStatus.textContent = `${experiment.title} is in Showcase.`;
+      ui.promote.hidden = true;
+      return;
+    }
+
+    ui.promote.hidden = false;
+    ui.promote.textContent = active ? "Publish current revision" : "Promote to Showcase";
+    ui.promote.disabled = busy || state === "conflict";
+    ui.curationStatus.textContent = state === "conflict"
+      ? "Resolve the save conflict before publishing."
+      : active
+        ? `Showcase has revision ${active.source_revision}; publish the current version when ready.`
+        : "Publish the current Experiment.";
     return;
   }
 
-  const experiment = await readCurrentOwnedExperiment();
-  if (!experiment) {
-    ui.curationStatus.textContent = "Open one of your Experiments to curate it.";
+  const source = currentCatalogSource();
+  if (!source) {
+    ui.curationStatus.textContent = "Open an Experiment to curate it.";
     ui.promote.hidden = true;
-    ui.remove.hidden = true;
     return;
   }
-
-  const state = currentRegistryDirtyState();
-  const active = activeEntryForExperiment(experiment.id);
-
-  if (active?.source_revision === experiment.revision && state === "saved") {
-    ui.curationStatus.textContent = `Revision ${experiment.revision} is in Showcase.`;
-    ui.promote.hidden = true;
-    ui.remove.hidden = false;
-    ui.remove.disabled = busy;
-    return;
-  }
-
-  ui.promote.hidden = false;
-  ui.promote.textContent = active ? "Publish current revision" : "Promote to Showcase";
-  ui.promote.disabled = busy || state === "conflict";
-  ui.remove.hidden = !active;
-  ui.remove.disabled = busy;
-  ui.curationStatus.textContent = state === "conflict"
-    ? "Resolve the save conflict before publishing."
-    : active
-      ? `Showcase has revision ${active.source_revision}; publish the current version when ready.`
-      : "Publish the current Experiment.";
+  const active = activeEntryForCatalog(source.key);
+  ui.curationStatus.textContent = active ? `${source.title} is in Showcase.` : "Publish the current Experiment.";
+  ui.promote.hidden = Boolean(active);
+  ui.promote.textContent = "Promote to Showcase";
+  ui.promote.disabled = busy;
 }
 
 async function promoteCurrent() {
@@ -336,43 +372,67 @@ async function promoteCurrent() {
 
   busy = true;
   ui.promote.disabled = true;
-  ui.remove.disabled = true;
   try {
-    const experiment = await ensureCurrentSavedForPromotion();
-    ui.curationStatus.textContent = `Publishing ${experiment.title}…`;
-    const { error } = await supabase.rpc("promote_experiment_to_showcase", {
-      p_experiment_id: experiment.id,
-      p_expected_revision: experiment.revision,
+    const registryId = currentRegistryId();
+    if (registryId) {
+      const experiment = await ensureCurrentSavedForPromotion();
+      ui.curationStatus.textContent = `Publishing ${experiment.title}…`;
+      const { error } = await supabase.rpc("promote_experiment_to_showcase", {
+        p_experiment_id: experiment.id,
+        p_expected_revision: experiment.revision,
+      });
+      if (error) throw error;
+      await loadEntries();
+      ui.curationStatus.textContent = `${experiment.title} is in Showcase.`;
+      return;
+    }
+
+    const source = currentCatalogSource();
+    if (!source) throw new Error("Open an Experiment to promote it.");
+    const payload = captureExperimentArtifacts();
+    ui.curationStatus.textContent = `Publishing ${source.title}…`;
+    const { error } = await supabase.rpc("promote_catalog_to_showcase", {
+      p_source_key: source.key,
+      p_title: source.title,
+      p_description: "",
+      p_schema_version: REGISTRY_SCHEMA_VERSION,
+      p_interface_version: ARTIFACT_INTERFACE_VERSION,
+      p_artifacts: payload.artifacts,
     });
     if (error) throw error;
     await loadEntries();
-    ui.curationStatus.textContent = `${experiment.title} is in Showcase.`;
+    ui.curationStatus.textContent = `${source.title} is in Showcase.`;
   } finally {
     busy = false;
     await syncCurationUi();
   }
 }
 
-async function removeCurrent() {
+async function removeEntry(entry, button) {
   if (busy) return;
-  const experiment = await readCurrentOwnedExperiment();
-  if (!experiment) throw new Error("Open the source Experiment first.");
   if (profile?.role !== "professor") throw new Error("Professor role required.");
+  if (!window.confirm(`Remove “${entry.title}” from Showcase?`)) return;
 
   busy = true;
-  ui.promote.disabled = true;
-  ui.remove.disabled = true;
-  ui.curationStatus.textContent = `Removing ${experiment.title}…`;
+  button.disabled = true;
+  const original = button.textContent;
+  button.textContent = "Removing…";
   try {
-    const { error } = await supabase.rpc("remove_experiment_from_showcase", {
-      p_experiment_id: experiment.id,
+    const { data, error } = await supabase.rpc("remove_showcase_entry", {
+      p_showcase_id: entry.showcase_id,
     });
     if (error) throw error;
+    if (data !== true) throw new Error(`“${entry.title}” is no longer an active Showcase entry.`);
+    if (currentShowcase?.showcase_id === entry.showcase_id) {
+      clearShowcaseLocation();
+      return;
+    }
     await loadEntries();
-    ui.curationStatus.textContent = `${experiment.title} was removed from Showcase.`;
+    setMessage(`Removed “${entry.title}” from Showcase.`);
   } finally {
     busy = false;
-    await syncCurationUi();
+    button.disabled = false;
+    button.textContent = original;
   }
 }
 
@@ -407,11 +467,11 @@ async function waitForRegistryReady() {
   }
 }
 
-async function forceBuiltInWorkspace() {
-  const builtin = [...experimentSelect.options].find((option) => !option.value.startsWith("registry:"));
-  if (!builtin) return;
-  if (experimentSelect.value !== builtin.value) {
-    experimentSelect.value = builtin.value;
+async function forceCatalogWorkspace() {
+  const catalog = [...experimentSelect.options].find((option) => !option.value.startsWith("registry:"));
+  if (!catalog) return;
+  if (experimentSelect.value !== catalog.value) {
+    experimentSelect.value = catalog.value;
     experimentSelect.dispatchEvent(new Event("change", { bubbles: true }));
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
@@ -423,6 +483,24 @@ async function waitForSimulatorReady() {
   if (applySetup.disabled) throw new Error("Simulator is not ready yet.");
 }
 
+async function waitForSetupApplied() {
+  const deadline = performance.now() + 15000;
+  while (performance.now() < deadline) {
+    const state = setupFeedback.dataset.state;
+    if (state === "success") return;
+    if (state === "error") throw new Error(setupFeedback.textContent?.trim() || "Showcase Experiment could not be applied.");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("Applying the Showcase Experiment timed out.");
+}
+
+async function startShowcaseRun() {
+  const deadline = performance.now() + 15000;
+  while (runButton.disabled && performance.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+  if (runButton.disabled) throw new Error("Showcase Experiment is not runnable yet.");
+  if (runState.textContent?.trim().toLowerCase() !== "running") runButton.click();
+}
+
 function decorateShowcaseSource(entry) {
   currentShowcase = entry;
   const title = experimentPanel.querySelector(".experiment-current-title");
@@ -431,18 +509,18 @@ function decorateShowcaseSource(entry) {
   if (title) title.textContent = entry.title;
   if (origin) {
     origin.dataset.kind = "readonly";
-    origin.textContent = entry.builtin ? "Showcase · Built-in" : "Showcase · Read-only";
+    origin.textContent = "Showcase · Read-only";
   }
   if (location) location.textContent = "Showcase";
-  metadataRevision.textContent = entry.builtin ? "showcase · built-in" : `showcase · source r${entry.source_revision}`;
+  metadataRevision.textContent = entry.source_revision == null ? "showcase · curated snapshot" : `showcase · source r${entry.source_revision}`;
   ui.current.hidden = false;
   ui.currentTitle.textContent = entry.title;
-  ui.currentMeta.textContent = entry.builtin ? "Built-in public example." : `Curated revision ${entry.source_revision}.`;
+  ui.currentMeta.textContent = entry.source_revision == null ? "Curated snapshot." : `Curated revision ${entry.source_revision}.`;
   ui.saveCopy.hidden = !sessionUser;
 }
 
 async function loadShowcaseFromLocation() {
-  const showcaseId = new URL(window.location.href).searchParams.get(SHOWCASE_QUERY);
+  const showcaseId = activeShowcaseId();
   if (!showcaseId) return;
   const entry = entries.find((candidate) => candidate.showcase_id === showcaseId);
   if (!entry) {
@@ -451,11 +529,13 @@ async function loadShowcaseFromLocation() {
   }
 
   await waitForRegistryReady();
-  await forceBuiltInWorkspace();
+  await forceCatalogWorkspace();
   applyExperimentArtifacts({ artifacts: entry.artifacts });
   await waitForSimulatorReady();
   applySetup.click();
   decorateShowcaseSource(entry);
+  await waitForSetupApplied();
+  await startShowcaseRun();
 }
 
 async function savePrivateCopy() {
@@ -510,7 +590,7 @@ async function run(action) {
     console.error(error);
     const message = error instanceof Error ? error.message : String(error);
     setMessage(message, "error");
-    if (profile?.role === "professor") ui.curationStatus.textContent = message;
+    if (profile?.role === "professor" && !ui.curation.hidden) ui.curationStatus.textContent = message;
   }
 }
 
@@ -524,7 +604,6 @@ ui.dialog.addEventListener("click", (event) => {
   if (event.target === ui.dialog) ui.dialog.close();
 });
 ui.promote.addEventListener("click", () => run(promoteCurrent));
-ui.remove.addEventListener("click", () => run(removeCurrent));
 ui.saveCopy.addEventListener("click", () => run(savePrivateCopy));
 ui.leave.addEventListener("click", clearShowcaseLocation);
 experimentSelect.addEventListener("change", () => {
