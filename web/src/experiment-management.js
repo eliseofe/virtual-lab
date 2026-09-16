@@ -19,6 +19,7 @@ function installStyles() {
   style.dataset.vlabExperimentManagement = "";
   style.textContent = `
     .experiment-current { margin-bottom: 0 !important; padding-bottom: 0 !important; border-bottom: 0 !important; }
+    .experiment-location[data-management-redundant="true"] { display: none !important; }
     .experiment-management { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5ebee; }
     .experiment-management[hidden] { display: none !important; }
     .experiment-management-status { margin: 0; min-height: 0; color: #64757c; font-size: 11.5px; line-height: 1.4; }
@@ -115,7 +116,9 @@ function simplifyIdentity() {
 
   const location = document.querySelector(".experiment-location");
   const locationText = location?.textContent?.trim();
-  if (location) location.hidden = locationText === "Built-in" || locationText === "No collection";
+  if (location) {
+    location.dataset.managementRedundant = String(locationText === "Built-in" || locationText === "No collection");
+  }
 
   const save = document.querySelector(".registry-save-actions .primary");
   const saveAsNew = document.querySelector(".registry-save-actions button:not(.primary)");
