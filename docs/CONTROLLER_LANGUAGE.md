@@ -1,82 +1,72 @@
 # Controller Authoring and Compilation
 
+Status: **current deployed controller architecture**.
+
 ## Purpose
 
-Researchers must be able to see, understand, edit, and deliberately break the local controller rule without learning Rust or interacting with simulator internals. At the same time, execution must remain efficient enough that browser-local and future workstation/HPC runs do not pay an interpreter boundary on every agent/control step.
+Researchers can inspect/edit constrained Python-like controller source without learning Rust or receiving simulator internals. Execution remains compiled/efficient: there is no Python interpreter crossing per agent/control step.
 
 ## Authoring model
 
-The first controller language is a deliberately constrained Python-like language, working name `python-vlab`.
+Current controller language: `python-vlab/0.1`.
 
-A controller is conceptually stateful:
+Conceptually a controller is a stateful local agent program:
 
 ```python
-class Agent(Controller):
-    def step(self, observation):
+class MyAgent(Agent):
+    def step(self, obs):
         ...
-        return action
+        return Motion(forward, turning)
 ```
 
-The actual Round 1 surface syntax should be chosen to make the Active Elastic Model readable and recognizable while keeping compilation semantics explicit.
+The language deliberately supports only a constrained subset required by the advertised machine-readable capability contract. General Python compatibility is not a goal.
 
-## Scientific restrictions
+## Scientific information boundary
 
-Controller source has access only to its declared scientific interface. In particular it does not receive:
+Controller source receives only declared local observations/capabilities. Current restrictions include no unrestricted access to:
 
 - global simulator/world object;
-- list of all agents;
-- RNG/seed/random stream;
-- wall-clock/simulator clock unless time is explicitly part of the observation model;
-- filesystem;
-- network;
-- arbitrary host-language reflection/imports;
-- direct methods for mutating physical state.
+- global list of agents;
+- global position unless a future owner-approved observation capability explicitly changes that gatekeeper;
+- arbitrary RNG/seed/random stream;
+- filesystem/network;
+- arbitrary imports/reflection/host APIs;
+- direct physical-state mutation.
 
-Private controller state belongs to the controller instance. The simulator may initialize it according to declared semantics, but cannot modify it afterward except by creating/resetting a controller instance for a new run.
+Private controller state belongs to each controller instance and is modified by its own controller execution. The simulator/environment constructs observations and applies returned actions.
+
+The current approved-but-not-implementation-authorized request for controller stochasticity must, if later authorized, expose simulator-owned deterministic/reproducible random operations; it must not introduce arbitrary host RNG.
 
 ## Compilation model
-
-Target pipeline:
 
 ```text
 python-vlab source
     ↓
 parser / AST
     ↓
-syntax + allowed-subset checks
+allowed-subset + semantic/type/capability checks
     ↓
-scientific interface/type checks
+vlab.controller-ir/0.1
     ↓
-versioned controller IR
-    ↓
-WASM/browser executable target
+Rust/WASM runtime execution
 ```
 
-A future native compiler target should consume the same IR/semantics.
+The controller IR is a stable semantic seam intended to support future native/HPC execution without changing researcher-facing scientific meaning.
 
-Round 1 should implement the smallest compiler that faithfully expresses AEM and a useful class of similar local controllers. General Python compatibility is not a goal.
+## Performance
 
-## Performance requirement
+Compilation/validation occurs before execution. The hot control loop executes compiled/runtime structures rather than invoking a host Python interpreter.
 
-Compilation occurs on Apply/Run/revision creation. During execution there is no design in which a Python interpreter is called once per agent or once per control tick.
+Runtime implementations may use compact population/state representations internally while preserving the conceptual semantics of independent stateful agents.
 
-The runtime should favor compact contiguous state representations and efficient population-level execution while preserving the conceptual semantics of independent stateful agents.
+## Errors
 
-## Error model
+Invalid source should fail before scientific execution with source-linked diagnostics where supported. Categories include syntax, unsupported capability/feature, type mismatch, invalid observation/private-state access and runtime-initialization compatibility.
 
-Invalid edits should fail before scientific execution with useful source-linked errors where possible. Errors should distinguish:
+Unsupported scientific capability must not be silently approximated. Professor users may route genuine gaps through the capability-request workflow.
 
-- syntax error;
-- unsupported language feature;
-- type/shape mismatch;
-- forbidden scientific capability;
-- invalid action/observation field;
-- compilation/runtime-initialization failure.
+## Revisions and restart behavior
 
-## Revisions
+Controller source is part of the scientific Experiment revision. Applying a scientific controller edit creates/uses a changed Experiment definition and normally restarts/reinitializes the run.
 
-Controller source is part of the immutable experiment revision that generated a run. Applying a changed controller to a previously executed experiment should eventually create a new experiment/controller revision rather than silently rewriting history.
-
-## Dynamic replacement during a run
-
-Silent hot-swapping is not part of Round 1 and should not be the default later. If scientific interventions require controller changes during a run, they should be modeled explicitly as time/event-stamped interventions included in run provenance.
+Silent controller hot-swapping during an active run is not the baseline. Any future scientific intervention semantics must be explicit, versioned and traceable rather than mutating history invisibly.

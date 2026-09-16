@@ -1,132 +1,134 @@
 # Roadmap
 
-## Round 1 — Lab shell + scientific kernel
+This document describes the long-term product trajectory. It is **not** the current execution authority; current sequencing lives only in `PROJECT_CONTROL.md`.
 
-### Objective
+## Current position — 16 September 2026
 
-Produce the first tangible standalone laboratory and validate the fundamental scientific architecture.
+The project has moved well beyond the original Round 1 planning state:
 
-### User-visible outcome
+- browser Rust/WASM scientific kernel is deployed;
+- editable constrained-Python Configuration, Initialization, Controller and Metrics artifacts are deployed;
+- authenticated Supabase Experiment Registry is deployed and integrated with production Virtual Lab;
+- authenticated provider-independent MCP authoring is deployed;
+- live multi-metric Results are deployed;
+- local-first flat result persistence and whole-Experiment package export are deployed;
+- fine-grained MCP Metrics + Results-panel authoring is deployed.
 
-1. Open the independent GitHub Pages URL.
-2. See a polished scientific application with visual continuity to the owner's academic website while remaining a separate codebase/deployment.
-3. See an experiment collection/selector with the Active Elastic Model experiment selected.
-4. See the live simulation visualization.
-5. See recognizable editable Python-like controller source.
-6. Press Run, Pause, and Restart.
-7. Edit controller source, Apply, restart, and observe changed behavior.
-8. Receive useful compile/validation errors for invalid controller edits.
+The current frontier is **#201 / #195.6**, final end-to-end acceptance of this Metrics/Results path using the already owner-authorized Active Elastic polarization fixture. The scientific definition is already supplied; #201 is not waiting for a new formula.
 
-### Technical outcome
+## Foundation — deployed
 
-- new small Rust scientific kernel compiled to WASM unless a documented technical spike finds a materially stronger option;
-- simulation executed locally in a Web Worker;
-- physics/control/rendering/metric scheduling separated;
+The first laboratory foundation established:
+
+- standalone GitHub Pages application;
+- local browser/WASM execution in a Web Worker;
 - simulator-owned randomness;
-- agent private-state + local-observation/action contract;
-- replaceable neighbourhood index with brute-force correctness oracle;
-- constrained Python authoring language compiled before execution to stable controller IR/executable target;
-- no per-agent/per-control-step Python interpreter boundary;
-- initial versioned experiment schema and experiment collection UI;
-- static GitHub Pages deployment;
-- closed-loop browser verification before handoff.
+- stateful agents with local observation → action boundaries;
+- environment-owned action application;
+- separate physics/control/rendering/metric scheduling;
+- constrained Python-like authoring compiled before execution;
+- versioned Experiment/registry contracts;
+- closed-loop deployed-browser verification;
+- Active Elastic as the first scientific diagnostic/showcase.
 
-### Scientific validation
+These are now baseline architecture, not future roadmap items.
 
-Use the Active Elastic Model from Ferrante et al. PRL 111, 268302 (2013) and NJP 15, 095011 (2013). The objective is scientific fidelity, not visually plausible flocking.
+## Experiment authoring and AI ↔ Lab — deployed baseline
 
-Round 1 is accepted only when a meaningful controller modification produces the corresponding changed/failing dynamics and restoring the controller restores expected reference behavior.
+The original “AI → Lab” transport plan evolved from a GitHub-adapter concept into the deployed authenticated Experiment Registry + MCP architecture.
 
-## Round 2 — Experimental science
+Current baseline:
 
-### Objective
+1. human/research AI discusses a paper or hypothesis;
+2. authorized AI reads the machine-readable Virtual Lab authoring/capability contract;
+3. AI authors/edits the four compulsory Experiment artifacts through MCP;
+4. unsupported simulator capability becomes an explicit capability request rather than fabricated behavior;
+5. production Lab reads the same registry Experiment;
+6. human runs/inspects the Experiment locally;
+7. Metrics execute as read-only scientific observers;
+8. Results panels display configured metric IDs live;
+9. raw single-run metric output remains local-first.
 
-Turn the simulator into an actual quantitative laboratory immediately after Round 1.
+The AI authoring channel still has no simulator-development, GitHub, shell, deployment, arbitrary filesystem or admin capability.
 
-Add:
+## Current Metrics/Results epic — #195
 
-- multiple independent seeds/runs;
+Implemented children:
+
+- #196 — four-artifact Experiment + Metrics language/validation;
+- #197 — exact metric sampling, buffering and transport;
+- #198 — live co-located multi-series Results;
+- #199 — local-first single-run persistence/export;
+- #200 — MCP fine-grained Metrics + Results binding authoring.
+
+Current child:
+
+- #201 — final generic end-to-end acceptance using the existing owner-authorized `polarization` metric (`psi = ||sum_i heading_i|| / N`, every 0.1 s for acceptance/display).
+
+Once #201 passes, #195 can close if all completion conditions remain satisfied.
+
+## Next scientific scale — Studies
+
+Studies are the multi-run layer. They answer questions across runs/conditions rather than duplicating single-run Experiment Results.
+
+Planned Study capabilities include:
+
+- repetitions/seeds;
 - parameter sweeps/matrices;
-- local parallel execution across independent workers/cores;
-- headless execution;
-- metric definitions independent of controller code;
-- configurable metric sampling;
-- aggregation across runs;
-- appropriate statistics/uncertainty;
-- plots;
-- run list/history;
-- replay of selected individual realizations;
-- local-first persistence;
-- compact result export and explicit raw-data export;
-- provenance including experiment revision, seed, compiler/core versions, parameters, and execution backend.
+- local parallel execution where useful;
+- batch/headless execution;
+- exact binding to Experiment revision(s);
+- reuse of stable Experiment metric IDs and the #199 run-file contract;
+- aggregate statistics/uncertainty;
+- cross-run plots and comparisons;
+- checkpoint/resume semantics where explicitly designed;
+- selected Study result → AI handoff.
 
-## Round 3 — AI ↔ Lab workflow
-
-### Objective
-
-Complete the virtual-student research loop while retaining AI/vendor independence.
-
-Target workflow:
-
-1. AI and researcher inspect a paper/hypothesis.
-2. AI produces explicit agent/controller, metric, environment, parameter, and protocol specification.
-3. Researcher approves/corrects the scientific interpretation.
-4. AI creates a new experiment/revision via the initial GitHub adapter.
-5. Lab refreshes and lists the experiment.
-6. Researcher selects and runs it.
-7. Lab exports compact result/run information.
-8. AI reads the result and continues scientific discussion/proposes the next experiment.
-
-Round 3 must exercise the stable Lab domain API/portable schemas rather than expose GitHub mechanics as the scientific interface.
-
-## Round 4 — Collaboration
-
-Add:
-
-- workspace model and identity;
-- independent researcher accounts and AI accounts;
-- GitHub-backed collaborative experiment registry or equivalent free adapter;
-- authorship/revision lineage;
-- concurrent independent experiment selection;
-- permissions distinguishing experiment editing from simulator/core development;
-- clear actor provenance for human actions and AI-on-behalf-of-human actions.
-
-## Future execution
-
-- native local backend using the same scientific semantics/controller IR;
-- HPC/Slurm adapter if institutional compute becomes available;
-- optional institutional shared storage;
-- documented reproducibility guarantees across WASM/native backends.
-
-HPC availability is never a prerequisite for the browser-local laboratory.
-
-## Future scientific capabilities
-
-- heterogeneous populations/controllers;
-- dynamic physics and robot-specific models;
-- richer observation/action models;
-- static/dynamic interaction graphs;
-- 3-D environments;
-- obstacles/sites/fields;
-- additional neighbourhood/topology implementations;
-- experiment comparison and lineage;
-- richer metric libraries;
-- automated paper-reproduction workflows.
-
-## Future interfaces
-
-- direct MCP adapter;
-- HTTP/local-service adapter;
-- filesystem adapter;
-- additional AI clients;
-- optional direct AI-driven run requests where authentication and scientific provenance are explicit.
-
-## Development policy across all rounds
-
-Each implementation round closes its own engineering loop:
+Filesystem organization remains Experiment-first:
 
 ```text
-implement -> test -> deploy -> open actual UI -> exercise -> inspect -> repair -> repeat
+<VirtualLab root>/
+  <Experiment>/
+    runs/
+    studies/
+      <Study>/
+        runs/
 ```
 
-Human scientific review begins after elementary software/UI/runtime defects have already been found and repaired by the implementing agent.
+Single runs remain flat metric files; do not introduce one directory per run.
+
+## Later analysis and publication layer
+
+Longer-term product scope may include reproducible analysis/figure specifications downstream of Experiment/Study data, including explicit SVG/PDF/PNG export and eventually publication-ready figures. Live Results remains an interactive scientific inspection surface; it should not become a general graphics editor.
+
+## Editor and UI/UX lanes
+
+Separate approved lanes remain:
+
+- #202 editor ergonomics: highlighting, navigation/folding/search, diagnostics/completion;
+- #207 coherent UI/UX refinement, including Results affordances/follow-live and identity/save/persistence organization.
+
+These lanes do not displace the current strategic frontier unless the owner reprioritizes.
+
+## Future execution and science
+
+Potential later capabilities include:
+
+- native workstation backend using the same scientific semantics/controller IR;
+- institutional HPC/Slurm adapter;
+- richer physics and robot-specific models;
+- heterogeneous populations/controllers after explicit capability approval;
+- richer observation/action/environment models;
+- additional benchmark tasks and scientific modules;
+- multi-user collaboration and curated/public research workflows;
+- selected results/analysis exchange with AI under explicit contracts.
+
+## Development policy
+
+Each substantial implementation ticket closes its own engineering loop:
+
+```text
+implement -> test -> deploy -> verify actual artifact -> update durable state -> report
+```
+
+Human scientific/product review is not a substitute for elementary software verification. Conversely, developer-side software work must not independently invent new paper-specific scientific definitions; owner/research-AI supplied science is reused exactly as recorded.

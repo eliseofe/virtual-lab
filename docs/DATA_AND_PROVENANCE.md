@@ -1,90 +1,125 @@
-# Data, Local Storage, and Provenance
+# Data, Local Storage, and Reproducibility Metadata
+
+Status: **current deployed single-run storage contract, 16 September 2026**.
 
 ## Principle
 
-Scientific data ownership is local-first. Virtual Lab should not create a hidden cloud-storage obligation as experiments scale from a single visual run to many seeds and parameter sweeps.
+Scientific result data is local-first and user-owned. The canonical raw single-run metric output is ordinary user-visible files under a user-selected Virtual Lab workspace root when writable-directory access is available.
 
-## Data classes
+Browser-private storage is not the scientific archive. Supabase is not the bulk scientific-data store.
 
-### Source/specification data
+## Canonical single-run organization
 
-Appropriate for Git/version control:
+```text
+<VirtualLab root>/
+  <Experiment>/
+    runs/
+      polarization_000001.csv
+      angular_momentum_000001.csv
+      polarization_000002.csv
+      angular_momentum_000002.csv
+      ...
+    .vlab/
+      ...compact Lab-managed bookkeeping...
+    studies/
+      <Study>/
+        runs/
+          ...same flat single-run contract...
+```
 
-- experiment manifests;
-- controller source;
-- metric definitions;
-- parameters;
-- references;
-- compact provenance;
-- small summary results where scientifically useful.
+Rules:
 
-### Bulk run data
+- the selected Experiment is the parent directory;
+- standalone runs are flat files directly in `<Experiment>/runs/`;
+- there is never one directory per simulation run;
+- each metric file is named from stable metric ID + six-digit increasing run number;
+- files sharing a run-number suffix belong to the same run;
+- existing runs are never overwritten;
+- future Study runs reuse the same flat single-run file contract under `<Experiment>/studies/<Study>/runs/`;
+- ordinary result files remain directly useful from Python/R/other analysis tools without unpacking nested run directories.
 
-Local by default:
+## Metric file format
 
-- full trajectories;
-- per-agent/per-frame snapshots;
-- large Monte Carlo matrices;
-- videos/replays;
-- high-frequency metric traces;
-- large parameter-sweep intermediates.
+Current scalar metric files are CSV:
 
-These must not be silently committed to Git.
+```text
+scientific_time,value
+0.1,...
+0.2,...
+```
 
-## Browser-local storage
+A run with several metrics therefore produces several CSV files carrying the same run number.
 
-The browser may keep active/recent runs in local persistent storage for convenience. The UI should eventually expose storage use clearly and distinguish cached/browser-local data from explicitly exported archival files.
+## Internal bookkeeping
 
-Browser storage is not assumed to be the only archival copy of valuable scientific data.
+Compact Lab-managed execution/reproducibility/debugging metadata lives under `<Experiment>/.vlab/`, outside the ordinary `runs/` directory. It may identify information such as exact Experiment identity/revision, runtime/compiler contract versions, seed/configuration context, metric definitions/sampling, completion state and dropped-sample state.
 
-## Portable bundles
+This bookkeeping is primarily machine-managed. The normal scientific workflow should not require the researcher to manage one visible JSON manifest per run.
 
-The project should define versioned portable formats for:
+## Persistence behavior
 
-- experiment bundle;
-- single run bundle;
-- multi-run/result summary bundle;
-- optional raw-data bundle.
+Metric evaluation, UI rendering and persistence flushing are independent schedules.
 
-A compact AI-facing result should be small enough to exchange conveniently and include references/hashes that identify the exact scientific inputs.
+Current standalone persistence behavior:
 
-## Required provenance
+- default flush cadence is 5 seconds and is user-adjustable independently from metric sampling;
+- writes are buffered/asynchronous and remain outside the simulator hot path;
+- pause triggers a flush without ending the run;
+- completion/restart/reconfiguration/runtime failure records explicit terminal state;
+- pending persistence is bounded;
+- if storage falls behind to the safety bound, the Lab pauses rather than silently dropping scientific data;
+- hiding/leaving the page can trigger best-effort immediate flushing, but unflushed data must never be falsely reported as durable.
 
-A run should eventually identify at least:
+## Directory capability and package export
 
-- run id;
-- experiment id and revision;
-- canonical experiment hash;
-- controller source/IR hash and language/compiler version;
-- simulation-core version/commit;
-- physics/observation/metric definitions and versions;
-- parameter values;
-- seed / deterministic stream configuration;
-- execution backend;
-- relevant numerical/reproducibility mode;
-- creation/execution actor where available;
-- timestamps/status;
-- produced artifacts and their hashes where practical.
+Where the browser exposes writable-directory access, the intended workflow is:
 
-## Immutable history
+`select workspace root once → Lab manages Experiment hierarchy → runs write automatically`
 
-Once a run references an experiment revision, that revision is immutable. Scientific edits create a new revision. Results point to exact revisions rather than mutable names.
+The separate `Download experiment package` action is a secondary whole-Experiment export. It packages all completed standalone runs currently retained for the selected Experiment using the same flat `<Experiment>/runs/` hierarchy plus compact `.vlab/` bookkeeping.
 
-## Data-volume awareness
+It is not a per-run download workflow and is not a replacement for automatic selected-folder persistence on capable browsers.
 
-Round 2 should estimate expected output volume before launching large sweeps. Users should be able to choose trajectory sampling/retention policies independently of metric computation where scientifically valid.
+## Remote registry boundary
 
-## Collaboration
+Appropriate remote/registry data includes:
 
-Collaborators need not upload all raw data to a common server. They can share experiment definitions and compact result/provenance bundles while retaining bulk data locally. Optional institutional/shared storage may later be plugged in behind an adapter.
+- Experiment identity and canonical authored artifacts;
+- collections/lifecycle/sharing metadata;
+- scientific Experiment revision;
+- lightweight Results-presentation state;
+- capability-request workflow state;
+- preserved compact snapshots/curation metadata where explicitly supported.
+
+Large run traces, Monte Carlo matrices, videos and bulk Study output do not silently move to Supabase/Git.
+
+## Studies
+
+Studies are the future multi-run/condition layer. They must compose the existing single-run file contract rather than inventing incompatible storage.
+
+The parent relationship is intentionally visible:
+
+`VirtualLab root → Experiment → studies → Study`
+
+This preserves which Experiment context a Study belongs to. Study orchestration/aggregation is separate work; #199 defined only the reusable single-run storage seam.
+
+## Immutability and traceability
+
+A stored scientific run identifies the exact Experiment revision/configuration/runtime context that produced it through Lab-managed metadata. Scientific edits create a new Experiment revision rather than silently relabeling old output.
+
+Human-readable folder/file names are convenience; stable IDs/revisions in machine-managed metadata remain authoritative where identity must survive renaming/copying.
+
+## Data-volume principle
+
+Large scientific output remains on researcher-owned storage by default. Future sweeps/Studies should expose data-volume and retention choices where useful, while preserving metric-computation semantics independently from visualization/storage choices.
 
 ## Deletion semantics
 
-UI operations should distinguish:
+The product should distinguish among:
 
-- archive experiment from normal view;
-- delete local cached run data;
-- delete exported files from the user's filesystem (outside browser control where appropriate);
-- permanent logical deletion of experiment metadata.
+- archiving/deleting Experiment metadata in the registry;
+- deleting Lab-managed local run files from the user's workspace;
+- deleting browser cache/recovery state;
+- deleting user-exported files outside Lab control.
 
-Scientific history should favor archive/versioning over silent destructive mutation.
+No action should silently conflate these separate stores/lifecycles.

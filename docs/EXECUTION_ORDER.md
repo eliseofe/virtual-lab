@@ -1,50 +1,43 @@
 # Execution Order
 
-GitHub issues are the executable roadmap. The active execution roles are:
+This document no longer carries an independent issue sequence. Historical Round 1/2/3 ordering is preserved in Git history and closed issues; maintaining a second live roadmap here created contradictory instructions.
 
-- **ChatGPT** — primary implementation, scientific/software tests, repository writes, CI/build/deployment configuration, defect repair, and redeployment.
-- **Work** — narrow cloud-browser verification only, through issues explicitly titled `[WORK]`.
+## Current authority
 
-GitHub's native assignee field is not used for these product agents; the issue title/body carries the execution owner.
+Read in this order:
 
-## Round 1 umbrella
+1. `AGENTS.md`
+2. `PROJECT_CONTROL.md`
+3. `docs/EXECUTION_GRANULARITY.md`
+4. `PROJECT_STATE.md`
+5. the active issue and relevant current design document
 
-- **#1 — [CHATGPT] ROUND 1 / PRIORITY 1** is the complete acceptance contract for the first tangible scientific laboratory.
-- **#2 — [CHATGPT] Scientific validation/reproducibility suite** is cross-cutting and should be implemented incrementally while the Round 1 scientific kernel is built.
+`PROJECT_CONTROL.md` is the only repository document that decides the current strategic frontier and sequencing.
 
-### ChatGPT implementation sequence
+## Current frontier — 16 September 2026
 
-1. **#11 — [CHATGPT] Round 1A: technical spike** — establish the Rust/WASM/Web Worker/static-build path and controller compilation architecture with executable evidence.
-2. **#12 — [CHATGPT] Round 1B: scientific simulation kernel** — implement the generic deterministic scientific core, independent clocks, local-observation/action semantics, and correctness oracles.
-3. **#13 — [CHATGPT] Round 1C: editable Python-like controller language** — implement source parsing/validation, versioned IR, and efficient compiled execution without Python in the control loop.
-4. **#14 — [CHATGPT] Round 1D: Active Elastic Model** — reproduce the real 2013 scientific model through the generic kernel/controller architecture and document equations/assumptions.
-5. **#15 — [CHATGPT] Round 1E: polished UI + GitHub Pages** — integrate, build, test, and deploy the complete Round 1 application.
+The active epic is #195 — Experiment Metrics + live Results.
 
-### Work verification sequence
+Completed/deployed children: #196, #197, #198, #199, #200.
 
-After #15 has a deployed URL, execute these microscopic browser checks one at a time:
+Current substantial ticket: **#201 / #195.6 — final end-to-end acceptance using the already owner-authorized Active Elastic polarization metric.**
 
-6. **#16 — [WORK] Round 1E-V1** — verify deployed desktop simulation controls.
-7. **#17 — [WORK] Round 1E-V2** — verify meaningful controller edit, compile error, restoration, and recovery.
-8. **#18 — [WORK] Round 1E-V3** — verify responsive UI, reload/hard-refresh stability, console/runtime errors, and relevant failed network requests.
+The accepted fixture is already recorded in `PROJECT_CONTROL.md` and `PROJECT_STATE.md`:
 
-If #16, #17, or #18 fails, ChatGPT repairs/redeploys and the same Work issue is rerun. Close #1 only when #11–#18 and the relevant Round 1 subset of #2 satisfy the end-to-end acceptance contract.
+- `polarization`
+- `psi = ||sum_i heading_i|| / N`
+- acceptance/display sampling every `0.1 s`
 
-## Immediately after Round 1 owner acceptance
+Do not ask the owner to supply that definition again. #201 verifies the existing path; it does not design new scientific content.
 
-9. **#3 — ROUND 2 / PRIORITY 2** — multiple runs, seeds, parameter sweeps, local parallelism, headless execution, independent metrics, aggregation/statistics, plots, and replay.
-10. **#4 — Local data and provenance** — mature storage/export/data-volume controls alongside Round 2 before experiments produce large datasets.
+After #201 reaches verified terminal success, close #195 if all epic completion conditions remain satisfied. Do not automatically jump to #202, #207, Studies, or a capability request unless the owner gives the next instruction or `PROJECT_CONTROL.md` is explicitly updated.
 
-## AI research loop
+## Execution unit rule
 
-11. **#5 — Round 3A: AI → Lab** — experiment creation/versioning through the initial GitHub adapter over stable `ExperimentRepository` semantics.
-12. **#6 — Round 3B: Lab → AI** — compact portable result/run export independent of AI vendor or server storage.
+Approval breadth is not execution breadth. One substantial independently testable/deployable ticket is the default unit. Complete implementation → tests → deploy when applicable → production verification → repository/issue state → success report, then stop unless the owner's current instruction explicitly authorizes continuing through additional substantial tickets.
 
-## Future scaling and science
+See `docs/EXECUTION_GRANULARITY.md` for the binding rule.
 
-13. **#7 — Multi-user workspaces** — independent human identities and independent AI accounts/providers.
-14. **#8 — Native workstation/HPC backends** — same scientific semantics through native/Slurm execution adapters.
-15. **#9 — Dynamic physics/heterogeneity** — richer physics, heterogeneous populations, observation/action models.
-16. **#10 — Direct MCP/HTTP/filesystem adapters** — alternative AI transports over the same Lab domain API.
+## Historical issue sequences
 
-Ownership of later-round issues can be assigned when those rounds become active. The repository documents define architectural/scientific invariants; issue bodies define executable work and acceptance conditions.
+Old Round 1 issue numbers, old Work-vs-ChatGPT sequences, old GitHub-adapter plans, and old milestone gates are historical implementation records. They must not override the current control/state files. If an old active issue still contains a resolved gate, repair its status rather than following it blindly.

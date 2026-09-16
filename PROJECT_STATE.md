@@ -2,7 +2,7 @@
 
 Updated: **16 September 2026**
 
-This is the durable current technical state/evidence for future ChatGPT/Work/human sessions. Read `AGENTS.md`, then `PROJECT_CONTROL.md`, before this file. Older implementation history remains available in Git history and archived state files.
+This is the durable current technical state/evidence for future ChatGPT/Work/human sessions. Read `AGENTS.md`, then `PROJECT_CONTROL.md`, before this file. Older implementation history remains available in Git history and date-stamped/archive documents.
 
 ## Repository and production
 
@@ -10,20 +10,20 @@ This is the durable current technical state/evidence for future ChatGPT/Work/hum
 - Production Lab: `https://eliseofe.github.io/virtual-lab/`
 - Supabase project: `izdmmudfrmqhvlgepwes`
 - Experiment MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
-- Experiment MCP Edge Function: version 16
+- Experiment MCP Edge Function: version **16**
 - MCP server version: **3.0.0**
-- MCP health interface: **8**
+- MCP interface: **8**
 - Capability request interface: `vlab.capability-request/1`
 - Registry schema: `vlab.registry-experiment/3`
 - Experiment artifact interface: `vlab.experiment-artifacts/3`
 - Authoring contract: `vlab.authoring/0.6`
-- Experiment interface: **8**
 - Results presentation schema: `vlab.results-presentation/1`
 - Runtime contract: `vlab.runtime/0.2`
 - Artifact capability contract: `vlab.artifact-capabilities/0.3`
 - Environment capability contract: `vlab.environment-capabilities/0.1`
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
+- Metrics measurement phase: `post-physics-wrapped-state/1`
 - Production neighbour strategy: `adaptive-periodic-bvh/v1`
 
 ## Current #195 implementation state
@@ -51,22 +51,27 @@ Primary merge: `95d3e64e4ccb79ef4551411f0f19cdba78d31c32`; production packaging 
 
 ### #198 — co-located live Results — complete/deployed/owner-accepted
 
-Results remain on the Experiment screen beside/below the running simulation. Generic plot panels bind one or more stable metric IDs; the same metric may appear in multiple panels; colors are deterministic by metric ID. Pan/zoom/inspection is supported, rendering is throttled independently from scientific sampling, and display reduction never mutates retained samples.
+Results remain on the Experiment screen beside/below the running simulation. Generic time-series panels bind one or more stable metric IDs; the same metric may appear in multiple panels; colors are deterministic by metric ID. Pan/zoom/inspection is supported, rendering is throttled independently from scientific sampling, and display reduction never mutates retained samples.
 
-Active Elastic production acceptance uses two owner-authorized live metrics: polarization and a normalized rotation/milling/angular-momentum complement. The latter is not claimed as a verbatim formula printed in Ferrante et al. PRL; it was explicitly owner-authorized for product acceptance.
+The built-in Active Elastic acceptance fixture contains two owner-authorized live metrics:
 
-Multi-metric owner acceptance was confirmed on phone. Later UI polish is tracked under #207, including discoverability of the metric selector and a clear return-to-follow-live interaction after plot pan/zoom.
+- `polarization` — **accepted scientific fixture for #201**: `psi = ||sum_i heading_i|| / N`, sampled every `0.1 s` for Virtual Lab acceptance/display. This cadence is not claimed to reproduce the paper's analysis/output cadence.
+- `angular_momentum` — separately owner-authorized normalized instantaneous milling/angular-momentum complement. It is not claimed as a verbatim second equation from Ferrante et al. PRL.
+
+Owner phone acceptance on 16 September 2026 confirmed the deployed two-metric live Results behavior, panel creation/reuse/multi-series behavior, stable colors and usable foldable layout. This owner acceptance is the scientific/product input required by #201; **do not ask for the polarization formula or cadence again**.
 
 Key merges: `3197b937a00dbdc7c91fccfc571dfe54fd73ea5a` initial UI; `7b6c62e094d00a88f68126e056180d0baf73a191` two-real-metric generalization; `f1cd52a598e31dfbd5397e658023da427d74be9f` obsolete registry-v2 cleanup.
+
+Later UI polish is tracked under #207, including discoverability of the metric selector and a clear return-to-follow-live interaction after plot pan/zoom.
 
 ### #199 — local single-run result persistence — complete/deployed
 
 Primary persistence merge PR #225: `c39979ee15d4682497d9a96f08a0c661c9424f79`.
 Final package-semantics cleanup PR #227: `7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d`.
 
-The canonical scientific result is ordinary user-visible files under a user-selected Virtual Lab workspace root where writable-directory access is supported. Browser-private storage is not used as the scientific archive. IndexedDB may remember a directory handle only; it does not contain the metric sample data.
+The canonical scientific result is ordinary user-visible files under a user-selected Virtual Lab workspace root where writable-directory access is supported. Browser-private storage is not the scientific archive. IndexedDB may remember a directory handle only; it does not contain the metric sample data.
 
-For a selected Experiment, standalone run output is deliberately flat:
+For a selected Experiment, standalone run output is flat:
 
 ```text
 <VirtualLab root>/
@@ -77,91 +82,58 @@ For a selected Experiment, standalone run output is deliberately flat:
       polarization_000002.csv
       angular_momentum_000002.csv
       ...
+    studies/
+      <Study>/
+        runs/
+          ...same flat single-run contract...
 ```
 
-There is **no per-run directory**. Each metric file is named from its stable metric ID plus a six-digit increasing run number. Multiple metric files with the same suffix belong to the same run. Existing runs are never overwritten.
-
-Compact Lab-managed bookkeeping lives under `<Experiment>/.vlab/`, outside the ordinary `runs/` directory. It records enough run/reproducibility state to identify Experiment identity, runtime context, metric definitions, completion state and dropped-sample state without placing one visible JSON file beside every metric file.
-
-Future Studies must reuse the same single-run data contract under:
-
-```text
-<Experiment>/studies/<Study>/runs/
-```
-
-Study orchestration itself is not implemented by #199.
+There is **no per-run directory**. Each metric file is named from its stable metric ID plus a six-digit increasing run number. Multiple metric files with the same suffix belong to the same run. Existing runs are never overwritten. Compact Lab-managed reproducibility/debugging bookkeeping lives under `<Experiment>/.vlab/`, outside ordinary `runs/`.
 
 Persistence behavior:
 
 - default flush cadence: 5 s, user-adjustable independently from scientific sampling;
 - flushes are asynchronous and outside the simulation hot path;
 - pause flushes without ending the run;
-- restart/reconfiguration/completion/runtime failure creates explicit terminal state;
-- pending persistence is bounded at 524,288 samples; if storage falls behind to that bound the Lab pauses rather than silently dropping scientific data;
-- hiding the page triggers a best-effort immediate flush;
-- direct folder location cannot be changed in the middle of an active run;
-- when direct writable-directory access is unavailable, completed standalone runs currently retained for the selected Experiment can be exported through `Download experiment package`;
-- the package mirrors the canonical hierarchy: `<Experiment>/runs/*.csv` plus compact `<Experiment>/.vlab/` bookkeeping;
-- package numbering is flat and incremental inside the exported Experiment collection; there are no per-run directories and no per-run JSON manifests;
-- package export is a secondary convenience, not the canonical automatic-persistence mechanism where direct folder writing exists.
+- restart/reconfiguration/completion/runtime failure records explicit terminal state;
+- pending persistence is bounded; if storage falls behind to the bound the Lab pauses rather than silently dropping scientific data;
+- `Download experiment package` packages all completed retained standalone runs for the selected Experiment using the same flat hierarchy plus compact `.vlab/` bookkeeping;
+- package export is secondary and is not the canonical automatic-persistence path where direct folder writing exists.
 
-CSV metric file contract is intentionally simple:
-
-```text
-scientific_time,value
-0.1,...
-0.2,...
-```
-
-#### #199 verification evidence
-
-PR #225 checks passed both Round 1A and the performance-profile suite. Its persistence-specific browser smoke ran the actual Active Elastic compiler→worker→metric pipeline with only the writable-filesystem API replaced by a deterministic in-memory test implementation. It verified:
-
-- selection of a workspace root;
-- first run created exactly `polarization_000001.csv` and `angular_momentum_000001.csv`;
-- second run created `_000002.csv` files without overwrite;
-- `runs/` contained files, not per-run directories;
-- hidden bookkeeping recorded start/flush/terminal state;
-- async flushing produced no automatic backpressure pause in the tested runs;
-- no JavaScript exception occurred.
-
-Persistence-only serialization profile: 8 metrics × 32,768 samples = 262,144 samples, about 7.29 MB CSV output, approximately 122.45 ms serialization time on the CI runner. This measures storage serialization separately from scientific metric computation.
-
-Initial production Pages run `35031228033` passed build, deploy and every smoke, including the dedicated deployed local-result-persistence smoke, ordinary browser/kernel smoke, real built-in metric smoke, live Results smoke and responsive/focus smoke.
-
-Owner phone review then identified that `Download last run` was ambiguous and had the wrong package semantics. PR #227 changed the action to `Download experiment package`, packages all completed standalone runs currently retained for the selected Experiment using the canonical flat hierarchy, removed the word `fallback` from the user-facing/diagnostic model, and added regression coverage for multi-run package structure. PR #227 passed Round 1A run `35032932608` and performance run `35032932456` before merge.
-
-Final production Pages run `35033123628` at `7fdff0d78c2192d45cb23e8c7e076bbbf3394b1d` passed build, deploy, kernel/editor smoke, built-in real-metric smoke, live Results smoke, deployed local-result-persistence smoke and responsive/focus smoke.
-
-The owner could not directly exercise the writable-directory path on the phone and explicitly allowed that desktop spot-check to remain a future non-blocking check. #199 is therefore complete/deployed and no longer blocks the roadmap.
+Production verification includes two consecutive runs producing the expected flat metric files without overwrite or run subdirectories. The owner could not exercise the writable-directory path on the phone and explicitly allowed a later desktop spot-check to remain non-blocking.
 
 ### #200 — MCP/Connector fine-grained Metrics + Results authoring — complete/deployed
 
 PR #231 merged as `31239dea1174cddf0c4d2d5578034ca55e6b941d`.
 
-The deployed MCP/Connector now exposes `author_metrics_results` for fine-grained read/create/update/remove metric operations plus upsert/remove time-series Results panel bindings. Metric identity remains stable across updates; changing identity requires explicit remove/create. Removing a metric prunes it from saved Results panels. Panel bindings can reference multiple metric IDs, and one metric can appear in multiple panels.
+The deployed MCP/Connector exposes `author_metrics_results` for fine-grained read/create/update/remove metric operations plus upsert/remove time-series Results panel bindings. Metric identity remains stable across updates; changing identity requires explicit remove/create. Removing a metric prunes it from saved Results panels. Panel bindings can reference multiple metric IDs, and one metric can appear in multiple panels.
 
-Results presentation state is persisted separately in `public.experiment_results_presentations` under schema `vlab.results-presentation/1`. Presentation edits have their own optimistic revision and do **not** increment the scientific Experiment revision. RLS permits visible reads and owner-only writes. The production migration was applied successfully and the table exists.
+Results presentation state is persisted separately in `public.experiment_results_presentations` under schema `vlab.results-presentation/1`. Presentation edits have their own optimistic revision and do **not** increment the scientific Experiment revision. RLS permits visible reads and owner-only writes.
 
-The authoring contract is now `vlab.authoring/0.6`; MCP server `3.0.0`; interface `8`. Existing four-artifact whole-Experiment authoring and bounded legacy three-source compatibility remain available. Unsupported metric capabilities continue to return compile/contract diagnostics and, for Professor users, the existing capability-request path rather than granting simulator-development access.
+The authoring contract is `vlab.authoring/0.6`; MCP server `3.0.0`; interface `8`. Existing four-artifact whole-Experiment authoring and bounded legacy three-source compatibility remain available. Unsupported metric capabilities continue to return compile/contract diagnostics and, for Professor users, the existing capability-request path rather than granting simulator-development access.
 
 The browser loads a saved connector-authored Results presentation when one exists; with no saved presentation it preserves the normal default Results layout. No arbitrary plotting code and no Study behavior were added.
 
-#### #200 verification evidence
+PR head `9524bf9ab63baab599e2660723049c8e6857d640` passed Round 1A run `35082298949` and performance run `35082298960`. After merge, production Pages run `35083140486` passed build, deploy and all deployed browser smoke checks. Supabase `experiment-mcp` is Edge Function version `16`, pinned to the merged #200 commit.
 
-PR head `9524bf9ab63baab599e2660723049c8e6857d640` passed Round 1A run `35082298949` and performance run `35082298960`. The tests cover metric mutation, stable IDs, validation failures, multi-series and reused panel bindings, pruning, migration separation, contract versioning and browser wiring.
+No owner interaction is required for #200 completion.
 
-After merge, production Pages run `35083140486` at `31239dea1174cddf0c4d2d5578034ca55e6b941d` passed build, deploy and all deployed browser smoke checks.
+## Current frontier — #201 / #195.6
 
-Supabase `experiment-mcp` was deployed as Edge Function version `16`, pinned to the exact merged #200 commit. The production `experiment_results_presentations` migration is present; a post-migration security-advisor run reported no finding against the new table. The only reported database RLS notice concerns the pre-existing `preserved_experiment_snapshots` table, and the separate Auth warning concerns leaked-password protection.
+**#196, #197, #198, #199 and #200 are complete/deployed. #201 is now ready for final end-to-end acceptance using the existing owner-authorized `polarization` fixture.**
 
-No owner interaction is required for #200 completion. The next ticket is the explicitly scientific #201 acceptance fixture.
+#201 is not scientifically blocked and does not require the owner to restate a formula or cadence. It must reuse exactly the accepted definition/cadence recorded above and verify the complete generic path through:
 
-## Current frontier
+- Metrics source/compile/runtime;
+- live Results;
+- restart/current-run semantics;
+- #199 local persistence/package integration;
+- #200 MCP fine-grained metric/panel authoring boundary;
+- recorded performance/non-blocking behavior.
 
-**#196, #197, #198, #199 and #200 are complete/deployed. The active next substantial ticket is #201 / #195.6: final owner-defined scientific end-to-end acceptance for #195.**
+If that acceptance exposes a missing generic simulator capability, use the capability-request/generalization process. Do not invent a paper-specific workaround.
 
-Do not start #201 merely because this state file is read; obey `PROJECT_CONTROL.md` and the current owner instruction. #201's scientific definition/cadence must come from the owner/research-AI workflow rather than developer invention.
+When #201 passes, close #201 and close parent #195 if its completion conditions remain satisfied.
 
 ## UI/UX refinement state
 
@@ -170,11 +142,9 @@ Do not start #201 merely because this state file is read; obey `PROJECT_CONTROL.
 - Experiment identity and Save/Persistence/organization surfaces need consolidation (#208);
 - Account and Professor entry surfaces need reconciliation (#209);
 - unnecessary microcopy and weak responsive hierarchy need cleanup (#210);
-- Results series selection works but currently lacks sufficient affordance;
+- Results series selection works but lacks sufficient affordance;
 - plot interaction can detach from the live edge without an obvious follow-live state/control;
-- more deliberate Results panel arrangement/resizing can be designed in this same later pass.
-
-Simulation and Authoring remain acceptable structural baselines. Product Design is connected and may be used when #207 is deliberately activated.
+- more deliberate Results panel arrangement/resizing can be designed in the same later pass.
 
 ## Editor lane
 
@@ -203,7 +173,9 @@ Production `Simulation` uses `adaptive-periodic-bvh/v1` with exact receiver-radi
 
 ## Scientific guardrail
 
-Developer-side ChatGPT must not independently invent scientific models, derivations, paper-specific equations/parameters, controller logic, metric formulas, scientific sampling choices, retuning or claims of scientific equivalence.
+Developer-side ChatGPT must not independently invent new scientific models, derivations, paper-specific equations/parameters, controller logic, metric formulas, scientific sampling choices, retuning or claims of scientific equivalence.
+
+Already owner-authorized scientific definitions may be reused exactly as recorded for implementation and acceptance. Reusing them does not require renewed owner approval and does not authorize changing them.
 
 Generic simulator/software architecture, persistence, buffering, compilers, file formats, UI transport and editor tooling are software work. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, read-only metric boundaries, scientific timing/integration semantics and rendering as an observer.
 
@@ -211,4 +183,4 @@ Standing observation gatekeeper: global position is disallowed as a robotics con
 
 ## Success reporting
 
-GitHub issue #145 is the global success-only completion stream. Never post partial/failing/retrying work there. Append one `[SUCCESS REPORT]` comment only after the full ticket lifecycle is verified terminal success.
+GitHub issue #145 is the global success-only completion stream. Never post partial/failing/retrying work there. Append one `[SUCCESS REPORT]` comment only after the full ticket lifecycle reaches verified terminal success.

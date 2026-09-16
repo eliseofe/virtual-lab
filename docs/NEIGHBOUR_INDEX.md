@@ -1,60 +1,74 @@
 # Neighbour index design
 
-Status: approved and implemented under issue #25.
+Status: **current production architecture, 16 September 2026**.
 
 ## Design rule
 
-Scientific interaction and sensing radii are experiment/controller parameters. Spatial indexing is simulator infrastructure. The two must not be coupled through a user-tuned cell/chunk/hash parameter.
+Scientific interaction/sensing radii are Experiment/controller semantics. Spatial indexing is simulator infrastructure. The two must not be coupled through a researcher-tuned cell/chunk/hash parameter.
 
-The production kernel therefore uses one periodic positional index that can answer arbitrary radii from the same built structure. Changing a scientific radius does not rebuild the grid around that radius and does not require any simulator setting to change.
+The production kernel therefore exposes exact neighbour queries for arbitrary simultaneous radii while keeping indexing strategy internal. Changing a scientific radius does not require changing a simulator-index tuning parameter.
 
 ## Production algorithm
 
-`PeriodicGridNeighbourIndex` is rebuilt once per control update from the current physical positions.
+Production `Simulation` currently uses:
 
-- Grid resolution is derived automatically from arena geometry and population size, not from an interaction radius.
-- The current rule uses `ceil(sqrt(N))` cells per axis, giving roughly one bucket per agent under a uniform distribution.
-- Buckets are stored sparsely in a hash map, so empty arena cells consume no bucket storage.
-- For a query radius `r`, the query inspects enough wrapped cells around the query agent to cover `r`.
-- Candidate membership is then decided by the exact periodic minimum-image distance test.
-- Returned neighbours are sorted by agent index to preserve the brute-force ordering and avoid changing floating-point accumulation order merely because the index changed.
+`adaptive-periodic-bvh/v1`
 
-The index geometry may affect performance only. It cannot affect the mathematically defined neighbour set.
+This was selected through the #168 comparative investigation and integrated into production after exactness/performance evidence.
+
+Required semantics:
+
+- exact receiver/query-radius membership;
+- arbitrary simultaneous query radii against the same physical state;
+- periodic square-arena minimum-image geometry;
+- deterministic neighbour ordering by agent index where runtime/controller accumulation semantics require it;
+- index strategy affects performance only, never the scientifically defined neighbour set.
+
+The BVH/index is simulator-owned infrastructure and exposes no student-visible tuning knob such as cell size/hash radius/tree depth.
 
 ## Multiple radii
 
-One built index can serve any number of radii. For example, proximal, alignment, communication, and future sensor ranges can all query the same structure independently. There is no `CELL_SIZE`, `HASH_RADIUS`, or similar student-visible parameter.
+The same physical population may be queried with proximal, alignment, communication or future sensor ranges. Each query uses its own scientific radius; the implementation cannot silently collapse these into one global index radius.
 
 ## Periodic boundaries
 
-Both cell lookup and final geometry respect the periodic square arena. Queries wrap cell coordinates across arena edges, then use the same minimum-image displacement used by the physical/observation layer.
+Neighbour membership respects the same periodic minimum-image geometry as the physical/observation layer. Cross-boundary neighbours must be indistinguishable scientifically from equivalent neighbours inside the base cell.
 
-## Correctness oracle
+## Retained reference/oracle implementations
 
-`BruteForceNeighbourIndex` remains in the kernel solely as the exact reference implementation. Automated tests compare optimized and brute-force neighbour lists across:
+Two alternate implementations remain intentionally available:
 
-- multiple arena sizes;
-- multiple query radii against the same built index;
-- random configurations;
-- explicit cross-boundary configurations;
-- radii large enough to cover much or all of the periodic arena.
+- `PeriodicGridNeighbourIndex` — exact reference/fallback implementation from the earlier architecture;
+- `BruteForceNeighbourIndex` — hidden exact correctness oracle.
 
-Every future neighbour-index optimization should continue to be checked against this oracle.
+Automated equivalence checks compare optimized neighbour membership/order against exact references across arena sizes, radii, random/cross-boundary configurations and broad-radius regimes.
 
-## Reference implementation
+A future optimization cannot replace production merely because it benchmarks faster. It must preserve the full exact arbitrary-radius periodic contract first.
 
-The design follows the separation used by ARGoS: positional indexing is simulator infrastructure while range-and-bearing entities keep their own communication ranges, with exact geometric checks determining actual communication. See `ilpincy/argos3`, especially `src/plugins/simulator/media/rab_medium.cpp` and `src/core/simulator/space/positional_indices/`.
+## Why the previous single-level grid is no longer production
 
-Violet remains a useful reference, but its proximity chunks are mechanically tied to a proximity radius. Virtual Lab deliberately uses the ARGoS-style separation because experiments may have several simultaneous scientific radii.
+The earlier production implementation used a periodic sparse grid with resolution derived from population/arena geometry. That design correctly separated scientific radius from grid tuning, but performance work found regimes where one scientific query radius spans many small cells and the single-level grid becomes inefficient.
 
-## Active architecture investigation — #168
+The investigation then compared exact alternatives rather than exposing a radius-coupled tuning parameter to the researcher.
 
-The contract above remains authoritative, but #165 showed that the current **single-level resolution rule** can be inefficient when a scientific radius spans many small cells. That finding does not authorize coupling production index geometry to one radius.
+Historical evidence lives in the date-stamped neighbour-search documents, including:
 
-The serious comparative investigation is documented permanently in:
+- `NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
+- `NEIGHBOUR_SEARCH_TOURNAMENT_2026-09-15.md`
+- `NEIGHBOUR_SEARCH_ADAPTIVE_BVH_RESULT_2026-09-15.md`
+- `NEIGHBOUR_SEARCH_PRODUCTION_INTEGRATION_2026-09-15.md`
 
-`docs/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
+These are investigation/history records. Current production truth is `PROJECT_STATE.md` plus this document.
 
-#168 now compares exact alternatives including ARGoS-style coverage stamping, multi-resolution periodic grids, adaptive tree/BVH-family indexing, the current grid, brute force, and a radius-matched single-grid performance reference.
+## Future changes
 
-No candidate may replace production until it preserves this document's exact arbitrary-multi-radius contract and wins on evidence.
+#56 remains the living performance umbrella. #179 is deferred until Study infrastructure exists for a persistent benchmark Study.
+
+Any future spatial-index replacement must preserve:
+
+1. exact scientific neighbour sets;
+2. deterministic ordering requirements;
+3. arbitrary simultaneous radii;
+4. periodic geometry;
+5. no researcher-facing index-tuning burden;
+6. correctness-oracle coverage before performance promotion.

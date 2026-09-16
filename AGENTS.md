@@ -8,9 +8,23 @@ Before doing project work, recover the current state from the repository rather 
 2. Read `docs/EXECUTION_GRANULARITY.md`. It is the mandatory rule for how broad owner approval is converted into bounded implementation passes.
 3. Read `PROJECT_STATE.md` for accepted technical state, evidence, architecture and recent implementation history.
 4. Before implementing any new paper-driven simulator capability, read and apply `docs/CAPABILITY_GENERALIZATION_GATE.md`.
-5. Read the active issue(s) and relevant design document(s) for the specific task.
+5. Read the active issue(s) and relevant current design document(s) for the specific task.
 
 Do not infer the roadmap from the newest issue number, newest commit, most recently closed ticket, or whichever technical thread was discussed last.
+
+## Stale-gate prevention
+
+An active issue can become stale after later owner approval, acceptance, deployment, or architecture work. Never turn an old issue sentence into a new owner question without reconciling it against the higher-authority current state first.
+
+In particular, when an issue says work is blocked on owner input or acceptance:
+
+1. check `PROJECT_CONTROL.md`;
+2. check `PROJECT_STATE.md` and recorded owner-acceptance evidence;
+3. check later comments/merged work relevant to that gate;
+4. if the input was already supplied or accepted, update the stale issue/document and proceed from the accepted state;
+5. ask the owner again only when a genuinely unresolved scientific/product choice remains.
+
+Historical issue text is evidence of what was true then, not a standing instruction that can override later accepted state.
 
 ## Execution granularity
 
@@ -45,23 +59,24 @@ After meaningful work, leave the repository in a state that another context-free
 - Update `PROJECT_CONTROL.md` whenever strategic priority, sequencing, dependency/gate, owner-waiting state, or major product direction changes.
 - Update `PROJECT_STATE.md` whenever merged/deployed technical state, owner acceptance, performance evidence, architecture/contracts, security boundaries, or important rejected approaches change.
 - Keep active issues accurate about whether work is unimplemented, implemented but awaiting owner acceptance, accepted/complete, or blocked.
-- If an old issue contains stale sequencing, do not silently follow it over `PROJECT_CONTROL.md`; preserve history but use the current control file for priority.
+- When later work resolves an old gate, update the active issue instead of leaving contradictory status text behind.
+- Preserve date-stamped/historical records as history, but do not use them as current authority.
 
 ## Source precedence
 
 When project sources disagree, use this order:
 
 1. explicit current owner instruction;
-2. `PROJECT_CONTROL.md` for priority/sequencing;
-3. `PROJECT_STATE.md` for accepted technical state/evidence;
+2. `PROJECT_CONTROL.md` for priority/sequencing/current gates;
+3. `PROJECT_STATE.md` for accepted technical state/evidence and recorded owner acceptance;
 4. relevant current design document;
-5. active issue scope;
-6. older issues/chats as history only.
+5. active issue scope/status;
+6. older issues, date-stamped documents and chats as history only.
 
-Surface any material unresolved contradiction rather than guessing.
+Surface any material unresolved contradiction rather than guessing. If the contradiction is only stale lower-authority text and the current state is clear, repair the stale text rather than asking the owner to repeat a decision.
 
 ## Completion discipline
 
 Do not report implementation complete merely because code was written. Close the loop as appropriate: implement → test → deploy when applicable → verify the actual artifact/browser behavior → update GitHub state/documentation → report whether owner testing is still required.
 
-Preserve the scientific guardrail in `PROJECT_STATE.md`: software reasoning is allowed; new scientific/model reasoning or retuning requires explicit owner involvement.
+Preserve the scientific guardrail in `PROJECT_STATE.md`: software reasoning is allowed; new scientific/model reasoning or retuning requires explicit owner involvement. Already owner-authorized scientific definitions may be reused exactly as recorded; do not ask for them again and do not silently alter them.
