@@ -1,213 +1,172 @@
 # Experiment Registry Contract
 
-Status: architecture contract for issue #41.
+Status: **current production contract, 16 September 2026**.
+
+This document defines the Experiment-domain storage/synchronization boundary. Current sequencing is controlled by `PROJECT_CONTROL.md`; deployed versions/evidence live in `PROJECT_STATE.md`.
 
 ## Purpose
 
-Virtual Lab needs a communication boundary that lets a student/researcher and an AI author experiments without granting that AI simulator-development capability. The same experiment state must later be consumable by the browser lab, shareable with professors or collaborators, and independent of any specific AI provider.
+Virtual Lab needs a communication boundary that lets a researcher and an authorized AI author Experiments without granting simulator-development capability. The same Experiment state is consumed by the browser Lab, can be shared/curated through explicit permissions, and remains independent of any specific AI provider.
 
-This document defines that boundary. It does not define simulator execution and it does not authorize changes to the production simulator.
+The registry does not execute simulations and does not authorize changes to the simulator source.
 
 ## Roles
 
 ### Student / researcher
 
-May create, read, edit, organize, archive, restore, and where allowed permanently delete experiments they own. May read experiments explicitly shared with them or made public. May run experiments only through the human-facing Virtual Lab; the student AI channel has no simulator-run capability.
+May create, read, edit, organize, archive, restore and, where eligible, permanently delete Experiments they own. May read Experiments made visible through explicit product permissions.
 
 ### Professor / curator
 
-Has student capabilities plus explicitly authorized access to submissions/shared work and later curation/promotion capabilities. Professor/curator is an experiment-domain role, not a simulator-development role.
+Has Student capabilities plus explicitly implemented Professor/curation capabilities. In the current contract a Professor can submit durable missing-capability requests through MCP. Professor role does not grant simulator-development access.
 
 ### Simulator developer
 
-Changes Virtual Lab source, kernel, UI, deployment, workflows, and engineering infrastructure through the separate GitHub development process. No registry or MCP capability grants simulator-developer authority.
-
-One real person may hold multiple roles, but the capabilities remain separately enforceable.
+Changes Virtual Lab source, kernel, UI, deployment and engineering infrastructure through the separate trusted GitHub/development workflow. No registry/MCP capability grants this authority.
 
 ## Canonical topology
 
-The remote Experiment Registry is canonical for experiment source and metadata.
+The remote Experiment Registry is canonical for Experiment source/metadata and lightweight workspace/presentation state.
 
-- AI clients reach it through an authenticated experiment-only adapter, initially MCP.
-- mock-sim and later Virtual Lab reach it through the browser-facing registry API.
-- browser storage may cache the latest accepted experiment state for responsiveness/reload recovery.
-- cached browser state is never a competing source of truth.
-- simulation computation remains local in the browser/WASM worker.
-- the registry is not a simulation backend and is not the simulator repository.
+- AI clients use the authenticated experiment-only MCP adapter.
+- production Virtual Lab uses the browser-facing Supabase registry client.
+- browser-local caches may assist responsiveness but are not a competing authority for Experiment definitions.
+- scientific simulation remains local in the browser/WASM worker.
+- large raw result data remains local-first and is not stored in the registry by default.
 
-Normal experiment authoring must not require manual file download/upload.
+Normal Experiment authoring does not require manual source package download/upload.
 
-## Registry experiment format
+## Registry Experiment format
 
-Registry records use schema version `vlab.registry-experiment/1` and the JSON schema in `schemas/registry-experiment.schema.json`.
+Current registry schema: `vlab.registry-experiment/3`.
 
-The scientific/student-editable payload is exactly three source artifacts:
+Current Experiment artifact interface: `vlab.experiment-artifacts/3`.
 
-1. `config_source` — experiment configuration/parameters;
-2. `initializer_source` — initialization code;
-3. `controller_source` — controller code.
+Canonical scientific/editable payload is the ordered typed `artifacts[]` array with exactly four compulsory core artifact IDs:
 
-The registry may add metadata required for identity, organization, synchronization, provenance, compatibility, lifecycle, and sharing. It must not inject simulator-development capabilities into the object.
+1. `configuration`
+2. `initialization`
+3. `controller`
+4. `metrics`
 
-The three artifacts are opaque source text to the registry. Scientific interpretation, compilation, and execution belong to Virtual Lab, not to the storage service.
+The Metrics artifact is compulsory but may contain zero metric definitions.
+
+Compatibility fields for the old three-source representation may still be mirrored/accepted where explicitly supported, but they are not the canonical model and must never cause Metrics to be dropped.
+
+Additional typed/passive artifacts may be preserved when supported by the generic artifact representation. Execution semantics are granted only by the active simulator capability contract; an arbitrary artifact string cannot create executable behavior.
+
+## Results presentation state
+
+Results plot layout/bindings are intentionally separate from the scientific Experiment revision.
+
+Current schema: `vlab.results-presentation/1`.
+
+A Results presentation is keyed to an Experiment, has its own optimistic revision and contains generic panel bindings by stable metric ID. Updating presentation state must not bump `experiments.revision`.
+
+This table stores presentation/workspace state, not raw run samples.
 
 ## Identity
 
-A registry user has a stable registry identity independent of ChatGPT, Claude, or any other AI-provider identity.
+A registry user has a stable Supabase/Auth-backed registry identity independent of ChatGPT, Claude, Grok or another AI-provider identity.
 
-At minimum the system must support:
+The system enforces:
 
-- a stable internal user ID;
-- a user-facing display name/handle;
-- multiple independent authenticated users;
-- row-level authorization such that private experiments for user A are not visible or writable by user B.
+- stable internal user ID;
+- user-facing display identity;
+- independent authenticated users;
+- row-level authorization so private Experiment data is isolated by owner/visibility policy.
 
-An AI acts on behalf of the authenticated registry user. AI-provider identity is not the laboratory identity system.
+An AI acts through the authenticated registry identity; AI-provider identity is not the laboratory identity system.
 
 ## Organization
 
-The minimum organization model is deliberately shallow and non-filesystem-based:
+Current organization is deliberately shallow:
 
-`user namespace -> optional collection/project -> experiment`
+`user namespace → optional collection/project → Experiment`
 
-Requirements:
+An Experiment has exactly one owner and may belong to zero or one owner collection. Collections are organizational metadata, not filesystem paths.
 
-- an experiment always has exactly one owner;
-- an experiment may belong to zero or one collection/project owned by that user;
-- a user may have multiple collections/projects;
-- a user may create a brand-new experiment from zero;
-- an owned experiment may be reassigned between the owner's collections/projects;
-- shared/submitted/curated views are authorization views, not filesystem directories.
-
-A deep arbitrary directory tree is not part of milestone 1. This keeps organization simple while leaving room for future course/community views.
+Study filesystem organization is a separate local-result concern and does not turn registry collections into nested directories.
 
 ## Experiment lifecycle
 
-### Active
+Working Experiments support active/archive/restore and eligible permanent delete semantics.
 
-Appears in the owner's normal active experiment list and may be edited subject to authorization.
+Permanent delete of a working Experiment must not implicitly destroy separately preserved submission/assessment/curated snapshots. Preserved snapshots are separate objects with their own lifecycle/permissions.
 
-### Archived
+## Revision and optimistic concurrency
 
-Hidden from the default active list but retained intact, addressable, and restorable. Archive is the normal reversible operation for removing clutter while preserving provenance and links.
+Each scientific Experiment has a monotonically changing revision. A write is accepted only against the current revision it was based on; stale/conflicting writes are rejected rather than silently merged.
 
-### Permanent delete
+Scientific source/artifact edits, lifecycle changes and relevant organization changes participate in revision semantics as implemented by the registry contract.
 
-A deliberate destructive owner/admin operation for an eligible working experiment. Permanent delete removes the owner's working experiment record after explicit confirmation/safeguards.
+Results-presentation edits use their **own** revision and do not change the scientific Experiment revision.
 
-Permanent delete must never implicitly destroy a separately preserved submission, assessment snapshot, or curated/public snapshot. Such snapshots are separate preserved objects/references with their own lifecycle.
+## Local result-data boundary
 
-The first milestone does not require a recycle-bin retention period; it requires the domain distinction between archive and permanent delete.
+Experiment source/metadata is remote-registry canonical; scientific run output is local-first.
 
-## Synchronization and revision semantics
+Current standalone run-file organization is:
 
-User-visible version history is not required for milestone 1. Internal revision identity is required.
+```text
+<VirtualLab root>/
+  <Experiment>/
+    runs/
+      <metric-id>_000001.csv
+      <other-metric-id>_000001.csv
+      ...
+    studies/
+      <Study>/
+        runs/
+          ...same flat run contract...
+```
 
-Each experiment has a monotonically changing revision token/number. Every mutation that changes authoritative experiment state creates a new revision value.
+There is no per-run directory. Stable metric ID + increasing run number associates files belonging to one run. Compact Lab-managed bookkeeping stays outside ordinary `runs/`.
 
-A write must identify the revision it was based on. The registry accepts the write only when that base revision is still current. Otherwise it rejects the write as stale/conflicting and returns the current revision/state needed for recovery.
-
-Therefore the intended user experience can feel like simple two-way synchronization without using blind last-write-wins semantics.
-
-Required cases:
-
-- AI updates an experiment; mock-sim/lab can discover the new revision.
-- mock-sim/lab edits and saves; AI subsequently reads the new revision.
-- stale browser cache cannot overwrite a newer remote revision silently.
-- simultaneous conflicting writes are rejected explicitly rather than merged silently.
-- archive/restore, organization changes, and source edits all participate in revision checking.
-
-The registry need not preserve every historical revision as a user-browsable history. Later professor submission/curation can preserve exact snapshots explicitly.
-
-## Local cache contract
-
-A browser cache may store the latest successfully read or written registry state keyed by authenticated user and experiment ID.
-
-Rules:
-
-- remote registry state is authoritative;
-- cache records include the registry revision they represent;
-- a cached copy may be used for fast display/reload;
-- before writing, the client must use the cached/base revision for optimistic concurrency;
-- cached state must never overwrite newer remote state automatically;
-- offline-write reconciliation is not required for the first milestone.
+The registry must not silently become the bulk trajectory/Monte-Carlo warehouse.
 
 ## Capability matrix
 
 | Capability | Student | Professor/curator | Simulator developer via registry |
 | --- | --- | --- | --- |
-| Read own experiment | yes | yes | only if separately a registry user |
-| Create experiment | yes | yes | only if separately a registry user |
-| Edit own experiment | yes | yes | only if separately a registry user |
-| Organize own experiments | yes | yes | only if separately a registry user |
-| Archive/restore own experiment | yes | yes | only if separately a registry user |
-| Permanent-delete eligible own working experiment | yes | yes | only if separately a registry user |
-| Read another user's private experiment | no | only when explicitly authorized | no special access |
-| Submit/share/curate | later explicit permissions | yes where authorized | no special access |
-| Run simulator through AI/registry channel | no | no | no |
-| Read automatic simulator observations/results | no | no | no |
+| Read own Experiment | yes | yes | only if separately a registry user |
+| Create/edit own Experiment | yes | yes | only if separately a registry user |
+| Organize/archive/restore own Experiment | yes | yes | only if separately a registry user |
+| Permanent-delete eligible own working Experiment | yes | yes | only if separately a registry user |
+| Fine-grained Metrics/Results authoring | yes on owned Experiments | yes on owned Experiments | no special access |
+| Request missing simulator capability | no in current first version | yes | developer workflow is separate |
+| Run simulator through MCP/registry channel | no | no | no |
+| Automatic unrestricted raw-result access | no | no | no |
 | Modify simulator source | no | no | no |
-| Access GitHub/deployment through registry | no | no | no |
-
-Simulator-developer authority exists outside this matrix in the repository engineering workflow.
+| GitHub/deployment/shell/admin through registry | no | no | no |
 
 ## Experiment-channel non-capabilities
 
-The registry and student-facing adapters expose no generic primitive for:
+Registry/MCP exposes no generic primitive for:
 
 - arbitrary filesystem paths;
 - shell commands;
-- Git operations;
-- GitHub repository access;
+- Git/GitHub repository access;
 - deployment/workflow operations;
 - simulator source writes;
-- simulator execution/control;
-- automatic screenshots, plots, metrics, or observations from a run;
-- backend admin/service-role secret disclosure.
+- arbitrary simulator execution/control;
+- arbitrary SQL/admin/service-role secrets;
+- silent substitution for unsupported scientific capability.
 
-These are structural absences, not prompt instructions.
+These are structural absences from the interface.
 
-## Pedagogical boundary
+## MCP authoring alignment
 
-For the student workflow the AI collaborates on interpretation and experiment implementation, but does not close the experimental loop autonomously.
+Production `experiment-mcp` is server `3.0.0`, interface `8`, authoring contract `vlab.authoring/0.6`.
 
-The intended loop is:
-
-1. student and AI reason about the scientific problem;
-2. AI/student publish or edit the three experiment artifacts;
-3. the experiment appears in Virtual Lab;
-4. the student manually runs and observes it;
-5. the student decides what to discuss/change next.
-
-A later explicit Lab-to-AI results channel is a separate capability and must not be added implicitly to this source-synchronization contract.
+The MCP can author the complete four-artifact Experiment plus fine-grained Metrics definitions and Results bindings. Unsupported capabilities produce diagnostics and, for Professor users, the explicit capability-request path.
 
 ## Compatibility
 
-Every registry experiment declares an `interface_version` identifying the student-artifact contract it targets. Milestone 1 uses `vlab.student-artifacts/1`.
+Legacy registry/schema/interface versions remain historical compatibility concerns only. New code and documentation must treat `vlab.registry-experiment/3` + `vlab.experiment-artifacts/3` as current.
 
-Changing the meaning or required structure of the three student artifacts requires an explicit new interface version. Storage transport, AI provider, backend vendor, and browser implementation may change without changing this interface version.
+A future structural change requires an explicit new version and migration/compatibility behavior; it must not be introduced as an undocumented AI convention.
 
 ## Zero-cost invariant
 
-The architecture targets a practical EUR 0 baseline at initial educational scale:
-
-- simulator compute remains client-side;
-- the remote service stores small source/metadata records and handles lightweight authentication/synchronization;
-- no paid AI API is required by the laboratory protocol itself.
-
-Concrete quotas/provider assumptions are verified in #42.
-
-## Milestone-1 acceptance
-
-Before production Virtual Lab integration, mock-sim must prove this contract with at least two distinct authenticated registry users, including:
-
-- isolated private namespaces;
-- creation from zero;
-- collection/project organization;
-- bidirectional AI/browser source synchronization;
-- stale-write rejection;
-- archive and restore;
-- eligible permanent delete;
-- absence of simulator-development capability.
-
-Issue #46 must not start until the owner personally accepts that mock-sim proof.
+The current implementation uses Supabase Free for lightweight registry/Auth/MCP state and keeps simulation compute plus raw scientific data on researcher-owned hardware. No paid AI API is required by the laboratory protocol itself.
