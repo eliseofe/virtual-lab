@@ -62,6 +62,14 @@ After meaningful work, leave the repository in a state that another context-free
 - When later work resolves an old gate, update the active issue instead of leaving contradictory status text behind.
 - Preserve date-stamped/historical records as history, but do not use them as current authority.
 
+## User-facing issue references
+
+Never refer to a GitHub issue by number alone in a user-facing explanation, recommendation, roadmap, status update, or choice. Always pair the number with a short semantic name, for example `#149 — Professor promotion to Showcase` or `#207 — UI/UX refinement`.
+
+The number is useful as a locator, but the semantic description is mandatory. The owner should never need to scroll backward or open GitHub merely to remember what an issue number means.
+
+The same rule applies when presenting options: describe the work first, then include the issue number as secondary metadata. Do not ask the owner to choose between bare issue numbers.
+
 ## Source precedence
 
 When project sources disagree, use this order:
