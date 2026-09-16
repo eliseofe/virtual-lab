@@ -1,222 +1,207 @@
 # Artifact execution lifecycle and capability registry
 
-Status: **approved architecture direction, 14 September 2026**.
+Status: **current architecture, updated 16 September 2026**.
 
-This document is the canonical architecture for required vs optional Experiment artifacts, passive vs executable artifacts, lifecycle hooks, and the boundary between one Experiment run and Study-level reset/resume orchestration.
+This document defines required vs optional Experiment artifacts, passive vs executable artifacts, lifecycle hooks, and the boundary between one Experiment run and Study-level orchestration.
 
-Read `AGENTS.md`, `PROJECT_CONTROL.md`, `PROJECT_STATE.md`, and `docs/RESEARCH_MODEL.md` first for current sequencing and surrounding research concepts.
+Read `AGENTS.md`, `PROJECT_CONTROL.md`, `PROJECT_STATE.md`, and `docs/RESEARCH_MODEL.md` first.
 
-## 1. Why this exists
+## 1. Core invariant
 
-#117 and #118 generalized Experiment persistence and the browser from three fixed source fields to an extensible ordered `artifacts[]` model. That solves representation, but representation and execution are different questions.
+Experiment representation is extensible, but execution is explicit:
 
-A future AI client may add a fourth or fifth artifact. Virtual Lab must know whether that artifact is merely preserved/displayed context or actual executable behavior. It must never guess execution semantics from an artifact name, label, file extension, or code-looking content.
+> An artifact executes only when the active versioned simulator capability contract registers its type/format/compiler, lifecycle phase, scope and semantics.
 
-The core invariant is:
+An AI cannot create executable simulator behavior merely by inventing an artifact name, label, extension or code-looking content.
 
-> An artifact is executable only when the active versioned simulator capability contract explicitly registers its artifact type, syntax/compiler, lifecycle hook, and execution scope.
+## 2. Required core artifacts
 
-Everything else is passive/inert with respect to simulation execution.
-
-## 2. Artifact classes
-
-### Required core artifacts
-
-A runnable Experiment currently requires exactly these stable core artifact IDs/types:
+A runnable Experiment currently requires exactly these four stable core artifact IDs/types:
 
 1. `configuration`
 2. `initialization`
 3. `controller`
+4. `metrics`
 
-The Lab and AI authoring contract both treat these as compulsory. They cannot be silently renamed, omitted, or replaced by an invented decomposition while claiming compatibility with the current executable contract.
+They are compulsory in the canonical `artifacts[]` representation (`vlab.experiment-artifacts/3`). An empty `metrics` artifact is valid.
 
 Current meanings:
 
-- `configuration` — required declarative Experiment/runtime inputs and parameters;
-- `initialization` — required fresh-run initialization program;
-- `controller` — required repeated per-agent control-step program.
+- `configuration` — declarative Experiment/runtime inputs and experiment-defined parameters;
+- `initialization` — fresh-run initialization program;
+- `controller` — repeated per-agent local-observation/action program;
+- `metrics` — zero or more read-only scientific measurement definitions.
 
-A future contract version may deliberately restructure the core model, but that is an explicit compatibility/version event, not an AI-authored workaround.
+Legacy three-source compatibility may mechanically add/preserve empty Metrics, but the current executable model is four-artifact.
 
-### Optional passive artifacts
+## 3. Optional artifacts
 
-Additional artifacts may carry scientific/technical context without affecting execution. Examples could include rationale, assumptions, notes, descriptions, documentation, or future definitions not yet understood by the active simulator.
+Additional artifacts can exist in the generic representation.
 
-A passive artifact is persisted, versioned, displayed through a supported adapter, and round-tripped through the registry/MCP. Its contents are never executed merely because they contain source code.
+### Passive optional artifacts
 
-### Optional executable artifacts
+A passive artifact may carry rationale, assumptions, notes, documentation or future definitions. It is persisted/versioned/displayed/round-tripped, but never executed merely because its contents resemble code.
 
-An optional artifact becomes executable only after Virtual Lab registers a concrete artifact capability. Registration must describe at least:
+### Executable optional artifacts
 
-- stable artifact type/capability ID;
-- supported format/language/version;
+A future optional artifact becomes executable only after Virtual Lab registers a concrete capability that defines at least:
+
+- stable artifact/capability ID;
+- supported language/format/version;
 - compiler/validator;
-- lifecycle hook;
-- execution scope and cadence where relevant;
+- lifecycle phase;
+- execution scope/cadence;
 - ordering/dependency semantics;
-- capability/contract version.
+- information/security boundary;
+- capability contract version.
 
-No optional executable artifact capability is registered in production yet.
+The currently executable scientific artifacts are the required core artifacts above. No arbitrary optional executable artifact may bypass this registry.
 
-## 3. Lifecycle vocabulary
+## 4. Lifecycle vocabulary
 
-Keep the initial lifecycle intentionally small:
+Current lifecycle vocabulary is:
 
 ```text
-setup -> initialize -> control -> finalize
+setup -> initialize -> control -> measure -> finalize
 ```
+
+These are semantic phases, not unrestricted host callbacks.
 
 ### `setup`
 
-Runs once while constructing a fresh run, before initialized state is finalized. This is the natural future place for explicit global/world/setup capabilities that must occur before normal simulation execution.
+Once-per-run construction/setup capabilities that must occur before initialized scientific state is finalized. A future registered world/setup artifact could live here, but none is inferred from names such as `world` or `setup`.
 
 ### `initialize`
 
-Establishes the fresh initial run state. The current required `initialization` artifact already provides this role for agent placement/state initialization.
+Establishes fresh initial state. The required `initialization` artifact executes in this phase through its constrained simulator-owned interface.
 
 ### `control`
 
-Runs repeatedly during the simulation according to an explicitly declared simulator-owned scope/cadence. The current required `controller` artifact is per-agent and executes at the established control cadence.
+Repeated controller evaluation according to simulator-owned scheduling. The required `controller` artifact runs per agent with the declared local observation and returns an action; it does not mutate world state directly.
 
-A future host/global control-phase artifact must not mean unrestricted simulator access. It requires a deliberately typed capability boundary, similar in spirit to the useful parts of ARGoS loop functions without exposing arbitrary host internals.
+### `measure`
+
+Read-only scientific observation. The required `metrics` artifact executes here.
+
+Current Metrics measurement phase is versioned as:
+
+`post-physics-wrapped-state/1`
+
+That means metric evaluation observes the canonical physical state after the relevant physics integration update and periodic wrapping, at the resulting scientific time. Metric sampling policy is independent from control/render/persistence schedules.
+
+Metrics may inspect the allowed read-only global snapshot because they are measurement apparatus, not controller perception. They cannot mutate simulation/controller state or use arbitrary RNG/filesystem/network/host state.
 
 ### `finalize`
 
-Runs once when a run is intentionally completed/terminated/disposed, where a registered capability requires teardown/finalization behavior. This is analogous in purpose to destroy/teardown hooks in other simulators.
+Once-per-run teardown/final measurement semantics where a registered capability requires them. `final()` Metrics are evaluated according to the Metrics runtime contract; this does not grant a free-form unrestricted teardown hook.
 
-Finalization must not be invented for existing Experiments that do not need it.
+## 5. No implicit execution
 
-## 4. No implicit execution
+Forbidden shortcuts include:
 
-The following are forbidden architectural shortcuts:
+- execute every artifact whose format resembles Python;
+- infer lifecycle from artifact names such as `world`, `loop`, `analysis` or `control_parameters`;
+- let an AI create a new executable artifact type by choosing a string;
+- silently move required semantics out of one of the four core artifacts and claim compatibility;
+- grant a host/global artifact unrestricted simulator, filesystem, network, RNG or development access;
+- treat Results presentation bindings as executable scientific artifact code.
 
-- execute every artifact whose `format` resembles Python;
-- infer a hook from an artifact label such as `world`, `loop`, or `control_parameters`;
-- let an AI create a new executable artifact type by choosing a new string;
-- silently move required semantics out of a core artifact and expect the current simulator to discover them elsewhere;
-- give a global/control artifact unrestricted simulator, filesystem, network, RNG, or development access.
+If requested behavior is not registered, the correct result is an unsupported-capability diagnostic/request—not an invented substitute.
 
-If an AI asks for executable behavior not present in the capability registry, the correct state is **unsupported capability**. Once #58 is active, a professor workflow may preserve that intent and create a capability request.
+## 6. Representation vs execution
 
-## 5. Representation vs execution
-
-The generic artifact model deliberately allows the representation layer to be ahead of the execution layer.
-
-For example, an Experiment may contain:
+The generic representation may contain more artifacts than the runtime understands. For example:
 
 ```text
-configuration      required / understood
-initialization     required / understood
-controller         required / understood
-rationale          optional passive / understood as text
-world              optional passive / stored, but not executable today
+configuration     required / executable
+initialization    required / executable
+controller        required / executable
+metrics           required / executable (may be empty)
+rationale         optional / passive
+world-note        optional / passive unless a future capability registers it
 ```
 
-The `world` artifact can become executable later only when a versioned world artifact capability is implemented and advertised. No database/UI redesign should then be required merely because representation was already generic.
+A later capability may make a previously passive type executable only through an explicit versioned contract change. No storage/UI redesign should be required merely because the generic representation already existed.
 
-## 6. World/environment relationship
+## 7. World/environment relationship
 
-#65 remains the world/environment architecture epic, but its old assumption that future world construction should stay inside the three-artifact initializer forever is superseded by #117/#118 and this lifecycle model.
+Environment/world capabilities remain simulator-owned. Future design may either extend the current Initialization/setup capability family or register a dedicated optional world/setup artifact. Either choice requires a typed capability contract and must preserve controller observation boundaries.
 
-Both of these future designs remain possible:
+A source decomposition change is an explicit interface/version/migration event, not an AI convention.
 
-- extend the existing initialization/setup program with explicit world-builder capabilities;
-- introduce a dedicated optional executable world/setup artifact.
+## 8. Restart and fresh initialization
 
-The choice should be made when a real world/environment implementation is active. A dedicated artifact is valid only if its type/format/setup hook is registered in the capability contract.
+Do not model ordinary Restart as arbitrary state mutation.
 
-Regardless of source decomposition, the canonical world remains simulator-owned and controller perception remains through declared observation/sensor capabilities.
+Fresh restart means conceptually:
 
-## 7. Fresh reset/restart
+1. terminate/dispose the current run and perform registered finalization as applicable;
+2. create a new run from the exact Experiment revision/configuration/seed semantics;
+3. execute setup/initialization;
+4. begin normal physics/control/measure execution.
 
-Do not initially create a free-form `reset` code hook.
+Applying scientific artifact changes creates/restarts under the new definition according to product semantics; silent mid-run hot-swapping is not the baseline.
 
-A **fresh restart/reset** means conceptually:
+## 9. Resume/checkpoint belongs to Study orchestration
 
-1. stop/dispose the existing run;
-2. execute registered finalization/teardown where applicable;
-3. construct a fresh run from the exact Experiment revision;
-4. execute setup and initialization with the intended configuration/seed;
-5. begin normal control/physics execution.
+A future Study may intentionally continue from a saved checkpoint. This is **resume**, not fresh initialization.
 
-The existing Restart behavior remains the baseline single-run UX. The lifecycle architecture should eventually make its semantics explicit rather than turning reset into an arbitrary mutation of existing state.
+Study metadata must identify fresh vs resumed start, source run/checkpoint identity, exact Experiment revision, runtime/capability/compiler versions and deterministic RNG state/semantics where needed.
 
-## 8. Resume/checkpoint belongs to Study orchestration
-
-A future Study may intentionally continue from a saved state/checkpoint. This is **resume**, not fresh initialization.
-
-Study protocol/provenance must record at least:
-
-- fresh vs resumed run start;
-- source run/checkpoint identity;
-- exact Experiment revision;
-- relevant capability/compiler/runtime versions;
-- checkpoint format/version;
-- deterministic RNG state/semantics where needed.
-
-Whether setup/initialization hooks are skipped or re-entered during resume must be an explicit versioned rule. Never silently pass a resumed state through fresh initialization and call it equivalent.
+Whether setup/initialize phases are skipped or re-entered during resume must be explicit/versioned. Never silently pass resumed state through fresh initialization and call it equivalent.
 
 Issue #127 owns this Study-facing seam.
 
-## 9. Experiment lifecycle vs Study protocol
-
-Keep the responsibilities separate:
+## 10. Experiment vs Study responsibilities
 
 ```text
-Experiment capability/lifecycle
-    what one run can execute
-    setup / initialize / control / finalize
+Experiment
+    one-run scientific definition
+    configuration / initialization / controller / metrics
+    setup / initialize / control / measure / finalize
+    live single-run Results
 
-Study protocol
-    which runs to perform
-    parameter combinations
+Study
+    many-run investigation
+    pinned Experiment revision(s)
+    parameter conditions
     repetitions/seeds
-    fresh vs resume/checkpoint choice
-    metrics/results/plots
+    fresh/resume policy
+    aggregation/statistics
+    cross-run plots/analysis
 ```
 
-This prevents Study orchestration from becoming arbitrary simulator source and prevents Experiment artifacts from becoming hidden batch-control scripts.
+Studies consume/reuse stable Experiment metric identities and the #199 single-run storage contract. They do not move the existing single-run Metrics definitions out of the Experiment.
 
-## 10. AI-visible contract
+## 11. AI-visible capability contract
 
-The machine-readable authoring contract should let Grok/Claude answer without guessing:
+The machine-readable authoring contract must let a research AI discover without guessing:
 
-- Which artifacts are compulsory?
-- Which extra artifact forms can be represented?
-- Which registered types are executable?
-- At which lifecycle hook do they execute?
-- What syntax/format is accepted?
-- What scope/cadence/information boundary applies?
-- What is currently unsupported?
+- which core artifacts are compulsory;
+- which extra artifact forms can be represented;
+- which types are executable vs passive;
+- what language/compiler/version applies;
+- what lifecycle phase/scope/cadence applies;
+- what observations/actions/metric snapshot data are allowed;
+- what is unsupported and how a Professor may request missing capability.
 
-Issue #125 is the first bounded implementation: expose this metadata while adding **no new runtime executable hook**.
+Current production authoring contract is `vlab.authoring/0.6`; lifecycle request vocabulary includes `measure`.
 
-Issue #126 is the later runtime-dispatch child, activated only when a concrete first executable optional capability is owner-approved.
+## 12. Compatibility/versioning
 
-## 11. Compatibility/versioning
+Current core executable contract is the four-artifact model. Any future decomposition that changes required artifacts or where executable responsibilities live must increment relevant interfaces and define explicit migration/compatibility behavior.
 
-The current core executable contract remains stable through this architecture pass. Existing Experiments must preserve identical configuration, initialization and controller semantics.
+Legacy three-source inputs are bounded compatibility only; they may not be used to erase Metrics or regress the current model.
 
-A future decomposition that changes where executable responsibilities live must increment the relevant artifact/capability interface and provide explicit migration/compatibility semantics. It must not be achieved by teaching an AI a private convention unknown to the Lab.
+## 13. Security and scientific guardrail
 
-## 12. Security and scientific guardrail
+Artifact execution preserves the structural boundary:
 
-Artifact execution does not change the existing structural boundary:
-
-- research AI has no GitHub/deployment/shell/admin access;
+- research AI has no GitHub/deployment/shell/admin/simulator-development access;
 - controller information remains local-observation/action constrained;
 - simulator owns RNG and action application;
+- Metrics are read-only observers;
 - rendering remains observational;
-- global/world hooks receive only their declared typed capabilities;
-- adding an artifact cannot grant unrestricted host access.
+- global/world hooks receive only declared typed capabilities.
 
-Implementation agents may design lifecycle plumbing, validation, dispatch, and software interfaces. They must not independently invent scientific world dynamics, model transformations, parameter meanings, metrics, or substitutions for unsupported requested science.
-
-## 13. Roadmap ownership
-
-- #124 — epic: artifact capability registry + lifecycle hooks;
-- #125 — bounded contract metadata, no new execution;
-- #126 — future runtime dispatcher for registered optional executable artifacts;
-- #127 / #3 — Study fresh/reset/resume/checkpoint provenance;
-- #65 — world/environment capabilities and future setup/world artifact decisions;
-- #58 — professor request lifecycle for unsupported artifact/capability needs.
+Implementation agents may design lifecycle plumbing, validation, dispatch and software interfaces. They must not independently invent new paper-specific world dynamics, controller laws, metric formulas, parameter meanings or scientific substitutions. Already owner-authorized scientific definitions may be reused exactly as recorded.
