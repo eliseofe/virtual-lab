@@ -16,7 +16,20 @@ Showcase is public curation/publication, not an ordinary private `experiment_col
 
 Implementation evidence is PR **#234 — Add reversible Professor promotion to Showcase** plus PR **#235 — Place Showcase curation in Professor mode**. Production Pages run `35122267503` passed after the final UI-placement repair. The production Supabase schema contains `showcase_entries` plus the promote/remove/list RPCs. A terminal privilege hardening pass explicitly revoked anonymous `EXECUTE` on the promote/remove RPCs; the public listing RPC remains intentionally callable by anonymous visitors.
 
-**#207 — UI/UX refinement round 2 is now the active product-refinement lane.** The owner is not expected to design the interface. Product-design decisions belong to the developer/design specialist; owner feedback is empirical product feedback only. Product Design / Work usage is capped at two bounded rounds: one live-product audit/design pass, then one deployed verification/correction pass. Implementation, repository work, ordinary tests and deployment should remain outside Work whenever normal development tooling can do them. There is no third Product Design round in this epic.
+**#207 — UI/UX refinement round 2 is the active product-refinement lane.** The owner is not expected to design the interface. Product-design decisions belong to the developer/design specialist; owner feedback is empirical product feedback only.
+
+**#208 — unify Experiment identity, save/persistence and organization is complete and deployed.** Experiment identity/switching, Save, Save as new and organization now form one top Experiment workflow; the duplicate bottom Authoring persistence presentation and redundant visible selector are suppressed while persistence semantics remain unchanged. Production run `35143386321` passed build, deploy, Results, persistence and responsive smoke, including 390×844 phone emulation with no horizontal overflow and 44px primary touch targets. Implementation: PR **#237**, runtime-loop hotfix PR **#238**. PR **#239** adds a bounded Pages smoke timeout/recovery concurrency group so a future browser regression cannot wedge the verification lane indefinitely.
+
+The first Product Design / Work session for #207 has been **consumed**. It produced the useful desktop findings that drove #208 and the remaining Round-1 implementation direction, but Work itself could not emulate a mobile viewport. **Do not spend another Work session trying to finish that audit.** Mobile/responsive behavior is verified through the normal Chrome/DevTools production smoke harness. At most one Product Design / Work session remains for the final post-implementation Round-2 verification/correction checkpoint, if it is still useful.
+
+Remaining #207 implementation frontier:
+
+1. focused Results series-selection affordance;
+2. explicit **Follow live** recovery after plot interaction detaches from the live edge;
+3. **#209 — reconcile Account and Professor entry surfaces**;
+4. **#210 — remove unnecessary microcopy, strengthen typography/hierarchy and verify deliberate desktop/mobile layouts**.
+
+Do not start multiple substantial children in parallel. Complete, deploy and verify one independently testable unit at a time.
 
 Other existing candidate lanes remain **#202 — code authoring ergonomics** and **#3 — Studies / reproducible multi-run investigations**, to follow only after the current #207 lane reaches its terminal checkpoint or is explicitly stopped.
 
@@ -137,9 +150,18 @@ Children: **#203 — editor foundation/highlighting**, **#204 — navigation/fol
 
 **Activated. The owner is not the UI/UX designer and should not be asked to invent aesthetic/layout solutions.** The developer/design specialist owns design decisions. Owner feedback is used as product evidence when a working interaction is awkward, hidden, separated from related state, or otherwise wrong in actual use.
 
-Preserve these concrete observations for the coherent refinement round rather than patching them piecemeal into unrelated tickets:
+### #208 — Experiment management — complete
 
-- **#208 — unify Experiment identity and Save/Persistence/organization into one coherent workflow**;
+Deployed composition:
+
+`Experiment identity/switching → save state/actions → optional organization`
+
+The current Experiment surface is the canonical place for Experiment identity and persistence actions. The old bottom Authoring persistence host remains only as a compatibility implementation detail and is not presented as a second workflow. Signed-out users receive a direct `Sign in to save` action. Built-in/No collection metadata is not redundantly repeated. Collection/persistence/revision semantics are unchanged.
+
+Production acceptance includes deliberate 1280px desktop and 390×844 mobile Chrome emulation. Mobile acceptance verifies no horizontal overflow, unified Experiment management, 44px primary touch targets, experiment finder behavior, Account-dialog focus behavior and authoring keyboard semantics.
+
+### Remaining #207 observations / work
+
 - **#209 — reconcile duplicate-looking Account and Professor entry surfaces**;
 - **#210 — remove unnecessary microcopy, strengthen typography/hierarchy and verify deliberate desktop/mobile layouts**;
 - Results metric/series selection lacks sufficient affordance even though multi-series binding works;
@@ -152,14 +174,11 @@ This refinement round must produce an extensible UI architecture, not a frozen s
 
 ### Bounded specialist budget
 
-Use the Product Design specialist in Work for at most two rounds total:
+The first Work/Product Design session has already been spent. It provided useful desktop evidence but lacked mobile viewport emulation. That limitation is now covered by normal production browser testing and is not grounds for another audit session.
 
-1. **Round 1 — live audit/design direction:** inspect production deliberately on desktop and mobile, identify the highest-impact structural and visual improvements, and produce one prioritized implementation direction. Avoid prolonged alternative generation and speculative feature invention.
-2. **Round 2 — deployed verification/correction:** after Round 1 implementation reaches production, inspect the live result once. If there are material regressions or clear usability failures, perform one bounded corrective batch and verify it.
+There is **at most one specialist Work session left** under #207: final deployed verification/correction after the implementation children are complete. Do not introduce Figma, Mobbin, Canva or another design platform merely for this epic.
 
-There is no third Product Design round under #207. Residual aesthetic polish is deferred unless it is a concrete usability defect. Do not introduce Figma, Mobbin, Canva or another design platform merely for this epic.
-
-Implementation, repository changes, ordinary tests and deployment should stay outside Work whenever normal development tooling can perform them. Keep changes reviewable/reversible, preserve scientific/runtime semantics, and correct or revert any redesign that materially worsens a working interaction.
+Implementation, repository changes, ordinary tests and deployment stay outside Work whenever normal development tooling can perform them. Keep changes reviewable/reversible, preserve scientific/runtime semantics, and correct or revert any redesign that materially worsens a working interaction.
 
 Terminal completion requires the unified Experiment/save workflow, reconciled Account/Professor entry model, reduced clutter/stronger hierarchy, deliberate desktop/mobile usability, clear Results metric selection, an obvious Follow live recovery state/action, preserved simulator/run-control/Results proximity, extensibility for future modules, and verified production behavior without a material regression.
 
