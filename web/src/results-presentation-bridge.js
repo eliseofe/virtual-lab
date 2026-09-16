@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.111.0";
 
 const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYbJUyik9zN7WA_r4ie2P5d";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYik9zN7WA_r4ie2P5d";
 const RESULTS_SCHEMA = "vlab.results-presentation/1";
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { storageKey: "vlab-production-registry-auth-v1" },
@@ -53,16 +53,25 @@ async function loadCurrentPresentation(ir) {
     return;
   }
 
-  const presentation = data ?? { schema_version: RESULTS_SCHEMA, revision: 0, panels: [] };
-  if (presentation.schema_version !== RESULTS_SCHEMA) {
-    lastError = `Unsupported Results presentation schema '${presentation.schema_version}'.`;
+  if (!data) {
+    // No persisted presentation means "use the Lab's normal default layout", not
+    // "explicitly show zero panels". A stored row with panels=[] is the explicit
+    // zero-panel state.
+    lastAppliedExperimentId = experimentId;
+    lastAppliedRevision = 0;
+    lastError = null;
+    return;
+  }
+
+  if (data.schema_version !== RESULTS_SCHEMA) {
+    lastError = `Unsupported Results presentation schema '${data.schema_version}'.`;
     console.warn(lastError);
     return;
   }
 
-  applyPanels(presentation, (ir?.metrics ?? []).map((metric) => metric.id));
+  applyPanels(data, (ir?.metrics ?? []).map((metric) => metric.id));
   lastAppliedExperimentId = experimentId;
-  lastAppliedRevision = presentation.revision;
+  lastAppliedRevision = data.revision;
   lastError = null;
 }
 
