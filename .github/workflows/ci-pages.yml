@@ -115,29 +115,33 @@ jobs:
         run: node web/scripts/run-active-product-smoke.mjs "https://eliseofe.github.io/virtual-lab/"
 
       - name: Send terminal success report without agent monitoring
-        if: github.event_name == 'push'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPORT_ISSUE: '145'
         shell: bash
         run: |
           set -euo pipefail
+          short_sha="${GITHUB_SHA:0:7}"
           changed="$(jq -r '(((.head_commit.added // []) + (.head_commit.modified // []) + (.head_commit.removed // [])) | index(".github/terminal-report.json")) != null' "$GITHUB_EVENT_PATH")"
-          if [ "$changed" != "true" ]; then
-            echo "No terminal report in this commit."
-            exit 0
+
+          outcome="Production deployment ${short_sha}"
+          owner_impact="Build, Pages deployment, and deployed-surface smoke verification all succeeded."
+          remaining="Use the corresponding assistant task report to determine whether owner testing is required before the next task."
+          technical="- Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          close_issue=""
+
+          if [ "$changed" = "true" ] && jq -e '.schema == "vlab.terminal-report/1" and (.outcome | type == "string") and (.owner_impact | type == "string") and (.remaining_action | type == "string")' .github/terminal-report.json >/dev/null 2>&1; then
+            outcome="$(jq -r '.outcome' .github/terminal-report.json)"
+            owner_impact="$(jq -r '.owner_impact' .github/terminal-report.json)"
+            remaining="$(jq -r '.remaining_action' .github/terminal-report.json)"
+            report_technical="$(jq -r '(.technical_evidence // []) | map("- " + .) | join("\n")' .github/terminal-report.json)"
+            if [ -n "$report_technical" ]; then
+              technical="$(printf '%s\n%s' "$technical" "$report_technical")"
+            fi
+            close_issue="$(jq -r '.close_issue // empty' .github/terminal-report.json)"
           fi
 
-          jq -e '.schema == "vlab.terminal-report/1" and (.outcome | type == "string") and (.owner_impact | type == "string") and (.remaining_action | type == "string")' .github/terminal-report.json >/dev/null
-          outcome="$(jq -r '.outcome' .github/terminal-report.json)"
-          owner_impact="$(jq -r '.owner_impact' .github/terminal-report.json)"
-          remaining="$(jq -r '.remaining_action' .github/terminal-report.json)"
-          technical="$(jq -r '(.technical_evidence // []) | map("- " + .) | join("\n")' .github/terminal-report.json)"
-
-          body="$(printf '@eliseofe\n\n**Virtual Lab task completed**\n\n%s\n\n**What changed for you**\n%s\n\n**Remaining**\n%s' "$outcome" "$owner_impact" "$remaining")"
-          if [ -n "$technical" ]; then
-            body="$(printf '%s\n\n**Technical evidence**\n%s' "$body" "$technical")"
-          fi
+          body="$(printf '@eliseofe\n\n✅ **Virtual Lab production deployment succeeded**\n\n**%s**\n\n**What changed for you**\n%s\n\n**Next**\n%s\n\n**Technical evidence**\n%s' "$outcome" "$owner_impact" "$remaining" "$technical")"
           payload="$(jq -n --arg body "$body" '{body:$body}')"
           curl --fail-with-body --silent --show-error \
             --request POST \
@@ -147,7 +151,6 @@ jobs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${REPORT_ISSUE}/comments" \
             --data "$payload" >/dev/null
 
-          close_issue="$(jq -r '.close_issue // empty' .github/terminal-report.json)"
           if [[ "$close_issue" =~ ^[0-9]+$ ]] && [ "$close_issue" -gt 0 ]; then
             curl --fail-with-body --silent --show-error \
               --request PATCH \
@@ -159,7 +162,7 @@ jobs:
           fi
 
   terminal-failure-report:
-    if: ${{ always() && github.event_name == 'push' && (needs.build.result != 'success' || needs.deploy.result != 'success' || needs.smoke.result != 'success') }}
+    if: ${{ always() && github.event_name != 'pull_request' && (needs.build.result != 'success' || needs.deploy.result != 'success' || needs.smoke.result != 'success') }}
     needs: [build, deploy, smoke]
     runs-on: ubuntu-latest
     permissions:
@@ -179,14 +182,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          short_sha="${GITHUB_SHA:0:7}"
           changed="$(jq -r '(((.head_commit.added // []) + (.head_commit.modified // []) + (.head_commit.removed // [])) | index(".github/terminal-report.json")) != null' "$GITHUB_EVENT_PATH")"
-          if [ "$changed" != "true" ]; then
-            echo "No terminal report in this commit; no owner notification."
-            exit 0
+          outcome="Production deployment ${short_sha}"
+
+          if [ "$changed" = "true" ] && jq -e '.schema == "vlab.terminal-report/1" and (.outcome | type == "string")' .github/terminal-report.json >/dev/null 2>&1; then
+            outcome="$(jq -r '.outcome' .github/terminal-report.json)"
           fi
 
-          outcome="$(jq -r '.outcome // "Terminal task"' .github/terminal-report.json)"
-          body="$(printf '@eliseofe\n\n**Virtual Lab task needs attention**\n\nThe terminal verification for **%s** did not complete successfully.\n\nBuild: `%s` · Deploy: `%s` · Smoke: `%s`\n\nRun: https://github.com/%s/actions/runs/%s' "$outcome" "$BUILD_RESULT" "$DEPLOY_RESULT" "$SMOKE_RESULT" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
+          body="$(printf '@eliseofe\n\n❌ **Virtual Lab production run failed**\n\n**%s**\n\nBuild: `%s` · Deploy: `%s` · Smoke: `%s`\n\n**Next**\nAssistant repair is required. Owner should not test this run.\n\nRun: https://github.com/%s/actions/runs/%s' "$outcome" "$BUILD_RESULT" "$DEPLOY_RESULT" "$SMOKE_RESULT" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
           payload="$(jq -n --arg body "$body" '{body:$body}')"
           curl --fail-with-body --silent --show-error \
             --request POST \
