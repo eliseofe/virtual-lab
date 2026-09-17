@@ -25,6 +25,15 @@ For each substantial user-facing/deployable ticket:
 
 Local/static success is necessary but never sufficient for deployed-product completion.
 
+## Chunk stopping rule
+
+A conversational/approval chunk may stop only when the active deployable ticket is:
+
+- **production green**, or
+- blocked by a **specific external/authority/technical condition** that cannot be repaired in the currently available environment.
+
+A red CI/smoke result, a queued/in-progress exact run, or another directly related completion-gate defect is not a valid chunk boundary by itself. Keep that failure inside the same approved ticket and repair it. Do not leave production red merely because the conversation has reached a convenient stopping point.
+
 ## Bounded liveness rule
 
 The closed loop must be structurally terminating.
@@ -32,6 +41,8 @@ The closed loop must be structurally terminating.
 Verification may inspect only the exact current candidate SHA/run needed for the active ticket. Every local test, workflow job, deployment/status check, browser process and production smoke invocation must have a finite timeout or finite retry bound.
 
 Do not perform repository-wide Actions monitoring, broad run-history scans, open-ended polling, `wait until successful` loops, or repeated same-purpose status calls without a fixed bound.
+
+Repair/re-verification itself is finite: after the first candidate, a single approved chunk may create at most **three repaired exact candidates**. If the task would require another repair candidate, stop and record the exact unresolved blocker/evidence rather than continuing indefinitely. Do not start unrelated work. If the current candidate has materially degraded production and a previously verified green state can be restored safely, restoring that green state is the priority before ending the chunk.
 
 A timeout, wedged external process or unavailable verification service is a **terminal verification failure**. Stop waiting, record the exact blocker and leave the ticket unverified. Do not convert failure to success and do not move substantial product work past an unresolved completion gate.
 
