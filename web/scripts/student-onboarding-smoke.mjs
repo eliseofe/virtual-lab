@@ -213,18 +213,23 @@ try {
   }
 
   // Exercise the first-login Getting started path without creating a real account.
+  // The product intentionally opens after a 700ms timer; verify the resulting state
+  // with a finite deadline rather than assuming one exact scheduler tick.
   const autoOpened = JSON.parse(await evaluate(cdp.send, `(async () => {
     const auth = document.querySelector('.registry-auth');
     const professor = document.querySelector('#professor-menu');
     localStorage.removeItem('vlab-student-getting-started-v1');
-    document.querySelector('#vlab-student-help').hidden = true;
+    const helpPanel = document.querySelector('#vlab-student-help');
+    helpPanel.hidden = true;
     auth.hidden = true;
     if (professor) professor.hidden = true;
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    const helpPanel = document.querySelector('#vlab-student-help');
+    const deadline = performance.now() + 3000;
+    while (helpPanel.hidden && performance.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
     const result = {
-      opened: Boolean(helpPanel && !helpPanel.hidden),
-      title: helpPanel?.querySelector('#vlab-student-help-title')?.textContent?.trim() ?? null,
+      opened: Boolean(!helpPanel.hidden),
+      title: helpPanel.querySelector('#vlab-student-help-title')?.textContent?.trim() ?? null,
     };
     auth.hidden = false;
     helpPanel.hidden = true;
