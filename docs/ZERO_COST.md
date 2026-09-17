@@ -45,11 +45,11 @@ Current canonical standalone run storage is ordinary files under a user-selected
       ...
     studies/
       <Study>/
-        runs/
-          ...
+        <metric-id>_000001.csv
+        ...
 ```
 
-Browser-private storage is not the canonical scientific archive. Whole-Experiment package export is a secondary local convenience, not a substitute for automatic folder persistence where supported.
+There is no extra `runs/` layer inside a Study. Browser-private storage is not the canonical scientific archive. Whole-Experiment package export is a secondary local convenience, not a substitute for automatic folder persistence where supported.
 
 As Studies/sweeps grow, the Lab should expose data-volume/retention choices where useful without changing scientific computation semantics.
 

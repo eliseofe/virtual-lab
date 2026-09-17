@@ -2,7 +2,7 @@
 
 This document contains requirements whose violation can invalidate scientific results even if the software appears to work.
 
-Current sequencing is controlled by `PROJECT_CONTROL.md`. Accepted technical/scientific fixture state is recorded in `PROJECT_STATE.md`.
+Current project status is recorded in `CURRENT_STATUS.md`; development procedure is defined in `DEVELOPMENT_WORKFLOW.md`.
 
 ## Agent contract
 
@@ -95,9 +95,7 @@ Once a scientific definition is explicitly owner-authorized and durably recorded
 
 ## Active Elastic accepted fixture
 
-For the current #195/#201 integration acceptance, the required scientific input already exists.
-
-Owner-authorized polarization metric:
+The owner-authorized Active Elastic acceptance fixture includes:
 
 ```text
 metric id: polarization
@@ -110,7 +108,7 @@ For Virtual Lab product/integration acceptance it is sampled every `0.1 s`. This
 
 The built-in Active Elastic also contains an owner-authorized `angular_momentum` normalized instantaneous milling complement. It may be used as the already-approved second series for generic Results acceptance; it is not claimed as a verbatim second order-parameter equation printed in Ferrante et al. PRL.
 
-Owner accepted the deployed two-metric Results behavior on phone on 16 September 2026. #201 therefore verifies this existing fixture end to end; it does not reopen its scientific definition.
+The deployed two-metric Results behavior using this fixture was owner-accepted on phone on 16 September 2026. This is durable accepted scientific input, not an active implementation issue.
 
 ## Observation and neighbourhood contract
 

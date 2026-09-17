@@ -47,10 +47,10 @@ test('#262 preserves mobile touch targets', () => {
   assert.match(css, /\[data-vlab-authoring-apply\],[\s\S]*\.vlab-react-authoring-tab[\s\S]*min-height: 44px/);
 });
 
-test('#262 keeps current-product tracking on the migrated Authoring surface', () => {
+test('#262 keeps the migrated Authoring surface active in the production smoke registry', () => {
   const runtime = surface.surfaces.find((entry) => entry.id === 'experiment-runtime');
   assert.ok(runtime);
   assert.equal(runtime.state, 'active');
   assert.match(runtime.name, /React\/Mantine[\s\S]*Authoring/);
-  assert.equal(surface.work_tracking?.frontend_migration_state, 'complete');
+  assert.ok(runtime.smoke.some((check) => check.script === 'web/scripts/browser-smoke.mjs'));
 });

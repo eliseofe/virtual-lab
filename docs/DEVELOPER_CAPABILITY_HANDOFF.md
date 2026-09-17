@@ -61,7 +61,7 @@ These commands have different meanings.
 
 ### Inspect/design procedure
 
-1. Read `AGENTS.md`, `PROJECT_CONTROL.md`, `PROJECT_STATE.md`, `docs/CAPABILITY_GENERALIZATION_GATE.md`, this document and the relevant request record.
+1. Read `AGENTS.md`, `CURRENT_STATUS.md`, `DEVELOPMENT_WORKFLOW.md`, `docs/CAPABILITY_GENERALIZATION_GATE.md`, this document and the relevant request record.
 2. Query the trusted Supabase connection for the named/next `approved` request.
 3. Recover the preserved private context/draft without copying sensitive material into public GitHub.
 4. Evaluate only the **software architecture/generalization** needed to support the requested science. Do not invent/derive the science itself.
@@ -77,7 +77,7 @@ No GitHub implementation issue and no `in_progress` transition is required merel
 3. Reuse an existing correct implementation issue if present; otherwise create one concise engineering issue containing the stable request UUID and non-sensitive technical scope.
 4. Call the trusted developer claim operation to link that issue and transition `approved -> in_progress`.
 5. Verify the returned request row has the expected GitHub issue identity and development-start metadata.
-6. Implement only the authorized capability scope as a substantial engineering ticket under `docs/EXECUTION_GRANULARITY.md`.
+6. Implement only the authorized capability scope as a substantial engineering ticket under `DEVELOPMENT_WORKFLOW.md`.
 7. Test/deploy/verify the actual capability and confirm that the active authoring/runtime contract advertises it.
 8. Only then mark the request `implemented` and record the implemented capability/contract version.
 

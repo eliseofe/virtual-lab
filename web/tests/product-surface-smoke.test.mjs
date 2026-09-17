@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const root = new URL('../../', import.meta.url);
 const manifest = JSON.parse(await readFile(new URL('../product-surface.json', import.meta.url), 'utf8'));
 const workflow = await readFile(new URL('../../.github/workflows/ci-pages.yml', import.meta.url), 'utf8');
 
 test('product-surface manifest is the canonical active smoke registry', async () => {
   assert.equal(manifest.schema, 'vlab.product-surface/1');
-  assert.equal(manifest.work_tracking.source, 'CURRENT.md');
+  assert.equal('agent_execution_policy' in manifest, false);
+  assert.equal('work_tracking' in manifest, false);
 
   const ids = new Set();
   const active = manifest.surfaces.filter((surface) => surface.state === 'active');
@@ -27,10 +27,6 @@ test('product-surface manifest is the canonical active smoke registry', async ()
       assert.ok((check.timeout_seconds ?? 0) > 0, `${surface.id} smoke must have a hard timeout`);
       await access(new URL(`../../${check.script}`, import.meta.url));
     }
-  }
-
-  for (const surfaceId of manifest.work_tracking.next_stage?.surface_ids ?? []) {
-    assert.ok(ids.has(surfaceId), `next-stage surface is not tracked: ${surfaceId}`);
   }
 });
 

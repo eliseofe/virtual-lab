@@ -1,6 +1,6 @@
-# Virtual Lab — Execution Granularity
+# Virtual Lab — Development Workflow
 
-This is a mandatory project-process rule.
+This is the single repository authority for development execution procedure.
 
 ## Approval breadth and execution breadth
 

@@ -37,6 +37,8 @@ python3 -m http.server 4173 --directory web/dist
 node web/scripts/performance-profile.mjs http://127.0.0.1:4173/
 ```
 
-## CI evidence
+## CI and retained evidence
 
-`.github/workflows/performance-profile.yml` runs independently from ordinary correctness CI and uploads the runner environment plus native and browser profile outputs as a retained artifact. No timing threshold can fail correctness CI; measurements are used to identify the next optimization target.
+The current automatic workflow is `.github/workflows/ci-pages.yml`; it does **not** run timing profiles as a correctness gate. Performance profiles are run deliberately/on demand when investigating issue #56 or a focused optimization question. Historical profile outputs and dated investigation documents are retained as evidence in `docs/archive/`.
+
+No timing threshold should fail ordinary correctness CI unless a future explicit performance-gate decision changes that policy.

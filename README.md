@@ -4,53 +4,40 @@ Virtual Lab is a zero-cost, browser-first scientific laboratory for reproducible
 
 Production: https://eliseofe.github.io/virtual-lab/
 
-## Current state — 17 September 2026
+## Deployed baseline
 
-The deployed system includes:
-- Rust/WASM scientific kernel in a Web Worker;
+The production system includes:
+- Rust/WASM scientific execution in a Web Worker;
 - constrained Python-like Configuration, Initialization, Controller and Metrics authoring;
 - Supabase-backed authenticated Experiment Registry and provider-independent MCP authoring;
-- Professor capability-request workflow;
-- live multi-metric Results;
-- local-first raw result persistence;
+- Professor capability requests for unsupported simulator capabilities;
+- live multi-metric Results and local-first raw-result persistence;
 - Showcase curation/publication;
-- Vite + React + TypeScript + Mantine application presentation;
-- self-registration/sign-in for students;
-- in-Lab Getting started / Help;
-- Grok and Claude production connector onboarding.
+- Vite + React + TypeScript + Mantine presentation;
+- student self-registration/sign-in and Getting started/Help;
+- Grok and Claude connector onboarding.
 
-The frontend/visual migration and the student-onboarding mini-epic are complete. The current phase is **real student use and real scientific use**, with bounded fixes driven by concrete feedback. Ongoing UI/UX refinement lives in the evidence-driven #273 lane rather than blocking science/product work.
+A runnable Experiment has four compulsory artifacts: Configuration, Initialization, Controller and Metrics. Metrics may be empty. Results presentation/layout state is separate from scientific Experiment revision state.
 
-**Studies are not authorized yet.** They remain gated by a later explicit owner decision after more real use.
+## Core invariants
 
-See `CURRENT.md` for the exact current checkpoint and next action.
-
-## Hard invariants
-
-- zero incremental monetary cost remains the baseline;
+- €0 incremental infrastructure cost is the baseline;
 - simulation compute and raw scientific results remain local-first;
 - research-AI Experiment authoring is separate from trusted simulator/repository development;
-- controller receives local observation, owns private state and returns action; simulator owns world state, RNG, perception, action application and physics;
+- controller input is local observation and output is action; controller private state is encapsulated;
+- simulator owns world state, RNG, perception, action application and physics;
 - global position is not a controller observation unless explicitly owner-approved;
-- physics, control, rendering, metrics and persistence are separate scheduling concerns;
-- researcher-facing source is compiled before execution; no per-agent/per-step host Python interpreter boundary;
+- physics, control, rendering, metrics and persistence remain separable scheduling concerns;
 - implementation agents do not invent paper-specific science.
 
-## Canonical Experiment model
+## Repository map
 
-A runnable Experiment has four compulsory artifacts:
-1. Configuration
-2. Initialization
-3. Controller
-4. Metrics
+- `AGENTS.md` — entry point for development agents.
+- `DEVELOPMENT_WORKFLOW.md` — authoritative development procedure.
+- `CURRENT_STATUS.md` — current project position and explicit gates.
+- `ROADMAP.md` — longer-term direction.
+- `CONTRIBUTING.md` — contribution standards.
+- `docs/` — detailed architecture, scientific, authoring, deployment and domain reference documentation.
+- `docs/archive/` — historical evidence that is not current authority.
 
-Metrics may be empty. Results presentation/layout state is separate from scientific Experiment revision state.
-
-## Start here
-
-For a new implementation session:
-1. read `CURRENT.md`;
-2. read the active issue if a bounded repair/feature has been authorized;
-3. read only the technical/design files needed for that issue.
-
-`PROJECT_CONTROL.md` and `PROJECT_STATE.md` are deeper references, not mandatory startup reading. Closed issues and Git history are historical evidence.
+Studies are an owner-gated future lane; consult `CURRENT_STATUS.md` for the current activation state.

@@ -2,7 +2,7 @@
 
 Status: **current architecture, 16 September 2026**.
 
-Current sequencing lives in `PROJECT_CONTROL.md`; deployed technical evidence lives in `PROJECT_STATE.md`.
+Current project status lives in `CURRENT_STATUS.md`; strategic direction lives in `ROADMAP.md`.
 
 ## 1. Architectural objective
 
@@ -184,11 +184,11 @@ Canonical raw single-run metric output is ordinary user-visible files under a us
       ...compact machine-managed bookkeeping...
     studies/
       <Study>/
-        runs/
-          ...same flat run contract...
+        <metric-id>_000001.csv
+        ...same flat run contract...
 ```
 
-There is no directory per run. Browser-private storage is not the scientific archive. Supabase/Git are not bulk scientific result stores.
+There is no directory per run and no extra `runs/` layer inside a Study. Browser-private storage is not the scientific archive. Supabase/Git are not bulk scientific result stores.
 
 Persistence is buffered/asynchronous and separate from metric evaluation/UI rendering. Whole-Experiment package export is a secondary convenience, not the canonical path on browsers with selected-folder access.
 
@@ -198,7 +198,7 @@ Studies are the multi-run layer, not another way to define one-run Metrics.
 
 A Study initially binds/pins one exact Experiment revision and orchestrates conditions/repetitions/seeds, consuming stable Experiment metric IDs for aggregation/comparison. Future checkpoint/resume or multi-Experiment Study behavior requires explicit versioned design.
 
-The local hierarchy keeps Studies under their Experiment so origin is visible.
+The local hierarchy keeps Studies under their Experiment so origin is visible. Current activation state is recorded in `CURRENT_STATUS.md`.
 
 ## 12. AI capability boundary
 
@@ -240,15 +240,9 @@ Parallel science should generally parallelize independent runs/conditions before
 
 Registry/workspace identities are independent of AI-provider identities. Different collaborators can use different AI clients/providers or none at all. Provenance/attribution distinguishes human and AI-on-behalf-of-human actions where relevant.
 
-## 17. Closed-loop engineering
+## 17. Development procedure
 
-A change is not accepted merely because code exists or CI compiles.
-
-```text
-implement -> test -> deploy when applicable -> verify actual artifact -> repair -> update durable state
-```
-
-Human product/scientific acceptance is an additional layer where required, not the first software smoke test.
+Repository development procedure is defined only in `DEVELOPMENT_WORKFLOW.md`. Architecture documents specify system contracts; they do not redefine the execution workflow.
 
 ## 18. Replaceability rule
 

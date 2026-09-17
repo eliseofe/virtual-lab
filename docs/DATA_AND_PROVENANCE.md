@@ -23,8 +23,9 @@ Browser-private storage is not the scientific archive. Supabase is not the bulk 
       ...compact Lab-managed bookkeeping...
     studies/
       <Study>/
-        runs/
-          ...same flat single-run contract...
+        polarization_000001.csv
+        angular_momentum_000001.csv
+        ...
 ```
 
 Rules:
@@ -35,7 +36,7 @@ Rules:
 - each metric file is named from stable metric ID + six-digit increasing run number;
 - files sharing a run-number suffix belong to the same run;
 - existing runs are never overwritten;
-- future Study runs reuse the same flat single-run file contract under `<Experiment>/studies/<Study>/runs/`;
+- future Study runs reuse the same flat single-run file contract directly under `<Experiment>/studies/<Study>/`;
 - ordinary result files remain directly useful from Python/R/other analysis tools without unpacking nested run directories.
 
 ## Metric file format
@@ -105,7 +106,7 @@ This preserves which Experiment context a Study belongs to. Study orchestration/
 
 ## Immutability and traceability
 
-A stored scientific run identifies the exact Experiment revision/configuration/runtime context that produced it through Lab-managed metadata. Scientific edits create a new Experiment revision rather than silently relabeling old output.
+A stored scientific run identifies the exact Experiment revision/configuration/runtime context that produced it through Lab-managed metadata. Scientific edits create a new Experiment revision rather than silently relabelling old output.
 
 Human-readable folder/file names are convenience; stable IDs/revisions in machine-managed metadata remain authoritative where identity must survive renaming/copying.
 
