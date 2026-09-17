@@ -6,6 +6,11 @@
     "hard_timeout_required": true,
     "workflow_must_not_hardcode_surface_checks": true
   },
+  "agent_execution_policy": {
+    "github_actions_api_during_ordinary_execution": "forbidden",
+    "github_actions_role": "fire-and-forget-ci-deploy-smoke-report-only",
+    "diagnostic_exception": "owner-explicit-specific-failure-only-no-polling"
+  },
   "work_tracking": {
     "source": "CURRENT.md",
     "next_stage": {
