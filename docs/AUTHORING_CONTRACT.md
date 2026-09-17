@@ -122,12 +122,6 @@ Professor approval of a capability request is not implementation authorization. 
 
 Experiment-domain AI clients have no GitHub/repository, shell, deployment, arbitrary filesystem, arbitrary SQL, Supabase-admin or simulator-development privilege. They also do not receive general simulator-run/control or raw run-result access merely because they can author Experiment/Results definitions.
 
-## Current accepted scientific fixture
+## Accepted scientific fixture
 
-The contract itself remains science-neutral. Separately, the product has an owner-authorized Active Elastic acceptance fixture used by #198/#201:
-
-- `polarization`
-- `psi = ||sum_i heading_i|| / N`
-- sampled every 0.1 s for Virtual Lab acceptance/display
-
-That scientific definition is recorded in `PROJECT_CONTROL.md` / `PROJECT_STATE.md`, not embedded as a generic requirement of `vlab.authoring/0.6`.
+The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.6`.

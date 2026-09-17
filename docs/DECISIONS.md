@@ -1,6 +1,6 @@
 # Architecture Decision Register
 
-This register records decisions implementation agents should preserve unless new evidence justifies an explicit replacement. Current sequencing is controlled by `PROJECT_CONTROL.md`.
+This register records decisions implementation agents should preserve unless new evidence justifies an explicit replacement. Current project status is recorded in `CURRENT_STATUS.md`; strategic direction is in `ROADMAP.md`.
 
 ## D-001 — Standalone project
 
@@ -52,7 +52,7 @@ GitHub is the simulator/developer repository and CI/deployment workflow. Ordinar
 
 The canonical raw single-run metric archive is ordinary files under a user-selected Virtual Lab workspace root where writable-directory access is supported. Browser-private storage is not the scientific archive and Supabase/Git are not the bulk result warehouse.
 
-Standalone files are flat under `<Experiment>/runs/`; there is no directory per run. Future Study runs reuse the same contract under `<Experiment>/studies/<Study>/runs/`.
+Standalone files are flat under `<Experiment>/runs/`; there is no directory per run. Future Study runs reuse the same contract directly under `<Experiment>/studies/<Study>/`.
 
 ## D-013 — Independent AI identities
 
@@ -60,7 +60,7 @@ AI-provider identity is not laboratory identity. Human/registry identities authe
 
 ## D-014 — Closed-loop implementation
 
-An implementing agent must test/deploy/verify actual artifacts as appropriate before reporting completion. Human review is not a substitute for elementary software verification.
+An implementing agent must test/deploy/verify actual artifacts as appropriate before reporting completion. Operational procedure is defined in `DEVELOPMENT_WORKFLOW.md`; this decision records only the durable closed-loop principle.
 
 ## D-015 — Controller/scientific edits restart by default
 
@@ -101,10 +101,11 @@ Studies belong under the Experiment they investigate. The local hierarchy is con
     runs/
     studies/
       <Study>/
-        runs/
+        <metric-id>_000001.csv
+        ...
 ```
 
-This keeps Study origin explicit. Runs are loose files, not per-run subdirectories.
+This keeps Study origin explicit. Study metric files live directly in the Study directory; there is no extra Study `runs/` layer and no per-run subdirectory.
 
 ## D-020 — Missing scientific/software capability is explicit
 

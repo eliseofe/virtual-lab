@@ -2,7 +2,7 @@
 
 Status: **current production contract, 16 September 2026**.
 
-This document defines the Experiment-domain storage/synchronization boundary. Current sequencing is controlled by `PROJECT_CONTROL.md`; deployed versions/evidence live in `PROJECT_STATE.md`.
+This document defines the Experiment-domain storage/synchronization boundary. Current project status is in `CURRENT_STATUS.md`; longer-term direction is in `ROADMAP.md`.
 
 ## Purpose
 
@@ -117,11 +117,11 @@ Current standalone run-file organization is:
       ...
     studies/
       <Study>/
-        runs/
-          ...same flat run contract...
+        <metric-id>_000001.csv
+        ...same flat run contract...
 ```
 
-There is no per-run directory. Stable metric ID + increasing run number associates files belonging to one run. Compact Lab-managed bookkeeping stays outside ordinary `runs/`.
+There is no per-run directory and no extra `runs/` layer inside a Study. Stable metric ID + increasing run number associates files belonging to one run. Compact Lab-managed bookkeeping stays outside ordinary standalone `runs/`.
 
 The registry must not silently become the bulk trajectory/Monte-Carlo warehouse.
 

@@ -1,8 +1,8 @@
 # Virtual Lab research object model
 
-Status: **approved architecture direction, reconciled 17 September 2026**.
+Status: **approved architecture direction, reconciled 18 September 2026**.
 
-This document records the conceptual model connecting Experiments, Studies, runs/results, Research Notes, Research Documents and future AI-assisted analysis/paper workflows. Current sequencing is controlled by `CURRENT.md` / `PROJECT_CONTROL.md`.
+This document records the conceptual model connecting Experiments, Studies, runs/results, Research Notes, Research Documents and future AI-assisted analysis/paper workflows. Current project status and activation gates live in `CURRENT_STATUS.md`; strategic direction lives in `ROADMAP.md`.
 
 ## 1. Core object model
 
@@ -190,24 +190,10 @@ A paper-to-Experiment AI may discover a missing simulator capability. The durabl
 
 The generic four-artifact architecture and capability registry are the basis of that workflow. Old assumptions tied to a fixed three-field Experiment representation are obsolete.
 
-## 13. Current implementation sequence
+## 13. Activation state
 
-Already deployed foundations include generic four-artifact Experiments, Metrics/live Results, local single-run persistence, MCP fine-grained Metrics/Results authoring, and the migrated Vite/React/TypeScript/Mantine presentation architecture.
+This document defines the research-object model; it does not activate roadmap work. Studies, Research Notes/Documents and later synthesis layers are implemented only when their current activation state in `CURRENT_STATUS.md` and owner direction permits them.
 
-**Studies are now the primary next feature lane.** The first slice establishes durable Study identity, one pinned Experiment revision, Experiment-context listing and a stable React/Mantine Study workspace. Multi-run orchestration, Study result storage and AI-result handoff follow as separate bounded children.
+## 14. Development procedure
 
-Research Notes/Documents and research synthesis remain later substantial layers.
-
-## 14. Execution rule
-
-Do not implement research-workflow epics monolithically.
-
-For each bounded child:
-1. read current project state and the active issue;
-2. preserve scientific guardrails and stable IDs/revisions;
-3. keep domain/model/controller authority outside decorative React state;
-4. perform deterministic local/static checks available in the current turn;
-5. make the terminal repository write;
-6. treat CI/build/deploy/smoke as a non-blocking regression signal rather than a wait state;
-7. never poll/wait on asynchronous verification;
-8. never create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests one.
+Development execution is defined only in `DEVELOPMENT_WORKFLOW.md`. This research-model document adds no separate polling, CI, deployment or completion procedure.

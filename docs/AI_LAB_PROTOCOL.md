@@ -6,7 +6,7 @@ Status: **current deployed architecture, 16 September 2026**.
 
 An AI research assistant is a client of the Experiment system, not the owner of Virtual Lab architecture. The same Experiment system must work with ChatGPT, Claude, Grok, another compatible client, a custom client, or no AI at all.
 
-Current authority for sequencing is `PROJECT_CONTROL.md`. Current technical versions/evidence are in `PROJECT_STATE.md`.
+Current project status is in `CURRENT_STATUS.md`; longer-term direction is in `ROADMAP.md`.
 
 ## Permanent layers
 
@@ -158,11 +158,11 @@ For standalone runs, current canonical layout is:
       <other-metric-id>_000001.csv
     studies/
       <Study>/
-        runs/
-          ...
+        <metric-id>_000001.csv
+        ...
 ```
 
-There is no directory per run. Whole-Experiment package export is a secondary convenience where needed; it does not replace automatic selected-folder persistence on capable browsers.
+There is no directory per run and no extra `runs/` layer inside a Study. Whole-Experiment package export is a secondary convenience where needed; it does not replace automatic selected-folder persistence on capable browsers.
 
 ## Provider independence
 

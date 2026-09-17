@@ -2,7 +2,7 @@
 
 Status: **production Supabase registry/Auth/MCP backend is deployed and integrated with Virtual Lab**.
 
-Current sequencing is in `PROJECT_CONTROL.md`; deployed versions/evidence are in `PROJECT_STATE.md`.
+Current project status is in `CURRENT_STATUS.md`; longer-term direction is in `ROADMAP.md`.
 
 ## Backend
 
@@ -101,11 +101,11 @@ Raw single-run metric data is **not** stored in Supabase as the canonical archiv
       ...
     studies/
       <Study>/
-        runs/
-          ...
+        <metric-id>_000001.csv
+        ...
 ```
 
-There is no per-run directory. Compact internal bookkeeping remains outside the ordinary `runs/` directory.
+There is no per-run directory and no extra `runs/` layer inside a Study. Compact internal bookkeeping remains outside the ordinary standalone `runs/` directory.
 
 ## Security advisor state
 

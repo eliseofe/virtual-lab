@@ -51,14 +51,14 @@ The earlier production implementation used a periodic sparse grid with resolutio
 
 The investigation then compared exact alternatives rather than exposing a radius-coupled tuning parameter to the researcher.
 
-Historical evidence lives in the date-stamped neighbour-search documents, including:
+Historical evidence lives in `docs/archive/`, including:
 
-- `NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
-- `NEIGHBOUR_SEARCH_TOURNAMENT_2026-09-15.md`
-- `NEIGHBOUR_SEARCH_ADAPTIVE_BVH_RESULT_2026-09-15.md`
-- `NEIGHBOUR_SEARCH_PRODUCTION_INTEGRATION_2026-09-15.md`
+- `archive/NEIGHBOUR_SEARCH_ARCHITECTURE_INVESTIGATION_2026-09-15.md`
+- `archive/NEIGHBOUR_SEARCH_TOURNAMENT_2026-09-15.md`
+- `archive/NEIGHBOUR_SEARCH_ADAPTIVE_BVH_RESULT_2026-09-15.md`
+- `archive/NEIGHBOUR_SEARCH_PRODUCTION_INTEGRATION_2026-09-15.md`
 
-These are investigation/history records. Current production truth is `PROJECT_STATE.md` plus this document.
+These are investigation/history records. Current production truth is this document plus the current implementation and architecture contracts.
 
 ## Future changes
 

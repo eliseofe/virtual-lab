@@ -4,7 +4,7 @@ Status: **current architecture, updated 16 September 2026**.
 
 This document defines required vs optional Experiment artifacts, passive vs executable artifacts, lifecycle hooks, and the boundary between one Experiment run and Study-level orchestration.
 
-Read `AGENTS.md`, `PROJECT_CONTROL.md`, `PROJECT_STATE.md`, and `docs/RESEARCH_MODEL.md` first.
+Read `AGENTS.md`, `CURRENT_STATUS.md`, and `docs/RESEARCH_MODEL.md` first; consult `ROADMAP.md` for longer-term direction.
 
 ## 1. Core invariant
 
