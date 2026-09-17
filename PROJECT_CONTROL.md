@@ -6,51 +6,65 @@ Read `CURRENT.md` first. This file holds strategy detail.
 
 ## Strategic frontier
 
-The frontend architecture migration is complete, and the missing visual-design implementation has now been applied across the production Lab on `main`.
+The frontend architecture migration is complete. The visual revamp has been accepted as a clean, functional baseline, while ongoing polish remains a living evidence-driven lane rather than a permanent blocker.
 
-The current frontier is **human visual/product acceptance**, not Studies.
+The student self-registration and Getting started mini-epic is also complete. At least one real student has successfully registered, confirmed the account and signed in.
 
-The owner explicitly found the architecture migration visually underwhelming because most of the page still looked like the old Lab. The follow-up visual pass therefore established an actual visual system and applied it across the core working surfaces. The frontend/visual-revamp epic remains open until the owner inspects the deployed result and considers it materially better/coherent enough.
+The current frontier is therefore **real student use and real scientific use**, with small bounded product/UX repairs driven by observed friction. Studies are still not authorized.
 
 ## Priority order
 
-1. **Owner visual acceptance of the revamped Lab.** Fix only concrete defects exposed by that use.
-2. **Student self-registration and Getting started mini-epic** — open signup, first-login onboarding/help, Grok/Claude setup and a first-use exercise.
-3. **Real student use of the production Lab.** This is a manual owner gate; do not automate or track it.
-4. **Studies only after later explicit owner authorization.**
-5. Scientific code-editor ergonomics and other surviving product/research lanes remain backlog items unless reprioritized.
+1. **Real use of the production Lab** by students and the owner.
+2. **Bounded fixes from evidence** — onboarding friction, terminology, usability, connector setup, or other concrete product defects discovered during use.
+3. **Living UI/UX refinement (#273)** only in small coherent batches from actual use, not generic polishing.
+4. **Studies only after a later explicit owner authorization.** Student use beginning does not automatically open that lane.
+5. Other research/product lanes remain backlog items unless the owner reprioritizes them.
 
-## Visual architecture
+## Frontend and visual state
 
-The production View now uses:
+The production View uses:
 - Vite + React + TypeScript + Mantine;
 - one coherent visual system for typography, spacing, surfaces, control hierarchy and app chrome;
-- a persistent integrated header/navigation model;
+- persistent integrated header/navigation;
 - consistent presentation across Experiment management, Simulation/Arena, Results, Authoring and utility surfaces.
 
-This is a presentation change only. It does not move model/scientific/runtime/controller/persistence authority into React.
+The owner accepted this as clean and usable, not as the final aesthetic endpoint. Long-lived UI/UX work belongs to #273.
 
-## Student-use direction
+The first post-onboarding polish pass already:
+- changed Results wording from **Series** to **Metrics**;
+- clarified the live-results state presentation;
+- removed non-actionable periodic-boundary metadata from the prominent Arena heading.
 
-The student mini-epic must make the production Lab self-contained for first use:
-- you send only the production Lab URL;
-- Create account / Sign in is obvious from the Lab;
-- open enrollment is intentional for the initial student phase;
-- first login leads to concise Getting started guidance;
-- Help remains accessible later;
-- Grok and Claude each receive provider-specific connector/setup instructions;
-- one small first-use exercise confirms the student can use the production connector and Lab;
+This remains presentation-only. It does not move model/scientific/runtime/controller/persistence authority into React.
+
+## Student-use state
+
+The production Lab now provides a self-contained student journey:
+- one normal production Lab URL;
+- obvious Create account / Sign in;
+- intentionally open enrollment for the initial phase;
+- concise first-login Getting started guidance;
+- persistent Help;
+- provider-specific **Use with Grok** and **Use with Claude** paths;
+- the production MCP endpoint;
+- one read-only first connection exercise;
 - no mock-lab or second student product.
+
+The production connector remains Experiment-domain only. It does not grant GitHub, shell, deployment or hidden simulator-development privilege.
 
 ## Studies gate
 
-Studies are not active work. Before implementation starts:
-- visual revamp must be accepted by the owner;
-- student onboarding mini-epic must be complete;
-- real students must begin using the production Lab;
-- owner must explicitly authorize Studies afterward.
+Studies are not active work. The owner explicitly wants more real use and scientific work before deciding when to start them.
 
-Do not infer that gate from elapsed time, CI, issue state or apparent readiness.
+Do not infer authorization from:
+- student onboarding being complete;
+- a student successfully signing in;
+- elapsed time;
+- CI/deployment state;
+- issue status;
+- apparent architectural readiness.
+
+Only a later explicit owner instruction activates Studies.
 
 ## Research object direction
 
