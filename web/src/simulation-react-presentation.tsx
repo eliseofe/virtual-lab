@@ -45,10 +45,7 @@ export function SimulationPresentation() {
         <Group justify="space-between" align="flex-start" gap="md" className="vlab-react-simulation-heading">
           <Box>
             <Text size="xs" fw={800} tt="uppercase" c="cyan.8" lts="0.12em">Simulation</Text>
-            <Group gap="sm" align="center">
-              <Title order={2} size="h3">Arena</Title>
-              <Badge variant="light" color="gray">{snapshot.boundaryLabel}</Badge>
-            </Group>
+            <Title order={2} size="h3">Arena</Title>
           </Box>
           <Group gap="xs" wrap="wrap">
             <Badge variant="light" color={stateColor(snapshot.runState)} data-vlab-simulation-state>{snapshot.runState}</Badge>
