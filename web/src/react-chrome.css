@@ -135,6 +135,58 @@
   background: var(--mantine-color-gray-0);
 }
 
+.vlab-react-authoring-mounted #authoring-workbench > .authoring-workbench-head,
+.vlab-react-authoring-mounted #authoring-workbench > #authoring-tabs {
+  display: none !important;
+}
+
+[data-vlab-react-authoring-head-root],
+[data-vlab-react-authoring-tabs-root] {
+  min-width: 0;
+}
+
+.vlab-react-authoring-head {
+  margin-bottom: 10px;
+  border: 1px solid var(--mantine-color-gray-2);
+  background: linear-gradient(180deg, #ffffff 0%, var(--mantine-color-gray-0) 100%);
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.vlab-react-authoring-actions {
+  min-width: min(100%, 18rem);
+}
+
+.vlab-react-authoring-status {
+  max-width: 18rem;
+  text-transform: none;
+}
+
+.vlab-react-authoring-status .mantine-Badge-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vlab-react-authoring-tabs-shell {
+  margin-bottom: 4px;
+  border: 1px solid var(--mantine-color-gray-2);
+  background: var(--mantine-color-gray-0);
+}
+
+.vlab-react-authoring-tabs {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.vlab-react-authoring-tab {
+  flex: 0 0 auto;
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.vlab-react-authoring-tab[data-dirty="true"] {
+  font-weight: 700;
+}
+
 @media (max-width: 74.99em) {
   .vlab-react-experiment-name {
     max-width: min(28rem, 38vw);
@@ -164,6 +216,26 @@
   .vlab-react-results-action,
   [data-vlab-results-add],
   [data-vlab-results-remove] {
+    min-height: 44px;
+  }
+
+  .vlab-react-authoring-head-layout {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .vlab-react-authoring-actions {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .vlab-react-authoring-status {
+    max-width: none;
+    align-self: flex-start;
+  }
+
+  [data-vlab-authoring-apply],
+  .vlab-react-authoring-tab {
     min-height: 44px;
   }
 }

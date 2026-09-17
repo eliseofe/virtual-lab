@@ -25,7 +25,11 @@ Completed migration children:
 - #254 — application chrome migration: complete and production-verified.
 - #261 — Results presentation migration: complete; React/Mantine owns visible Results controls while the existing metric/sample/canvas/persistence engine remains authoritative.
 
-**Next planned stage: Authoring shell migration** under #251.
+Current delivery checkpoint:
+- **#262 — Authoring-shell migration**: bounded implementation delivered to `main`. React/Mantine owns the visible Authoring heading, artifact-switching controls and Apply/restart presentation through a narrow adapter; existing source buffers, compiler/validator actions, dirty/conflict behavior, persistence and single-active-editor semantics remain authoritative underneath.
+- Autonomous CI/Pages/smoke owns terminal verification and closes #262 on success. The agent does not inspect or wait for it.
+
+**Next after successful #262 terminal verification: #202 — code authoring ergonomics**, on the migrated Authoring shell. The later #251 Simulation-stage presentation boundary remains separate.
 
 ## Production and architecture
 

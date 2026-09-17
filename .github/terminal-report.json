@@ -1,13 +1,15 @@
 {
   "schema": "vlab.terminal-report/1",
-  "nonce": "2026-09-17-retire-round1-process-debris",
-  "outcome": "The remaining Round-1 operational workflow/documentation debris is retired and the anti-stall regression is repaired.",
-  "owner_impact": "The active CI workflow is now named generically as ci-pages.yml, the obsolete Round-1 acceptance document is no longer active repository process, and the liveness regression test no longer fails on its own quoted forbidden example. Product and scientific behavior are unchanged.",
-  "remaining_action": "None for this cleanup. The next substantive product stage remains #251 Authoring-shell migration.",
+  "nonce": "2026-09-17-issue-262-authoring-shell",
+  "outcome": "Delivered #262: the visible Authoring shell now migrates to the established React + Mantine presentation boundary.",
+  "owner_impact": "Authoring keeps the same Configuration / Initialization / Controller / Metrics workflow and the same compiler, dirty-state, persistence and Apply/restart behavior. The visible heading, artifact controls, runtime status and Apply action are now React/Mantine-owned; scientific/runtime/data semantics were not changed.",
+  "remaining_action": "No action is required now. Autonomous CI will build, deploy and smoke-test this commit and report success or failure independently. On success it closes #262; the next authoring-specific lane is #202.",
   "technical_evidence": [
-    "Replaced .github/workflows/round1a-pages.yml with .github/workflows/ci-pages.yml without changing CI/deploy/smoke semantics.",
-    "Removed docs/ROUND1_ACCEPTANCE.md from active repository process documentation.",
-    "Fixed web/tests/actions-nonmonitoring.test.mjs so a quoted forbidden phrase cannot make the anti-stall test fail itself.",
-    "Added regression assertions that the retired Round-1 workflow and acceptance-document paths stay absent."
-  ]
+    "New authoring-react-adapter.ts bridges presentation state to the existing authoritative authoring-workspace.js without owning source buffers or compiler state.",
+    "New authoring-react-presentation.tsx renders the Authoring heading, runtime/apply presentation and artifact tabs through the existing MantineProvider root.",
+    "Legacy Authoring controls remain as hidden authoritative adapters once React mounts; one-active-editor semantics remain in authoring-workspace.js.",
+    "issue262-authoring-react.test.mjs locks the presentation-only boundary, tab semantics and 44px mobile control floor.",
+    "web/product-surface.json advances work tracking to #202 while retaining the existing bounded production smoke for experiment-runtime."
+  ],
+  "close_issue": 262
 }

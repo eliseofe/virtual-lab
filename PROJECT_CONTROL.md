@@ -13,7 +13,10 @@ Completed migration stages:
 2. #254 — application chrome;
 3. #261 — Results presentation.
 
-Next stage: **Authoring shell**, followed by #202 editor ergonomics on the migrated foundation.
+Current delivery stage:
+4. **#262 — Authoring shell**: delivered to `main` with React/Mantine owning visible Authoring chrome/tabs/apply presentation through the existing authoritative authoring adapters. Autonomous CI owns terminal verification/issue closeout.
+
+After #262 verifies successfully: **#202 — code authoring ergonomics** on the migrated foundation. The later #251 Simulation-stage presentation boundary and legacy-presentation removal remain separate stages.
 
 Frozen direction:
 - Vite build;
@@ -25,7 +28,8 @@ Frozen direction:
 - progressive coexistence/rollback, not a flag-day rewrite;
 - no Next.js/SSR.
 
-Remaining migration order after Authoring:
+Remaining migration direction:
+- #202 editor ergonomics on the migrated Authoring shell;
 - Simulation-stage presentation boundary around the existing canvas/worker/runtime;
 - legacy presentation removal + final regression/visual acceptance;
 - #3 Studies only after the migration foundation is complete enough to receive it.
@@ -39,6 +43,7 @@ Remaining migration order after Authoring:
 - #208 unified Experiment identity/save/persistence/organization complete/deployed.
 - #210 hierarchy/microcopy/responsive cleanup complete/deployed.
 - #261 React/Mantine Results presentation complete.
+- #262 React/Mantine Authoring-shell presentation delivered; underlying source/compiler/persistence contracts intentionally unchanged.
 
 ## ZERO-TOLERANCE execution policy
 
