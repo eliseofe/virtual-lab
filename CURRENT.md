@@ -6,15 +6,16 @@ This is the first repository file to read in a new ChatGPT/Work session. It cont
 
 ## What is active now
 
-**Maintenance override:** #257 — Repository detoxification and execution fast-forward is temporarily ahead of feature work.
+**Repository detox safe checkpoint reached.** Feature work may resume; residual historical branch/run debris is non-blocking.
 
 - #258 — CI minimization: complete. Historical automatic benchmark/performance workflows were removed. Product changes now use one normal CI/Pages workflow; terminal-success notification uses one explicit tiny notifier run rather than every comment.
 - #259 — repository memory fast-forward: complete. New sessions start from this compact file rather than mandatory historical reconstruction.
-- #260 — stale execution debris / branch hygiene: bounded. The remaining historical branch deletion and zombie-run cancellation are not required for correctness and are not available through the currently known safe connector operations. Do not perform connector capability discovery to pursue them. Treat the stale run and old branches as inert historical debris; they must never be used as completion/idleness signals.
+- #260 — stale execution debris / branch hygiene: bounded and non-blocking. The remaining historical branch deletion and zombie-run cancellation are not required for correctness and are not available through the currently known safe connector operations. Do not perform connector capability discovery to pursue them. Treat the stale run and old branches as inert historical debris; they must never be used as completion/idleness signals.
+- #257 — repository detoxification epic now serves as historical/maintenance context, not as a blocker for product work.
 
-After detox reaches a safe checkpoint, resume **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
+Resume **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
 
-Current migration child: **#254 — application chrome migration**. PR #255 merged the visible React/Mantine chrome to `main`, but production responsive smoke exposed an Account-dialog focus-return regression, so #254 is reopened. PR #256 contains the intended hotfix path and remains unmerged while detox is active. Do not start the Results/Authoring/Simulation/Study migration children before #254 is repaired and production-verified.
+Current migration child: **#254 — application chrome migration**. PR #255 merged the visible React/Mantine chrome to `main`, but production responsive smoke exposed an Account-dialog focus-return regression, so #254 is reopened. PR #256 contains the intended hotfix path and remains unmerged. Do not start the Results/Authoring/Simulation/Study migration children before #254 is repaired and production-verified.
 
 ## Production and architecture
 
