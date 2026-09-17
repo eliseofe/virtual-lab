@@ -9,8 +9,8 @@ This is the first repository file to read in a new ChatGPT/Work session. It cont
 **Maintenance override:** #257 — Repository detoxification and execution fast-forward is temporarily ahead of feature work.
 
 - #258 — CI minimization: complete. Historical automatic benchmark/performance workflows were removed. Product changes now use one normal CI/Pages workflow; terminal-success notification uses one explicit tiny notifier run rather than every comment.
-- #259 — repository memory fast-forward: active while this file is being established.
-- #260 — stale execution debris / branch hygiene: next.
+- #259 — repository memory fast-forward: complete. New sessions start from this compact file rather than mandatory historical reconstruction.
+- #260 — stale execution debris / branch hygiene: active.
 
 After detox reaches a safe checkpoint, resume **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
 

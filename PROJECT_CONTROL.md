@@ -10,8 +10,8 @@ A temporary maintenance epic, **#257 — Repository detoxification and execution
 
 Detox sequence:
 1. #258 — automatic CI minimization: complete;
-2. #259 — current-state/bootstrap fast-forward: active;
-3. #260 — stale queued-run and branch hygiene: next.
+2. #259 — current-state/bootstrap fast-forward: complete;
+3. #260 — stale queued-run and branch hygiene: active.
 
 Feature development resumes only after the detox reaches a safe checkpoint.
 
