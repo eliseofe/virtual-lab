@@ -18,23 +18,24 @@ test("#252 pins the chosen frontend foundation", () => {
   assert.match(packageJson.scripts.build, /build:react/);
 });
 
-test("#252 Vite builds a bounded React library for coexistence", () => {
+test("#252 Vite keeps a bounded React library for progressive coexistence", () => {
   assert.match(viteConfig, /react-migration-root\.tsx/);
   assert.match(viteConfig, /formats:\s*\['es'\]/);
   assert.match(viteConfig, /react-migration-root\.js/);
   assert.match(viteConfig, /publicDir:\s*false/);
 });
 
-test("#252 React root is inert and Mantine-scoped", () => {
+test("#252 React boundary remains Mantine-scoped and outside simulator ownership", () => {
   assert.match(reactRoot, /MantineProvider/);
   assert.match(reactRoot, /#react-migration-root/);
   assert.match(reactRoot, /data-vlab-react-foundation="mounted"/);
-  assert.doesNotMatch(reactRoot, /simulation-canvas|#run|#pause|experiment-select|results/i);
+  assert.doesNotMatch(reactRoot, /simulation-canvas|#run|#pause|worker\.js|metrics-runtime-bridge/);
 });
 
-test("#252 legacy browser artifact remains authoritative while React root is injected", () => {
+test("#252 legacy browser artifact remains authoritative while React presentation evolves", () => {
   assert.match(build, /await cp\(src, assetDir/);
   assert.match(build, /react-migration-root\.js/);
-  assert.match(build, /id=\"react-migration-root\" hidden aria-hidden=\"true\"/);
-  assert.match(verify, /React\/Mantine coexistence root/);
+  assert.match(build, /id=\"react-migration-root\" aria-label=\"Virtual Lab application navigation\"/);
+  assert.doesNotMatch(build, /id=\"react-migration-root\" hidden/);
+  assert.match(verify, /React\/Mantine application chrome|React application chrome/);
 });
