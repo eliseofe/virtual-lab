@@ -10,6 +10,7 @@ if (!/^assets-[0-9a-f]{16}$/.test(manifest.assetDir)) throw new Error("invalid v
 const assetDir = path.join(dist, manifest.assetDir);
 for (const relative of [
   "main.js", "runtime-speed.js", "worker.js", "style.css", "ux-hardening.css", "ux-hardening.js",
+  "workspace-shell.js", "student-registration.js", "student-onboarding.js",
   "config/compiler.js", "initializer/compiler.js", "controller/compiler.js",
   "wasm/vlab_kernel.js", "wasm/vlab_kernel_bg.wasm",
   "react-migration-root.js", "react-migration-root.css",
@@ -50,8 +51,29 @@ for (const required of [
   "data-vlab-nav",
   "React migration root is missing",
 ]) if (!reactRoot.includes(required)) throw new Error(`missing React application-chrome marker: ${required}`);
-if (reactRoot.includes("simulation-canvas") || reactRoot.includes("#run") || reactRoot.includes("#pause")) {
-  throw new Error("React application chrome has taken ownership of scientific/runtime controls");
+// React/Mantine now owns visible Simulation presentation and intentionally proxies
+// authoritative legacy runtime controls through selectors such as #run/#pause and the
+// simulation canvas. Those selector strings are not runtime ownership. Keep this
+// distribution check focused on actual scientific/runtime implementation ownership;
+// source-contract tests separately enforce the adapter boundary.
+for (const forbidden of ["vlab_kernel_bg.wasm", "vlab_kernel.js", "new Worker("]) {
+  if (reactRoot.includes(forbidden)) {
+    throw new Error(`React presentation bundle contains scientific/runtime implementation marker: ${forbidden}`);
+  }
+}
+
+const workspaceShell = await readFile(path.join(assetDir, "workspace-shell.js"), "utf8");
+if (!workspaceShell.includes('import "./student-registration.js"')) {
+  throw new Error("production workspace does not load student registration");
+}
+const studentRegistration = await readFile(path.join(assetDir, "student-registration.js"), "utf8");
+for (const required of [
+  "Create account",
+  "data-vlab-create-account",
+  "signupClient.auth.signUp",
+  "Sign in or create account",
+]) if (!studentRegistration.includes(required)) {
+  throw new Error(`built student-registration path is incomplete: ${required}`);
 }
 
 const configMatch = main.match(/const defaultConfigSource = `([\s\S]*?)`;\n/);
@@ -60,4 +82,4 @@ const editableConfig = configMatch[1];
 for (const removed of ["PHYSICS_DT", "METRIC_DT", "NEIGHBOUR_RADIUS", "K3", "WHEEL_BASE", "V0 = U", "SPRING_K"]) {
   if (editableConfig.includes(removed)) throw new Error(`student config still exposes removed parameter: ${removed}`);
 }
-console.log(`Verified coherent browser artifact ${manifest.assetDir} with visible React/Mantine application chrome`);
+console.log(`Verified coherent browser artifact ${manifest.assetDir} with visible React/Mantine application chrome and student registration`);
