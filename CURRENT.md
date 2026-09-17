@@ -6,34 +6,47 @@ Read this first in a new session. Deep technical evidence lives in `PROJECT_STAT
 
 ## Execution rule
 
-The project completion contract is closed-loop and bounded:
+The project completion contract is **closed-loop, production-gated and bounded**:
 
 1. implement the bounded task;
 2. run deterministic local/static checks;
 3. verify the exact candidate through CI/build;
 4. verify deployment;
-5. exercise the affected deployed Lab behavior with bounded production smoke/browser checks;
-6. repair and repeat if any step fails;
-7. only after the exact deployed candidate is green, record durable completion state and report the task complete.
+5. wait, with a finite bound, until production proves it is serving that exact candidate SHA;
+6. exercise all affected deployed Lab behavior with bounded production smoke/browser checks;
+7. repair and repeat if any completion gate fails;
+8. only after the exact deployed candidate is green, record durable completion state and report the task complete.
 
 Never call a user-facing/deployable task fixed, complete, deployed, or production-verified from local/static checks alone.
 
-The loop must also terminate. Verification stays scoped to the exact current candidate SHA/run and every test, browser process, deployment/status check, and workflow job must have a finite bound or timeout. A timeout or wedged verifier is a terminal verification failure: do not wait forever, but do not convert it into success.
+A conversational/approval chunk ends only **production green** or at a **specific concrete blocker** that cannot be repaired with the currently available environment/authority. Red CI/smoke, a queued/in-progress exact run, or another directly related completion-gate defect is not a valid stopping point merely because the conversation has become large.
+
+The loop must also terminate. Verification stays scoped to the exact current candidate SHA/run and every test, browser process, deployment/status check, and workflow job has a finite bound or timeout. After the first candidate, one approved chunk may create at most **three repaired exact candidates**. A timeout, wedged verifier, unavailable external service, or exhaustion of that repair bound is a concrete verification blocker: do not wait forever, but do not convert it into success.
 
 Do not create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests them.
 
-## Current recovery state
+## Closed-loop recovery — complete
 
-The previous `fire-and-forget` / non-blocking-CI completion policy introduced on 17 September is retired. The project is temporarily in **closed-loop recovery**.
+The temporary fire-and-forget/non-blocking-CI policy introduced on 17 September is retired and the recovery is **complete**.
 
-The latest exact production run examined during this recovery (`35251936423`, commit `0bf7ff6`) built and deployed successfully but failed deployed responsive smoke because the mobile `Switch experiment` / browse touch target rendered at 40 px rather than the required 44 px. Therefore the current product state is **not fully production-verified**.
+Two exact production candidates independently passed the restored full gate:
 
-The student self-registration and Getting started implementation exists and a real student has successfully registered, confirmed the account and signed in. However, onboarding completion is reopened until:
-- the current red production smoke is repaired;
-- the exact repaired candidate passes build, deploy and production smoke;
-- the student registration/onboarding path has direct bounded production liveness coverage, including protection against self-triggering observer freezes.
+- recovery candidate `18f5b2171cc2c43afa7ab1cc403ab00770dfb329`, run `35260088984`;
+- separate harmless workflow-acceptance candidate `f400d3750aba79701e6d1b9fb19b5b3f2bba566b`, run `35260443455`.
 
-No further substantial product/scientific feature work should outrun this recovery gate.
+For both, build and Pages deployment succeeded, production exposed the exact candidate SHA before browser verification began, all **7 active Lab surfaces** passed production smoke, and the success-only owner report completed.
+
+The workflow now stamps `deploy-sha.txt` into each Pages artifact and `web/scripts/wait-deployed-sha.mjs` waits with a hard deadline for that exact SHA before production browser smoke. This prevents post-deploy Pages/CDN propagation races from being mistaken for product failures.
+
+Student registration and Getting started are production-verified, including:
+- signed-out registration readiness;
+- first-login Getting started auto-open;
+- Grok/Claude guidance;
+- bounded regression coverage for the previous self-triggering observer freeze;
+- mobile Getting started scrolling on a 390 px viewport;
+- 44 px mobile Close target.
+
+The Lab is back in **normal operations**. There is no outstanding closed-loop recovery gate.
 
 ## Current project state
 
@@ -41,7 +54,7 @@ The frontend architecture migration to **Vite + React + TypeScript + Mantine is 
 
 Ongoing presentation quality lives in **#273 — UI/UX refinement and visual polish from real use**. It remains evidence-driven rather than a generic polishing lane.
 
-The student self-registration and Getting started mini-epic (#268) has implemented:
+The student self-registration and Getting started mini-epic (#268) is complete and production-verified:
 - production self-registration/sign-in with intentionally open enrollment for the first student phase;
 - first-login Getting started guidance plus persistent Help;
 - Grok and Claude production connector setup instructions;
@@ -55,10 +68,10 @@ A small post-onboarding UX cleanup was also applied:
 
 ## Immediate frontier
 
-1. restore a green exact-candidate production gate for the current Lab;
-2. add direct deployed liveness coverage for student registration/onboarding;
-3. only after the repaired candidate is green, return to real student/scientific use and bounded evidence-driven fixes;
-4. continue #273 only from observed UX/UI evidence rather than generic polishing.
+1. await the next explicit owner-approved substantial Lab task;
+2. continue real student/owner use of production and turn concrete evidence into bounded fixes;
+3. use #273 only for observed UX/UI evidence rather than generic polishing;
+4. keep the restored closed-loop completion contract on every deployable task.
 
 Do not invent a maintenance phase, a second Lab, or another broad redesign before evidence requires it.
 
