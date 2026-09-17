@@ -9,21 +9,25 @@
   "agent_execution_policy": {
     "zero_tolerance_liveness": true,
     "async_external_feedback_loops": "forbidden",
+    "github_actions_api_during_ordinary_execution": "forbidden",
     "external_status_polling": "forbidden",
     "ci_role": "non_blocking_regression_signal",
     "scheduled_automations_without_owner_approval": "forbidden",
     "work_browser_wait_loops": "forbidden",
     "long_running_remote_job_waits": "forbidden",
-    "connector_capability_discovery_mid_task": "forbidden"
+    "connector_capability_discovery_mid_task": "forbidden",
+    "terminal_ci_boundary": "fire_and_forget"
   },
   "work_tracking": {
     "source": "CURRENT.md",
     "frontend_migration_state": "complete",
     "roadmap_reconciliation_state": "complete",
+    "student_onboarding_state": "complete",
+    "current_phase": "real_use",
     "next_stage": {
-      "name": "Studies foundation — identity, pinned Experiment revision and workspace shell",
-      "parent_epic": "Studies",
-      "surface_ids": ["react-shell"]
+      "name": "Real student and scientific use — bounded fixes from evidence",
+      "parent_epic": "Real use",
+      "surface_ids": []
     }
   },
   "surfaces": [
