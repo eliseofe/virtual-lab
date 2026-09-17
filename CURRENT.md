@@ -2,43 +2,63 @@
 
 Updated: 17 September 2026
 
-Read this first in a new session. Deep technical evidence lives in `PROJECT_STATE.md`; strategy detail lives in `PROJECT_CONTROL.md`; history lives in Git/closed issues.
+Read this first in a new session. Deep technical evidence lives in `PROJECT_STATE.md`; strategy detail lives in `PROJECT_CONTROL.md`; the approved research object model lives in `docs/RESEARCH_MODEL.md`.
 
 ## Execution rule
 
-No asynchronous external process belongs inside the agent feedback loop. Do not poll/wait on CI, deployments, Work/browser jobs, authentication, remote services or benchmarks. Do not create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests them.
+No asynchronous external process belongs inside the assistant feedback loop. Do not poll/wait on CI, deployments, Work/browser jobs, authentication, remote services or benchmarks. Do not create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests them.
 
-A bounded repository task ends with deterministic local/static verification available in the turn, durable state updates and a terminal repository write. CI/build/deploy/smoke runs independently as a non-blocking regression signal. When the owner explicitly asks for status or reports a failure, perform one bounded lookup of the exact relevant run/commit and act on that result.
+A bounded repository task ends with deterministic local/static verification available in the turn, durable state updates and a terminal repository write. CI/build/deploy/smoke runs independently as a non-blocking regression signal. A later observed failure becomes a focused repair task; it does not put the project into a pending state.
 
 ## Current project state
 
-The progressive frontend migration to **Vite + React + TypeScript + Mantine is code-complete**.
+The progressive frontend migration to **Vite + React + TypeScript + Mantine is complete**.
 
-Migrated user-facing presentation:
+React/Mantine owns the visible View for:
 - application chrome/navigation;
 - Results controls/panel chrome;
 - Authoring heading/artifact controls/apply presentation;
 - Simulation/Arena heading, runtime controls, speed/statistics and view controls.
 
-The existing scientific/runtime/controller engines remain authoritative underneath thin presentation adapters. Obsolete global/responsive CSS for superseded legacy chrome and Simulation controls has been retired; hidden legacy DOM targets that still carry controller/runtime semantics remain compatibility plumbing rather than a second visible interface.
+The scientific/runtime/controller engines remain authoritative underneath thin presentation adapters. Hidden legacy DOM targets remain only where they carry controller/runtime compatibility; they are not a second visible interface.
 
-## Next project action
+The post-migration roadmap reconciliation is complete. Stale/absorbed UI and old acceptance tickets were closed; surviving work was reclassified by dependency and authorization.
 
-Before starting another feature epic, perform the owner-requested **portfolio reconciliation of remaining open epics/tickets**:
-- identify requirements already absorbed by the frontend migration or prior completed work;
-- close/supersede stale or duplicate tickets;
-- update surviving tickets to the cleaned MVC architecture and current bounded execution model;
-- produce a human-readable priority sequence without relying on issue numbers as memory.
+## Active product lane
 
-Human visual/product testing of the migrated Lab is useful feedback but is not an asynchronous gate that stops roadmap reconciliation.
+**Studies foundation — identity, exact pinned Experiment revision and Study workspace.**
+
+This is the next substantive product ticket. The first slice creates:
+- durable Study identity + human name;
+- one exact pinned Experiment identity/revision;
+- Experiment-context Study listing;
+- stable/bookmarkable React/Mantine Study workspace;
+- explicit indication when the Experiment has advanced without silently rebasing the Study.
+
+It does **not** yet implement multi-run orchestration, parameter sweeps, Study result storage, checkpoint/resume, AI result handoff, Research Notes/Documents or scientific aggregation choices.
+
+## Human-readable roadmap after this slice
+
+1. **Scientific code-editor ergonomics** — editor foundation/highlighting, then parser-derived navigation/folding/search, then source-linked diagnostics.
+2. **Continue Studies** — explicit fresh/resume semantics and local multi-run result/provenance storage.
+3. **Selected Study results → AI**, then Research Notes/Documents/synthesis once Study/result identities are stable.
+4. **Production access/enrollment** when the owner explicitly chooses controlled enrollment vs intentional open signup + monitoring.
+5. Future simulator/HPC/performance/science work remains parked until concrete needs or explicit authorization activate it.
 
 ## MVC boundary
 
-- **Model stays outside React:** simulator state, physics, timing, RNG, environment/action application, Experiment artifacts, scientific metrics and persistence contracts.
-- **Controller/runtime semantics stay authoritative:** Run/Pause/Restart/new-seed, execution-speed semantics, camera/view actions, compiler behavior and persistence behavior are not reimplemented as React state machines.
+- **Model stays outside React:** simulator state, physics, timing, RNG, environment/action application, Experiment/Study domain objects, scientific metrics and persistence contracts.
+- **Controller/runtime semantics stay authoritative:** Run/Pause/Restart/new-seed, execution-speed semantics, camera/view actions, compiler behavior, persistence behavior and future Study orchestration are not reimplemented as React state machines.
 - **React/Mantine owns the View:** visible layout, controls, navigation, status presentation and responsive composition.
 
-The migration changes presentation wiring/adapters only; it does not move scientific/runtime authority into React.
+## Research/storage contract
+
+- Experiment = one runnable single-run scientific definition.
+- Study = one named reproducible multi-run investigation, initially pinned to one exact Experiment revision.
+- Standalone metric files live under `<Experiment>/runs/`.
+- Study metric files live directly under `<Experiment>/studies/<Study>/`.
+- **There is no extra `runs/` directory inside a Study and no directory per simulation run.**
+- Raw scientific output remains local-first; registry/cloud state is not the mandatory bulk-data warehouse.
 
 ## Production and architecture
 
@@ -47,15 +67,17 @@ The migration changes presentation wiring/adapters only; it does not move scient
 - Scientific/runtime authority: Rust/WASM kernel + existing worker/runtime/compiler modules.
 - Runnable Experiment artifacts: Configuration, Initialization, Controller, Metrics. Empty Metrics is valid.
 - Results presentation state is separate from scientific Experiment revision state.
-- Raw run results are local-first ordinary files; browser-private storage/Supabase are not the scientific bulk archive.
 
-## Current product tracking
+## Important blocked/parked work
 
-`web/product-surface.json` is the machine-readable source of truth for current user-facing Lab surfaces and bounded production-smoke coverage.
+Do not start merely because these issues are open:
+- production OAuth/enrollment: blocked on explicit owner policy choice;
+- deterministic RNG service: implementation needs explicit owner authorization;
+- optional executable artifact dispatch: blocked on a concrete approved use case;
+- numerical-integrator evaluation: requires owner scientific/numerical activation;
+- native/HPC, richer physics/heterogeneous swarms, living environment/performance/validation umbrellas: future/on-demand.
 
-`CURRENT.md` is the source of truth for what work is happening now/next.
-
-## Hard guardrails
+## Hard scientific guardrails
 
 - Do not invent/derive/retune scientific models, equations, parameters, controller logic, metric formulas or scientific sampling semantics without explicit owner authorization.
 - Already owner-authorized scientific definitions may be reused exactly; do not alter them.
@@ -71,7 +93,8 @@ The migration changes presentation wiring/adapters only; it does not move scient
 3. active issue for the task;
 4. `web/product-surface.json` for current Lab surface/smoke contract;
 5. `PROJECT_CONTROL.md`;
-6. `PROJECT_STATE.md`;
-7. older issues/docs/Git history.
+6. `docs/RESEARCH_MODEL.md` for research-object/storage architecture;
+7. `PROJECT_STATE.md`;
+8. older issues/docs/Git history.
 
 If lower-authority text is stale, repair it rather than asking the owner to repeat an already-recorded decision.

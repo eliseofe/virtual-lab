@@ -1,16 +1,17 @@
 {
   "schema": "vlab.terminal-report/1",
-  "nonce": "2026-09-17-final-frontend-migration-cleanup",
-  "outcome": "Completed the frontend-migration cleanup: React/Mantine now has one coherent visible presentation layer for chrome, Results, Authoring and Simulation, with superseded legacy presentation CSS retired.",
-  "owner_impact": "The scientific simulator, runtime controls, camera, canvas renderer, plot engine, source editors, compiler behavior and persistence semantics are unchanged. Hidden DOM targets remain only where they carry authoritative controller/runtime compatibility; they are no longer styled as a second user interface.",
-  "remaining_action": "The frontend migration is complete. The next project task is the already-requested reconciliation of remaining epics/tickets against the migrated architecture and cleaned execution model. Human visual/product testing can report ordinary defects without blocking that reconciliation.",
+  "nonce": "2026-09-17-post-migration-roadmap-reconciliation",
+  "outcome": "Completed the post-frontend-migration roadmap reconciliation and selected the Studies foundation as the next substantive product lane.",
+  "owner_impact": "Stale/absorbed UI and pre-migration acceptance tickets are retired, surviving near-term work now reflects the React/Mantine MVC architecture and non-blocking CI workflow, and blocked/future work is explicitly parked rather than accidentally executable. Product/scientific behavior is unchanged by this reconciliation.",
+  "remaining_action": "Continue directly with the Studies foundation: durable Study identity, exact pinned Experiment revision, Experiment-context listing and a stable React/Mantine Study workspace. No owner action is required for the reconciliation itself.",
   "technical_evidence": [
-    "Removed obsolete topbar and legacy Simulation control presentation rules from style.css while retaining canvas/editor/technical content styling.",
-    "Removed stale responsive rules for hidden topbar, Simulation controls and legacy Authoring tab chrome from ux-hardening.css.",
-    "Reduced authoring-workspace injected CSS to authoritative editor/pane/persistence/technical content; React/Mantine owns visible Authoring chrome.",
-    "Added a final migration regression contract proving obsolete presentation rules stay retired while model/runtime/renderer ownership remains outside React.",
-    "Updated product-surface tracking to migration_state=complete and moved the next project action to roadmap reconciliation.",
-    "No scheduled task, reminder, watchdog or polling loop was created."
+    "Closed the duplicate final-migration ticket and UI/UX requirements already absorbed by application chrome/Results/frontend migration.",
+    "Retired separate pre-migration collection/authoring acceptance issue trees; normal integrated product use now produces focused defects directly.",
+    "Rewrote the autonomous CI report sink as non-blocking regression evidence rather than an agent synchronization gate.",
+    "Reconciled Studies, Study storage/run semantics, editor ergonomics and production access tickets with the migrated MVC architecture and current execution model.",
+    "Corrected docs/RESEARCH_MODEL.md so Study metric files live directly under <Experiment>/studies/<Study>/ with no extra Study runs/ directory.",
+    "Created the bounded Studies-foundation implementation child and marked it as the next active substantive work.",
+    "No scheduled task, reminder, watchdog, automation or CI polling loop was created."
   ],
-  "close_issue": 265
+  "close_issue": 266
 }

@@ -1,8 +1,8 @@
 # Virtual Lab research object model
 
-Status: **approved architecture direction, current through 16 September 2026**.
+Status: **approved architecture direction, reconciled 17 September 2026**.
 
-This document records the conceptual model connecting Experiments, Studies, runs/results, Research Notes, Research Documents and future AI-assisted analysis/paper workflows. Current sequencing is always controlled by `PROJECT_CONTROL.md`.
+This document records the conceptual model connecting Experiments, Studies, runs/results, Research Notes, Research Documents and future AI-assisted analysis/paper workflows. Current sequencing is controlled by `CURRENT.md` / `PROJECT_CONTROL.md`.
 
 ## 1. Core object model
 
@@ -11,7 +11,7 @@ Experiment
   = one runnable scientific model / single-run definition
 
 Study
-  = one named reproducible multi-run investigation based on pinned Experiment revision(s)
+  = one named reproducible multi-run investigation based on a pinned Experiment revision
 
 Research Note
   = durable structured scientific memory
@@ -20,48 +20,37 @@ Research Document
   = scope/organization of a paper, report, thesis chapter, etc.
 ```
 
-Supporting objects include Run, Result, Results Presentation, Plot Specification, Generated Plot/Result and generic typed Artifacts.
-
-These are explicit scientific/product concepts, not an arbitrary graph abstraction.
+Supporting objects include Run, Result, Results Presentation, Plot Specification, Generated Plot/Result and generic typed Artifacts. These are explicit scientific/product concepts, not an arbitrary graph abstraction.
 
 ## 2. Experiment semantics
 
-An **Experiment** answers:
-
-> What exactly is one reproducible run definition, including what is measured?
+An **Experiment** answers: “What exactly is one reproducible run definition, including what is measured?”
 
 A runnable Experiment currently has four compulsory core artifacts:
-
 1. Configuration
 2. Initialization
 3. Controller
 4. Metrics
 
-The Metrics artifact is compulsory because single-run measurement belongs to the Experiment definition. It may validly contain zero metric definitions.
+Metrics is compulsory because single-run measurement belongs to the Experiment definition; it may validly contain zero metric definitions. Extra artifacts remain passive unless the versioned capability registry explicitly gives them execution semantics.
 
-The generic artifact representation remains extensible, but extra artifacts are passive unless the simulator's versioned capability registry explicitly gives them execution semantics.
-
-Executed scientific revisions are significant. A later Study/result must never silently follow a newer Experiment revision.
+Executed scientific revisions matter. A Study/result must never silently follow a newer Experiment revision.
 
 Collections organize Experiments. They are not a filesystem hierarchy and do not become the Study storage tree.
 
 ## 3. Single-run Results vs presentation
 
-Experiment Results answer:
+Experiment Results answer: “What happened during this run?”
 
-> What happened during this run?
+Metrics produce read-only scientific samples identified by stable metric IDs. Scientific metric definition/sampling policy lives in the Experiment Metrics artifact.
 
-Metrics produce read-only scientific samples identified by stable metric IDs. The scientific metric definition and sampling policy live in the Experiment Metrics artifact.
-
-Results **presentation** is separate workspace state. A panel binds one or more stable metric IDs; the same metric may appear in several panels. Reconfiguring panels does not create a new scientific Experiment revision.
-
-The first deployed visualization type is interactive time-series. Future richer presentation/figure specifications remain downstream of the scientific metric definitions.
+Results **presentation** is separate workspace state. Panels bind stable metric IDs; reconfiguring panels does not create a new scientific Experiment revision. Interactive time-series is the first visualization type; publication/figure specifications remain downstream analysis/presentation.
 
 ## 4. Run and local-result model
 
 A **Run** is one execution of an exact Experiment revision with concrete run configuration/seed/runtime context.
 
-Current standalone raw metric output is local-first and flat:
+Raw metric output is local-first and flat. Stable metric ID + run-number suffix associates files belonging to one run; there is no directory per simulation run.
 
 ```text
 <VirtualLab root>/
@@ -73,48 +62,43 @@ Current standalone raw metric output is local-first and flat:
       ...
     studies/
       <Study>/
-        runs/
-          ...same flat single-run contract...
+        <metric-id>_000001.csv
+        <other-metric-id>_000001.csv
+        <metric-id>_000002.csv
+        ...
 ```
 
-There is no directory per run. Stable metric ID + run-number suffix associates the files of one run. Lab-managed execution/reproducibility metadata stays out of the ordinary `runs/` directory.
+**There is no extra `runs/` layer inside a Study.** This is the current accepted storage contract and supersedes older text that showed `<Study>/runs/`.
 
-The registry preserves Experiment definitions/identity and lightweight workspace state; it is not the mandatory warehouse for large trajectories or Monte Carlo data.
+Lab-managed execution/reproducibility bookkeeping may live in an internal `.vlab/` area. Ordinary scientific output remains directly usable files. The registry preserves definitions/identity/lightweight workspace state; it is not the mandatory bulk-data warehouse.
 
 ## 5. Study semantics
 
-A **Study** answers:
+A **Study** answers: “Which runs/conditions do I perform on this Experiment, and how do I compare/aggregate them?”
 
-> Which runs/conditions do I perform on this Experiment, and how do I compare/aggregate them?
+The first implementation uses one pinned Experiment revision. If the Experiment advances, the Study remains attached to its original revision until an explicit rebase/update action is designed. Existing results are never relabelled as if they came from the newer revision.
 
-The first Study implementation should use one pinned Experiment revision as its basis. If the Experiment later advances, the Study remains attached to its original revision until an explicit rebase/update action is designed. Existing results must never be relabelled as though they came from the newer revision.
-
-A Study may define, as applicable:
-
+A Study may eventually define, as applicable:
 - parameters/conditions to vary;
 - parameter values/ranges/matrices;
 - repetitions/seeds;
 - fresh vs checkpoint/resume policy;
-- which already-defined Experiment metrics to collect/use;
+- which already-defined Experiment metrics to consume;
 - grouping/aggregation/statistics;
 - cross-run analyses;
 - cross-run plot specifications.
 
-The existing single-run Metrics definitions remain in the Experiment. A Study consumes stable metric IDs and may specify how their outputs are aggregated/compared; it does not duplicate or relocate the single-run metric formulas.
+Single-run Metrics definitions remain in the Experiment. A Study consumes stable metric IDs and may specify aggregation/comparison; it does not duplicate metric formulas.
 
-### Granularity
+Do not force one Study per variable, plot or paper section. A broad campaign Study and several focused Studies are both legitimate.
 
-Do not force one Study per variable, plot or paper section. Legitimate examples include one broad campaign Study or several focused Studies. Modularity is available when useful, not compulsory.
+The first implementation need not coordinate multiple Experiment revisions in one Study. Cross-Experiment narratives can initially use several Studies referenced by one Research Document.
 
-### Future multi-Experiment Studies
+## 6. Study workspace and MVC boundary
 
-The first implementation need not coordinate multiple Experiment revisions in one Study. Cross-Experiment stories can initially use several Studies referenced by one Research Document. Persistence should not make later multi-Experiment orchestration impossible if a concrete need arises.
+Studies are visible in the context of their Experiment and have their own stable/bookmarkable workspace.
 
-## 6. Study GUI/workspace
-
-Studies should be visible in the context of their Experiment while having their own workspace.
-
-Conceptually on the Experiment page:
+Conceptually:
 
 ```text
 Active Elastic — r12
@@ -127,9 +111,7 @@ Studies
   Main experimental campaign
 ```
 
-Opening a Study should use a stable/bookmarkable route and may open in a normal browser tab while the Experiment workspace remains available.
-
-A Study workspace can contain concepts such as:
+A Study workspace can contain progressively:
 
 ```text
 Active Elastic > Effect of population size
@@ -142,121 +124,90 @@ Plots
 Notes   # later
 ```
 
-If a newer Experiment revision exists, the Study should show that fact without silently rebasing.
+If a newer Experiment revision exists, show that fact without silently rebasing.
+
+The migrated frontend follows the same MVC rule as the Experiment workspace:
+- Study identity, pinned revision, protocol/orchestration and provenance are domain state outside React;
+- React/Mantine owns visible Study layout/controls/workspace composition;
+- UI actions invoke explicit Study-domain services/adapters rather than making React component state authoritative.
 
 ## 7. Study filesystem organization
 
-Study result storage is nested under its Experiment so origin/context is obvious:
+Study output is nested under its originating Experiment:
 
 ```text
 <VirtualLab root>/
   Active Elastic/
-    runs/                    # standalone loose runs
+    runs/                    # standalone run metric files
     studies/
       Noise sweep/
-        runs/                # Study-managed loose runs
+        <metric-id>_000001.csv
+        <metric-id>_000002.csv
       Density sweep/
-        runs/
+        <metric-id>_000001.csv
 ```
 
-Do not create global sibling `studies/` outside the Experiment and do not create one directory per simulation run.
-
-Human-readable directory names help navigation, while stable IDs/revisions in machine-managed metadata remain authoritative for automation/reproducibility.
+Do not create global sibling `studies/` outside the Experiment, an extra Study `runs/` directory, or one directory per simulation run. Human-readable names aid navigation; stable IDs/revisions in machine-managed metadata remain authoritative.
 
 ## 8. Result and plot concepts
 
 A **Result** is a derived scientific output tied to exact Run/Study/Experiment identities.
 
-A **Plot Specification** is a persistent reproducible recipe describing how a plot is constructed from Result/Study data. A **Generated Plot** is a concrete rendering produced from a specific data/run set.
+A **Plot Specification** is a persistent reproducible recipe describing construction from Result/Study data. A **Generated Plot** is one concrete rendering from a specific data/run set.
 
-Long-term figure scope may include reproducible SVG/PDF/PNG export and publication-ready plots. This should be a downstream analysis/presentation layer rather than turning the live single-run Results UI into a general graphics editor.
+Long-term figure scope may include reproducible SVG/PDF/PNG export and publication-ready plots. That remains a downstream analysis/presentation layer rather than turning live single-run Results into a graphics editor.
 
-Scientific aggregation/statistics/figure choices must come from the researcher/research-AI scientific workflow; implementation agents provide mechanisms without inventing paper-specific analysis.
+Scientific aggregation/statistics/figure choices come from the researcher/research-AI scientific workflow; implementation agents provide mechanisms without inventing paper-specific analysis.
 
 ## 9. Research Notes
 
-A **Research Note** is durable structured scientific memory, not the raw chat transcript.
+A **Research Note** is durable structured scientific memory, not a raw chat transcript. Useful note types may include hypothesis, observation, interpretation, discussion, decision, caveat and open question.
 
-Useful note types may include hypothesis, observation, interpretation, discussion, decision, caveat and open question.
-
-Notes should reference stable research-object identities explicitly where possible. Examples:
-
-```text
-Hypothesis H1
-references: none yet
-later motivates: Study A
-```
-
-```text
-Observation O7
-references: Study A, Plot P3
-```
-
-```text
-Interpretation I4
-references: Study A, Study B, Plot A7, Plot B4
-```
-
-A future “Create Study from this hypothesis” action may be useful, but not every Study must originate from a formal hypothesis.
+Notes reference stable research-object identities where possible. A future “Create Study from this hypothesis” action may be useful, but not every Study must originate from a formal hypothesis.
 
 ## 10. Research Documents
 
-A **Research Document** is the lightweight object representing a scientific narrative: conference paper, journal paper, technical report, thesis chapter or similar output.
+A **Research Document** is lightweight scope/organization for a scientific narrative: paper, report, thesis chapter or similar. It references relevant Studies, Notes and selected plots/results without duplicating bulk data.
 
-It references relevant Studies, Research Notes and selected plots/results without duplicating underlying bulk data.
-
-This is the natural layer for cross-Experiment narratives. For example, one document may compare Studies built on a kinematic Experiment, a dynamics Experiment and later physical-system data.
+This is the natural cross-Experiment narrative layer.
 
 ## 11. AI/research-assistant direction
 
-The research model is provider-independent. An authorized research AI should progressively be able to:
-
+The model is provider-independent. An authorized research AI may progressively be able to:
 - read/edit Experiment definitions within the current MCP capability boundary;
-- author Metrics and Results presentation bindings (already deployed);
+- author Metrics and Results presentation bindings;
 - later read/create/edit Studies when explicitly implemented;
 - preserve/update structured Research Notes;
 - work from Research Document scope/references;
-- receive selected compact Study results/plots through an explicit user-controlled result channel;
-- help construct a research narrative without requiring the original chat transcript.
+- receive selected compact Study results/plots through an explicit user-controlled channel;
+- help construct a research narrative without needing the original chat transcript.
 
-Research AI does not gain simulator-development privileges. GitHub/source/deployment/shell/admin access remains a separate trusted developer workflow.
-
-Conceptually:
-
-```text
-Experiment definition(s)
-  + Studies / protocols
-  + selected results / plots
-  + Research Notes
-  + Research Document scope
-       ↓
-authorized research AI
-       ↓
-report / paper draft
-       ↓
-future document/output adapter
-```
+Research AI does not gain simulator-development, GitHub/source/deployment/shell/admin privileges.
 
 ## 12. Capability-request relationship
 
-A paper-to-Experiment AI may discover that the simulator lacks a required capability. The durable Professor request loop handles that gap; the AI must not fabricate substitute science.
+A paper-to-Experiment AI may discover a missing simulator capability. The durable Professor request loop handles that gap; the AI must not fabricate substitute science.
 
-The current generic four-artifact architecture and capability registry are the basis of that workflow. Old assumptions that capability requests depend on a fixed three-field Experiment representation are obsolete.
+The generic four-artifact architecture and capability registry are the basis of that workflow. Old assumptions tied to a fixed three-field Experiment representation are obsolete.
 
-## 13. Current vs future implementation
+## 13. Current implementation sequence
 
-Already deployed foundations include generic four-artifact Experiments, Metrics/live Results, local single-run persistence and MCP fine-grained Metrics/Results authoring.
+Already deployed foundations include generic four-artifact Experiments, Metrics/live Results, local single-run persistence, MCP fine-grained Metrics/Results authoring, and the migrated Vite/React/TypeScript/Mantine presentation architecture.
 
-Studies, Research Notes/Documents, selected Study-result → AI and paper/report synthesis remain future substantial layers. Their existence in this architecture document is not permission to implement them before `PROJECT_CONTROL.md` makes them active.
+**Studies are now the primary next feature lane.** The first slice establishes durable Study identity, one pinned Experiment revision, Experiment-context listing and a stable React/Mantine Study workspace. Multi-run orchestration, Study result storage and AI-result handoff follow as separate bounded children.
 
-## 14. Decomposition rule
+Research Notes/Documents and research synthesis remain later substantial layers.
 
-Do not implement any future research-workflow epic monolithically.
+## 14. Execution rule
 
-When an epic becomes active:
+Do not implement research-workflow epics monolithically.
 
-1. read `AGENTS.md`, `PROJECT_CONTROL.md`, `PROJECT_STATE.md` and the relevant design docs;
-2. inspect the then-current implementation/dependencies;
-3. choose the smallest coherent independently testable/deployable child;
-4. preserve scientific guardrails and stable IDs/revisions;
-5. update durable project memory after verified completion.
+For each bounded child:
+1. read current project state and the active issue;
+2. preserve scientific guardrails and stable IDs/revisions;
+3. keep domain/model/controller authority outside decorative React state;
+4. perform deterministic local/static checks available in the current turn;
+5. make the terminal repository write;
+6. treat CI/build/deploy/smoke as a non-blocking regression signal rather than a wait state;
+7. never poll/wait on asynchronous verification;
+8. never create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests one.
