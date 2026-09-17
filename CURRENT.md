@@ -12,24 +12,27 @@ During ordinary work the agent never waits for, polls, monitors, or repeatedly c
 
 The same rule applies beyond GitHub Actions: no repeated external-status calls, no mid-task connector capability hunting, no broad recursive scans, and no open-ended self-directed external verification loops. Work/browser verification may be used only as one bounded invocation when explicitly required; if it does not return a terminal result, stop and return control.
 
-A later owner turn may explicitly request diagnosis of a specific failure. That permits bounded evidence retrieval for that failure only, never monitoring or waiting for a retry.
+**Fire-and-forget is not allowed to mean fire-and-forget-forever.** Every terminal handoff has a finite verification decision deadline: by default 20 minutes after the terminal GitHub write unless the active ticket records another bounded deadline. An independent one-shot deadline check must classify the handoff as `SUCCESS`, `FAILURE`, or `VERIFICATION TIMEOUT`. `VERIFICATION TIMEOUT` is terminal and returns the task to the agent for a later bounded diagnostic turn; it is never treated as “still pending,” and the agent never extends it through polling.
+
+A later owner turn may explicitly request diagnosis of a specific failure or verification-timeout result. That permits bounded evidence retrieval for that failure only, never monitoring or waiting for a retry.
 
 ## What is active now
 
 Repository detox is complete. Historical branch/run debris remains physically visible only where the available connector cannot safely delete/cancel it; it is inert and must not affect execution.
 
-Active product lane: **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
+Active product lane: **frontend migration to Vite + React + TypeScript + Mantine before Studies**.
 
 Completed migration children:
-- #252 — foundation/coexistence: complete.
-- #254 — application chrome migration: complete and production-verified.
-- #261 — Results presentation migration: complete; React/Mantine owns visible Results controls while the existing metric/sample/canvas/persistence engine remains authoritative.
+- foundation/coexistence: complete;
+- application chrome migration: complete and production-verified;
+- Results presentation migration: complete; React/Mantine owns visible Results controls while the existing metric/sample/canvas/persistence engine remains authoritative.
 
 Current delivery checkpoint:
-- **#262 — Authoring-shell migration**: bounded implementation delivered to `main`. React/Mantine owns the visible Authoring heading, artifact-switching controls and Apply/restart presentation through a narrow adapter; existing source buffers, compiler/validator actions, dirty/conflict behavior, persistence and single-active-editor semantics remain authoritative underneath.
-- Autonomous CI/Pages/smoke owns terminal verification and closes #262 on success. The agent does not inspect or wait for it.
+- **Authoring-shell migration**: bounded implementation delivered to `main`. React/Mantine owns the visible Authoring heading, artifact-switching controls and Apply/restart presentation through a narrow adapter; existing source buffers, compiler/validator actions, dirty/conflict behavior, persistence and single-active-editor semantics remain authoritative underneath.
+- The latest repair removed two stale regression-contract failures without changing product logic.
+- Autonomous CI/Pages/smoke owns terminal verification. This verification is subject to the finite deadline rule above; unresolved verification becomes `VERIFICATION TIMEOUT`, not an indefinite pending state.
 
-**Next after successful #262 terminal verification: #202 — code authoring ergonomics**, on the migrated Authoring shell. The later #251 Simulation-stage presentation boundary remains separate.
+**Next after Authoring reaches terminal success:** migrate the Simulation/Arena presentation around the existing canvas/worker/runtime. Separate editor-ergonomics work remains behind completion of the frontend-migration epic.
 
 ## Production and architecture
 
@@ -64,7 +67,7 @@ The smoke runner gives every active surface a hard bounded timeout and kills non
 
 Work on one substantial independently testable ticket at a time. Perform bounded local implementation/testing, update durable state/issue metadata, write `.github/terminal-report.json` at the terminal boundary, and stop. Autonomous CI performs deployment/production verification and sends the owner the result.
 
-If an asynchronous external result is required before further work, that requirement ends the current agent turn. Never wait for the result in the same turn.
+At that handoff, establish the finite verification deadline and one-shot independent deadline check. If success/failure cannot be established by the deadline, report `VERIFICATION TIMEOUT` and return the task to a later bounded diagnostic turn. Never convert the deadline into a polling loop.
 
 For GitHub operations before the terminal boundary, use compact calls scoped to the current file/issue/PR. Do not use recursive whole-repository trees, Actions history, broad branch/history sweeps, or connector capability discovery.
 
@@ -72,7 +75,7 @@ For GitHub operations before the terminal boundary, use compact calls scoped to 
 
 1. explicit current owner instruction;
 2. this `CURRENT.md`;
-3. active issue for the current task;
+3. active issue for the task;
 4. `web/product-surface.json` for current Lab surface / smoke / liveness contract;
 5. `PROJECT_CONTROL.md` for strategy detail;
 6. `PROJECT_STATE.md` for stable technical contracts/evidence;
