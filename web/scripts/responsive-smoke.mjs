@@ -255,11 +255,15 @@ async function verifyUtilityDialog(send) {
 }
 
 async function verifyAuthoringKeyboard(send) {
-  const result = JSON.parse(await evaluate(send, `JSON.stringify((() => {
+  await evaluate(send, `(() => {
     const first = document.querySelector('[data-vlab-authoring-tab="configuration"]')
       ?? document.querySelector('.authoring-tab[data-artifact-id="configuration"]');
     first.focus();
     first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    return true;
+  })()`);
+  await sleep(100);
+  const result = JSON.parse(await evaluate(send, `JSON.stringify((() => {
     const selected = document.querySelector('[data-vlab-authoring-tab][aria-selected="true"]')
       ?? document.querySelector('.authoring-tab[aria-selected="true"]');
     const visiblePanes = [...document.querySelectorAll('[data-authoring-artifact-pane]')]
