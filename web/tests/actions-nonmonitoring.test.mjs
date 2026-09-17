@@ -52,14 +52,14 @@ test("retired Round-1 process artifacts stay retired", () => {
   assert.equal(existsSync(legacyRound1Acceptance), false);
 });
 
-test("production success reporting occurs only after deployed smoke", () => {
+test("owner notification is success-only and occurs after deployed smoke", () => {
   const smokeJob = workflow.indexOf("smoke:");
   const verification = workflow.indexOf("Verify deployed current Lab surface");
-  const successReport = workflow.indexOf("Send terminal success report without agent monitoring");
+  const successReport = workflow.indexOf("Send owner success report");
   assert.ok(smokeJob >= 0 && verification > smokeJob && successReport > verification);
-  assert.match(workflow, /terminal-failure-report:/);
   assert.match(workflow, /Virtual Lab production deployment succeeded/);
-  assert.match(workflow, /Virtual Lab production run failed/);
+  assert.doesNotMatch(workflow, /terminal-failure-report:/);
+  assert.doesNotMatch(workflow, /Virtual Lab production run failed/);
   assert.equal(existsSync(legacyNotifier), false);
 
   const active = manifest.surfaces.filter((surface) => surface.state === "active");
