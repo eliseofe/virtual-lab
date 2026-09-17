@@ -9,20 +9,19 @@
   "agent_execution_policy": {
     "zero_tolerance_liveness": true,
     "async_external_feedback_loops": "forbidden",
-    "github_actions_api_during_ordinary_execution": "forbidden",
     "external_status_polling": "forbidden",
+    "ci_role": "non_blocking_regression_signal",
+    "scheduled_automations_without_owner_approval": "forbidden",
     "work_browser_wait_loops": "forbidden",
     "long_running_remote_job_waits": "forbidden",
-    "connector_capability_discovery_mid_task": "forbidden",
-    "terminal_ci_boundary": "fire_and_forget",
-    "allowed_diagnostic_exception": "later_owner_turn_with_specific_failure_identifier"
+    "connector_capability_discovery_mid_task": "forbidden"
   },
   "work_tracking": {
     "source": "CURRENT.md",
+    "migration_state": "complete",
     "next_stage": {
-      "parent_issue": 251,
-      "name": "Legacy presentation removal + final regression/visual acceptance",
-      "surface_ids": ["experiment-runtime", "react-shell", "metrics-results", "responsive-experiment-account"]
+      "name": "Reconcile remaining epics/tickets after frontend migration",
+      "surface_ids": []
     }
   },
   "surfaces": [

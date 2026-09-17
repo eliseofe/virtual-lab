@@ -6,21 +6,17 @@ Read `CURRENT.md` first. This file holds strategy detail.
 
 ## Current priority
 
-Finish the progressive frontend migration to Vite + React + TypeScript + Mantine before resuming separate feature epics.
+The progressive frontend migration to Vite + React + TypeScript + Mantine is complete at the repository/product-architecture level. Do not start another feature epic until the remaining roadmap has been reconciled against the migrated frontend and the cleaned execution model.
 
-Completed migration stages:
-1. frontend foundation/coexistence;
-2. application chrome/navigation;
-3. Results presentation;
-4. Authoring presentation.
+Completed migration surfaces:
+- frontend foundation/coexistence;
+- application chrome/navigation;
+- Results presentation;
+- Authoring presentation;
+- Simulation/Arena presentation;
+- legacy presentation CSS cleanup and final regression-contract reconciliation.
 
-Current stage:
-5. **Simulation/Arena presentation migration** — React/Mantine owns visible Simulation layout and controls through a narrow adapter while the existing scientific/runtime/controller/renderer implementation remains authoritative.
-
-Remaining stage:
-6. legacy presentation removal + final regression/visual acceptance.
-
-Only after this migration epic is complete should separate feature epics such as code-authoring ergonomics resume. Before choosing the next feature epic, reconcile the remaining open roadmap against the cleaned execution model and close/supersede absorbed tickets.
+Human visual/product feedback may still reveal ordinary defects; those are repair tasks, not a reason to reopen the architectural migration by default.
 
 ## Frozen architecture
 
@@ -30,21 +26,29 @@ Only after this migration epic is complete should separate feature epics such as
 - Mantine component/design system;
 - static GitHub Pages;
 - existing Rust/WASM scientific/runtime core remains authoritative;
-- progressive coexistence/rollback, not a flag-day rewrite;
 - no Next.js/SSR.
 
 ## MVC boundary
 
 - Model/scientific state remains outside React.
 - Existing runtime/controller semantics remain authoritative and are invoked through thin presentation adapters.
-- React/Mantine owns the View progressively.
-- The existing canvas renderer remains authoritative; React may frame/layout it but does not redraw scientific state merely for framework consistency.
+- React/Mantine owns the View.
+- The existing canvas renderer, plot/sample engine and source/compiler engines remain authoritative where they are scientific/runtime/editor engines rather than presentation chrome.
+- Hidden DOM action/state targets may remain as explicit compatibility plumbing until a separately justified controller extraction removes them; they are not a second visible UI.
 
 ## Execution model
 
-One substantial independently testable unit at a time. Local deterministic implementation/testing may iterate synchronously. External asynchronous systems do not participate in an agent-side wait/poll loop and no scheduled automation is created without explicit owner request.
+One substantial independently testable unit at a time. Local deterministic implementation/testing may iterate synchronously. External asynchronous systems do not participate in an agent-side wait/poll loop, and no scheduled task/reminder/watchdog/automation is created without explicit owner request.
 
-CI/build/deploy/smoke remains useful as an independent regression signal. A later explicit status/failure turn may inspect one exact run/commit and repair a concrete failure, but there is no indefinite pending state in the agent workflow.
+CI/build/deploy/smoke is an independent, non-blocking regression signal. A later explicit status/failure turn may inspect one exact run/commit and repair a concrete failure.
+
+## Next strategic pass
+
+Perform a bounded portfolio reconciliation of remaining open epics/tickets before choosing the next feature lane:
+- close/supersede requirements already absorbed;
+- repair stale architecture/process text;
+- retain genuinely outstanding product/scientific/infrastructure work;
+- order surviving work in human-readable terms rather than issue-number shorthand.
 
 ## Scientific boundary
 

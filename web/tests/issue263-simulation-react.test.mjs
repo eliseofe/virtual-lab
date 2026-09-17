@@ -55,10 +55,8 @@ test('Responsive smoke follows visible migrated Simulation controls', () => {
   assert.match(responsive, /data-vlab-simulation-fit/);
 });
 
-test('Product surface advances to final migration cleanup after Simulation presentation', () => {
+test('Current product surface records the migrated Simulation presentation', () => {
   const runtime = surface.surfaces.find((entry) => entry.id === 'experiment-runtime');
   assert.ok(runtime);
   assert.match(runtime.name, /React\/Mantine Simulation/);
-  assert.equal(surface.work_tracking?.next_stage?.parent_issue, 251);
-  assert.match(surface.work_tracking?.next_stage?.name ?? '', /Legacy presentation removal/);
 });

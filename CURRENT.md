@@ -6,28 +6,31 @@ Read this first in a new session. Deep technical evidence lives in `PROJECT_STAT
 
 ## Execution rule
 
-No asynchronous external process belongs inside the agent feedback loop. Do not poll/wait on CI, deployments, Work/browser jobs, authentication, remote services or benchmarks. Do not create scheduled tasks/automations unless the owner explicitly requests them.
+No asynchronous external process belongs inside the agent feedback loop. Do not poll/wait on CI, deployments, Work/browser jobs, authentication, remote services or benchmarks. Do not create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests them.
 
-A bounded repository task ends with deterministic local/static verification available in the turn, durable state updates and a terminal repository write. CI/build/deploy/smoke runs independently as a regression signal rather than as an indefinite blocking state. When the owner explicitly asks for status or reports a failure, perform one bounded lookup of the exact relevant run/commit and act on that result.
+A bounded repository task ends with deterministic local/static verification available in the turn, durable state updates and a terminal repository write. CI/build/deploy/smoke runs independently as a non-blocking regression signal. When the owner explicitly asks for status or reports a failure, perform one bounded lookup of the exact relevant run/commit and act on that result.
 
-## Active product lane
+## Current project state
 
-Finish the frontend migration to Vite + React + TypeScript + Mantine before starting separate feature epics.
+The progressive frontend migration to **Vite + React + TypeScript + Mantine is code-complete**.
 
-Completed migration stages:
-- frontend foundation/coexistence;
+Migrated user-facing presentation:
 - application chrome/navigation;
-- Results presentation;
-- Authoring presentation.
+- Results controls/panel chrome;
+- Authoring heading/artifact controls/apply presentation;
+- Simulation/Arena heading, runtime controls, speed/statistics and view controls.
 
-Current delivery stage:
-- **Simulation/Arena presentation migration**: React/Mantine takes visible ownership of Simulation layout and controls through a thin adapter; the existing Rust/WASM simulator, worker/runtime actions, camera implementation and canvas renderer remain authoritative.
+The existing scientific/runtime/controller engines remain authoritative underneath thin presentation adapters. Obsolete global/responsive CSS for superseded legacy chrome and Simulation controls has been retired; hidden legacy DOM targets that still carry controller/runtime semantics remain compatibility plumbing rather than a second visible interface.
 
-Next after this stage:
-- legacy presentation removal;
-- final regression + visual acceptance;
-- close the frontend-migration epic;
-- then reconcile the remaining epics/tickets against the cleaned execution model before starting the next feature epic.
+## Next project action
+
+Before starting another feature epic, perform the owner-requested **portfolio reconciliation of remaining open epics/tickets**:
+- identify requirements already absorbed by the frontend migration or prior completed work;
+- close/supersede stale or duplicate tickets;
+- update surviving tickets to the cleaned MVC architecture and current bounded execution model;
+- produce a human-readable priority sequence without relying on issue numbers as memory.
+
+Human visual/product testing of the migrated Lab is useful feedback but is not an asynchronous gate that stops roadmap reconciliation.
 
 ## MVC boundary
 
@@ -35,7 +38,7 @@ Next after this stage:
 - **Controller/runtime semantics stay authoritative:** Run/Pause/Restart/new-seed, execution-speed semantics, camera/view actions, compiler behavior and persistence behavior are not reimplemented as React state machines.
 - **React/Mantine owns the View:** visible layout, controls, navigation, status presentation and responsive composition.
 
-The migration may change presentation wiring/adapters. It must not move scientific/runtime authority into React.
+The migration changes presentation wiring/adapters only; it does not move scientific/runtime authority into React.
 
 ## Production and architecture
 

@@ -23,17 +23,6 @@ function installStyles() {
   style.dataset.vlabAuthoringWorkspace = "";
   style.textContent = `
     #authoring-workbench { padding: 18px; overflow: hidden; }
-    .authoring-workbench-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 12px; }
-    .authoring-workbench-head .muted { margin: 5px 0 0; max-width: 700px; }
-    .authoring-workbench-actions { display: flex; align-items: center; justify-content: flex-end; gap: 9px; flex-wrap: wrap; }
-    .authoring-runtime-state { color: #62747b; font-size: 11.5px; font-weight: 650; white-space: nowrap; }
-    .authoring-runtime-state[data-state="dirty"] { color: #925f08; }
-    .authoring-runtime-state[data-state="working"] { color: #71641f; }
-    .authoring-runtime-state[data-state="error"] { color: #9e2d29; }
-    .authoring-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 0 0 9px; border-bottom: 1px solid #e5ebed; scrollbar-width: thin; }
-    .authoring-tab { flex: 0 0 auto; min-height: 38px; padding: 7px 11px; border-color: transparent; background: transparent; color: #596c74; font-size: 12px; font-weight: 650; }
-    .authoring-tab[aria-selected="true"] { color: #204e60; background: #edf4f6; border-color: #c5d7de; }
-    .authoring-tab[data-dirty="true"]::after { content: " •"; color: #9a6508; }
     .authoring-body { padding-top: 13px; }
     .authoring-pane[hidden] { display: none !important; }
     .authoring-pane-head { margin-bottom: 10px; }
@@ -58,10 +47,6 @@ function installStyles() {
     .technical-ir-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 15px 15px 37px; }
     .technical-ir-grid .ir-details { margin: 0; padding: 10px 0 0; }
     @media (max-width: 720px) {
-      .authoring-workbench-head { display: grid; }
-      .authoring-workbench-actions { justify-content: stretch; }
-      .authoring-workbench-actions #apply-workspace { flex: 1; min-height: 44px; }
-      .authoring-runtime-state { white-space: normal; }
       #authoring-workbench textarea { min-height: 330px; }
       .technical-ir-grid { grid-template-columns: 1fr; padding-left: 15px; }
     }

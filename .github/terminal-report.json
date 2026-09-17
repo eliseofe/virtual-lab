@@ -1,15 +1,16 @@
 {
   "schema": "vlab.terminal-report/1",
-  "nonce": "2026-09-17-simulation-react-migration",
-  "outcome": "Migrated the visible Simulation/Arena presentation to React + Mantine while preserving the existing simulator, runtime controls, camera implementation and canvas renderer as authoritative.",
-  "owner_impact": "Run, Pause, Restart, new-seed restart, execution speed, runtime statistics, arena view and agent-glyph behavior keep their existing semantics. React changes the visible presentation and forwards actions through a thin adapter; it does not own scientific state or simulator control logic.",
-  "remaining_action": "The remaining frontend-migration work is legacy presentation removal plus final regression/visual acceptance. No scheduled task or owner action is required for this handoff.",
+  "nonce": "2026-09-17-final-frontend-migration-cleanup",
+  "outcome": "Completed the frontend-migration cleanup: React/Mantine now has one coherent visible presentation layer for chrome, Results, Authoring and Simulation, with superseded legacy presentation CSS retired.",
+  "owner_impact": "The scientific simulator, runtime controls, camera, canvas renderer, plot engine, source editors, compiler behavior and persistence semantics are unchanged. Hidden DOM targets remain only where they carry authoritative controller/runtime compatibility; they are no longer styled as a second user interface.",
+  "remaining_action": "The frontend migration is complete. The next project task is the already-requested reconciliation of remaining epics/tickets against the migrated architecture and cleaned execution model. Human visual/product testing can report ordinary defects without blocking that reconciliation.",
   "technical_evidence": [
-    "simulation-react-adapter.ts mirrors existing runtime readouts and proxies the existing run/pause/restart/new-seed/speed/fit/glyph DOM targets.",
-    "simulation-react-presentation.tsx renders the migrated Simulation controls under the existing MantineProvider without importing worker, camera, compiler or scientific-runtime logic.",
-    "simulation-react.css hides only superseded stage heading/runtime/toolbar presentation; the existing simulation canvas and renderer remain visible and authoritative.",
-    "responsive-smoke.mjs now resolves visible migrated Simulation and Authoring controls first, with legacy fallback during coexistence.",
-    "A focused synchronous TypeScript compiler check of the new Simulation adapter and presentation passed before this repository write.",
-    "main.js and runtime-speed.js remain unchanged and continue to own worker/runtime/camera/rendering and achieved-speed behavior."
-  ]
+    "Removed obsolete topbar and legacy Simulation control presentation rules from style.css while retaining canvas/editor/technical content styling.",
+    "Removed stale responsive rules for hidden topbar, Simulation controls and legacy Authoring tab chrome from ux-hardening.css.",
+    "Reduced authoring-workspace injected CSS to authoritative editor/pane/persistence/technical content; React/Mantine owns visible Authoring chrome.",
+    "Added a final migration regression contract proving obsolete presentation rules stay retired while model/runtime/renderer ownership remains outside React.",
+    "Updated product-surface tracking to migration_state=complete and moved the next project action to roadmap reconciliation.",
+    "No scheduled task, reminder, watchdog or polling loop was created."
+  ],
+  "close_issue": 265
 }
