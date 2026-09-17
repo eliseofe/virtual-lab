@@ -25,7 +25,7 @@
   z-index: 210;
 }
 
-.vlab-react-chrome-mounted {
+body.vlab-react-chrome-mounted {
   background: var(--vlab-page);
   color: var(--vlab-ink);
 }
@@ -120,7 +120,6 @@
   text-transform: none;
 }
 
-/* Experiment identity / management becomes the visual entry point to the workbench. */
 .vlab-react-chrome-mounted .experiment-panel {
   padding: 16px 18px;
   border-left: 4px solid var(--vlab-accent);
@@ -150,7 +149,6 @@
   border-top-color: #e4eaec;
 }
 
-/* Simulation: one workbench surface, not a card nested inside another card. */
 .vlab-react-chrome-mounted .stage-panel {
   padding: 18px;
   border-color: var(--vlab-border-strong);
@@ -200,7 +198,6 @@
   border-top-color: #e2e8ea !important;
 }
 
-/* Results: quiet frame, strong data panels, clear controls. */
 .vlab-react-results-mounted .live-results {
   overflow: hidden;
   border: 1px solid var(--vlab-border-strong);
@@ -296,7 +293,6 @@
   background: #fbfcfc;
 }
 
-/* Authoring: let code dominate; chrome recedes. */
 .vlab-react-authoring-mounted #authoring-workbench > .authoring-workbench-head,
 .vlab-react-authoring-mounted #authoring-workbench > #authoring-tabs {
   display: none !important;
@@ -387,7 +383,6 @@
   border-radius: 10px;
 }
 
-/* Technical material is intentionally quieter than the scientific workspace. */
 .vlab-react-chrome-mounted .technical-panel {
   border-color: #dde4e6;
   background: #f8fafb;
@@ -398,17 +393,17 @@
   color: #718187;
 }
 
-.vlab-react-chrome-mounted .utility-dialog {
+body.vlab-react-chrome-mounted .utility-dialog {
   border: 1px solid #cad7db;
   border-radius: 18px;
   box-shadow: var(--vlab-shadow-raised);
 }
 
-.vlab-react-chrome-mounted .utility-dialog-shell {
+body.vlab-react-chrome-mounted .utility-dialog-shell {
   background: var(--vlab-page);
 }
 
-.vlab-react-chrome-mounted .utility-dialog-head {
+body.vlab-react-chrome-mounted .utility-dialog-head {
   border-bottom-color: #dce4e7;
   background: #ffffff;
 }
