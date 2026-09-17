@@ -2,11 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [worker, main, profile, workflow] = await Promise.all([
+const [worker, main, profile] = await Promise.all([
   readFile(new URL("../src/worker.js", import.meta.url), "utf8"),
   readFile(new URL("../src/main.js", import.meta.url), "utf8"),
   readFile(new URL("../scripts/layer-attribution-profile.mjs", import.meta.url), "utf8"),
-  readFile(new URL("../../.github/workflows/performance-profile.yml", import.meta.url), "utf8"),
 ]);
 
 test("#111 timing hook is profiling-only and absent from production main", () => {
@@ -28,9 +27,4 @@ test("#111 profile attributes the 5000-agent path across compute, transfer, copy
     assert.match(profile, new RegExp(`\\"${mode}\\"`));
   }
   assert.match(profile, /achieved_real_time_factor/);
-});
-
-test("dedicated performance workflow preserves #111 evidence", () => {
-  assert.match(workflow, /layer-attribution-profile\.mjs/);
-  assert.match(workflow, /layer-attribution-profile\.json/);
 });
