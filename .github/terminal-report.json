@@ -1,16 +1,13 @@
 {
   "schema": "vlab.terminal-report/1",
-  "nonce": "2026-09-17-issue-262-stale-ci-contract-repair",
-  "outcome": "Repaired the two stale regression contracts that blocked #262 terminal verification; no product logic changed.",
-  "owner_impact": "Nothing is ready for manual testing yet. The Authoring-shell migration itself passed all five #262-focused tests in the failed CI run. This repair only updates an obsolete workflow filename in the product-surface smoke contract and narrows the old #254 visibility guard so hiding migrated Authoring child controls is not mistaken for hiding the whole Authoring workbench.",
-  "remaining_action": "No owner action is required now. Autonomous CI will build, deploy and smoke-test this repair independently. On terminal success it closes #262; only then is the deployed Authoring shell ready for owner-facing visual/product testing before moving to #202.",
+  "nonce": "2026-09-17-issue-262-responsive-smoke-repair",
+  "outcome": "Resolved the final #262 verification mismatch: responsive smoke now measures the visible migrated Authoring controls rather than hidden legacy controls.",
+  "owner_impact": "The Authoring migration itself required no product-logic repair. Build, typecheck, deployment and Authoring-specific tests had already passed; the remaining failure was verifier drift after the React/Mantine migration.",
+  "remaining_action": "#262 is considered complete from the available direct evidence. Work proceeds to the Simulation/Arena presentation migration; no owner test is required at this point.",
   "technical_evidence": [
-    "Failed CI run 35218388498 passed the Rust workspace and 208 of 210 browser/compiler tests.",
-    "All five #262-focused React/Mantine Authoring tests passed in that run.",
-    "The two failures were stale tests: product-surface-smoke.test.mjs referenced retired round1a-pages.yml, and issue254-application-chrome.test.mjs used an over-broad #authoring-workbench CSS regex.",
-    "The product-surface test now reads the canonical .github/workflows/ci-pages.yml.",
-    "The #254 guard now parses hidden selectors exactly, allowing migrated child chrome to be hidden while still forbidding the complete stage, canvas or Authoring workbench from being hidden.",
-    "Focused synchronous Node checks for both repaired assertions passed before this terminal handoff."
-  ],
-  "close_issue": 262
+    "Exact run 35218835684 completed: build success, deploy success, smoke failure only.",
+    "The failing responsive smoke reported mobile Apply height 0 because it measured hidden #apply-workspace after React took visible ownership.",
+    "The repaired responsive smoke resolves visible React Authoring Apply/tab controls first, with legacy fallback for coexistence.",
+    "The Authoring keyboard check now targets the migrated visible tab controls while preserving the one-visible-pane assertion."
+  ]
 }

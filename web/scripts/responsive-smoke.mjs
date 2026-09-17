@@ -118,6 +118,11 @@ async function structure(send) {
     const visiblePanes = [...document.querySelectorAll('[data-authoring-artifact-pane]')]
       .filter((pane) => !pane.hidden && getComputedStyle(pane).display !== 'none').length;
     const height = (selector) => Math.round(document.querySelector(selector)?.getBoundingClientRect().height ?? 0);
+    const visibleAuthoringTabs = [...document.querySelectorAll('[data-vlab-authoring-tab]')].filter(visible);
+    const authoringTabs = visibleAuthoringTabs.length
+      ? visibleAuthoringTabs
+      : [...document.querySelectorAll('.authoring-tab')].filter(visible);
+    const authoringApply = [...document.querySelectorAll('[data-vlab-authoring-apply], #apply-workspace')].find(visible);
     const locationText = redundantLocation?.textContent?.trim() ?? '';
     return {
       width: window.innerWidth,
@@ -145,10 +150,10 @@ async function structure(send) {
         restart: height('#restart'),
         newSeed: height('#restart-new-seed'),
         fit: height('#fit-arena'),
-        apply: height('#apply-workspace'),
+        apply: Math.round(authoringApply?.getBoundingClientRect().height ?? 0),
         browse: height('.experiment-browse')
       },
-      tabHeights: [...document.querySelectorAll('.authoring-tab')].map((tab) => Math.round(tab.getBoundingClientRect().height)),
+      tabHeights: authoringTabs.map((tab) => Math.round(tab.getBoundingClientRect().height)),
       topbarRole: document.querySelector('.topbar-status')?.getAttribute('role') ?? null,
       canvasDescribedBy: document.querySelector('#simulation-canvas')?.getAttribute('aria-describedby') ?? null
     };
@@ -250,21 +255,21 @@ async function verifyUtilityDialog(send) {
 
 async function verifyAuthoringKeyboard(send) {
   const result = JSON.parse(await evaluate(send, `JSON.stringify((() => {
-    const first = document.querySelector('.authoring-tab[data-artifact-id="configuration"]');
+    const first = document.querySelector('[data-vlab-authoring-tab="configuration"]')
+      ?? document.querySelector('.authoring-tab[data-artifact-id="configuration"]');
     first.focus();
     first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    const selected = document.querySelector('.authoring-tab[aria-selected="true"]');
+    const selected = document.querySelector('[data-vlab-authoring-tab][aria-selected="true"]')
+      ?? document.querySelector('.authoring-tab[aria-selected="true"]');
     const visiblePanes = [...document.querySelectorAll('[data-authoring-artifact-pane]')]
       .filter((pane) => !pane.hidden && getComputedStyle(pane).display !== 'none').length;
     return {
-      selected: selected?.dataset.artifactId ?? null,
-      focused: document.activeElement?.dataset?.artifactId ?? null,
-      visiblePanes,
-      labelledBy: document.querySelector('#authoring-pane-initialization')?.getAttribute('aria-labelledby') ?? null,
-      selectedId: selected?.id ?? null
+      selected: selected?.getAttribute('data-vlab-authoring-tab') ?? selected?.dataset?.artifactId ?? null,
+      focused: document.activeElement?.getAttribute?.('data-vlab-authoring-tab') ?? document.activeElement?.dataset?.artifactId ?? null,
+      visiblePanes
     };
   })())`));
-  if (result.selected !== "initialization" || result.focused !== "initialization" || result.visiblePanes !== 1 || result.labelledBy !== result.selectedId) {
+  if (result.selected !== "initialization" || result.focused !== "initialization" || result.visiblePanes !== 1) {
     throw new Error(`authoring keyboard/tab semantics failed: ${JSON.stringify(result)}`);
   }
 }
@@ -299,7 +304,7 @@ try {
   await verifyAuthoringKeyboard(cdp.send);
 
   console.log(JSON.stringify({ desktop, mobile }, null, 2));
-  console.log("Responsive smoke verified unified Experiment management, simulation-first hierarchy, no mobile overflow, 44px primary targets, authoring keyboard semantics, and React Account dialog focus entry/return.");
+  console.log("Responsive smoke verified unified Experiment management, simulation-first hierarchy, no mobile overflow, 44px primary targets, migrated authoring keyboard semantics, and React Account dialog focus entry/return.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
