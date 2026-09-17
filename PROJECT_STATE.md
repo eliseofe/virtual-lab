@@ -2,14 +2,16 @@
 
 Updated: 17 September 2026
 
-Read `CURRENT.md` first. This file records stable deployed contracts/evidence needed for implementation; historical implementation detail remains in Git and closed issues.
+Read `CURRENT.md` first. This file records stable technical contracts and current implementation evidence; historical implementation detail remains in Git and closed issues.
 
 ## Repository and production
 
 - Repository: `eliseofe/virtual-lab`
 - Production Lab: `https://eliseofe.github.io/virtual-lab/`
 - Hosting: static GitHub Pages
+- Frontend: Vite + React + TypeScript + Mantine
 - Registry/Auth/MCP backend: Supabase
+- Production MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
 - MCP server: `3.0.0`, interface `8`
 - Registry schema: `vlab.registry-experiment/3`
 - Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -65,38 +67,47 @@ The owner-authorized Active Elastic acceptance fixture includes:
 
 Reuse exactly as recorded. Do not retune/reinterpret without explicit owner authorization.
 
-## Deployed capability state
+## Product implementation state
 
-- Metrics + live Results end-to-end path accepted.
-- Local single-run result persistence accepted.
-- Fine-grained MCP Metrics/Results authoring accepted.
-- Professor Showcase promotion/removal/public discovery accepted with privilege hardening.
-- Unified Experiment management accepted.
-- Frontend migration foundation (#252) is deployed.
-- React/Mantine application chrome (#254) is deployed and production-verified. PR #256 repaired Account-dialog focus return; exact run `35209915551` passed build, Pages deployment and all active-product smoke checks.
-- Next #251 migration stage is Results presentation; the existing metric runtime/sample/persistence contracts remain authoritative during that migration.
+The frontend architecture migration is complete. React/Mantine owns visible application presentation while the scientific/runtime/controller/compiler/renderer engines remain authoritative outside React.
 
-## CI and execution state after detox
+The owner has accepted the current visual system as a clean, functional baseline. Ongoing visual/UX improvement is evidence-driven through the living UI/UX lane rather than a blocker on scientific work.
 
-Ordinary product work uses one automatic CI/Pages workflow: PR build/typecheck/tests; `main` build/test → Pages deploy → one current-Lab smoke step.
+Student onboarding is implemented in source as one production-Lab journey:
+- self-registration and sign-in using existing Supabase Auth/RLS;
+- new profiles default to Student;
+- Getting started guidance plus persistent Help;
+- Grok and Claude setup against the production MCP endpoint;
+- a read-only first connection check;
+- no second student site or mock-lab onboarding flow.
 
-Production smoke is **manifest-driven**, not a hand-maintained workflow list:
-- `CURRENT.md` records what work is active/next;
-- `web/product-surface.json` is the machine-readable source of truth for what user-facing Lab surfaces are active today and which bounded production checks protect them;
-- `web/scripts/run-active-product-smoke.mjs` executes every smoke check attached to every surface marked `active`;
-- `web/tests/product-surface-smoke.test.mjs` fails CI if an active surface has no check, a registered script is missing, a check lacks a hard timeout, the tracked next surface is unknown, or Actions reintroduces hardcoded feature smoke commands.
+The first post-onboarding presentation cleanup humanizes Results terminology to **Metrics**, clarifies live-data state, and removes non-actionable periodic-boundary metadata from the prominent Arena heading. These are presentation-only changes.
 
-Any user-facing capability addition, removal, replacement or migration must update the product-surface manifest in the same task when the current Lab surface changes. This is mandatory in `AGENTS.md`, so feature delivery and production coverage cannot intentionally complete as separate bookkeeping tasks.
+At least one real student has successfully registered, confirmed the account and signed in. Real-use feedback can therefore drive bounded fixes immediately.
 
-Current active surfaces are core Experiment/runtime, React/Mantine application shell, Metrics + live Results, local result persistence, responsive/Experiment-management/Account behavior, and Showcase. Their individual checks remain independently hard-bounded, with the overall smoke job also capped at 12 minutes.
+## Current deployment evidence
 
-The dedicated Results-layout browser smoke is not automatic because its active coverage overlaps the Metrics+Results and responsive checks. Historical performance and neighbour benchmark Actions were removed from automatic operation; their source/examples remain available for targeted performance work. The stale #111 contract requiring the deleted performance workflow was removed after the first clean post-detox build exposed it.
+The visual baseline preceding student onboarding was already observed by the owner in production and accepted as usable.
 
-The manifest-driven architecture was production-verified on exact run `35210993471`: build, Pages deployment and `Verify deployed current Lab surface` all completed successfully.
+The first student-onboarding deployment attempt exposed stale regression assertions inherited from earlier migration/process states. The implementation itself was not rolled back; the obsolete assertions and stale roadmap manifest were repaired on `main`. CI/Pages remains an independent non-blocking signal and must not be polled from the agent execution loop.
 
-Terminal-success reporting remains GitHub-only. Because the original connector comment is authored as `eliseofe`, reliable email requires a separate `github-actions[bot]` mention. The notifier therefore remains, but acts only after an explicit `notify-success` marker change. Success emails lead with outcome, owner impact and remaining action/caveat; concise technical evidence follows only when useful, in the same email.
+Do not describe student onboarding as production-verified until a later completed Pages run confirms the current source has deployed.
 
-Historical queued run `34748709587` and undeletable old branches are inert execution debris. Never wait for repository-wide Actions idleness and never infer current work from old branches. Track only the exact current SHA/PR/run.
+## CI and execution contract
+
+- one automatic CI/Pages workflow protects `main`;
+- production smoke is manifest-driven through `web/product-surface.json`;
+- every active surface has a hard-bounded smoke check;
+- CI/build/deploy/smoke is a non-blocking regression signal, not an assistant waiting gate;
+- later observed failures become small bounded repair tasks;
+- no scheduled reminders/watchdogs/automations without explicit owner request;
+- approval to continue applies only within the explicitly authorized lane and never implies permission to enter the next epic.
+
+The machine-readable product manifest now records frontend migration complete, roadmap reconciliation complete, student onboarding complete, and the current phase as `real_use`. It no longer points to Studies as the next implementation stage.
+
+## Studies gate
+
+Studies remain explicitly owner-gated. Student onboarding completion and the start of real student use do not authorize Studies. Only a later explicit owner instruction activates that lane.
 
 ## Scientific guardrail
 
