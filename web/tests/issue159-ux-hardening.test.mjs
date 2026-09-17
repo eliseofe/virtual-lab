@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [index, baseCss, hardeningCss, workspaceShell, authoring, organization, hardening, responsiveSmoke, workflow] = await Promise.all([
+const [index, baseCss, hardeningCss, workspaceShell, authoring, organization, hardening, responsiveSmoke, productSurfaceSource] = await Promise.all([
   readFile(new URL("../src/index.html", import.meta.url), "utf8"),
   readFile(new URL("../src/style.css", import.meta.url), "utf8"),
   readFile(new URL("../src/ux-hardening.css", import.meta.url), "utf8"),
@@ -10,8 +10,10 @@ const [index, baseCss, hardeningCss, workspaceShell, authoring, organization, ha
   readFile(new URL("../src/collection-organization.js", import.meta.url), "utf8"),
   readFile(new URL("../src/ux-hardening.js", import.meta.url), "utf8"),
   readFile(new URL("../scripts/responsive-smoke.mjs", import.meta.url), "utf8"),
-  readFile(new URL("../../.github/workflows/round1a-pages.yml", import.meta.url), "utf8"),
+  readFile(new URL("../product-surface.json", import.meta.url), "utf8"),
 ]);
+
+const productSurface = JSON.parse(productSurfaceSource);
 
 assert.ok(index.includes('href="./ux-hardening.css"'), "hardening stylesheet must load after the base stylesheet");
 assert.ok(workspaceShell.includes('import "./ux-hardening.js";'), "workspace shell must load accessibility/focus hardening");
@@ -63,6 +65,8 @@ assert.match(responsiveSmoke, /utility dialog did not return focus/);
 assert.match(responsiveSmoke, /expected exactly one visible authoring pane/);
 assert.match(responsiveSmoke, /administrative surface re-entered the scientific workspace/);
 assert.match(responsiveSmoke, /collection filters re-entered primary experiment navigation/);
-assert.match(workflow, /responsive-smoke\.mjs/);
+const responsiveSurface = productSurface.surfaces.find((surface) => surface.id === "responsive-experiment-account");
+assert.equal(responsiveSurface?.state, "active");
+assert.ok(responsiveSurface.smoke.some((check) => check.script.endsWith("responsive-smoke.mjs")), "responsive hardening must remain covered through the active product-surface tracker");
 
 console.log("Issue #159 UI hierarchy, responsive, keyboard/focus, and deployed-smoke invariants are locked.");
