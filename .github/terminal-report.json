@@ -1,8 +1,8 @@
 {
   "status": "implementation_complete",
-  "lane": "frontend_visual_revamp",
-  "owner_action": "Inspect the deployed Virtual Lab and report concrete visual/UX defects or accept the revamp.",
-  "next_if_accepted": "Student self-registration and Getting started mini-epic.",
-  "blocked": "Studies remain owner-gated until after student onboarding and real student use.",
+  "lane": "student_onboarding_and_post_onboarding_ux",
+  "owner_action": "When the current Pages deployment is confirmed successful, send the student the normal production Lab URL and have them follow Getting started / Help. Report only concrete friction or errors.",
+  "next_if_accepted": "Real student and scientific use with small evidence-driven repairs; no new infrastructure epic is implied.",
+  "blocked": "Studies remain explicitly owner-gated until a later owner decision after real use.",
   "ci": "non_blocking"
 }
