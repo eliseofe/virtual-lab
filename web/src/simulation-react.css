@@ -6,13 +6,13 @@
 
 [data-vlab-react-simulation-root] {
   min-width: 0;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .vlab-react-simulation {
-  border: 1px solid var(--mantine-color-gray-2);
-  background: linear-gradient(180deg, #ffffff 0%, var(--mantine-color-gray-0) 100%);
-  box-shadow: var(--mantine-shadow-xs);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .vlab-react-simulation-actions > * {
@@ -22,11 +22,14 @@
 .vlab-react-simulation-speed,
 .vlab-react-simulation-stats > * {
   min-width: 0;
+  border-color: #dce4e7;
+  background: #f7f9fa;
+  box-shadow: none;
 }
 
 .vlab-react-simulation-view {
-  border-top: 1px solid var(--mantine-color-gray-2);
-  padding-top: 12px;
+  border-top: 1px solid #e2e8ea;
+  padding-top: 14px;
 }
 
 @media (max-width: 38.75em) {
