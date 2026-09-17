@@ -21,10 +21,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          before_body="$(jq -r '.changes.body.from // ""' "$GITHUB_EVENT_PATH")"
+          after_body="$(jq -r '.issue.body // ""' "$GITHUB_EVENT_PATH")"
+          before_marker="$(printf '%s' "$before_body" | sed -n 's/.*<!-- notify-success: \([^>]*\) -->.*/\1/p' | tail -n 1)"
+          after_marker="$(printf '%s' "$after_body" | sed -n 's/.*<!-- notify-success: \([^>]*\) -->.*/\1/p' | tail -n 1)"
+
+          if [ -z "$after_marker" ] || [ "$after_marker" = "$before_marker" ]; then
+            echo "No explicit success-notification marker change."
+            exit 0
+          fi
+
           if [ "${COMMENT_COUNT}" -lt 1 ]; then
             echo "No success-report comment exists."
             exit 1
           fi
+
           page=$(( (COMMENT_COUNT - 1) / 100 + 1 ))
           comments="$(curl --fail-with-body --silent --show-error \
             --header "Authorization: Bearer ${GITHUB_TOKEN}" \
@@ -36,6 +48,7 @@ jobs:
             '[SUCCESS REPORT]'*) ;;
             *) echo "Latest comment is not a success report; refusing to notify."; exit 1 ;;
           esac
+
           report="${report#\[SUCCESS REPORT\]}"
           body="$(printf '@eliseofe\n\n%s' "$report")"
           payload="$(jq -n --arg body "$body" '{body:$body}')"
