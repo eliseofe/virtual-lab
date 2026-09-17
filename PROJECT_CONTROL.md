@@ -6,19 +6,21 @@ Read `CURRENT.md` first. This file holds strategy detail.
 
 ## Strategic frontier
 
-The frontend architecture migration is complete. The visual revamp has been accepted as a clean, functional baseline, while ongoing polish remains a living evidence-driven lane rather than a permanent blocker.
+The frontend architecture migration is complete and the visual revamp remains an accepted clean, functional baseline. The student self-registration and Getting started implementation also exists, and at least one real student has successfully registered, confirmed the account and signed in.
 
-The student self-registration and Getting started mini-epic is also complete. At least one real student has successfully registered, confirmed the account and signed in.
+However, the previous fire-and-forget CI policy is retired. The project is temporarily in **closed-loop recovery** because the latest exact production verification examined during recovery is red. Real-use work resumes only after the current production gate is green and student registration/onboarding has direct deployed liveness coverage.
 
-The current frontier is therefore **real student use and real scientific use**, with small bounded product/UX repairs driven by observed friction. Studies are still not authorized.
+Studies are still not authorized.
 
 ## Priority order
 
-1. **Real use of the production Lab** by students and the owner.
-2. **Bounded fixes from evidence** — onboarding friction, terminology, usability, connector setup, or other concrete product defects discovered during use.
-3. **Living UI/UX refinement (#273)** only in small coherent batches from actual use, not generic polishing.
-4. **Studies only after a later explicit owner authorization.** Student use beginning does not automatically open that lane.
-5. Other research/product lanes remain backlog items unless the owner reprioritizes them.
+1. **Restore the closed production loop** — exact candidate build, deploy and affected production smoke must be green before completion is recorded.
+2. **Direct onboarding liveness coverage** — deployed registration/Getting started behavior must be exercised with bounded browser checks, including the observer-freeze path.
+3. **Real use of the production Lab** by students and the owner after the recovery gate is green.
+4. **Bounded fixes from evidence** — onboarding friction, terminology, usability, connector setup, or other concrete defects discovered during use.
+5. **Living UI/UX refinement (#273)** only in small coherent batches from actual use, not generic polishing.
+6. **Studies only after a later explicit owner authorization.**
+7. Other research/product lanes remain backlog items unless the owner reprioritizes them.
 
 ## Frontend and visual state
 
@@ -39,7 +41,7 @@ This remains presentation-only. It does not move model/scientific/runtime/contro
 
 ## Student-use state
 
-The production Lab now provides a self-contained student journey:
+The production Lab implementation provides:
 - one normal production Lab URL;
 - obvious Create account / Sign in;
 - intentionally open enrollment for the initial phase;
@@ -52,12 +54,14 @@ The production Lab now provides a self-contained student journey:
 
 The production connector remains Experiment-domain only. It does not grant GitHub, shell, deployment or hidden simulator-development privilege.
 
+This implementation must not be called fully complete again until the current exact-candidate production gate is green and the student path has direct bounded deployed verification.
+
 ## Studies gate
 
 Studies are not active work. The owner explicitly wants more real use and scientific work before deciding when to start them.
 
 Do not infer authorization from:
-- student onboarding being complete;
+- student onboarding implementation or verification state;
 - a student successfully signing in;
 - elapsed time;
 - CI/deployment state;
@@ -87,9 +91,11 @@ Only a later explicit owner instruction activates Studies.
 
 One substantial independently testable ticket at a time. An owner-authorized sequence may continue across ticket boundaries only within the explicitly authorized lane; do not jump into the next epic merely because the previous implementation ended.
 
-Asynchronous external systems never participate in the agent feedback loop. Local deterministic implementation/testing may iterate synchronously. CI/build/deploy/smoke is an independent non-blocking regression signal; later observed failures become bounded repairs.
+For a user-facing/deployable ticket, completion means: implementation → deterministic checks → exact-candidate CI/build → deployment → bounded verification of the affected deployed behavior → durable completion state. A failure is repaired and the bounded loop repeats for the repaired candidate.
 
-Never poll/wait on asynchronous external verification. Never create scheduled tasks, reminders, watchdogs or automations without explicit owner request.
+Verification is allowed to depend on asynchronous external systems, but assistant execution must remain structurally terminating: inspect only the exact current candidate/run, use finite status checks/timeouts, and never enter repository-wide monitoring or unbounded polling. A timeout or wedged verifier is a terminal verification failure, not success.
+
+Never create scheduled tasks, reminders, watchdogs or automations without explicit owner request.
 
 ## Parked/blocked work
 
