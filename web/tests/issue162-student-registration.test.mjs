@@ -20,6 +20,12 @@ test('signed-out production chrome is human-facing', () => {
   assert.match(registration, /New accounts start with the Student role/);
 });
 
+test('registration observer cannot self-trigger an endless heading rewrite loop', () => {
+  assert.match(registration, /const headingText = signedOut \? "Sign in or create account" : "Account";/);
+  assert.match(registration, /if \(heading\.textContent !== headingText\) heading\.textContent = headingText;/);
+  assert.doesNotMatch(registration, /characterData:\s*true/);
+});
+
 test('workspace shell loads student registration after registry UI', () => {
   const registry = shell.indexOf('import "./registry-ui-v3.js"');
   const registrationImport = shell.indexOf('import "./student-registration.js"');
