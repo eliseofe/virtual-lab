@@ -1,5 +1,11 @@
 {
   "schema": "vlab.product-surface/1",
+  "coverage_policy": {
+    "source_of_truth": "this manifest",
+    "active_surface_requires_smoke": true,
+    "hard_timeout_required": true,
+    "workflow_must_not_hardcode_surface_checks": true
+  },
   "work_tracking": {
     "source": "CURRENT.md",
     "next_stage": {
