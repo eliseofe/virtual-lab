@@ -6,7 +6,7 @@ Production: https://eliseofe.github.io/virtual-lab/
 
 ## Current state — 17 September 2026
 
-The deployed system already includes:
+The deployed system includes:
 - Rust/WASM scientific kernel in a Web Worker;
 - constrained Python-like Configuration, Initialization, Controller and Metrics authoring;
 - Supabase-backed authenticated Experiment Registry and provider-independent MCP authoring;
@@ -14,9 +14,14 @@ The deployed system already includes:
 - live multi-metric Results;
 - local-first raw result persistence;
 - Showcase curation/publication;
-- progressive Vite + React + TypeScript + Mantine frontend migration.
+- Vite + React + TypeScript + Mantine application presentation;
+- self-registration/sign-in for students;
+- in-Lab Getting started / Help;
+- Grok and Claude production connector onboarding.
 
-The active product epic is **#251 — progressive React/Mantine frontend migration before Studies**. A temporary **#257 repository detoxification** maintenance pass is currently ahead of feature work so future ChatGPT sessions can operate without historical CI/context debris.
+The frontend/visual migration and the student-onboarding mini-epic are complete. The current phase is **real student use and real scientific use**, with bounded fixes driven by concrete feedback. Ongoing UI/UX refinement lives in the evidence-driven #273 lane rather than blocking science/product work.
+
+**Studies are not authorized yet.** They remain gated by a later explicit owner decision after more real use.
 
 See `CURRENT.md` for the exact current checkpoint and next action.
 
@@ -45,7 +50,7 @@ Metrics may be empty. Results presentation/layout state is separate from scienti
 
 For a new implementation session:
 1. read `CURRENT.md`;
-2. read the active issue;
+2. read the active issue if a bounded repair/feature has been authorized;
 3. read only the technical/design files needed for that issue.
 
 `PROJECT_CONTROL.md` and `PROJECT_STATE.md` are deeper references, not mandatory startup reading. Closed issues and Git history are historical evidence.
