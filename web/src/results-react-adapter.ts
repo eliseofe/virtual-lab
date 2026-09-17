@@ -124,7 +124,9 @@ export function subscribeResultsPresentation(callback: () => void): () => void {
 
 export function panelIdFromEventTarget(target: EventTarget | null): number | null {
   const element = target instanceof Element ? target : null;
-  const panel = element?.closest<HTMLElement>('.results-plot-panel');
+  const canvas = element?.closest<HTMLElement>('.results-plot-canvas');
+  if (!canvas) return null;
+  const panel = canvas.closest<HTMLElement>('.results-plot-panel');
   const id = Number(panel?.dataset.resultsPanelId);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
