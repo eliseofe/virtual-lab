@@ -41,10 +41,15 @@ test("retired Round-1 process artifacts stay retired", () => {
   assert.equal(existsSync(legacyRound1Acceptance), false);
 });
 
-test("terminal CI is autonomous, bounded, and legacy notifier is gone", () => {
+test("terminal CI is autonomous, bounded, unconditional, and legacy notifier is gone", () => {
   assert.match(workflow, /\.github\/terminal-report\.json/);
   assert.match(workflow, /Send terminal success report without agent monitoring/);
   assert.match(workflow, /terminal-failure-report:/);
+  assert.match(workflow, /Virtual Lab production deployment succeeded/);
+  assert.match(workflow, /Virtual Lab production run failed/);
+  assert.match(workflow, /Owner should not test this run/);
+  assert.doesNotMatch(workflow, /No terminal report in this commit/);
+  assert.doesNotMatch(workflow, /no owner notification/i);
   assert.equal(existsSync(legacyNotifier), false);
 
   const active = manifest.surfaces.filter((surface) => surface.state === "active");
