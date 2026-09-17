@@ -216,24 +216,36 @@ async function verifyFinder(send) {
 }
 
 async function verifyUtilityDialog(send) {
-  await evaluate(send, "document.querySelector('#account-menu').click()");
+  await evaluate(send, "document.querySelector('[data-vlab-nav-toggle=\"true\"]').click()");
+  await sleep(100);
+  await evaluate(send, "document.querySelector('[data-vlab-nav=\"account-mobile\"]').click()");
   await sleep(100);
   const opened = JSON.parse(await evaluate(send, `JSON.stringify((() => {
     const dialog = document.querySelector('#workspace-utilities');
+    const account = document.querySelector('[data-vlab-nav="account"]');
     return {
       open: Boolean(dialog?.open),
       focusInside: Boolean(dialog?.contains(document.activeElement)),
-      expanded: document.querySelector('#account-menu')?.getAttribute('aria-expanded') ?? null,
+      expanded: account?.getAttribute('aria-expanded') ?? null,
       closeHeight: Math.round(document.querySelector('#utility-close')?.getBoundingClientRect().height ?? 0)
     };
   })())`));
   if (!opened.open || !opened.focusInside || opened.expanded !== "true" || opened.closeHeight < 44) {
-    throw new Error(`mobile utility dialog failed: ${JSON.stringify(opened)}`);
+    throw new Error(`mobile React Account dialog failed: ${JSON.stringify(opened)}`);
   }
   await evaluate(send, "document.querySelector('#workspace-utilities').close()");
-  await sleep(80);
-  const returned = await evaluate(send, "document.activeElement === document.querySelector('#account-menu') && document.querySelector('#account-menu').getAttribute('aria-expanded') === 'false'");
-  if (!returned) throw new Error("utility dialog did not return focus/state to Account launcher");
+  await sleep(100);
+  const returned = JSON.parse(await evaluate(send, `JSON.stringify((() => {
+    const toggle = document.querySelector('[data-vlab-nav-toggle="true"]');
+    const account = document.querySelector('[data-vlab-nav="account"]');
+    return {
+      focusReturned: document.activeElement === toggle,
+      expanded: account?.getAttribute('aria-expanded') ?? null,
+    };
+  })())`));
+  if (!returned.focusReturned || returned.expanded !== "false") {
+    throw new Error(`utility dialog did not return focus/state to React mobile navigation: ${JSON.stringify(returned)}`);
+  }
 }
 
 async function verifyAuthoringKeyboard(send) {
@@ -287,7 +299,7 @@ try {
   await verifyAuthoringKeyboard(cdp.send);
 
   console.log(JSON.stringify({ desktop, mobile }, null, 2));
-  console.log("Responsive smoke verified unified Experiment management, simulation-first hierarchy, no mobile overflow, 44px primary targets, authoring keyboard semantics, and dialog focus entry/return.");
+  console.log("Responsive smoke verified unified Experiment management, simulation-first hierarchy, no mobile overflow, 44px primary targets, authoring keyboard semantics, and React Account dialog focus entry/return.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
