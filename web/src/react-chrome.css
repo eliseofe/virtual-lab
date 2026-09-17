@@ -45,6 +45,96 @@
   text-transform: none;
 }
 
+.vlab-react-results-mounted .live-results {
+  border-color: var(--mantine-color-gray-3);
+  background: var(--mantine-color-gray-0);
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.vlab-react-results-mounted .live-results > .live-results-head,
+.vlab-react-results-mounted .results-plot-panel > .results-plot-head,
+.vlab-react-results-mounted .results-plot-panel > .results-series-picker {
+  display: none !important;
+}
+
+[data-vlab-react-results-header-root] {
+  min-width: 0;
+}
+
+.vlab-react-results-head {
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.vlab-react-results-heading-group {
+  min-width: 0;
+}
+
+.vlab-react-results-status {
+  max-width: 18rem;
+  text-transform: none;
+}
+
+.vlab-react-results-status .mantine-Badge-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vlab-react-results-mounted .results-plot-panel {
+  border-color: var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-md);
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+[data-vlab-react-results-panel-root] {
+  min-width: 0;
+}
+
+.vlab-react-results-panel-head {
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  background: linear-gradient(180deg, #ffffff 0%, var(--mantine-color-gray-0) 100%);
+}
+
+.vlab-react-results-panel-title {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.vlab-react-results-series-badge {
+  max-width: 12rem;
+  text-transform: none;
+}
+
+.vlab-react-results-series-badge .mantine-Badge-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vlab-react-results-swatch {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.vlab-react-results-action {
+  white-space: nowrap;
+}
+
+.vlab-react-results-mounted .results-plot-wrap {
+  background: #fff;
+}
+
+.vlab-react-results-mounted .results-legend {
+  padding: 8px 10px 9px;
+  background: var(--mantine-color-gray-0);
+}
+
 @media (max-width: 74.99em) {
   .vlab-react-experiment-name {
     max-width: min(28rem, 38vw);
@@ -57,6 +147,27 @@
   }
 }
 
+@media (max-width: 38.75em) {
+  .vlab-react-results-head .mantine-Group-root,
+  .vlab-react-results-panel-head > .mantine-Stack-root > .mantine-Group-root {
+    align-items: flex-start;
+  }
+
+  .vlab-react-results-panel-head > .mantine-Stack-root > .mantine-Group-root {
+    flex-wrap: wrap;
+  }
+
+  .vlab-react-results-panel-title {
+    flex-basis: 100%;
+  }
+
+  .vlab-react-results-action,
+  [data-vlab-results-add],
+  [data-vlab-results-remove] {
+    min-height: 44px;
+  }
+}
+
 @media (max-width: 35.99em) {
   #react-migration-root {
     position: sticky;
@@ -64,5 +175,9 @@
 
   .vlab-react-experiment-name {
     max-width: 68vw;
+  }
+
+  .vlab-react-results-status {
+    max-width: 11rem;
   }
 }
