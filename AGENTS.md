@@ -14,7 +14,9 @@ Do **not** reconstruct the roadmap from issue chronology, branch counts, the new
 - One substantial independently testable/deployable ticket at a time unless the owner's current instruction explicitly authorizes a broader bounded maintenance pass.
 - Close the loop before reporting completion: implementation → tests → deployment where applicable → actual behavior verification → durable issue/state update.
 - Never infer idleness/completion from repository-wide queued/in-progress Actions. Track only the exact current SHA/PR/run IDs.
-- Prefer compact targeted GitHub connector calls. Avoid broad runs/branches/trees/history payloads unless the task is specifically repository maintenance.
+- Use compact targeted GitHub connector calls only. Do not fetch recursive whole-repository trees, repository-wide Actions collections, or broad branch/history inventories, including during maintenance; decompose maintenance into bounded targeted queries instead.
+- Do not perform connector/tool capability discovery in the middle of execution. If the required operation is not already available through a known tool, stop and report the missing capability rather than searching for alternate tool schemas in the same run.
+- Do not create open-ended polling loops. Verification must target a specific current SHA/PR/run and each check must terminate independently.
 - Keep current truth in `CURRENT.md`; update it whenever active priority, blocker or next action changes materially.
 - Preserve the scientific guardrails in `CURRENT.md` and `PROJECT_STATE.md`. Software architecture reasoning is allowed; new scientific/model reasoning requires explicit owner authorization.
 - When an old issue/document conflicts with later accepted/current state, repair the stale source instead of making the owner repeat a resolved decision.
