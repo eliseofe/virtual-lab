@@ -44,10 +44,11 @@ if (!mount) {
 
 const theme = createTheme({
   primaryColor: 'cyan',
-  defaultRadius: 'md',
+  defaultRadius: 'lg',
   fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   headings: {
     fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontWeight: '650',
   },
 });
 
@@ -191,23 +192,25 @@ function ApplicationChrome() {
   return (
     <Box data-vlab-react-foundation="mounted" data-vlab-react-chrome="mounted">
       <Paper component="header" className="vlab-react-chrome" radius={0} shadow="sm">
-        <Container size="xl" py="sm">
+        <Container size="xl" py={8}>
           <Group justify="space-between" gap="md" wrap="nowrap">
             <Box className="vlab-react-brand">
-              <Text size="xs" fw={800} tt="uppercase" c="cyan.2" lts="0.16em">Virtual Lab</Text>
-              <Title order={2} size="h3" c="white" className="vlab-react-brand-title">Swarm robotics simulation</Title>
+              <Group gap="xs" align="baseline" wrap="nowrap" className="vlab-react-brand-lockup">
+                <Title order={1} size="h3" c="white" className="vlab-react-brand-title">Virtual Lab</Title>
+                <Text size="xs" fw={700} tt="uppercase" c="cyan.2" lts="0.12em" visibleFrom="sm">Swarm robotics</Text>
+              </Group>
               <Text size="xs" c="gray.4" lineClamp={1} className="vlab-react-experiment-name" data-vlab-current-experiment>{state.experimentTitle}</Text>
             </Box>
 
-            <Group gap={4} wrap="nowrap" visibleFrom="lg">
+            <Group gap={2} wrap="nowrap" visibleFrom="lg" className="vlab-react-nav">
               <WorkspaceNav />
-              <Button variant="light" color="cyan" onClick={() => proxyClick('.showcase-launcher')} disabled={!state.showcaseAvailable} data-vlab-nav="showcase">Showcase</Button>
+              <Button className="vlab-react-nav-button" variant="subtle" color="gray" onClick={() => proxyClick('.showcase-launcher')} disabled={!state.showcaseAvailable} data-vlab-nav="showcase">Showcase</Button>
             </Group>
 
             <Group gap="xs" wrap="nowrap">
               <Badge className="vlab-react-status-badge" color={workerColor(state.workerState)} variant="light" data-vlab-worker-status>{state.workerText}</Badge>
               {state.professorAvailable && <Badge visibleFrom="md" className="vlab-react-role-badge" color="violet" variant="outline">{state.professorLabel}</Badge>}
-              <Button visibleFrom="sm" variant="white" color="dark" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account" {...accountA11y}>Account</Button>
+              <Button className="vlab-react-account-button" visibleFrom="sm" variant="outline" color="gray" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account" {...accountA11y}>Account</Button>
               <Burger hiddenFrom="lg" opened={mobileOpen} onClick={() => setMobileOpen((value) => !value)} color="white" aria-label="Open workspace navigation" data-vlab-nav-toggle="true" />
             </Group>
           </Group>
@@ -220,7 +223,6 @@ function ApplicationChrome() {
           <Button variant="light" color="cyan" onClick={() => { proxyClick('.showcase-launcher'); setMobileOpen(false); }} disabled={!state.showcaseAvailable} data-vlab-nav="showcase-mobile">Showcase</Button>
           <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile" {...accountA11y}>Account</Button>
           {state.professorAvailable && <Badge className="vlab-react-role-badge" color="violet" variant="light">{state.professorLabel}</Badge>}
-          <Text size="xs" c="dimmed">Account includes role-specific Professor tools when available.</Text>
         </Stack>
       </Drawer>
     </Box>
