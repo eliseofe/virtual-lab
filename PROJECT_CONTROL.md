@@ -1,6 +1,6 @@
 # Virtual Lab — Project Control
 
-Updated: 17 September 2026
+Updated: 18 September 2026
 
 Read `CURRENT.md` first. This file holds strategy detail.
 
@@ -92,11 +92,19 @@ Only a later explicit owner instruction activates Studies.
 
 One substantial independently testable ticket at a time. An owner-authorized sequence may continue across ticket boundaries only within the explicitly authorized lane; do not jump into the next epic merely because the previous implementation ended.
 
-For a user-facing/deployable ticket, completion means: implementation → deterministic checks → exact-candidate CI/build → deployment → bounded proof that production serves the exact candidate SHA → bounded verification of all affected deployed behavior → durable completion state. A failure is repaired and the bounded loop repeats for the repaired candidate.
+For each substantial user-facing/deployable ticket:
 
-A conversational/approval chunk ends only **production green** or at a **specific concrete blocker** that cannot be repaired with the currently available environment/authority. Red CI/smoke, queued/in-progress verification, or another directly related completion-gate defect stays inside the current approved task.
+1. implement and test;
+2. deploy the exact candidate;
+3. follow only that exact candidate;
+4. while external work is pending, keep the chat visibly alive with meaningful updates roughly every 30 seconds; never deliberately stay silent for more than about 50 seconds while control is available;
+5. if the exact candidate is green, stop; one green is enough;
+6. if it is red, diagnose, repair, and repeat with the repaired candidate;
+7. continue until green unless there is a real blocker or the owner tells you to stop.
 
-Verification may depend on asynchronous external systems, but assistant execution remains structurally terminating: inspect only the exact current candidate/run, use finite status checks/timeouts, and never enter repository-wide monitoring or unbounded polling. After the first candidate, one approved chunk may create at most **three repaired exact candidates**. Exhausting that bound, a timeout, a wedged verifier or an unavailable external service is a concrete verification blocker, not success.
+A real blocker is a specific condition that prevents continuation with the currently available environment or authority. Red CI/smoke, queued/in-progress verification, elapsed time, repeated failed attempts, task complexity, or conversation size is not a blocker by itself.
+
+Follow only the exact current candidate/run and never wait for repository-wide Actions state or unrelated activity. The first verified green candidate completes the loop; do not run another green candidate merely for reassurance.
 
 The Pages workflow stamps the exact candidate SHA into `deploy-sha.txt` and production smoke waits with a finite deadline for that marker before browser verification begins. This prevents deployment-propagation races from being treated as product regressions.
 
