@@ -20,15 +20,17 @@ test('sign in and create account are peer actions in the same auth surface', () 
   assert.match(registration, /registry-auth-actions/);
 });
 
-test('signed-out production chrome is human-facing', () => {
+test('signed-out production chrome has a stable high-level auth presentation', () => {
+  assert.match(registration, /document\.body\.dataset\.vlabAuthState = signedOut \? "signed-out" : "signed-in"/);
   assert.match(registration, /data-vlab-nav="account"/);
   assert.match(registration, /signedOut \? "Sign in" : "Account"/);
   assert.match(registration, /New accounts start with the Student role/);
 });
 
-test('registration observer cannot self-trigger an endless heading rewrite loop', () => {
-  assert.match(registration, /const headingText = signedOut \? "Sign in or create account" : "Account";/);
-  assert.match(registration, /if \(heading\.textContent !== headingText\) heading\.textContent = headingText;/);
+test('registration watches only the auth surface and React chrome, not the whole document', () => {
+  assert.match(registration, /authObserver\.observe\(auth/);
+  assert.match(registration, /chromeObserver\.observe\(chromeRoot/);
+  assert.doesNotMatch(registration, /observe\(document\.body/);
   assert.doesNotMatch(registration, /characterData:\s*true/);
 });
 
