@@ -1,14 +1,16 @@
 {
   "schema": "vlab.terminal-report/1",
-  "nonce": "2026-09-17-issue-262-authoring-shell",
+  "nonce": "2026-09-17-issue-262-authoring-shell-verified",
   "outcome": "Delivered #262: the visible Authoring shell now migrates to the established React + Mantine presentation boundary.",
   "owner_impact": "Authoring keeps the same Configuration / Initialization / Controller / Metrics workflow and the same compiler, dirty-state, persistence and Apply/restart behavior. The visible heading, artifact controls, runtime status and Apply action are now React/Mantine-owned; scientific/runtime/data semantics were not changed.",
-  "remaining_action": "No action is required now. Autonomous CI will build, deploy and smoke-test this commit and report success or failure independently. On success it closes #262; the next authoring-specific lane is #202.",
+  "remaining_action": "No action is required now. Autonomous CI will build, deploy and smoke-test this terminal commit and report success or failure independently. On success it closes #262; the next authoring-specific lane is #202.",
   "technical_evidence": [
     "New authoring-react-adapter.ts bridges presentation state to the existing authoritative authoring-workspace.js without owning source buffers or compiler state.",
     "New authoring-react-presentation.tsx renders the Authoring heading, runtime/apply presentation and artifact tabs through the existing MantineProvider root.",
     "Legacy Authoring controls remain as hidden authoritative adapters once React mounts; one-active-editor semantics remain in authoring-workspace.js.",
-    "issue262-authoring-react.test.mjs locks the presentation-only boundary, tab semantics and 44px mobile control floor.",
+    "Exact committed adapter blob eff47a07c41684af3c3b648dc6e123d5bf5aa283 passed synchronous TypeScript checking with ES2022 + DOM + DOM.Iterable.",
+    "Exact committed presentation blob 2c4eb1b747a505c9c72aef092d9568dc5a67119d passed focused synchronous TypeScript checking with local React/Mantine module stubs because this execution environment cannot install repository dependencies.",
+    "issue262-authoring-react.test.mjs locks the presentation-only boundary, keyboard tab semantics and 44px mobile control floor for autonomous CI.",
     "web/product-surface.json advances work tracking to #202 while retaining the existing bounded production smoke for experiment-runtime."
   ],
   "close_issue": 262
