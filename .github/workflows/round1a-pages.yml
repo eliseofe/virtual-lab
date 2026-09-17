@@ -104,9 +104,94 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout active-product smoke tracker
         uses: actions/checkout@v6
 
       - name: Verify deployed current Lab surface
         run: node web/scripts/run-active-product-smoke.mjs "https://eliseofe.github.io/virtual-lab/"
+
+      - name: Send terminal success report without agent monitoring
+        if: github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPORT_ISSUE: '145'
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(jq -r '(((.head_commit.added // []) + (.head_commit.modified // []) + (.head_commit.removed // [])) | index(".github/terminal-report.json")) != null' "$GITHUB_EVENT_PATH")"
+          if [ "$changed" != "true" ]; then
+            echo "No terminal report in this commit."
+            exit 0
+          fi
+
+          jq -e '.schema == "vlab.terminal-report/1" and (.outcome | type == "string") and (.owner_impact | type == "string") and (.remaining_action | type == "string")' .github/terminal-report.json >/dev/null
+          outcome="$(jq -r '.outcome' .github/terminal-report.json)"
+          owner_impact="$(jq -r '.owner_impact' .github/terminal-report.json)"
+          remaining="$(jq -r '.remaining_action' .github/terminal-report.json)"
+          technical="$(jq -r '(.technical_evidence // []) | map("- " + .) | join("\n")' .github/terminal-report.json)"
+
+          body="$(printf '@eliseofe\n\n**Virtual Lab task completed**\n\n%s\n\n**What changed for you**\n%s\n\n**Remaining**\n%s' "$outcome" "$owner_impact" "$remaining")"
+          if [ -n "$technical" ]; then
+            body="$(printf '%s\n\n**Technical evidence**\n%s' "$body" "$technical")"
+          fi
+          payload="$(jq -n --arg body "$body" '{body:$body}')"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${REPORT_ISSUE}/comments" \
+            --data "$payload" >/dev/null
+
+          close_issue="$(jq -r '.close_issue // empty' .github/terminal-report.json)"
+          if [[ "$close_issue" =~ ^[0-9]+$ ]] && [ "$close_issue" -gt 0 ]; then
+            curl --fail-with-body --silent --show-error \
+              --request PATCH \
+              --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+              --header "Accept: application/vnd.github+json" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${close_issue}" \
+              --data '{"state":"closed","state_reason":"completed"}' >/dev/null
+          fi
+
+  terminal-failure-report:
+    if: ${{ always() && github.event_name == 'push' && (needs.build.result != 'success' || needs.deploy.result != 'success' || needs.smoke.result != 'success') }}
+    needs: [build, deploy, smoke]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout terminal report
+        uses: actions/checkout@v6
+
+      - name: Send terminal failure report without agent monitoring
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPORT_ISSUE: '145'
+          BUILD_RESULT: ${{ needs.build.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          SMOKE_RESULT: ${{ needs.smoke.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(jq -r '(((.head_commit.added // []) + (.head_commit.modified // []) + (.head_commit.removed // [])) | index(".github/terminal-report.json")) != null' "$GITHUB_EVENT_PATH")"
+          if [ "$changed" != "true" ]; then
+            echo "No terminal report in this commit; no owner notification."
+            exit 0
+          fi
+
+          outcome="$(jq -r '.outcome // "Terminal task"' .github/terminal-report.json)"
+          body="$(printf '@eliseofe\n\n**Virtual Lab task needs attention**\n\nThe terminal verification for **%s** did not complete successfully.\n\nBuild: `%s` · Deploy: `%s` · Smoke: `%s`\n\nRun: https://github.com/%s/actions/runs/%s' "$outcome" "$BUILD_RESULT" "$DEPLOY_RESULT" "$SMOKE_RESULT" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
+          payload="$(jq -n --arg body "$body" '{body:$body}')"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${REPORT_ISSUE}/comments" \
+            --data "$payload" >/dev/null
