@@ -18,9 +18,10 @@ Active product lane: **#251 — Progressive frontend migration to Vite + React +
 
 Completed migration children:
 - #252 — foundation/coexistence: complete.
-- #254 — application chrome migration: complete and production-verified. PR #256 repaired Account-dialog focus return and merged to `main`; exact verification run `35209915551` passed build, Pages deploy, and all active-product smoke checks.
+- #254 — application chrome migration: complete and production-verified.
+- #261 — Results presentation migration: implementation and production behavior were verified on exact run `35212246064`; React/Mantine now owns visible Results controls while the existing metric/sample/canvas/persistence engine remains authoritative.
 
-**Next planned stage: Results presentation.** #251 defines this as migrating Results controls/panels and absorbing the existing series-selection and Follow-live requirements while preserving metric runtime/sample/persistence contracts. No dedicated #251.3 child issue exists yet; do not infer one from history or create one unless the current task explicitly calls for decomposition/execution.
+**Next planned stage: Authoring shell migration** under #251. Do not begin it inside maintenance or reporting work.
 
 ## Production and architecture
 
@@ -44,7 +45,15 @@ The product-surface contract test fails if an active surface has no smoke covera
 
 Historical benchmark/performance workflows remain removed. Profiling scripts/evidence remain available for targeted performance work without automatic Actions fan-out.
 
-Success reporting remains one GitHub-only terminal-success email. Reports are **high-level first** (outcome, owner impact, remaining action/caveat), with short technical evidence underneath only when useful. The notifier acts only after an explicit `notify-success` marker change; ordinary protocol edits do not resend old reports.
+## Autonomous verification and reporting — zero agent monitoring
+
+GitHub Actions owns terminal verification. ChatGPT/Work does **not** monitor it.
+
+For the final delivery of a task, the agent updates `.github/terminal-report.json` exactly once. That commit triggers the normal build → deploy → manifest-driven production smoke. The workflow itself then posts one bot-authored high-level success email, or one failure email containing the run link. If configured, a successful terminal run also closes the task issue.
+
+After any GitHub write that can trigger Actions, the agent must not call workflow-run, job, log, queue, check-status or Actions-history APIs in that execution turn. There is no exception for “one quick check,” an exact SHA, or an exact run ID. The agent returns control immediately after the terminal-report write.
+
+A failed run may be inspected only in a later user turn when the owner supplies the failure notification/run ID or explicitly requests diagnosis of that specific failure.
 
 ## Hard guardrails
 
@@ -57,11 +66,9 @@ Success reporting remains one GitHub-only terminal-success email. Reports are **
 
 ## Execution rule
 
-Work on one substantial independently testable/deployable ticket at a time. Close the loop: implement → test → deploy when applicable → verify actual artifact → update durable state/issue → report.
+Work on one substantial independently testable/deployable ticket at a time. Implement the task, update durable state/issue metadata, prepare the terminal report, write `.github/terminal-report.json`, and stop. CI performs terminal verification and owner notification autonomously.
 
-**Never wait for the repository-wide Actions queue to become empty.** Track only the exact workflow run IDs/SHA/PR belonging to the current task.
-
-For GitHub operations, use compact calls scoped to the current file/issue/PR/SHA. Do not use recursive whole-repository trees, all-runs payloads, broad branch/history sweeps, or connector capability discovery. If a required operation is unavailable through a known connector action, stop and report it instead of searching for alternate tool schemas.
+For GitHub operations before that terminal boundary, use compact calls scoped to the current file/issue/PR. Do not use recursive whole-repository trees, Actions history, broad branch/history sweeps, or connector capability discovery. If a required operation is unavailable through a known connector action, stop and report it instead of searching for alternate tool schemas.
 
 ## Source precedence
 
