@@ -85,9 +85,9 @@ Only a later explicit owner instruction activates Studies.
 
 ## Execution model
 
-One substantial independently testable ticket at a time. An owner-authorized sequence may continue across ticket boundaries only within the authorized lane; do not jump into the next epic merely because the previous implementation ended.
+One substantial independently testable ticket at a time. An owner-authorized sequence may continue across ticket boundaries only within the explicitly authorized lane; do not jump into the next epic merely because the previous implementation ended.
 
-Local deterministic implementation/testing may iterate synchronously. CI/build/deploy/smoke is an independent non-blocking regression signal; later observed failures become bounded repairs.
+Asynchronous external systems never participate in the agent feedback loop. Local deterministic implementation/testing may iterate synchronously. CI/build/deploy/smoke is an independent non-blocking regression signal; later observed failures become bounded repairs.
 
 Never poll/wait on asynchronous external verification. Never create scheduled tasks, reminders, watchdogs or automations without explicit owner request.
 
