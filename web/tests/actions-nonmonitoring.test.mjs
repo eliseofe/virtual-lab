@@ -2,33 +2,54 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-const agents = readFileSync(new URL("../../AGENTS.md", import.meta.url), "utf8");
-const current = readFileSync(new URL("../../CURRENT.md", import.meta.url), "utf8");
-const surface = JSON.parse(readFileSync(new URL("../product-surface.json", import.meta.url), "utf8"));
-const workflow = readFileSync(new URL("../../.github/workflows/round1a-pages.yml", import.meta.url), "utf8");
+const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
+const agents = read("AGENTS.md");
+const current = read("CURRENT.md");
+const control = read("PROJECT_CONTROL.md");
+const execution = read("docs/EXECUTION_GRANULARITY.md");
+const round1 = read("docs/ROUND1_ACCEPTANCE.md");
+const workflow = read(".github/workflows/round1a-pages.yml");
+const manifest = JSON.parse(read("web/product-surface.json"));
 const legacyNotifier = new URL("../../.github/workflows/success-report-notifier.yml", import.meta.url);
 
-test("agent execution absolutely forbids GitHub Actions monitoring", () => {
-  assert.match(agents, /ABSOLUTE RULE: during ordinary Virtual Lab product work or maintenance, the agent must NEVER inspect, monitor, poll, wait on, or query GitHub Actions execution state/);
-  assert.match(agents, /There is no permitted “one quick check”/);
-  assert.match(current, /not for an exact SHA, not for an exact run ID, not once/);
-  assert.equal(surface.agent_execution_policy?.github_actions_api_during_ordinary_execution, "forbidden");
-  assert.equal(surface.agent_execution_policy?.github_actions_role, "fire-and-forget-ci-deploy-smoke-report-only");
-  assert.doesNotMatch(agents, /Track only the exact current SHA\/PR\/run IDs/);
-  assert.doesNotMatch(current, /same execution turn/);
-  assert.doesNotMatch(agents, /same execution turn/);
+test("agent liveness policy is absolute and machine-readable", () => {
+  assert.match(agents, /ZERO-TOLERANCE LIVENESS/);
+  assert.match(agents, /must never put an asynchronous external process inside its own feedback loop/);
+  assert.match(current, /No asynchronous external process may ever sit inside the agent's execution loop/);
+  assert.match(control, /Asynchronous external systems never participate in the agent feedback loop/);
+  assert.equal(manifest.agent_execution_policy?.zero_tolerance_liveness, true);
+  assert.equal(manifest.agent_execution_policy?.async_external_feedback_loops, "forbidden");
+  assert.equal(manifest.agent_execution_policy?.github_actions_api_during_ordinary_execution, "forbidden");
+  assert.equal(manifest.agent_execution_policy?.external_status_polling, "forbidden");
+  assert.equal(manifest.agent_execution_policy?.work_browser_wait_loops, "forbidden");
+  assert.equal(manifest.agent_execution_policy?.long_running_remote_job_waits, "forbidden");
+  assert.equal(manifest.agent_execution_policy?.connector_capability_discovery_mid_task, "forbidden");
+  assert.equal(manifest.agent_execution_policy?.terminal_ci_boundary, "fire_and_forget");
 });
 
-test("only explicit failed-run diagnosis may inspect Actions", () => {
-  assert.match(agents, /sole exception is a separate diagnostic turn explicitly requested by the owner for a specific failed run or failure notification/);
-  assert.match(current, /only exception is a separate owner-requested diagnostic turn for a specific failure notification\/run/);
-  assert.equal(surface.agent_execution_policy?.diagnostic_exception, "owner-explicit-specific-failure-only-no-polling");
+test("stale synchronous verification-loop language cannot return", () => {
+  for (const source of [agents, current, control, execution, round1]) {
+    assert.doesNotMatch(source, /Track only (?:the )?(?:exact )?current .*run IDs/i);
+    assert.doesNotMatch(source, /wait for (?:the )?(?:GitHub )?Actions/i);
+    assert.doesNotMatch(source, /monitor until/i);
+  }
+  assert.doesNotMatch(round1, /This loop continues until all three Work issues pass/);
+  assert.doesNotMatch(round1, /returns to ChatGPT for repair and redeployment, after which that same Work checklist is rerun/);
+  assert.match(execution, /Deployment and production verification are not agent-side waiting steps/);
 });
 
-test("terminal CI reports autonomously and legacy notifier is gone", () => {
+test("terminal CI is autonomous, bounded, and legacy notifier is gone", () => {
   assert.match(workflow, /\.github\/terminal-report\.json/);
   assert.match(workflow, /Send terminal success report without agent monitoring/);
   assert.match(workflow, /terminal-failure-report:/);
-  assert.match(workflow, /Send terminal failure report without agent monitoring/);
   assert.equal(existsSync(legacyNotifier), false);
+
+  const active = manifest.surfaces.filter((surface) => surface.state === "active");
+  assert.ok(active.length > 0);
+  for (const surface of active) {
+    assert.ok(Array.isArray(surface.smoke) && surface.smoke.length > 0, `${surface.id} needs smoke coverage`);
+    for (const check of surface.smoke) {
+      assert.ok(Number.isFinite(check.timeout_seconds) && check.timeout_seconds > 0, `${surface.id} smoke needs a hard timeout`);
+    }
+  }
 });

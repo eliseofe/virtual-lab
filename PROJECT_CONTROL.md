@@ -6,18 +6,14 @@ Read `CURRENT.md` first. This file holds strategy detail; it is not mandatory st
 
 ## Current priority
 
-A temporary maintenance epic, **#257 — Repository detoxification and execution fast-forward**, is active to remove CI/process debris that has made context-free ChatGPT sessions expensive and sometimes non-terminating.
+Repository detox is complete. The active product/architecture lane is **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
 
-Detox sequence:
-1. #258 — automatic CI minimization: complete;
-2. #259 — current-state/bootstrap fast-forward: complete;
-3. #260 — stale queued-run and branch hygiene: active.
+Completed migration stages:
+1. #252 — foundation/coexistence;
+2. #254 — application chrome;
+3. #261 — Results presentation.
 
-Feature development resumes only after the detox reaches a safe checkpoint.
-
-## Strategic product frontier after detox
-
-**#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies** is the current product/architecture epic.
+Next stage: **Authoring shell**, followed by #202 editor ergonomics on the migrated foundation.
 
 Frozen direction:
 - Vite build;
@@ -29,37 +25,32 @@ Frozen direction:
 - progressive coexistence/rollback, not a flag-day rewrite;
 - no Next.js/SSR.
 
-Migration order:
-1. foundation/coexistence — #252 complete;
-2. application chrome — #254 active/reopened;
-3. Results presentation, absorbing the existing series-selection and Follow-live requirements;
-4. Authoring shell, followed by #202 editor ergonomics on the migrated foundation;
-5. Simulation-stage presentation boundary around the existing canvas/worker/runtime;
-6. legacy presentation removal + final regression/visual acceptance;
-7. #3 Studies only after the migration foundation is complete enough to receive it.
+Remaining migration order after Authoring:
+- Simulation-stage presentation boundary around the existing canvas/worker/runtime;
+- legacy presentation removal + final regression/visual acceptance;
+- #3 Studies only after the migration foundation is complete enough to receive it.
 
-## #254 — application chrome status
+## Accepted product state
 
-PR #255 merged the first visible React/Mantine application chrome to `main`. Production build/deploy succeeded, but responsive production smoke found a real Account-dialog focus-return/accessibility regression caused by delegating behavior through the now-hidden legacy Account control. #254 was correctly reopened.
-
-PR #256 contains the intended hotfix path and passed its PR build/performance checks before the detox began. It remains unmerged while #257 maintenance is active. Do not advance to the next #251 child until #254 is repaired, merged and production-verified.
-
-## Already accepted product state
-
-- #195 Metrics + live Results path complete/deployed and externally accepted.
+- #195 Metrics + live Results path complete/deployed.
 - #199 local single-run result persistence complete/deployed.
 - #200 MCP/Connector Metrics + Results authoring complete/deployed.
 - #149 Professor promotion to Showcase complete/deployed.
 - #208 unified Experiment identity/save/persistence/organization complete/deployed.
 - #210 hierarchy/microcopy/responsive cleanup complete/deployed.
+- #261 React/Mantine Results presentation complete.
 
-Standalone vanilla implementation of Account/Professor reconciliation, Results series-selection affordance and Follow-live recovery remains superseded by implementing those requirements in the corresponding React/Mantine migration surfaces.
+## ZERO-TOLERANCE execution policy
 
-## Execution policy
+One substantial independently testable unit at a time.
 
-One substantial independently deployable/testable unit at a time. Completion means test + deployment where applicable + actual behavior verification + durable state update.
+Local deterministic implementation/testing may iterate. **Asynchronous external systems never participate in the agent feedback loop.** The agent never waits for or polls GitHub Actions, deployment, long benchmarks, Work/browser jobs, authentication, or remote services. It never performs repeated status calls or capability discovery to keep an external process alive.
 
-Repository-wide Actions status is not a completion criterion. Track only current task SHA/PR/run IDs. Historical queued Actions may remain visible and must not block unrelated current work.
+At terminal delivery the agent writes `.github/terminal-report.json` and stops. Autonomous CI performs build, deployment, manifest-driven production smoke, and owner notification. A failure may be diagnosed only in a later owner-requested turn using bounded evidence for that specific failure.
+
+Work/browser/computer verification is optional diagnostic/UX tooling, not a synchronous completion loop. One bounded invocation may be used when explicitly required; no same-turn waiting, polling, or retry cycle is permitted.
+
+This policy supersedes older text that told agents to track an exact workflow run, wait for Pages, rerun browser checklists until success, or use repository-wide idleness as completion.
 
 ## Scientific boundary
 

@@ -7,9 +7,15 @@
     "workflow_must_not_hardcode_surface_checks": true
   },
   "agent_execution_policy": {
+    "zero_tolerance_liveness": true,
+    "async_external_feedback_loops": "forbidden",
     "github_actions_api_during_ordinary_execution": "forbidden",
-    "github_actions_role": "fire-and-forget-ci-deploy-smoke-report-only",
-    "diagnostic_exception": "owner-explicit-specific-failure-only-no-polling"
+    "external_status_polling": "forbidden",
+    "work_browser_wait_loops": "forbidden",
+    "long_running_remote_job_waits": "forbidden",
+    "connector_capability_discovery_mid_task": "forbidden",
+    "terminal_ci_boundary": "fire_and_forget",
+    "allowed_diagnostic_exception": "later_owner_turn_with_specific_failure_identifier"
   },
   "work_tracking": {
     "source": "CURRENT.md",

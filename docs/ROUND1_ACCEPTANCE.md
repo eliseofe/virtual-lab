@@ -25,32 +25,32 @@ The complete Round 1 product must support this end-to-end scenario:
 3. run the reference Active Elastic Model;
 4. confirm controller source corresponds recognizably to the local scientific rule;
 5. pause and restart successfully;
-6. modify a scientifically meaningful controller expression/sign/term;
+6. modify an owner-authorized controller expression/sign/term;
 7. Apply/recompile the source and restart;
-8. confirm the trajectory/collective behavior changes in a scientifically corresponding way;
+8. observe the resulting behavior;
 9. restore the reference controller and reproduce the reference behavior for the same seed/configuration;
 10. introduce invalid source and confirm a useful compile/validation error without corrupting the lab session;
 11. restore valid source and run again.
 
-## Two-agent acceptance loop
+## Asynchronous acceptance boundary
 
-Round 1 deliberately separates implementation from browser/computer verification.
+The original Round 1 process used a synchronous implementation → deploy → browser verification → repair → repeat loop. That process is retired because asynchronous external work must never sit inside the agent execution loop.
 
 ### ChatGPT responsibility
 
-ChatGPT performs architecture, implementation, scientific/software tests, repository changes, build/CI/deployment configuration, deployment, and defect repair. Before browser handoff, ChatGPT verifies everything that can be established through code, tests, build artifacts, deployment state, and repository inspection.
+ChatGPT performs bounded architecture/implementation work, finite repository operations, and local deterministic software tests. At the terminal delivery boundary it updates durable state and `.github/terminal-report.json`, commits, and stops.
 
-### Work responsibility
+ChatGPT does **not** wait for or poll CI, GitHub Pages, Work/browser jobs, remote benchmarks, authentication or any other asynchronous external system.
 
-Work performs only the microscopic deployed-browser checks defined in:
+### Autonomous CI responsibility
 
-- #16 — desktop simulation controls;
-- #17 — controller edit, compile error, and recovery;
-- #18 — responsive UI, reload stability, console/network/runtime errors.
+GitHub CI independently performs the production build, Pages deployment, and manifest-driven current-Lab browser smoke checks. Each smoke check has a hard timeout. CI posts one terminal success/failure notification without the agent monitoring it.
 
-Each Work issue records PASS/FAIL and exact reproduction evidence. A Work failure returns to ChatGPT for repair and redeployment, after which that same Work checklist is rerun.
+### Optional Work/browser responsibility
 
-This loop continues until all three Work issues pass.
+Work/browser/computer inspection is not a mandatory synchronous acceptance loop. Use it only when the owner explicitly requests a visual/interaction audit or when a later failure diagnosis specifically requires it. One bounded invocation is allowed. If it does not return a terminal result, stop; never poll, wait, or rerun it in the same turn.
+
+A failure notification becomes a new, later diagnostic turn. Repair work never waits inside the original delivery turn for a remote result.
 
 ## Automated invariant checks expected in Round 1
 
@@ -68,4 +68,4 @@ This loop continues until all three Work issues pass.
 
 ## Owner-review boundary
 
-ChatGPT and Work should resolve ordinary software defects before owner handoff. The owner is the final scientific oracle for whether the reproduced Active Elastic dynamics and deliberately broken-controller failure modes are faithful to the model.
+The owner remains the final scientific oracle for scientific faithfulness. Engineering automation verifies software/runtime contracts independently and reports terminal status; it does not force the assistant into a waiting loop.

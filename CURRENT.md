@@ -4,34 +4,28 @@ Updated: 17 September 2026
 
 This is the first repository file to read in a new ChatGPT/Work session. It contains only current truth needed to resume safely. Deep technical evidence lives in `PROJECT_STATE.md`; strategy detail lives in `PROJECT_CONTROL.md`; history lives in Git/closed issues.
 
-## ZERO-TOLERANCE AGENT/ACTIONS BOUNDARY
+## ZERO-TOLERANCE LIVENESS
 
-**Ordinary Virtual Lab execution must NEVER include agent-side GitHub Actions inspection or waiting.** GitHub Actions are autonomous fire-and-forget infrastructure only.
+**No asynchronous external process may ever sit inside the agent's execution loop.** This is an absolute project rule.
 
-The agent must not call workflow-run, job, step, log, queue, check-status, commit-status or Actions-history APIs during normal product work or maintenance. This is absolute: not for an exact SHA, not for an exact run ID, not once, and not “just to see whether it finished.”
+During ordinary work the agent never waits for, polls, monitors, or repeatedly checks GitHub Actions, deployment, remote benchmarks, Work/browser jobs, authentication, or any other asynchronous service. There is no exception for one quick check, an exact SHA, an exact run ID, or “just until it finishes.” A terminal GitHub write is fire-and-forget from the agent's perspective; autonomous CI owns build/deploy/smoke/reporting and the agent returns control immediately.
 
-The only exception is a separate owner-requested diagnostic turn for a specific failure notification/run. Even then: inspect the supplied failed run/evidence only; never poll or wait for a state transition.
+The same rule applies beyond GitHub Actions: no repeated external-status calls, no mid-task connector capability hunting, no broad recursive scans, and no open-ended self-directed external verification loops. Work/browser verification may be used only as one bounded invocation when explicitly required; if it does not return a terminal result, stop and return control.
 
-Normal task boundary: implement → update durable state → write `.github/terminal-report.json` → STOP. CI independently builds, deploys, runs manifest-driven production smoke and sends one success/failure notification.
+A later owner turn may explicitly request diagnosis of a specific failure. That permits bounded evidence retrieval for that failure only, never monitoring or waiting for a retry.
 
 ## What is active now
 
-**Repository detox is complete.** Historical branch/run debris remains physically visible only where the available connector cannot safely delete/cancel it; it is inert and must not affect execution.
-
-Completed detox:
-- #258 — CI minimization: complete. Historical automatic benchmark/performance workflows were removed.
-- #259 — repository memory fast-forward: complete. New sessions start from this compact file rather than historical reconstruction.
-- #260 — execution debris / branch hygiene: complete at the available-control boundary. Stale run `34748709587` and undeletable historical branches are inert; never use them for completion/idleness.
-- #257 — repository detoxification epic: complete.
+Repository detox is complete. Historical branch/run debris remains physically visible only where the available connector cannot safely delete/cancel it; it is inert and must not affect execution.
 
 Active product lane: **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
 
 Completed migration children:
 - #252 — foundation/coexistence: complete.
 - #254 — application chrome migration: complete and production-verified.
-- #261 — Results presentation migration: implementation and production behavior were verified on exact run `35212246064`; React/Mantine now owns visible Results controls while the existing metric/sample/canvas/persistence engine remains authoritative.
+- #261 — Results presentation migration: complete; React/Mantine owns visible Results controls while the existing metric/sample/canvas/persistence engine remains authoritative.
 
-**Next planned stage: Authoring shell migration** under #251. Do not begin it inside maintenance or reporting work.
+**Next planned stage: Authoring shell migration** under #251.
 
 ## Production and architecture
 
@@ -45,21 +39,13 @@ Completed migration children:
 
 ## Current Lab surface and production smoke
 
-`web/product-surface.json` is the machine-readable source of truth for **what users can use in the Lab today**. It records the current user-facing surfaces and the bounded production smoke checks required for every surface marked `active`.
+`web/product-surface.json` is the machine-readable source of truth for **what users can use in the Lab today**, bounded production-smoke coverage, and the zero-tolerance execution policy.
 
-`CURRENT.md` remains the source of truth for **what work is being done now/next**. The manifest's `work_tracking` section points back here and identifies the product surface affected by the next delivery stage. Any user-facing capability addition, removal, replacement or migration must update the manifest in the same task if the current Lab surface changes.
+`CURRENT.md` remains the source of truth for **what work is being done now/next**. The manifest's `work_tracking` section points back here and identifies the product surface affected by the next delivery stage.
 
-Ordinary product work uses one automatic CI/Pages workflow. `main` builds/tests, deploys Pages, then calls `web/scripts/run-active-product-smoke.mjs`, which derives the deployed smoke suite from `web/product-surface.json`. The workflow YAML must not contain a hand-maintained list of current feature smoke scripts.
+Ordinary product work uses one autonomous CI/Pages workflow. Relevant code reaching `main` builds/tests, deploys Pages, then runs `web/scripts/run-active-product-smoke.mjs`, which derives deployed smoke coverage from `web/product-surface.json`. The agent does not inspect or wait for that workflow.
 
-The product-surface contract test fails if an active surface has no smoke coverage, if a registered smoke script is missing, if a check has no hard timeout, if the next tracked product surface is unknown, or if Actions reverts to hardcoded feature smoke commands.
-
-Historical benchmark/performance workflows remain removed. Profiling scripts/evidence remain available for targeted performance work without automatic Actions fan-out.
-
-## Autonomous verification and reporting
-
-For final delivery, the agent updates `.github/terminal-report.json` exactly once. The single CI workflow independently performs build → deploy → manifest-driven production smoke and then posts one bot-authored high-level success or failure notification. If configured, successful terminal verification also closes the task issue.
-
-The agent never waits for, polls, checks or monitors that workflow during ordinary execution. Failure diagnosis happens only after the owner explicitly brings back a failure notification/run or asks for diagnosis.
+The smoke runner gives every active surface a hard bounded timeout and kills non-terminating smoke processes. The product-surface contract fails if an active surface has no smoke coverage, a registered smoke script is missing, a check lacks a hard timeout, or Actions reverts to a hand-maintained feature list.
 
 ## Hard guardrails
 
@@ -72,16 +58,18 @@ The agent never waits for, polls, checks or monitors that workflow during ordina
 
 ## Execution rule
 
-Work on one substantial independently testable/deployable ticket at a time. Implement the task, update durable state/issue metadata, prepare the terminal report, write `.github/terminal-report.json`, and stop. CI performs terminal verification and owner notification autonomously.
+Work on one substantial independently testable ticket at a time. Perform bounded local implementation/testing, update durable state/issue metadata, write `.github/terminal-report.json` at the terminal boundary, and stop. Autonomous CI performs deployment/production verification and sends the owner the result.
 
-For GitHub operations before that terminal boundary, use compact calls scoped to the current file/issue/PR. Do not use recursive whole-repository trees, Actions execution/history APIs, broad branch/history sweeps, or connector capability discovery. If a required operation is unavailable through a known connector action, stop and report it instead of searching for alternate tool schemas.
+If an asynchronous external result is required before further work, that requirement ends the current agent turn. Never wait for the result in the same turn.
+
+For GitHub operations before the terminal boundary, use compact calls scoped to the current file/issue/PR. Do not use recursive whole-repository trees, Actions history, broad branch/history sweeps, or connector capability discovery.
 
 ## Source precedence
 
 1. explicit current owner instruction;
 2. this `CURRENT.md`;
 3. active issue for the current task;
-4. `web/product-surface.json` for the current user-facing Lab surface / production-smoke contract;
+4. `web/product-surface.json` for current Lab surface / smoke / liveness contract;
 5. `PROJECT_CONTROL.md` for strategy detail;
 6. `PROJECT_STATE.md` for stable technical contracts/evidence;
 7. older issues/docs/Git history.
