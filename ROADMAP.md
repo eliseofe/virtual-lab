@@ -1,0 +1,72 @@
+# Virtual Lab — Roadmap
+
+This file answers **where the project is going**. Current status lives in `CURRENT_STATUS.md`; development procedure lives in `DEVELOPMENT_WORKFLOW.md`.
+
+## Strategic posture
+
+The deployed baseline already includes:
+- browser Rust/WASM scientific execution;
+- constrained Python-like Configuration, Initialization, Controller and Metrics authoring;
+- authenticated Supabase Experiment Registry and provider-independent MCP authoring;
+- explicit Professor capability requests for unsupported simulator capabilities;
+- live multi-metric Results;
+- local-first result persistence and whole-Experiment export;
+- Vite + React + TypeScript + Mantine presentation;
+- student self-registration/onboarding;
+- Showcase publication/curation surfaces.
+
+These are baseline architecture, not future roadmap items.
+
+## Near term
+
+1. Real student and owner use of the production Lab.
+2. Focused fixes driven by concrete use evidence.
+3. Evidence-driven UI/UX refinement through #273 when warranted.
+4. Continue scientific/product work selected explicitly by the owner rather than inferring a new epic from issue chronology.
+
+## Owner-gated major lane: Studies
+
+Studies are the intended multi-run layer, but they are **not active work until the owner explicitly authorizes them**.
+
+When activated, Study capabilities are expected to grow in bounded slices such as:
+- durable Study identity under an originating Experiment;
+- pinning to exact Experiment revision(s);
+- conditions/parameter sweeps and repetitions/seeds;
+- local parallel/headless execution where useful;
+- reuse of stable Experiment metric IDs and the existing flat local result-file contract;
+- aggregation/statistics and cross-run plots;
+- checkpoint/resume semantics where explicitly designed;
+- selected Study-result handoff to an authorized research AI.
+
+Study output remains Experiment-first and local-first, directly under `<Experiment>/studies/<Study>/` without an extra `runs/` layer.
+
+## Later analysis and publication layer
+
+Potential later layers include:
+- reproducible downstream analysis/figure specifications;
+- publication-quality SVG/PDF/PNG generation;
+- structured Research Notes;
+- Research Documents for papers/reports/thesis chapters;
+- selected compact results/plots shared with an authorized research AI;
+- research synthesis that does not depend on recovering an old chat transcript.
+
+Live single-run Results should remain an interactive scientific inspection surface rather than becoming a general graphics editor.
+
+## Future execution and science
+
+Potential later capabilities include:
+- native workstation execution preserving the same scientific contracts;
+- institutional HPC/Slurm adapters;
+- richer physics and robot-specific models;
+- heterogeneous populations/controllers after explicit capability approval;
+- richer observation/action/environment models;
+- additional benchmark tasks and scientific modules;
+- deeper multi-user collaboration and curated/public research workflows.
+
+## Standing product direction
+
+- preserve the €0 incremental-cost baseline unless the owner explicitly approves otherwise;
+- keep simulation compute and raw scientific data local-first by default;
+- keep research-AI Experiment access separate from trusted simulator/repository development;
+- preserve provider independence and replaceable infrastructure adapters;
+- preserve stable versioned scientific/domain contracts as implementation technology evolves.

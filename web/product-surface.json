@@ -8,41 +8,6 @@
     "deployable_completion_requires_green_production_smoke": true,
     "exact_deployed_candidate_marker_required": true
   },
-  "agent_execution_policy": {
-    "closed_loop_required": true,
-    "completion_order": [
-      "implementation",
-      "local_static_checks",
-      "exact_candidate_ci_build",
-      "exact_candidate_deploy",
-      "exact_candidate_propagation",
-      "affected_production_smoke",
-      "durable_completion_state"
-    ],
-    "local_success_is_completion": false,
-    "exact_candidate_scope_required": true,
-    "bounded_verification_required": true,
-    "hard_timeout_required": true,
-    "chunk_exit_rule": "production_green_or_concrete_blocker",
-    "max_repaired_exact_candidates_per_chunk": 3,
-    "repository_wide_actions_monitoring": "forbidden",
-    "unbounded_status_polling": "forbidden",
-    "timeout_or_wedge_result": "verification_failure",
-    "advance_past_failed_completion_gate": "forbidden",
-    "scheduled_automations_without_owner_approval": "forbidden"
-  },
-  "work_tracking": {
-    "source": "CURRENT.md",
-    "frontend_migration_state": "complete",
-    "roadmap_reconciliation_state": "complete",
-    "student_onboarding_state": "complete_production_verified",
-    "current_phase": "normal_operations",
-    "next_stage": {
-      "name": "Await next approved substantial Lab task",
-      "parent_epic": "Current roadmap",
-      "surface_ids": []
-    }
-  },
   "surfaces": [
     {
       "id": "experiment-runtime",

@@ -10,7 +10,6 @@ const reactCss = read('web/src/react-chrome.css');
 const simulationCss = read('web/src/simulation-react.css');
 const main = read('web/src/main.js');
 const runtimeSpeed = read('web/src/runtime-speed.js');
-const surface = JSON.parse(read('web/product-surface.json'));
 
 test('superseded legacy chrome and Simulation presentation styling is retired', () => {
   for (const obsolete of [
@@ -61,13 +60,4 @@ test('model, controller/runtime and renderer ownership remains outside React', (
   assert.match(main, /function setRunning/);
   assert.match(main, /function drawSnapshot/);
   assert.match(runtimeSpeed, /new RuntimeRateMeter/);
-});
-
-test('product tracking preserves completed frontend migration while allowing the operational frontier to change', () => {
-  assert.equal(surface.work_tracking?.frontend_migration_state, 'complete');
-  assert.equal(surface.work_tracking?.roadmap_reconciliation_state, 'complete');
-  assert.equal(typeof surface.work_tracking?.current_phase, 'string');
-  assert.ok(surface.work_tracking.current_phase.length > 0);
-  assert.equal(typeof surface.work_tracking?.next_stage?.name, 'string');
-  assert.ok(Array.isArray(surface.work_tracking?.next_stage?.surface_ids));
 });

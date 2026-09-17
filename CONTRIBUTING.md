@@ -4,7 +4,7 @@ Virtual Lab is scientific software. Contributions are evaluated against both sof
 
 ## Before implementation
 
-Read `PROJECT_STATE.md`, `docs/SCIENTIFIC_CONTRACT.md`, `docs/ARCHITECTURE.md`, and the relevant GitHub issue.
+Read `DEVELOPMENT_WORKFLOW.md`, `CURRENT_STATUS.md`, `docs/SCIENTIFIC_CONTRACT.md`, `docs/ARCHITECTURE.md`, and the relevant GitHub issue.
 
 ## Change categories
 
@@ -20,9 +20,9 @@ Changes to simulator semantics, controller compiler/IR, physics, observation con
 
 A change that affects execution semantics should include tests for relevant invariants such as deterministic same-seed execution, neighbourhood equivalence, controller information boundaries, visualization/headless equivalence, clock separation, and source→IR execution semantics.
 
-## Closed-loop UI validation
+## User-visible validation
 
-For user-visible changes, test the actual application in a browser after build/deployment. Exercise the changed workflow and inspect runtime/console behavior before considering the work complete.
+For user-visible changes, follow `DEVELOPMENT_WORKFLOW.md`: test the actual application and verify the affected deployed behavior before reporting completion.
 
 ## Cost discipline
 
@@ -30,4 +30,4 @@ Preserve the zero-cost baseline. Document any new dependency that introduces mon
 
 ## Provenance
 
-Scientific outputs must reference immutable experiment revisions. Once an experiment revision has generated a run, subsequent scientific edits create another revision.
+Scientific outputs must reference immutable Experiment revisions. Once an Experiment revision has generated a run, subsequent scientific edits create another revision.
