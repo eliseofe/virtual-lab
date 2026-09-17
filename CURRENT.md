@@ -10,7 +10,7 @@ This is the first repository file to read in a new ChatGPT/Work session. It cont
 
 - #258 — CI minimization: complete. Historical automatic benchmark/performance workflows were removed. Product changes now use one normal CI/Pages workflow; terminal-success notification uses one explicit tiny notifier run rather than every comment.
 - #259 — repository memory fast-forward: complete. New sessions start from this compact file rather than mandatory historical reconstruction.
-- #260 — stale execution debris / branch hygiene: active.
+- #260 — stale execution debris / branch hygiene: bounded. The remaining historical branch deletion and zombie-run cancellation are not required for correctness and are not available through the currently known safe connector operations. Do not perform connector capability discovery to pursue them. Treat the stale run and old branches as inert historical debris; they must never be used as completion/idleness signals.
 
 After detox reaches a safe checkpoint, resume **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
 
@@ -41,7 +41,7 @@ Work on one substantial independently testable/deployable ticket at a time. Clos
 
 **Never wait for the repository-wide Actions queue to become empty.** The repo contains historical workflow debris, including a stale queued 2026-09-13 run. Track only the exact workflow run IDs/SHA/PR belonging to the current task.
 
-For GitHub operations, prefer compact connector calls scoped to the current file/issue/PR/SHA. Avoid broad recursive trees, all-runs payloads and branch/history sweeps unless performing explicit maintenance.
+For GitHub operations, use compact calls scoped to the current file/issue/PR/SHA. Do not use recursive whole-repository trees, all-runs payloads, broad branch/history sweeps, or connector capability discovery. If a required operation is unavailable through a known connector action, stop and report it instead of searching for alternate tool schemas.
 
 ## Source precedence
 
