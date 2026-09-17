@@ -12,6 +12,8 @@ The frontend architecture migration to **Vite + React + TypeScript + Mantine** i
 
 The student self-registration and Getting started work is complete and production-verified. At least one real student has successfully registered, confirmed the account and signed in. The production Lab provides one normal student journey with self-registration/sign-in, Getting started/Help, and Grok/Claude connector guidance.
 
+OAuth authorization for AI clients is hosted inside the production Virtual Lab artifact at `/oauth/consent/` and shares the normal Lab browser session. The former standalone mock-sim site is historical infrastructure and is not part of the active product path once Supabase Auth points at the production Lab authorization route.
+
 Ongoing presentation refinement is tracked through **#273 — UI/UX refinement and visual polish from real use** and should remain evidence-driven rather than become a generic redesign lane.
 
 ## Immediate frontier
@@ -33,13 +35,10 @@ Other parked/gated work includes:
 - numerical-integrator evaluation — requires owner scientific/numerical activation;
 - native/HPC, richer physics/heterogeneous swarms, living environment/performance/validation umbrellas — future/on-demand.
 
-## Known follow-up: legacy mock-sim auth routing
-
-A real student encountered the legacy mock-sim site during registration/confirmation. Historical Supabase OAuth configuration explicitly used `https://eliseofe.github.io/virtual-lab-mock-sim` as the Site URL. Treat the mock-sim repository/site as dependency-sensitive and **do not retire it** until the production registration/confirmation/OAuth route is separately investigated and corrected.
-
 ## Production pointers
 
 - Production Lab: https://eliseofe.github.io/virtual-lab/
+- AI authorization UI: https://eliseofe.github.io/virtual-lab/oauth/consent/
 - Hosting: GitHub Pages.
 - Frontend: Vite + React + TypeScript + Mantine.
 - Scientific/runtime authority: Rust/WASM kernel plus worker/runtime/compiler modules.
