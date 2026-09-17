@@ -6,21 +6,22 @@ Read `CURRENT.md` first. This file holds strategy detail.
 
 ## Strategic frontier
 
-The frontend architecture migration is complete and the visual revamp remains an accepted clean, functional baseline. The student self-registration and Getting started implementation also exists, and at least one real student has successfully registered, confirmed the account and signed in.
+The frontend architecture migration is complete and the visual revamp remains an accepted clean, functional baseline. Student self-registration and Getting started are implemented and production-verified, and at least one real student has successfully registered, confirmed the account and signed in.
 
-However, the previous fire-and-forget CI policy is retired. The project is temporarily in **closed-loop recovery** because the latest exact production verification examined during recovery is red. Real-use work resumes only after the current production gate is green and student registration/onboarding has direct deployed liveness coverage.
+The temporary fire-and-forget CI policy is retired. Closed-loop recovery completed on 17 September with a green recovery candidate followed by a separate green workflow-acceptance candidate. The Lab is back in **normal operations**.
 
 Studies are still not authorized.
 
 ## Priority order
 
-1. **Restore the closed production loop** — exact candidate build, deploy and affected production smoke must be green before completion is recorded.
-2. **Direct onboarding liveness coverage** — deployed registration/Getting started behavior must be exercised with bounded browser checks, including the observer-freeze path.
-3. **Real use of the production Lab** by students and the owner after the recovery gate is green.
-4. **Bounded fixes from evidence** — onboarding friction, terminology, usability, connector setup, or other concrete defects discovered during use.
-5. **Living UI/UX refinement (#273)** only in small coherent batches from actual use, not generic polishing.
-6. **Studies only after a later explicit owner authorization.**
-7. Other research/product lanes remain backlog items unless the owner reprioritizes them.
+1. **Next explicit owner-approved substantial Lab task** — do not infer a new epic merely because recovery finished.
+2. **Real use of the production Lab** by students and the owner.
+3. **Bounded fixes from evidence** — onboarding friction, terminology, usability, connector setup, or other concrete defects discovered during use.
+4. **Living UI/UX refinement (#273)** only in small coherent batches from actual use, not generic polishing.
+5. **Studies only after a later explicit owner authorization.**
+6. Other research/product lanes remain backlog items unless the owner reprioritizes them.
+
+Every deployable item in this order remains subject to the closed-loop production-green completion gate below.
 
 ## Frontend and visual state
 
@@ -41,7 +42,7 @@ This remains presentation-only. It does not move model/scientific/runtime/contro
 
 ## Student-use state
 
-The production Lab implementation provides:
+The production Lab provides:
 - one normal production Lab URL;
 - obvious Create account / Sign in;
 - intentionally open enrollment for the initial phase;
@@ -54,7 +55,7 @@ The production Lab implementation provides:
 
 The production connector remains Experiment-domain only. It does not grant GitHub, shell, deployment or hidden simulator-development privilege.
 
-This implementation must not be called fully complete again until the current exact-candidate production gate is green and the student path has direct bounded deployed verification.
+The student journey is production-verified, including signed-out registration readiness, first-login auto-open, mobile Help scrolling, 44 px mobile close target and bounded regression protection against the previous observer-freeze failure.
 
 ## Studies gate
 
@@ -91,9 +92,13 @@ Only a later explicit owner instruction activates Studies.
 
 One substantial independently testable ticket at a time. An owner-authorized sequence may continue across ticket boundaries only within the explicitly authorized lane; do not jump into the next epic merely because the previous implementation ended.
 
-For a user-facing/deployable ticket, completion means: implementation → deterministic checks → exact-candidate CI/build → deployment → bounded verification of the affected deployed behavior → durable completion state. A failure is repaired and the bounded loop repeats for the repaired candidate.
+For a user-facing/deployable ticket, completion means: implementation → deterministic checks → exact-candidate CI/build → deployment → bounded proof that production serves the exact candidate SHA → bounded verification of all affected deployed behavior → durable completion state. A failure is repaired and the bounded loop repeats for the repaired candidate.
 
-Verification is allowed to depend on asynchronous external systems, but assistant execution must remain structurally terminating: inspect only the exact current candidate/run, use finite status checks/timeouts, and never enter repository-wide monitoring or unbounded polling. A timeout or wedged verifier is a terminal verification failure, not success.
+A conversational/approval chunk ends only **production green** or at a **specific concrete blocker** that cannot be repaired with the currently available environment/authority. Red CI/smoke, queued/in-progress verification, or another directly related completion-gate defect stays inside the current approved task.
+
+Verification may depend on asynchronous external systems, but assistant execution remains structurally terminating: inspect only the exact current candidate/run, use finite status checks/timeouts, and never enter repository-wide monitoring or unbounded polling. After the first candidate, one approved chunk may create at most **three repaired exact candidates**. Exhausting that bound, a timeout, a wedged verifier or an unavailable external service is a concrete verification blocker, not success.
+
+The Pages workflow stamps the exact candidate SHA into `deploy-sha.txt` and production smoke waits with a finite deadline for that marker before browser verification begins. This prevents deployment-propagation races from being treated as product regressions.
 
 Never create scheduled tasks, reminders, watchdogs or automations without explicit owner request.
 
