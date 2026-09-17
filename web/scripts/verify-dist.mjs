@@ -22,7 +22,8 @@ if (!index.includes(`./${manifest.assetDir}/style.css`)) throw new Error("index 
 if (!index.includes(`./${manifest.assetDir}/ux-hardening.css`)) throw new Error("index does not reference versioned ux-hardening.css");
 if (!index.includes(`./${manifest.assetDir}/react-migration-root.js`)) throw new Error("index does not reference versioned React migration root");
 if (!index.includes(`./${manifest.assetDir}/react-migration-root.css`)) throw new Error("index does not reference versioned React migration styles");
-if (!index.includes('id="react-migration-root" hidden aria-hidden="true"')) throw new Error("index does not contain the inert React coexistence mount");
+if (!index.includes('id="react-migration-root" aria-label="Virtual Lab application navigation"')) throw new Error("index does not contain the visible React application-chrome mount");
+if (index.includes('id="react-migration-root" hidden')) throw new Error("React application chrome is still hidden");
 if (index.includes('href="./ux-hardening.css"')) throw new Error("index still references unversioned ux-hardening.css");
 if (index.includes('src="./runtime-speed.js"')) throw new Error("index still references unversioned runtime-speed.js");
 const main = await readFile(path.join(assetDir, "main.js"), "utf8");
@@ -42,8 +43,15 @@ for (const required of [
 ]) if (!main.includes(required)) throw new Error(`missing startup default: ${required}`);
 
 const reactRoot = await readFile(path.join(assetDir, "react-migration-root.js"), "utf8");
-for (const required of ["MantineProvider", "data-vlab-react-foundation", "React migration root is missing"]) {
-  if (!reactRoot.includes(required)) throw new Error(`missing React foundation marker: ${required}`);
+for (const required of [
+  "MantineProvider",
+  "data-vlab-react-foundation",
+  "data-vlab-react-chrome",
+  "data-vlab-nav",
+  "React migration root is missing",
+]) if (!reactRoot.includes(required)) throw new Error(`missing React application-chrome marker: ${required}`);
+if (reactRoot.includes("simulation-canvas") || reactRoot.includes("#run") || reactRoot.includes("#pause")) {
+  throw new Error("React application chrome has taken ownership of scientific/runtime controls");
 }
 
 const configMatch = main.match(/const defaultConfigSource = `([\s\S]*?)`;\n/);
@@ -52,4 +60,4 @@ const editableConfig = configMatch[1];
 for (const removed of ["PHYSICS_DT", "METRIC_DT", "NEIGHBOUR_RADIUS", "K3", "WHEEL_BASE", "V0 = U", "SPRING_K"]) {
   if (editableConfig.includes(removed)) throw new Error(`student config still exposes removed parameter: ${removed}`);
 }
-console.log(`Verified coherent browser artifact ${manifest.assetDir} with React/Mantine coexistence root`);
+console.log(`Verified coherent browser artifact ${manifest.assetDir} with visible React/Mantine application chrome`);
