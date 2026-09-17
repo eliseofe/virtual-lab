@@ -12,42 +12,39 @@ A bounded repository task ends with deterministic local/static verification avai
 
 ## Current project state
 
-The frontend architecture migration to **Vite + React + TypeScript + Mantine is complete**. The missing visual-design half has now also been implemented on `main`:
-- deliberate Virtual Lab visual system/theme;
-- redesigned persistent header/app shell;
-- coherent typography, spacing, surfaces and control hierarchy;
-- visual treatment applied across Experiment management, Simulation/Arena, Results, Authoring, technical/account/dialog surfaces;
-- MVC/scientific/runtime semantics preserved.
+The frontend architecture migration to **Vite + React + TypeScript + Mantine is complete**. The visual revamp has also been accepted by the owner as a **clean, functional and usable baseline**, not as permanently finished UI/UX.
 
-The frontend/visual-revamp parent remains open only for **owner visual/product acceptance of the deployed Lab**. Do not call it complete before that human check.
+Ongoing presentation quality now lives in **#273 — UI/UX refinement and visual polish from real use**. It is a living evidence-driven lane, not a blocker on scientific/product work.
 
-## Immediate gate
+The **student self-registration and Getting started mini-epic (#268) is complete**:
+- production self-registration/sign-in with intentionally open enrollment for the first student phase;
+- first-login Getting started guidance plus persistent Help;
+- Grok and Claude production connector setup instructions;
+- a minimal read-only first connection check;
+- no second student site and no mock-lab onboarding path.
 
-The next action is **owner inspection of the deployed visual revamp** at:
-https://eliseofe.github.io/virtual-lab/
+A real student has now successfully registered, confirmed the account and signed in. Real student use is therefore no longer hypothetical.
 
-If the owner reports a concrete visual/UX defect, fix that defect as one focused task. Do not reopen the architecture migration or start another broad redesign cycle without evidence.
+A small post-onboarding UX cleanup was also applied:
+- Results terminology uses **Metrics** rather than the implementation-oriented **Series** wording;
+- live-result state wording is clearer;
+- non-actionable periodic-boundary metadata is no longer promoted in the main Arena heading.
 
-## After visual acceptance
+## Immediate frontier
 
-The next planned product lane is the **student self-registration and Getting started mini-epic**:
-1. production self-registration/sign-in with intentionally open enrollment for the first student phase;
-2. first-login Getting started flow + persistent Help entry;
-3. Grok/Claude connector setup instructions + minimal first-use exercise.
+The active product/scientific lane is now **real use**:
+1. let students use the production Lab and connector onboarding;
+2. let the owner use the Lab for actual experiments/scientific work;
+3. when real use exposes concrete defects or friction, repair them as small bounded tasks;
+4. continue #273 only from observed UX/UI evidence rather than generic polishing.
 
-The Lab must remain continuously usable; no maintenance-mode product fork or second student site.
+Do not invent a maintenance phase, a second Lab, or another broad redesign before evidence requires it.
 
 ## Studies are explicitly blocked
 
 Do **not** implement Studies yet.
 
-Studies require all of the following:
-1. visual-revamp owner acceptance;
-2. student-registration/onboarding mini-epic complete;
-3. real students begin using the production Lab;
-4. later explicit owner authorization to start Studies.
-
-The real-student-use gate is manual. Do not schedule, monitor, infer or automatically satisfy it.
+Student onboarding being complete and real student use beginning are necessary conditions, not authorization. Studies start only after a later explicit owner decision. Do not infer that gate from elapsed time, issue state, student activity, CI, or apparent technical readiness.
 
 ## MVC boundary
 
@@ -71,6 +68,8 @@ The real-student-use gate is manual. Do not schedule, monitor, infer or automati
 - Deployment: static GitHub Pages.
 - Frontend: Vite + React + TypeScript + Mantine.
 - Scientific/runtime authority: Rust/WASM kernel + existing worker/runtime/compiler modules.
+- Registry/Auth/MCP backend: Supabase.
+- Production MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`.
 - Runnable Experiment artifacts: Configuration, Initialization, Controller, Metrics. Empty Metrics is valid.
 - Results presentation state is separate from scientific Experiment revision state.
 
