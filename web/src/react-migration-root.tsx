@@ -107,6 +107,10 @@ function proxyClick(selector: string) {
   document.querySelector<HTMLButtonElement>(selector)?.click();
 }
 
+function visible(element: HTMLElement | null) {
+  return Boolean(element && !element.hidden && element.getClientRects().length > 0);
+}
+
 function workerColor(state: string) {
   if (state === 'ready') return 'teal';
   if (state === 'error') return 'red';
@@ -130,12 +134,42 @@ function WorkspaceNav({ closeMobile }: { closeMobile?: () => void }) {
 
 function ApplicationChrome() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [utilityOpen, setUtilityOpen] = useState(false);
   const state = useChromeState();
 
   useEffect(() => {
     document.body.classList.add('vlab-react-chrome-mounted');
     return () => document.body.classList.remove('vlab-react-chrome-mounted');
   }, []);
+
+  useEffect(() => {
+    const dialog = document.querySelector<HTMLDialogElement>('#workspace-utilities');
+    if (!dialog) return;
+    const syncOpen = () => setUtilityOpen(dialog.open);
+    const restoreFocus = () => {
+      syncOpen();
+      requestAnimationFrame(() => {
+        const desktopAccount = document.querySelector<HTMLElement>('[data-vlab-nav="account"]');
+        const navigationToggle = document.querySelector<HTMLElement>('[data-vlab-nav-toggle="true"]');
+        const target = visible(desktopAccount) ? desktopAccount : visible(navigationToggle) ? navigationToggle : null;
+        target?.focus({ preventScroll: true });
+      });
+    };
+    const observer = new MutationObserver(syncOpen);
+    observer.observe(dialog, { attributes: true, attributeFilter: ['open'] });
+    dialog.addEventListener('close', restoreFocus);
+    syncOpen();
+    return () => {
+      observer.disconnect();
+      dialog.removeEventListener('close', restoreFocus);
+    };
+  }, []);
+
+  const accountA11y = {
+    'aria-haspopup': 'dialog' as const,
+    'aria-controls': 'workspace-utilities',
+    'aria-expanded': utilityOpen,
+  };
 
   return (
     <Box data-vlab-react-foundation="mounted" data-vlab-react-chrome="mounted">
@@ -156,8 +190,8 @@ function ApplicationChrome() {
             <Group gap="xs" wrap="nowrap">
               <Badge className="vlab-react-status-badge" color={workerColor(state.workerState)} variant="light" data-vlab-worker-status>{state.workerText}</Badge>
               {state.professorAvailable && <Badge visibleFrom="md" className="vlab-react-role-badge" color="violet" variant="outline">{state.professorLabel}</Badge>}
-              <Button visibleFrom="sm" variant="white" color="dark" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account">Account</Button>
-              <Burger hiddenFrom="lg" opened={mobileOpen} onClick={() => setMobileOpen((value) => !value)} color="white" aria-label="Open workspace navigation" />
+              <Button visibleFrom="sm" variant="white" color="dark" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account" {...accountA11y}>Account</Button>
+              <Burger hiddenFrom="lg" opened={mobileOpen} onClick={() => setMobileOpen((value) => !value)} color="white" aria-label="Open workspace navigation" data-vlab-nav-toggle="true" />
             </Group>
           </Group>
         </Container>
@@ -167,7 +201,7 @@ function ApplicationChrome() {
         <Stack gap="xs">
           <WorkspaceNav closeMobile={() => setMobileOpen(false)} />
           <Button variant="light" color="cyan" onClick={() => { proxyClick('.showcase-launcher'); setMobileOpen(false); }} disabled={!state.showcaseAvailable} data-vlab-nav="showcase-mobile">Showcase</Button>
-          <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile">Account</Button>
+          <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile" {...accountA11y}>Account</Button>
           {state.professorAvailable && <Badge className="vlab-react-role-badge" color="violet" variant="light">{state.professorLabel}</Badge>}
           <Text size="xs" c="dimmed">Account includes role-specific Professor tools when available.</Text>
         </Stack>
