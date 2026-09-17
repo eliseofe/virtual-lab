@@ -241,9 +241,9 @@ function metricById(metrics: ResultsMetricPresentation[], id: string) {
 }
 
 function panelTitle(snapshot: ResultsPresentationSnapshot, metricIds: string[]) {
-  if (metricIds.length === 0) return 'Choose series';
+  if (metricIds.length === 0) return 'Choose metrics';
   if (metricIds.length === 1) return metricById(snapshot.metrics, metricIds[0])?.label ?? metricIds[0];
-  return `${metricIds.length} series`;
+  return `${metricIds.length} metrics`;
 }
 
 function ResultsPresentation() {
@@ -354,16 +354,16 @@ function ResultsPresentation() {
                   Follow live
                 </Button>
               ) : (
-                <Badge size="sm" variant="dot" color="teal" data-vlab-results-live={panel.id}>Live</Badge>
+                <Badge size="sm" variant="dot" color="teal" data-vlab-results-live={panel.id}>Live data</Badge>
               )}
               <Menu shadow="md" width={240} closeOnItemClick={false} position="bottom-end">
                 <Menu.Target>
                   <Button size="xs" variant="default" className="vlab-react-results-action" data-vlab-results-series={panel.id}>
-                    Series · {panel.metricIds.length}
+                    Metrics · {panel.metricIds.length}
                   </Button>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Label>Visible series</Menu.Label>
+                  <Menu.Label>Visible metrics</Menu.Label>
                   <Stack gap={4} p="xs">
                     {snapshot.metrics.map((metric) => (
                       <Box key={metric.id} data-vlab-results-panel={panel.id} data-vlab-results-metric={metric.id}>
