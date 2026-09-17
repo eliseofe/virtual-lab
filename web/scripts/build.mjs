@@ -7,6 +7,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.resolve(here, "..");
 const src = path.join(web, "src");
 const publicDir = path.join(web, "public");
+const oauthDir = path.join(web, "oauth");
 const viteReactDir = path.join(web, ".vite-react");
 const dist = path.join(web, "dist");
 const wasmJs = path.join(publicDir, "wasm", "vlab_kernel.js");
@@ -32,7 +33,7 @@ async function filesUnder(root, relative = "") {
 }
 
 const hash = createHash("sha256");
-for (const root of [src, publicDir, viteReactDir]) {
+for (const root of [src, publicDir, oauthDir, viteReactDir]) {
   for (const relative of await filesUnder(root)) {
     hash.update(relative);
     hash.update(await readFile(path.join(root, relative)));
@@ -47,6 +48,7 @@ await mkdir(assetDir, { recursive: true });
 await cp(src, assetDir, { recursive: true });
 await cp(publicDir, assetDir, { recursive: true });
 await cp(viteReactDir, assetDir, { recursive: true });
+await cp(oauthDir, path.join(dist, "oauth"), { recursive: true });
 
 let index = await readFile(path.join(src, "index.html"), "utf8");
 index = index
@@ -65,6 +67,7 @@ await writeFile(path.join(dist, "build-manifest.json"), JSON.stringify({
   token,
   assetDir: assetDirName,
   reactMigrationRoot: "react-migration-root.js",
+  oauthConsent: "oauth/consent/",
 }, null, 2));
 
 console.log(`Static production artifact built at ${dist}`);
