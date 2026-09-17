@@ -50,6 +50,7 @@ test('#262 preserves mobile touch targets', () => {
 test('#262 keeps current-product tracking on the migrated Authoring surface', () => {
   const runtime = surface.surfaces.find((entry) => entry.id === 'experiment-runtime');
   assert.ok(runtime);
-  assert.match(runtime.name, /React\/Mantine Authoring/);
-  assert.equal(surface.work_tracking?.next_stage?.parent_issue, 202);
+  assert.match(runtime.name, /React\/Mantine[\s\S]*Authoring/);
+  assert.equal(surface.work_tracking?.frontend_migration_state, 'complete');
+  assert.equal(surface.work_tracking?.current_phase, 'real_use');
 });
