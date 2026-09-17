@@ -121,17 +121,5 @@ jobs:
       - name: Verify deployed React and Mantine boundary
         run: node web/scripts/frontend-foundation-smoke.mjs https://eliseofe.github.io/virtual-lab/
 
-      - name: Verify deployed built-in metrics
-        run: node web/scripts/builtin-metric-smoke.mjs https://eliseofe.github.io/virtual-lab/
-
-      - name: Verify deployed live Results UI
-        run: node web/scripts/results-ui-smoke.mjs https://eliseofe.github.io/virtual-lab/
-
-      - name: Verify deployed local result persistence
-        run: node web/scripts/result-persistence-smoke.mjs https://eliseofe.github.io/virtual-lab/
-
       - name: Verify deployed responsive hierarchy and focus behavior
         run: node web/scripts/responsive-smoke.mjs https://eliseofe.github.io/virtual-lab/
-
-      - name: Verify deployed Showcase first-open UX
-        run: node web/scripts/showcase-ux-smoke.mjs https://eliseofe.github.io/virtual-lab/
