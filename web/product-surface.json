@@ -4,30 +4,41 @@
     "source_of_truth": "this manifest",
     "active_surface_requires_smoke": true,
     "hard_timeout_required": true,
-    "workflow_must_not_hardcode_surface_checks": true
+    "workflow_must_not_hardcode_surface_checks": true,
+    "deployable_completion_requires_green_production_smoke": true
   },
   "agent_execution_policy": {
-    "zero_tolerance_liveness": true,
-    "async_external_feedback_loops": "forbidden",
-    "github_actions_api_during_ordinary_execution": "forbidden",
-    "external_status_polling": "forbidden",
-    "ci_role": "non_blocking_regression_signal",
-    "scheduled_automations_without_owner_approval": "forbidden",
-    "work_browser_wait_loops": "forbidden",
-    "long_running_remote_job_waits": "forbidden",
-    "connector_capability_discovery_mid_task": "forbidden",
-    "terminal_ci_boundary": "fire_and_forget"
+    "closed_loop_required": true,
+    "completion_order": [
+      "implementation",
+      "local_static_checks",
+      "exact_candidate_ci_build",
+      "exact_candidate_deploy",
+      "affected_production_smoke",
+      "durable_completion_state"
+    ],
+    "local_success_is_completion": false,
+    "exact_candidate_scope_required": true,
+    "bounded_verification_required": true,
+    "hard_timeout_required": true,
+    "repository_wide_actions_monitoring": "forbidden",
+    "unbounded_status_polling": "forbidden",
+    "timeout_or_wedge_result": "verification_failure",
+    "advance_past_failed_completion_gate": "forbidden",
+    "scheduled_automations_without_owner_approval": "forbidden"
   },
   "work_tracking": {
     "source": "CURRENT.md",
     "frontend_migration_state": "complete",
     "roadmap_reconciliation_state": "complete",
-    "student_onboarding_state": "complete",
-    "current_phase": "real_use",
+    "student_onboarding_state": "implemented_verification_reopened",
+    "current_phase": "closed_loop_recovery",
     "next_stage": {
-      "name": "Real student and scientific use — bounded fixes from evidence",
-      "parent_epic": "Real use",
-      "surface_ids": []
+      "name": "Restore green production verification and direct onboarding liveness coverage",
+      "parent_epic": "Closed-loop recovery",
+      "surface_ids": [
+        "responsive-experiment-account"
+      ]
     }
   },
   "surfaces": [
