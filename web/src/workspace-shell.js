@@ -1,5 +1,6 @@
 import "./registry-ui-v3.js";
 import "./student-registration.js";
+import "./student-onboarding.js";
 import "./showcase.js";
 import "./showcase-professor-placement.js";
 import "./results-presentation-bridge.js";
