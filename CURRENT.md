@@ -6,16 +6,19 @@ This is the first repository file to read in a new ChatGPT/Work session. It cont
 
 ## What is active now
 
-**Repository detox safe checkpoint reached.** Feature work may resume; residual historical branch/run debris is non-blocking.
+**Repository detox is complete.** Historical branch/run debris remains physically visible only where the available connector cannot safely delete/cancel it; it is inert and must not affect execution.
 
-- #258 — CI minimization: complete. Historical automatic benchmark/performance workflows were removed. Product changes now use one normal CI/Pages workflow; terminal-success notification uses one explicit tiny notifier run rather than every comment.
-- #259 — repository memory fast-forward: complete. New sessions start from this compact file rather than mandatory historical reconstruction.
-- #260 — stale execution debris / branch hygiene: bounded and non-blocking. The remaining historical branch deletion and zombie-run cancellation are not required for correctness and are not available through the currently known safe connector operations. Do not perform connector capability discovery to pursue them. Treat the stale run and old branches as inert historical debris; they must never be used as completion/idleness signals.
-- #257 — repository detoxification epic now serves as historical/maintenance context, not as a blocker for product work.
+Completed detox:
+- #258 — CI minimization: complete. Historical automatic benchmark/performance workflows were removed.
+- #259 — repository memory fast-forward: complete. New sessions start from this compact file rather than historical reconstruction.
+- #260 — execution debris / branch hygiene: complete at the available-control boundary. Stale run `34748709587` and undeletable historical branches are inert; never use them for completion/idleness.
+- #257 — repository detoxification epic: complete.
 
 Resume **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
 
-Current migration child: **#254 — application chrome migration**. PR #255 merged the visible React/Mantine chrome to `main`, but production responsive smoke exposed an Account-dialog focus-return regression, so #254 is reopened. PR #256 contains the intended hotfix path and remains unmerged. Do not start the Results/Authoring/Simulation/Study migration children before #254 is repaired and production-verified.
+Current migration child: **#254 — application chrome migration**. PR #255 merged the visible React/Mantine chrome to `main`, but production responsive smoke exposed an Account-dialog focus-return regression, so #254 remains reopened. **PR #256 / `issue-254-account-focus-hotfix` is the only authoritative repair path.** Any overlapping `issue-254-account-focus-repair` branch is historical/inert and must not be merged or treated as current work.
+
+Do not start the Results/Authoring/Simulation/Study migration children before #254 is repaired and production-verified.
 
 ## Production and architecture
 
@@ -26,6 +29,20 @@ Current migration child: **#254 — application chrome migration**. PR #255 merg
 - Runnable Experiment artifacts: Configuration, Initialization, Controller, Metrics. Empty Metrics is valid.
 - Results presentation state is separate from scientific Experiment revision state.
 - Raw run results are local-first ordinary files; browser-private storage/Supabase are not the scientific bulk archive.
+
+## Current CI / production smoke
+
+Ordinary product work uses one automatic CI/Pages workflow. PRs build/typecheck/test without deployment. `main` builds/tests, deploys Pages, then verifies the **current active product** in one smoke step covering:
+- core Experiment/runtime;
+- React/Mantine application shell;
+- Metrics + live Results;
+- local result persistence;
+- responsive hierarchy, unified Experiment management and Account focus behavior;
+- Showcase.
+
+The old dedicated Results-layout smoke is no longer automatic because its active coverage overlaps the Metrics+Results and responsive checks. Historical benchmark/performance workflows remain removed.
+
+Success reporting remains one GitHub-only terminal-success email. Reports are **high-level first** (outcome, owner impact, remaining action/caveat), with short technical evidence underneath only when useful. The notifier acts only after an explicit `notify-success` marker change; ordinary protocol edits do not resend old reports.
 
 ## Hard guardrails
 
@@ -40,7 +57,7 @@ Current migration child: **#254 — application chrome migration**. PR #255 merg
 
 Work on one substantial independently testable/deployable ticket at a time. Close the loop: implement → test → deploy when applicable → verify actual artifact → update durable state/issue → report.
 
-**Never wait for the repository-wide Actions queue to become empty.** The repo contains historical workflow debris, including a stale queued 2026-09-13 run. Track only the exact workflow run IDs/SHA/PR belonging to the current task.
+**Never wait for the repository-wide Actions queue to become empty.** Track only the exact workflow run IDs/SHA/PR belonging to the current task.
 
 For GitHub operations, use compact calls scoped to the current file/issue/PR/SHA. Do not use recursive whole-repository trees, all-runs payloads, broad branch/history sweeps, or connector capability discovery. If a required operation is unavailable through a known connector action, stop and report it instead of searching for alternate tool schemas.
 
