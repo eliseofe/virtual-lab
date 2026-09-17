@@ -1,3 +1,20 @@
+:root {
+  --vlab-ink: #15262d;
+  --vlab-muted: #63757c;
+  --vlab-border: #d7e0e3;
+  --vlab-border-strong: #c8d4d8;
+  --vlab-surface: #ffffff;
+  --vlab-surface-soft: #f7f9fa;
+  --vlab-surface-tint: #eef4f5;
+  --vlab-page: #f2f5f6;
+  --vlab-accent: #17758d;
+  --vlab-accent-strong: #0f5e73;
+  --vlab-header: #10252f;
+  --vlab-header-edge: #173844;
+  --vlab-shadow: 0 10px 30px rgba(19, 45, 56, 0.065);
+  --vlab-shadow-raised: 0 18px 46px rgba(16, 39, 49, 0.10);
+}
+
 .vlab-react-chrome-mounted .topbar {
   display: none !important;
 }
@@ -8,32 +25,90 @@
   z-index: 210;
 }
 
+.vlab-react-chrome-mounted {
+  background: var(--vlab-page);
+  color: var(--vlab-ink);
+}
+
+.vlab-react-chrome-mounted .app-shell {
+  width: min(1440px, 100%);
+  padding: 24px 30px 56px;
+}
+
+.vlab-react-chrome-mounted .workspace {
+  gap: 20px;
+}
+
+.vlab-react-chrome-mounted .panel {
+  border: 1px solid var(--vlab-border);
+  border-radius: 18px;
+  background: var(--vlab-surface);
+  box-shadow: var(--vlab-shadow);
+}
+
 .vlab-react-chrome {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background:
-    radial-gradient(circle at 12% -40%, rgba(57, 189, 248, 0.24), transparent 36%),
-    linear-gradient(135deg, #0b1720 0%, #102a38 58%, #173f50 100%);
-  color: #f7fbfd;
+  border-bottom: 1px solid var(--vlab-header-edge);
+  background: var(--vlab-header);
+  color: #f7fbfc;
+  box-shadow: 0 10px 30px rgba(8, 26, 34, 0.16);
 }
 
 .vlab-react-brand {
   min-width: 0;
 }
 
+.vlab-react-brand-lockup {
+  min-width: 0;
+}
+
 .vlab-react-brand-title {
-  letter-spacing: -0.025em;
+  letter-spacing: -0.035em;
+  line-height: 1;
 }
 
 .vlab-react-experiment-name {
   max-width: min(34rem, 42vw);
+  margin-top: 3px;
+  letter-spacing: 0.005em;
+}
+
+.vlab-react-nav {
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .vlab-react-nav-button {
+  min-height: 34px;
+  padding-inline: 11px;
+  border-radius: 9px;
+  color: rgba(240, 248, 250, 0.78) !important;
   white-space: nowrap;
+  font-weight: 620;
+}
+
+.vlab-react-nav-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.vlab-react-account-button {
+  min-height: 34px;
+  border-color: rgba(255, 255, 255, 0.20) !important;
+  color: #f4fafb !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+
+.vlab-react-account-button:hover {
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .vlab-react-status-badge {
   max-width: 15rem;
+  text-transform: none;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .vlab-react-status-badge .mantine-Badge-label {
@@ -45,10 +120,93 @@
   text-transform: none;
 }
 
+/* Experiment identity / management becomes the visual entry point to the workbench. */
+.vlab-react-chrome-mounted .experiment-panel {
+  padding: 16px 18px;
+  border-left: 4px solid var(--vlab-accent);
+}
+
+.vlab-react-chrome-mounted .experiment-current-title {
+  color: var(--vlab-ink);
+  font-size: 15px;
+  letter-spacing: -0.012em;
+}
+
+.vlab-react-chrome-mounted .experiment-origin,
+.vlab-react-chrome-mounted .experiment-location {
+  border: 1px solid #d9e3e6;
+  background: var(--vlab-surface-tint);
+  color: #45616b;
+}
+
+.vlab-react-chrome-mounted .experiment-browse,
+.vlab-react-chrome-mounted .experiment-sign-in-save,
+.vlab-react-chrome-mounted .registry-save-actions button,
+.vlab-react-chrome-mounted .registry-new-actions button {
+  border-radius: 10px;
+}
+
+.vlab-react-chrome-mounted .experiment-management {
+  border-top-color: #e4eaec;
+}
+
+/* Simulation: one workbench surface, not a card nested inside another card. */
+.vlab-react-chrome-mounted .stage-panel {
+  padding: 18px;
+  border-color: var(--vlab-border-strong);
+}
+
+.vlab-react-chrome-mounted .canvas-wrap {
+  border: 1px solid #cbd7db;
+  border-radius: 14px;
+  background: #f8fafb;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.vlab-react-chrome-mounted .stage-note {
+  margin-top: 10px;
+  color: #75868c;
+}
+
+.vlab-react-simulation {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.vlab-react-simulation-heading {
+  padding-bottom: 2px;
+}
+
+.vlab-react-simulation-actions .mantine-Button-root {
+  border-radius: 10px;
+  font-weight: 650;
+}
+
+.vlab-react-simulation-speed,
+.vlab-react-simulation-stats > * {
+  border-color: #dce4e7 !important;
+  background: var(--vlab-surface-soft) !important;
+  box-shadow: none !important;
+}
+
+.vlab-react-simulation-stats > * {
+  min-height: 76px;
+  display: grid;
+  align-content: center;
+}
+
+.vlab-react-simulation-view {
+  border-top-color: #e2e8ea !important;
+}
+
+/* Results: quiet frame, strong data panels, clear controls. */
 .vlab-react-results-mounted .live-results {
-  border-color: var(--mantine-color-gray-3);
-  background: var(--mantine-color-gray-0);
-  box-shadow: var(--mantine-shadow-xs);
+  overflow: hidden;
+  border: 1px solid var(--vlab-border-strong);
+  border-radius: 18px;
+  background: var(--vlab-surface);
+  box-shadow: var(--vlab-shadow);
 }
 
 .vlab-react-results-mounted .live-results > .live-results-head,
@@ -62,8 +220,8 @@
 }
 
 .vlab-react-results-head {
-  border-bottom: 1px solid var(--mantine-color-gray-2);
-  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #e1e7e9;
+  background: #fbfcfc;
 }
 
 .vlab-react-results-heading-group {
@@ -81,9 +239,11 @@
 }
 
 .vlab-react-results-mounted .results-plot-panel {
-  border-color: var(--mantine-color-gray-3);
-  border-radius: var(--mantine-radius-md);
-  box-shadow: var(--mantine-shadow-xs);
+  overflow: hidden;
+  border-color: #dbe3e6;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 5px 18px rgba(20, 45, 55, 0.045);
 }
 
 [data-vlab-react-results-panel-root] {
@@ -91,8 +251,8 @@
 }
 
 .vlab-react-results-panel-head {
-  border-bottom: 1px solid var(--mantine-color-gray-2);
-  background: linear-gradient(180deg, #ffffff 0%, var(--mantine-color-gray-0) 100%);
+  border-bottom: 1px solid #e5eaec;
+  background: var(--vlab-surface-soft);
 }
 
 .vlab-react-results-panel-title {
@@ -127,14 +287,16 @@
 }
 
 .vlab-react-results-mounted .results-plot-wrap {
-  background: #fff;
+  background: #ffffff;
 }
 
 .vlab-react-results-mounted .results-legend {
-  padding: 8px 10px 9px;
-  background: var(--mantine-color-gray-0);
+  padding: 9px 11px 10px;
+  border-top: 1px solid #edf1f2;
+  background: #fbfcfc;
 }
 
+/* Authoring: let code dominate; chrome recedes. */
 .vlab-react-authoring-mounted #authoring-workbench > .authoring-workbench-head,
 .vlab-react-authoring-mounted #authoring-workbench > #authoring-tabs {
   display: none !important;
@@ -145,11 +307,19 @@
   min-width: 0;
 }
 
+.vlab-react-chrome-mounted .editor-panel {
+  padding: 20px;
+  border-color: var(--vlab-border-strong);
+}
+
 .vlab-react-authoring-head {
-  margin-bottom: 10px;
-  border: 1px solid var(--mantine-color-gray-2);
-  background: linear-gradient(180deg, #ffffff 0%, var(--mantine-color-gray-0) 100%);
-  box-shadow: var(--mantine-shadow-xs);
+  margin-bottom: 12px;
+  padding: 0 0 14px !important;
+  border: 0;
+  border-bottom: 1px solid #e1e7e9;
+  border-radius: 0 !important;
+  background: transparent;
+  box-shadow: none;
 }
 
 .vlab-react-authoring-actions {
@@ -167,9 +337,10 @@
 }
 
 .vlab-react-authoring-tabs-shell {
-  margin-bottom: 4px;
-  border: 1px solid var(--mantine-color-gray-2);
-  background: var(--mantine-color-gray-0);
+  margin-bottom: 10px;
+  border: 1px solid #dce4e7;
+  background: var(--vlab-surface-soft);
+  box-shadow: none;
 }
 
 .vlab-react-authoring-tabs {
@@ -180,6 +351,7 @@
 .vlab-react-authoring-tab {
   flex: 0 0 auto;
   min-height: 40px;
+  border-radius: 9px;
   white-space: nowrap;
 }
 
@@ -187,9 +359,67 @@
   font-weight: 700;
 }
 
+.vlab-react-chrome-mounted .authoring-pane-head {
+  margin: 14px 1px 10px;
+}
+
+.vlab-react-chrome-mounted .authoring-pane-head h3 {
+  margin: 0;
+  color: #263b44;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.vlab-react-chrome-mounted textarea.code-editor {
+  border: 1px solid #cfdadd;
+  border-radius: 12px;
+  background: #fbfcfc;
+  box-shadow: inset 0 1px 2px rgba(17, 40, 49, 0.025);
+}
+
+.vlab-react-chrome-mounted textarea.code-editor:focus {
+  outline: 3px solid rgba(23, 117, 141, 0.12);
+  border-color: #7faeba;
+}
+
+.vlab-react-chrome-mounted .feedback {
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+
+/* Technical material is intentionally quieter than the scientific workspace. */
+.vlab-react-chrome-mounted .technical-panel {
+  border-color: #dde4e6;
+  background: #f8fafb;
+  box-shadow: none;
+}
+
+.vlab-react-chrome-mounted .technical-summary {
+  color: #718187;
+}
+
+.vlab-react-chrome-mounted .utility-dialog {
+  border: 1px solid #cad7db;
+  border-radius: 18px;
+  box-shadow: var(--vlab-shadow-raised);
+}
+
+.vlab-react-chrome-mounted .utility-dialog-shell {
+  background: var(--vlab-page);
+}
+
+.vlab-react-chrome-mounted .utility-dialog-head {
+  border-bottom-color: #dce4e7;
+  background: #ffffff;
+}
+
 @media (max-width: 74.99em) {
   .vlab-react-experiment-name {
     max-width: min(28rem, 38vw);
+  }
+
+  .vlab-react-chrome-mounted .app-shell {
+    padding-inline: 22px;
   }
 }
 
@@ -200,6 +430,24 @@
 }
 
 @media (max-width: 38.75em) {
+  .vlab-react-chrome-mounted .app-shell {
+    padding: 14px 12px 34px;
+  }
+
+  .vlab-react-chrome-mounted .workspace {
+    gap: 14px;
+  }
+
+  .vlab-react-chrome-mounted .panel {
+    border-radius: 14px;
+  }
+
+  .vlab-react-chrome-mounted .experiment-panel,
+  .vlab-react-chrome-mounted .stage-panel,
+  .vlab-react-chrome-mounted .editor-panel {
+    padding: 13px;
+  }
+
   .vlab-react-results-head .mantine-Group-root,
   .vlab-react-results-panel-head > .mantine-Stack-root > .mantine-Group-root {
     align-items: flex-start;
@@ -245,11 +493,19 @@
     position: sticky;
   }
 
+  .vlab-react-brand-title {
+    font-size: 1.12rem;
+  }
+
   .vlab-react-experiment-name {
-    max-width: 68vw;
+    max-width: 58vw;
   }
 
   .vlab-react-results-status {
     max-width: 11rem;
+  }
+
+  .vlab-react-status-badge {
+    max-width: 7.5rem;
   }
 }
