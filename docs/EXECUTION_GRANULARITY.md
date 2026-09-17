@@ -10,31 +10,38 @@ When the owner approves a sequence with language such as `go ahead`, `proceed`, 
 
 Default to **one substantial, independently testable ticket at a time**.
 
-For each substantial ticket:
+For each substantial user-facing/deployable ticket:
 
 1. implement only that ticket;
 2. run bounded deterministic local/static checks available in the current environment;
 3. repair deterministic failures within the ticket;
-4. update durable repository state and issue metadata;
-5. write the single terminal report and repository commit;
-6. let CI/build/deploy/smoke run independently as a non-blocking regression signal;
-7. if the owner already authorized a subsequent bounded ticket within the same named lane, continue to it without polling/waiting for CI.
+4. create the exact candidate repository state;
+5. verify that exact candidate through CI/build;
+6. verify that exact candidate deploys;
+7. run bounded production smoke/browser verification for the affected deployed behavior;
+8. if any verification fails, diagnose and repair that exact failure, then repeat the bounded loop for the repaired candidate;
+9. only after the exact deployed candidate is green, update durable completion state, close the ticket where appropriate, and report completion;
+10. only then move to the next substantial ticket.
 
-CI can fail. A later observed failure becomes a bounded repair task for the exact failing commit/run; it is not a reason to place the ordinary workflow into a pending state.
+Local/static success is necessary but never sufficient for deployed-product completion.
 
-## Liveness rule
+## Bounded liveness rule
 
-Never wait for, poll, monitor, or repeatedly query an asynchronous external process from the assistant execution loop. This includes GitHub Actions, Pages deployment, remote benchmarks, Work/browser/computer jobs, authentication/device flows, and remote service state.
+The closed loop must be structurally terminating.
 
-Deployment and production verification are not agent-side waiting steps. They run independently and may be checked once when the owner asks for current status or when a deployment result is needed for an immediate user-facing handoff.
+Verification may inspect only the exact current candidate SHA/run needed for the active ticket. Every local test, workflow job, deployment/status check, browser process and production smoke invocation must have a finite timeout or finite retry bound.
+
+Do not perform repository-wide Actions monitoring, broad run-history scans, open-ended polling, `wait until successful` loops, or repeated same-purpose status calls without a fixed bound.
+
+A timeout, wedged external process or unavailable verification service is a **terminal verification failure**. Stop waiting, record the exact blocker and leave the ticket unverified. Do not convert failure to success and do not move substantial product work past an unresolved completion gate.
+
+Work/browser/computer verification is valid completion evidence when appropriate to the affected deployed behavior, provided each invocation is bounded. Long-running scientific benchmarks that are not product-completion gates may remain autonomous outside the completion loop.
 
 Never create a scheduled task, reminder, watchdog or automation unless the owner explicitly requests one.
 
-Local deterministic edit/test/repair iterations are allowed when each invocation has a finite synchronous boundary. Long-running benchmarks belong outside the assistant feedback loop.
-
 ## When batching is acceptable
 
-Adjacent tickets may be batched only when each is genuinely small/trivial, low-risk, and the combined work still forms one clear testable unit. Otherwise retain separate commits/issues even when the owner has authorized the whole sequence.
+Adjacent tickets may be batched only when each is genuinely small/trivial, low-risk, and the combined work still forms one clear independently verifiable deployed unit. Otherwise retain separate commits/issues even when the owner has authorized the whole sequence.
 
 ## Atomic compatibility exception
 
@@ -43,8 +50,10 @@ If two changes truly cannot be deployed safely except atomically, document why b
 ## Reporting rule
 
 Owner-facing reports must answer three human questions directly:
-- What just finished?
+- What just finished and was production-verified?
 - Is there anything the owner needs to do now?
 - What work happens next?
+
+Never use `complete`, `fixed`, `deployed`, or `production-verified` for a deployable task before exact-candidate production verification is green.
 
 Do not expect the owner to remember bare issue numbers; pair identifiers with semantic names when identifiers are useful.
