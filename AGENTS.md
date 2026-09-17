@@ -1,24 +1,28 @@
 # Virtual Lab — Agent Instructions
 
-## ZERO-TOLERANCE LIVENESS — READ THIS BEFORE ANYTHING ELSE
+## CLOSED LOOP + BOUNDED LIVENESS — READ THIS BEFORE ANYTHING ELSE
 
-Ordinary Virtual Lab execution must be **structurally terminating**. The agent must never put an asynchronous external process inside its own feedback loop.
+The project contract is: **do not report work as complete until the actual deployed product has been verified where deployment applies.**
 
-**Forbidden during ordinary execution:**
-- waiting, polling, monitoring or repeatedly checking CI, deployment, long benchmarks, Work/browser jobs, authentication, remote services, or any other asynchronous process;
-- “wait until”, “monitor until”, “repeat until successful”, or equivalent self-directed external loops;
-- repeated same-purpose status calls;
-- connector/tool capability discovery in the middle of a task;
-- broad recursive repository/branch/history/Actions scans;
-- creating scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests them.
+For every substantial user-facing/deployable task, the completion loop is:
 
-A GitHub write may trigger autonomous CI, but CI is **not a blocking state in the agent workflow**. Complete the bounded deterministic implementation/testing available in the current turn, write `.github/terminal-report.json`, make the terminal repository write, and return/continue according to the owner's instruction. Do not invent a “pending forever” state.
+1. implement the bounded task;
+2. run deterministic local/static tests available in the current environment;
+3. trigger the exact candidate commit's CI/build;
+4. verify that exact candidate deploys successfully;
+5. exercise the affected deployed Lab behavior with bounded production smoke/browser verification;
+6. if any step fails, diagnose and repair that failure and repeat the bounded verification loop for the repaired candidate;
+7. only after the deployed candidate is green, record durable completion state, close the task where appropriate, and report it as complete.
 
-Autonomous CI/build/deploy/smoke is an independent regression signal. When the owner explicitly asks for status, or when a later turn resumes after a reported failure, perform one bounded lookup of the exact relevant run/commit. If it failed, diagnose that exact failure. If it succeeded, record the success. Never convert status resolution into a polling loop.
+**Never call a task fixed, complete, deployed, or production-verified before step 5 is green.** Local/static success alone is not completion.
 
-Work/browser/computer verification is optional diagnostic/UX tooling. Use it only when explicitly required by the current owner instruction or a separately scoped diagnostic/UX task. One bounded invocation is allowed; no polling/retry loop.
+The closed loop must also be structurally terminating. Verification may inspect only the exact current candidate SHA/run needed for the active task. Every test, browser process, workflow job, deployment check, and status-resolution operation must have a finite bound or timeout. Never perform repository-wide Actions monitoring, broad run-history scans, indefinite polling, “wait until successful” loops, or repeated same-purpose status calls without a fixed bound.
 
-Local deterministic work may iterate inside one ticket: code edits, finite repository reads, and local/test operations that return synchronously. Long-running experiments/benchmarks must run autonomously outside the agent feedback loop.
+A timeout, wedged verification process, or unavailable verification service is a **terminal verification failure**, not permission to declare success and not permission to wait forever. Record the exact blocker and leave the task unverified. When a concrete verification failure is available in the current execution, repair it before moving to another substantial product task.
+
+Work/browser/computer verification is valid completion evidence when it is the appropriate way to verify the affected deployed behavior, but each invocation must be bounded. Long-running scientific benchmarks that are not product-completion gates may remain autonomous outside the agent loop.
+
+Do not create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests them.
 
 ## Start here
 
@@ -27,13 +31,15 @@ Local deterministic work may iterate inside one ticket: code edits, finite repos
 3. Read only the specific technical/design files needed for that issue.
 4. Consult `PROJECT_CONTROL.md` or `PROJECT_STATE.md` only when deeper strategy/contracts/evidence are materially needed.
 
-Do **not** reconstruct the roadmap from issue chronology, branch counts, the newest commit, or GitHub Actions history.
+Do **not** reconstruct the roadmap from issue chronology, branch counts, the newest commit, or broad GitHub Actions history.
 
 ## Mandatory operating rules
 
 - One substantial independently testable/deployable ticket at a time unless the owner's current instruction explicitly authorizes a broader bounded pass.
+- Close the loop before reporting completion: implementation → tests → exact-candidate CI/build → deployment → affected deployed behavior verification → durable issue/state update.
+- Track only the exact current candidate SHA/PR/run needed for the active task; never infer completion from unrelated repository activity.
 - Keep current truth in `CURRENT.md`; update it whenever active priority, blocker or next action changes materially.
-- `web/product-surface.json` is the machine-readable source of truth for what users can use in the Lab today and required production smoke coverage.
+- `web/product-surface.json` is the machine-readable source of truth for what users can use in the Lab today and required production smoke coverage. Every active user-facing surface must retain bounded deployed smoke coverage.
 - `CURRENT.md` remains the source of truth for what work is being done now/next. Keep the manifest's `work_tracking` aligned with it.
 - Preserve the scientific guardrails in `CURRENT.md` and `PROJECT_STATE.md`. Software architecture reasoning is allowed; new scientific/model reasoning requires explicit owner authorization.
 - When an old issue/document conflicts with later accepted/current state, repair the stale source instead of making the owner repeat a resolved decision.
