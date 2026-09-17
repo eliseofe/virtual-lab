@@ -109,7 +109,8 @@ createAccount.addEventListener("click", signUp);
 
 function syncSignedOutPresentation() {
   const signedOut = !auth.hidden;
-  heading.textContent = signedOut ? "Sign in or create account" : "Account";
+  const headingText = signedOut ? "Sign in or create account" : "Account";
+  if (heading.textContent !== headingText) heading.textContent = headingText;
 
   for (const selector of ['[data-vlab-nav="account"]', '[data-vlab-nav="account-mobile"]']) {
     for (const button of document.querySelectorAll(selector)) {
@@ -125,7 +126,6 @@ observer.observe(document.body, {
   subtree: true,
   attributes: true,
   attributeFilter: ["hidden"],
-  characterData: true,
 });
 
 installStyles();
