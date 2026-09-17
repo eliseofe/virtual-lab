@@ -33,8 +33,6 @@ function installStyles() {
     .registry-auth-intro { margin: 0 0 2px; color: #52656d; font-size: 12px; line-height: 1.45; }
     .registry-auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .registry-auth-actions > button { width: 100%; }
-    .registry-create-account { border-color: #2f6d82; color: #17485b; font-weight: 700; background: #f2f8fa; }
-    .registry-create-account:hover:not(:disabled) { background: #e8f3f6; border-color: #245b6e; }
     .registry-auth-note { margin: 0; color: #78888e; font-size: 10.5px; line-height: 1.4; }
     @media (max-width: 460px) {
       .registry-auth-actions { grid-template-columns: 1fr; }
@@ -64,7 +62,7 @@ const actions = document.createElement("div");
 actions.className = "registry-auth-actions";
 const createAccount = document.createElement("button");
 createAccount.type = "button";
-createAccount.className = "registry-create-account";
+createAccount.className = signIn.className;
 createAccount.textContent = "Create account";
 createAccount.setAttribute("data-vlab-create-account", "true");
 
