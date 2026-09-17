@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const root = new URL('../../', import.meta.url);
 const manifest = JSON.parse(await readFile(new URL('../product-surface.json', import.meta.url), 'utf8'));
-const workflow = await readFile(new URL('../../.github/workflows/round1a-pages.yml', import.meta.url), 'utf8');
+const workflow = await readFile(new URL('../../.github/workflows/ci-pages.yml', import.meta.url), 'utf8');
 
 test('product-surface manifest is the canonical active smoke registry', async () => {
   assert.equal(manifest.schema, 'vlab.product-surface/1');

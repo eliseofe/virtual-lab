@@ -6,6 +6,12 @@ const reactRoot = readFileSync(new URL("../src/react-migration-root.tsx", import
 const chromeCss = readFileSync(new URL("../src/react-chrome.css", import.meta.url), "utf8");
 const build = readFileSync(new URL("../scripts/build.mjs", import.meta.url), "utf8");
 
+function hiddenSelectors(css) {
+  return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, , declarations]) => /display:\s*none/.test(declarations))
+    .flatMap(([, selectors]) => selectors.split(",").map((selector) => selector.trim()));
+}
+
 test("#254 React owns visible application chrome and workspace navigation", () => {
   for (const marker of [
     'data-vlab-react-chrome="mounted"',
@@ -42,7 +48,10 @@ test("#254 reconciles Account and Professor at the shell level", () => {
 test("#254 hides only the superseded legacy topbar after React mounts", () => {
   assert.match(chromeCss, /\.vlab-react-chrome-mounted \.topbar/);
   assert.match(chromeCss, /display:\s*none !important/);
-  assert.doesNotMatch(chromeCss, /\.stage-panel[^}]*display:\s*none|#simulation-canvas[^}]*display:\s*none|#authoring-workbench[^}]*display:\s*none/s);
+  const hidden = hiddenSelectors(chromeCss);
+  for (const selector of [".stage-panel", "#simulation-canvas", "#authoring-workbench"]) {
+    assert.ok(!hidden.includes(selector), `${selector} must remain visible as a complete product surface`);
+  }
   assert.match(build, /id=\"react-migration-root\" aria-label=\"Virtual Lab application navigation\"/);
   assert.doesNotMatch(build, /id=\"react-migration-root\" hidden/);
 });
