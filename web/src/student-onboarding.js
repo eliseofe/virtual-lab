@@ -122,6 +122,10 @@ document.body.append(panel);
 
 const firstPrompt = panel.querySelector("[data-vlab-first-prompt]").textContent;
 
+function markSeen() {
+  localStorage.setItem(SEEN_KEY, "1");
+}
+
 function openHelp() {
   panel.hidden = false;
   requestAnimationFrame(() => panel.querySelector(".vlab-student-help-close")?.focus({ preventScroll: true }));
@@ -129,13 +133,13 @@ function openHelp() {
 
 function closeHelp({ remember = false } = {}) {
   panel.hidden = true;
-  if (remember) localStorage.setItem(SEEN_KEY, "1");
+  if (remember) markSeen();
 }
 
-panel.querySelector(".vlab-student-help-close").addEventListener("click", () => closeHelp());
+panel.querySelector(".vlab-student-help-close").addEventListener("click", () => closeHelp({ remember: true }));
 panel.querySelector("[data-vlab-onboarding-done]").addEventListener("click", () => closeHelp({ remember: true }));
 panel.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeHelp();
+  if (event.key === "Escape") closeHelp({ remember: true });
 });
 
 for (const button of panel.querySelectorAll("[data-vlab-provider]")) {
@@ -169,23 +173,47 @@ function installHelpButtons() {
 let autoOpenTimer = null;
 function maybeOpenForNewStudent() {
   if (localStorage.getItem(SEEN_KEY) === "1" || !panel.hidden) return;
-  const auth = document.querySelector(".registry-auth");
+  if (document.body.dataset.vlabAuthState !== "signed-in") return;
   const professor = document.querySelector("#professor-menu");
-  if (!auth || !auth.hidden) return;
   if (professor && !professor.hidden) return;
+
   window.clearTimeout(autoOpenTimer);
   autoOpenTimer = window.setTimeout(() => {
-    const currentAuth = document.querySelector(".registry-auth");
     const currentProfessor = document.querySelector("#professor-menu");
-    if (currentAuth?.hidden && (!currentProfessor || currentProfessor.hidden) && localStorage.getItem(SEEN_KEY) !== "1") openHelp();
+    if (
+      document.body.dataset.vlabAuthState === "signed-in"
+      && (!currentProfessor || currentProfessor.hidden)
+      && localStorage.getItem(SEEN_KEY) !== "1"
+    ) {
+      markSeen();
+      openHelp();
+    }
   }, 700);
 }
 
-const observer = new MutationObserver(() => {
-  installHelpButtons();
-  maybeOpenForNewStudent();
+const authObserver = new MutationObserver(maybeOpenForNewStudent);
+authObserver.observe(document.body, {
+  attributes: true,
+  attributeFilter: ["data-vlab-auth-state"],
 });
-observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
+
+const professor = document.querySelector("#professor-menu");
+if (professor) {
+  const professorObserver = new MutationObserver(maybeOpenForNewStudent);
+  professorObserver.observe(professor, {
+    attributes: true,
+    attributeFilter: ["hidden"],
+  });
+}
+
+const reactRoot = document.querySelector("#react-migration-root");
+if (reactRoot) {
+  const chromeObserver = new MutationObserver(installHelpButtons);
+  chromeObserver.observe(reactRoot, {
+    childList: true,
+    subtree: true,
+  });
+}
 
 installStyles();
 installHelpButtons();

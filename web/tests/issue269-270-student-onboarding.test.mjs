@@ -17,6 +17,19 @@ test('Getting started remains available as persistent Help and is non-modal', ()
   assert.match(onboarding, /aria-modal", "false"/);
 });
 
+test('automatic Getting started opens once from stable signed-in state', () => {
+  assert.match(onboarding, /dataset\.vlabAuthState !== "signed-in"/);
+  assert.match(onboarding, /markSeen\(\);\s*openHelp\(\);/s);
+  assert.match(onboarding, /closeHelp\(\{ remember: true \}\)/);
+  assert.match(onboarding, /attributeFilter: \["data-vlab-auth-state"\]/);
+  assert.doesNotMatch(onboarding, /observe\(document\.body, \{\s*childList:/s);
+});
+
+test('Getting started ignores Professor presentation when deciding to auto-open', () => {
+  assert.match(onboarding, /#professor-menu/);
+  assert.match(onboarding, /currentProfessor\.hidden/);
+});
+
 test('Grok and Claude use the production MCP endpoint', () => {
   assert.ok(onboarding.includes(MCP_URL));
   assert.match(onboarding, /Use with Grok/);
