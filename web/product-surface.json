@@ -37,7 +37,8 @@
       "name": "Restore green production verification and direct onboarding liveness coverage",
       "parent_epic": "Closed-loop recovery",
       "surface_ids": [
-        "responsive-experiment-account"
+        "responsive-experiment-account",
+        "student-onboarding"
       ]
     }
   },
@@ -95,6 +96,17 @@
       "smoke": [
         {
           "script": "web/scripts/responsive-smoke.mjs",
+          "timeout_seconds": 60
+        }
+      ]
+    },
+    {
+      "id": "student-onboarding",
+      "name": "Student registration + Getting started liveness",
+      "state": "active",
+      "smoke": [
+        {
+          "script": "web/scripts/student-onboarding-smoke.mjs",
           "timeout_seconds": 60
         }
       ]
