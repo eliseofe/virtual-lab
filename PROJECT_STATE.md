@@ -1,245 +1,87 @@
-# Virtual Lab — Current Project State
+# Virtual Lab — Stable Technical State
 
-Updated: **16 September 2026**
+Updated: 17 September 2026
 
-This is the durable current technical state/evidence for future ChatGPT/Work/human sessions. Read `AGENTS.md`, then `PROJECT_CONTROL.md`, before this file. Older implementation history remains available in Git history, closed issues and date-stamped/archive documents.
+Read `CURRENT.md` first. This file records stable deployed contracts/evidence needed for implementation; historical implementation detail remains in Git and closed issues.
 
 ## Repository and production
 
 - Repository: `eliseofe/virtual-lab`
 - Production Lab: `https://eliseofe.github.io/virtual-lab/`
-- Supabase project: `izdmmudfrmqhvlgepwes`
-- Experiment MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
-- Experiment MCP Edge Function: version **16**, ACTIVE
-- MCP server version: **3.0.0**
-- MCP interface: **8**
-- Capability request interface: `vlab.capability-request/1`
+- Hosting: static GitHub Pages
+- Registry/Auth/MCP backend: Supabase
+- MCP server: `3.0.0`, interface `8`
 - Registry schema: `vlab.registry-experiment/3`
-- Experiment artifact interface: `vlab.experiment-artifacts/3`
+- Experiment artifacts: `vlab.experiment-artifacts/3`
 - Authoring contract: `vlab.authoring/0.6`
-- Results presentation schema: `vlab.results-presentation/1`
+- Results presentation: `vlab.results-presentation/1`
 - Runtime contract: `vlab.runtime/0.2`
-- Artifact capability contract: `vlab.artifact-capabilities/0.3`
-- Environment capability contract: `vlab.environment-capabilities/0.1`
+- Artifact capabilities: `vlab.artifact-capabilities/0.3`
+- Environment capabilities: `vlab.environment-capabilities/0.1`
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
-- Metrics measurement phase: `post-physics-wrapped-state/1`
 - Production neighbour strategy: `adaptive-periodic-bvh/v1`
 
-## Current product checkpoint
+## Scientific/runtime architecture
 
-**#207 — UI/UX refinement round 2 is active. #208 — unified Experiment identity/save/persistence/organization is complete and deployed.**
+A runnable Experiment has four compulsory authored artifacts:
+1. Configuration
+2. Initialization
+3. Controller
+4. Metrics
 
-The first Product Design / Work session for #207 has been consumed. It produced useful desktop findings but could not emulate a mobile viewport. Do not spend another Work session trying to complete that audit. Normal production Chrome/DevTools testing now covers desktop and mobile responsiveness. At most one Product Design / Work session remains for the final post-implementation verification/correction checkpoint.
+Empty Metrics is valid. Metrics are read-only scientific observers. Results panel/layout state is presentation state and does not create a scientific Experiment revision.
 
-Remaining #207 work: Results series-selection affordance, explicit Follow live recovery, #209 Account/Professor entry reconciliation, and #210 hierarchy/microcopy/responsive cleanup.
+Controller boundary: local observation in, action out, private controller state, simulator-owned RNG, environment-owned action application. Global position is not an allowed robotics-controller observation unless explicitly owner-approved in the future.
 
-## #195 — Metrics + live Results epic — complete and externally accepted
+Physics, control, rendering, metrics and persistence are separate scheduling concerns. Presentation/storage cadence must not change scientific dynamics or sampling semantics.
 
-The canonical runnable Experiment has four compulsory authored artifacts:
+## Result persistence
 
-1. `configuration`
-2. `initialization`
-3. `controller`
-4. `metrics`
-
-Metrics is a read-only scientific observer. An empty Metrics artifact is valid. Stable metric IDs, exact scientific sampling, worker/UI transport, live Results, local persistence and fine-grained research-AI authoring are all deployed.
-
-On 16 September 2026 the owner completed a real black-box research-AI acceptance outside the implementation harness. The external research AI read the relevant paper material, extracted candidate metrics, authored the intended metrics through the deployed MCP/Connector, and the resulting Experiment ran correctly in the Lab. The owner then asked the research AI to explain an observed plateau and received the expected formula-based scientific explanation. The owner declared the paper/scientific-context → AI authoring → Virtual Lab execution/results → AI interpretation loop a complete end-to-end success.
-
-### Accepted Active Elastic fixture
-
-The owner-authorized acceptance fixture remains authoritative:
-
-- `polarization`: `psi = ||sum_i heading_i|| / N`, sampled every `0.1 s` for Virtual Lab acceptance/display. The cadence is a product/integration choice and is not claimed as the source paper's analysis/output cadence.
-- `angular_momentum`: separately owner-authorized normalized instantaneous milling/angular-momentum complement.
-
-Do not ask for these definitions again and do not alter them without explicit owner authorization.
-
-### #199 — local single-run result persistence — complete/deployed
-
-The canonical scientific result is ordinary user-visible files under a user-selected Virtual Lab workspace root where writable-directory access is supported. Browser-private storage is not the scientific archive.
-
-Standalone run output is flat:
+Canonical raw scientific output is user-visible local files when writable-directory access is available. Browser-private storage is not the scientific archive.
 
 ```text
 <VirtualLab root>/
   <Experiment>/
     runs/
-      polarization_000001.csv
-      angular_momentum_000001.csv
-      polarization_000002.csv
-      angular_momentum_000002.csv
+      <metric-id>_000001.csv
+      <other-metric-id>_000001.csv
       ...
+    studies/
+      <Study>/
+        <metric-id>_000001.csv
+        <other-metric-id>_000001.csv
+        ...
 ```
 
-There is no per-run directory. Metric files use stable metric ID + increasing six-digit run number. Existing runs are never overwritten. Compact Lab bookkeeping stays under `<Experiment>/.vlab/`. `Download experiment package` is a secondary whole-Experiment export using the same hierarchy. Future Studies use flat metric files directly under `<Experiment>/studies/<Study>/`, with no additional `runs/` layer.
+No directory per simulation run. Future Studies use the same flat metric-file convention directly under `<Experiment>/studies/<Study>/` with **no extra `runs/` layer**.
 
-Primary persistence PRs: #225 and #227. Production acceptance included two consecutive durable runs without overwrite or per-run directories.
+## Accepted scientific fixture
 
-### #200 — MCP/Connector Metrics + Results authoring — complete/deployed
+The owner-authorized Active Elastic acceptance fixture includes:
+- `polarization`: `psi = ||sum_i heading_i|| / N`;
+- `angular_momentum`: separately owner-authorized normalized instantaneous milling/angular-momentum complement;
+- acceptance/display sampling cadence `0.1 s`.
 
-The deployed connector exposes fine-grained read/create/update/remove metric operations plus upsert/remove time-series Results panel bindings. Metric identity remains stable across updates. Results presentation state is separate from scientific Experiment revision state.
+Reuse exactly as recorded. Do not retune/reinterpret without explicit owner authorization.
 
-Current production contract:
+## Deployed capability state
 
-- MCP server `3.0.0`;
-- interface `8`;
-- authoring `vlab.authoring/0.6`;
-- Experiment artifacts `vlab.experiment-artifacts/3`;
-- Results presentation `vlab.results-presentation/1`;
-- Edge Function version `16`.
+- Metrics + live Results end-to-end path accepted.
+- Local single-run result persistence accepted.
+- Fine-grained MCP Metrics/Results authoring accepted.
+- Professor Showcase promotion/removal/public discovery accepted with privilege hardening.
+- Unified Experiment management accepted.
+- Current frontend migration foundation (#252) is deployed; visible application chrome from #255 is on production but #254 remains reopened because of the Account focus-return regression.
 
-Research AI still has no GitHub/repository/shell/deployment/admin/simulator-development privilege.
+## CI state after detox #258
 
-## #149 — Professor promotion to Showcase — complete/deployed
+Ordinary product work uses one automatic workflow: PR build/typecheck/tests; `main` build/test → Pages deploy → bounded production smoke. Historical performance and neighbour benchmark Actions were removed from automatic operation. Their benchmark source/examples remain available if targeted performance work needs them later.
 
-### Product/data model
+The success-report notifier is separate and explicit: one tiny run only when the central success issue is deliberately edited after a terminal `[SUCCESS REPORT]`. Ordinary issue comments no longer trigger Actions.
 
-Showcase is public curation/publication, not an `experiment_collections` row. The deployed model is:
-
-`owned saved Experiment revision → immutable curated snapshot → reversible Showcase publication state`
-
-Implementation uses the existing `preserved_experiment_snapshots` foundation with `snapshot_kind = 'curated'`, extended to preserve description and the current generic artifact representation. `public.showcase_entries` stores publication state separately from the immutable snapshot.
-
-Promotion semantics:
-
-- Professor must own an active saved Experiment and provide the expected exact revision;
-- promotion freezes title, description, schema/interface metadata and complete generic authored artifacts into an immutable curated snapshot;
-- promotion does not change the source Experiment revision;
-- later source edits do not change the published snapshot;
-- if a newer revision is promoted, the old active publication is marked removed and the newer exact snapshot becomes active;
-- removing from Showcase marks publication removed without deleting the source Experiment or historical curated snapshot;
-- public discovery returns only active curated snapshots;
-- signed-in users may copy a Showcase Experiment into private work rather than overwrite the canonical publication.
-
-### Authorization/security boundary
-
-- `promote_experiment_to_showcase(uuid,bigint)` and `remove_experiment_from_showcase(uuid)` are `SECURITY DEFINER` RPCs that explicitly require `auth.uid()` and `profiles.role = 'professor'` in their bodies.
-- `list_showcase_experiments()` is intentionally public/read-only and may be called anonymously.
-- `showcase_entries` has RLS enabled and direct table privileges are revoked from `anon` and `authenticated`; public discovery happens only through the read-only listing RPC.
-- research AI receives no Showcase curator/admin privilege.
-
-During terminal verification on 16 September 2026, Supabase inspection found that default function grants had left explicit anonymous `EXECUTE` privileges on the promote/remove RPCs despite the internal authentication/Professor guard. There was no operational authorization bypass because the functions rejected null/non-Professor callers, but the privilege surface was broader than intended. A terminal hardening migration explicitly revoked `anon` and `PUBLIC` execute on promote/remove. Verification after the migration returned:
-
-- anonymous promote: `false`;
-- authenticated promote: `true`;
-- anonymous remove: `false`;
-- authenticated remove: `true`.
-
-The Supabase security advisor now reports only intentional architecture warnings for the public listing `SECURITY DEFINER` RPC and authenticated Professor-gated curation RPCs, plus unrelated pre-existing Auth password-protection advice. RLS-without-policy notices for snapshot/showcase tables are intentional because direct table access is revoked and access is through explicitly guarded RPCs.
-
-### Implementation/deployment evidence
-
-- PR **#234 — Add reversible Professor promotion to Showcase** merged as `7fdc6685ab2351081487e7a2d7904b5354466e70`.
-- Main Pages run `35121772061` completed successfully after PR #234.
-- PR **#235 — Place Showcase curation in Professor mode** merged as `192669d1fc1999064467a8fd4e0883855b38f613`.
-- Main Pages run `35122267503` completed successfully after the final placement repair.
-- Production Supabase verification confirms `showcase_entries` plus promote/remove/list RPCs are present.
-- At terminal verification there are zero active Showcase entries. This is valid: #149 implements the Professor curation capability; it does not auto-publish eligible Experiments. The accepted AI-authored paper Experiment is now eligible for explicit normal Professor promotion.
-
-## #207 UI/UX refinement state — active
-
-The owner is not the UI/UX designer. The developer/design specialist owns design decisions; owner feedback is empirical use evidence, not a requirement to invent layouts or aesthetic solutions.
-
-### Product Design / Work budget
-
-The first Work/Product Design session has been consumed. It established useful desktop evidence:
-
-- Experiment identity duplicated;
-- Account/role terminology confusing;
-- Results series selection works but has weak affordance;
-- live-plot interaction lacks an explicit Follow live recovery action;
-- persistence/save workflow was fragmented from Experiment identity.
-
-Work could not perform the requested mobile audit because its browser exposed no viewport emulation. This is not an open blocker and is not grounds for another audit session: responsive/mobile acceptance is handled by the normal deployed Chrome/DevTools harness. At most one Work/Product Design session remains for final post-implementation verification/correction after #207 implementation children are complete.
-
-### #208 — unified Experiment management — complete/deployed
-
-The deployed Experiment surface now owns the coherent user workflow:
-
-`current Experiment identity + switch → save/save-as-new → organization`
-
-Presentation behavior:
-
-- the redundant visible `experiment-select` and duplicate explanatory hint are suppressed;
-- `Switch experiment` is the single visible experiment-change action;
-- Save and Save as new are presented with the Experiment instead of in a separate bottom Authoring persistence block;
-- signed-out users receive a direct `Sign in to save` action;
-- Built-in / No collection metadata is not redundantly repeated;
-- the legacy Authoring persistence host remains only as a compatibility implementation detail and is hidden from the user;
-- collection organization and existing persistence/revision/concurrency semantics are preserved;
-- the adapter remains presentation-only and does not alter simulator, controller, Metrics, Supabase or scientific contracts.
-
-Implementation evidence:
-
-- PR **#237 — Unify Experiment identity and persistence workflow (#208)** merged as `2df7a057859b56e9cb9871a8414f26c36d9fd147`.
-- The first production deployment exposed a browser main-thread regression: a MutationObserver watching the Experiment subtree unconditionally reassigned the `Switch experiment` text from inside its own callback, allowing a self-triggering mutation loop. Static/unit tests remained green, while independent browser jobs stalled.
-- PR **#238 — Fix #208 Experiment observer self-trigger loop** made observer-side text/metadata writes idempotent and added a regression invariant. It merged as `7443be5204941d9515fbd1bc29c7388d4a2b6640`.
-- Production Pages run **`35143386321`** for the repaired main completed build, deploy and the entire browser smoke suite successfully.
-- Deployed smoke verified simulator ready/editors, built-in metrics end to end, live Results UI, local result persistence, and responsive hierarchy/focus behavior.
-- Results smoke explicitly passed 390×844 narrow-phone stacking with `scrollWidth = 390` and no horizontal overflow.
-- Responsive smoke explicitly passed 390×844 phone emulation with unified Experiment management visible, duplicate selector and legacy persistence hidden, redundant location hidden, `Switch experiment` visible, `Sign in to save` visible at 44px height, all primary controls at least 44px, all authoring tabs 44px, and no horizontal overflow.
-- PR **#239 — Bound Pages smoke and recover #208 deployment queue** adds a fresh Pages concurrency generation and a 12-minute deployed-smoke timeout. This prevents a future browser regression from holding the verification lane indefinitely; it changes no product semantics.
-
-### Remaining #207 frontier
-
-- focused Results metric/series-selection affordance;
-- explicit Follow live recovery after the user detaches a live plot from the live edge;
-- #209 — reconcile Account and Professor entry surfaces;
-- #210 — remove unnecessary microcopy, strengthen hierarchy/typography and verify deliberate desktop/mobile layouts.
-
-The round must not freeze the UI around the current feature set. Stable compositional regions, reusable interaction patterns and progressive disclosure must allow Studies, richer Results, research memory and future Professor workflows to attach without repeated whole-page redesigns.
-
-## Editor lane — #202 — code authoring ergonomics
-
-Separate authoring-ergonomics epic:
-
-- #203 — highlighting/editor foundation;
-- #204 — outline/navigation/folding/search;
-- #205 — diagnostics/completion.
-
-Large Metrics source remains one scientific artifact; editor ergonomics must not fragment it merely for presentation.
-
-## Studies boundary — #3
-
-Experiment Results answer: **what happened during this run?**
-
-Studies answer: **what happened across runs/conditions?**
-
-Future Study work composes existing stable metric identities, run identities and flat-file persistence instead of creating an incompatible result architecture.
-
-## Professor capability-request loop
-
-Durable flow:
-
-`research AI request → Professor review → developer design discussion → explicit owner implementation approval → trusted GitHub handoff → deploy/verify → implemented → research AI resumes`
-
-Professor approval alone is not coding approval.
-
-Currently Professor-approved but not implementation-authorized:
-
-- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — simulator-owned deterministic/reproducible controller RNG capability;
-- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — heterogeneous agent initialization/state capability.
-
-Durable record: `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
-
-## Neighbour-search / performance state
-
-Production Simulation uses `adaptive-periodic-bvh/v1` with exact receiver-radius membership, arbitrary simultaneous query radii, periodic minimum-image geometry and deterministic sorted neighbour indices.
-
-`PeriodicGridNeighbourIndex` remains the exact reference/fallback and `BruteForceNeighbourIndex` the hidden correctness oracle. #56 — Simulator performance profiling and optimization remains a living umbrella; #179 — encode the benchmark as a persistent Study is deferred until Study infrastructure exists.
+Never wait for the repository-wide Actions queue to be empty. Use exact current SHA/PR/run IDs.
 
 ## Scientific guardrail
 
-Developer-side ChatGPT must not independently invent new scientific models, derivations, paper-specific equations/parameters, controller logic, metric formulas, scientific sampling choices, retuning or claims of scientific equivalence.
-
-Already owner-authorized scientific definitions may be reused exactly as recorded for implementation and acceptance. Reusing them does not require renewed owner approval and does not authorize changing them.
-
-Generic simulator/software architecture, persistence, buffering, compilers, file formats, UI transport and editor tooling are software work. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, read-only metric boundaries, scientific timing/integration semantics and rendering as an observer.
-
-Standing observation gatekeeper: global position is disallowed as a robotics controller observation capability unless the owner explicitly reverses that decision.
-
-## Success reporting
-
-GitHub issue #145 — success-only completion reports is the global success-only completion stream. Never post partial/failing/retrying work there. Append one `[SUCCESS REPORT]` comment only after the full ticket lifecycle reaches verified terminal success.
+Developer-side ChatGPT must not independently invent new scientific models, derivations, paper-specific equations/parameters, controller logic, metric formulas, scientific sampling choices, retuning or claims of scientific equivalence. Already owner-authorized definitions may be reused exactly. Software architecture/performance work is allowed while preserving the scientific boundaries above.

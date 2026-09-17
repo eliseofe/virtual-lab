@@ -1,100 +1,30 @@
 # Virtual Lab — Agent Instructions
 
-Before doing project work, recover the current state from the repository rather than from issue chronology or chat memory alone.
+## Start here
 
-## Required read order
+1. Read `CURRENT.md` completely.
+2. Read the active issue for the task.
+3. Read only the specific technical/design files needed for that issue.
+4. Consult `PROJECT_CONTROL.md` or `PROJECT_STATE.md` only when deeper strategy/contracts/evidence are materially needed.
 
-1. Read `PROJECT_CONTROL.md` completely. It is the authority for **current strategic priority, sequencing, gates, and opportunistic-work rules**.
-2. Read `docs/EXECUTION_GRANULARITY.md`. It is the mandatory rule for how broad owner approval is converted into bounded implementation passes.
-3. Read `PROJECT_STATE.md` for accepted technical state, evidence, architecture and recent implementation history.
-4. Before implementing any new paper-driven simulator capability, read and apply `docs/CAPABILITY_GENERALIZATION_GATE.md`.
-5. Read the active issue(s) and relevant current design document(s) for the specific task.
+Do **not** reconstruct the roadmap from issue chronology, branch counts, the newest commit, or all GitHub Actions runs.
 
-Do not infer the roadmap from the newest issue number, newest commit, most recently closed ticket, or whichever technical thread was discussed last.
+## Mandatory operating rules
 
-## Stale-gate prevention
+- One substantial independently testable/deployable ticket at a time unless the owner's current instruction explicitly authorizes a broader bounded maintenance pass.
+- Close the loop before reporting completion: implementation → tests → deployment where applicable → actual behavior verification → durable issue/state update.
+- Never infer idleness/completion from repository-wide queued/in-progress Actions. Track only the exact current SHA/PR/run IDs.
+- Prefer compact targeted GitHub connector calls. Avoid broad runs/branches/trees/history payloads unless the task is specifically repository maintenance.
+- Keep current truth in `CURRENT.md`; update it whenever active priority, blocker or next action changes materially.
+- Preserve the scientific guardrails in `CURRENT.md` and `PROJECT_STATE.md`. Software architecture reasoning is allowed; new scientific/model reasoning requires explicit owner authorization.
+- When an old issue/document conflicts with later accepted/current state, repair the stale source instead of making the owner repeat a resolved decision.
+- User-facing issue references must pair number and meaning, e.g. `#254 — application chrome migration`.
 
-An active issue can become stale after later owner approval, acceptance, deployment, or architecture work. Never turn an old issue sentence into a new owner question without reconciling it against the higher-authority current state first.
+## Deep references
 
-In particular, when an issue says work is blocked on owner input or acceptance:
+- `PROJECT_CONTROL.md`: current strategy, sequencing and major dependencies.
+- `PROJECT_STATE.md`: stable deployed contracts and accepted technical state.
+- `docs/EXECUTION_GRANULARITY.md`: detailed execution-boundary rationale.
+- `docs/CAPABILITY_GENERALIZATION_GATE.md`: required before new paper-driven simulator capabilities.
 
-1. check `PROJECT_CONTROL.md`;
-2. check `PROJECT_STATE.md` and recorded owner-acceptance evidence;
-3. check later comments/merged work relevant to that gate;
-4. if the input was already supplied or accepted, update the stale issue/document and proceed from the accepted state;
-5. ask the owner again only when a genuinely unresolved scientific/product choice remains.
-
-Historical issue text is evidence of what was true then, not a standing instruction that can override later accepted state.
-
-## Execution granularity
-
-Approval breadth is not execution breadth. When the owner approves several tickets with language such as `go ahead` or `proceed`, that authorizes the sequence but does not require completing all substantial tickets in one pass.
-
-Default to **one substantial, independently deployable/testable ticket at a time**. Complete its implementation, tests, deployment when applicable, verification, issue/state updates and clean report; then stop and ask whether to continue to the next substantial ticket, unless the owner explicitly instructs in the current message to complete the whole multi-ticket sequence without intermediate stops.
-
-Small/trivial adjacent tickets may be batched when the combined work remains one clear low-risk unit. If scope turns out larger than expected, split at the next safe boundary. Do not combine substantial tickets merely because they are related or already approved. See `docs/EXECUTION_GRANULARITY.md` for the full rule.
-
-## Capability generalization / refactor gate
-
-For every new paper-driven simulator capability, explicitly check whether the requested change fits existing abstractions cleanly or is creating paper-specific semantics, duplicate execution/representation paths, growing special-case conditionals, or repeated pressure on the same provisional abstraction.
-
-If a material trigger is present, **stop before implementation and bring the owner a refactor/generalization proposal**. Do not wait for the owner to discover structural problems from strange UI/runtime behavior.
-
-Even when individual requests look clean, perform the periodic architecture audit defined in `docs/CAPABILITY_GENERALIZATION_GATE.md`. The gate concerns software structure only; scientific generalization or model reasoning still requires explicit owner involvement.
-
-## UI architecture must remain evolvable
-
-UI/UX refinement is never a declaration that the interface is frozen. Virtual Lab will continue to gain substantial capabilities such as Studies, richer Results, research memory and additional Professor workflows.
-
-When changing UI architecture:
-
-- prefer stable compositional regions, reusable interaction patterns and bounded feature surfaces over one-off page rearrangements;
-- new capabilities should be able to plug into the existing shell/workspace without forcing unrelated sections through another full redesign;
-- do not preserve a poor abstraction merely to avoid change, but do not make today's exact feature set a hard-coded final layout;
-- treat responsive hierarchy, progressive disclosure and role-specific utilities as extensible product architecture rather than cosmetic cleanup;
-- preserve accepted scientific/runtime behavior while allowing the presentation layer to evolve continuously.
-
-## Strategic vs opportunistic work
-
-The owner sometimes cannot immediately perform phone/browser/visual acceptance. Work done during that waiting period may still be useful and necessary, but it is **opportunistic parallel work**, not an implicit change of roadmap priority.
-
-Unless `PROJECT_CONTROL.md` or an explicit current owner instruction changes the roadmap:
-
-- preserve the existing strategic objective;
-- return to an owner-blocked acceptance gate when the owner becomes available;
-- do not make a recent side task the new project priority merely because it was completed last.
-
-## Keep the repository memory alive
-
-After meaningful work, leave the repository in a state that another context-free session can understand without reconstructing old chats.
-
-- Update `PROJECT_CONTROL.md` whenever strategic priority, sequencing, dependency/gate, owner-waiting state, or major product direction changes.
-- Update `PROJECT_STATE.md` whenever merged/deployed technical state, owner acceptance, performance evidence, architecture/contracts, security boundaries, or important rejected approaches change.
-- Keep active issues accurate about whether work is unimplemented, implemented but awaiting owner acceptance, accepted/complete, or blocked.
-- When later work resolves an old gate, update the active issue instead of leaving contradictory status text behind.
-- Preserve date-stamped/historical records as history, but do not use them as current authority.
-
-## User-facing issue references
-
-Never refer to a GitHub issue by number alone when talking to the owner. The issue number may be included, but always pair it with a semantic description in the same reference, for example `#149 — Professor promotion to Showcase` rather than only `#149`.
-
-The owner should never need to scroll backward or remember an issue number to understand a status update, recommendation, choice, or next action.
-
-## Source precedence
-
-When project sources disagree, use this order:
-
-1. explicit current owner instruction;
-2. `PROJECT_CONTROL.md` for priority/sequencing/current gates;
-3. `PROJECT_STATE.md` for accepted technical state/evidence and recorded owner acceptance;
-4. relevant current design document;
-5. active issue scope/status;
-6. older issues, date-stamped documents and chats as history only.
-
-Surface any material unresolved contradiction rather than guessing. If the contradiction is only stale lower-authority text and the current state is clear, repair the stale text rather than asking the owner to repeat a decision.
-
-## Completion discipline
-
-Do not report implementation complete merely because code was written. Close the loop as appropriate: implement → test → deploy when applicable → verify the actual artifact/browser behavior → update GitHub state/documentation → report whether owner testing is still required.
-
-Preserve the scientific guardrail in `PROJECT_STATE.md`: software reasoning is allowed; new scientific/model reasoning or retuning requires explicit owner involvement. Already owner-authorized scientific definitions may be reused exactly as recorded; do not ask for them again and do not silently alter them.
+Git history and closed issues are historical evidence, not startup context.
