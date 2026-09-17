@@ -89,24 +89,39 @@ async function waitReady(send) {
   throw new Error("Browser did not reach simulator ready state");
 }
 
-async function waitForShowcaseInitialization(send) {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    const ready = await evaluate(send, `Boolean(document.querySelector('.showcase-launcher') && document.querySelector('.showcase-entry'))`);
+async function waitForShowcaseLauncher(send) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const ready = await evaluate(send, "Boolean(document.querySelector('.showcase-launcher'))");
     if (ready) return;
     await sleep(100);
   }
-  throw new Error("Showcase did not initialize");
+  throw new Error("Showcase launcher did not initialize");
 }
 
 async function inspectShowcase(send, label) {
-  await waitForShowcaseInitialization(send);
+  await waitForShowcaseLauncher(send);
   await evaluate(send, "document.querySelector('.showcase-launcher').click()");
 
-  let opened = false;
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    opened = await evaluate(send, "Boolean(document.querySelector('.showcase-dialog')?.open)");
-    if (opened) break;
+  let launchState = null;
+  for (let attempt = 0; attempt < 250; attempt += 1) {
+    launchState = JSON.parse(await evaluate(send, `JSON.stringify((() => {
+      const dialog = document.querySelector('.showcase-dialog');
+      const message = document.querySelector('.showcase-message');
+      return {
+        open: Boolean(dialog?.open),
+        entries: document.querySelectorAll('.showcase-entry').length,
+        message: message?.textContent?.trim() ?? '',
+        messageState: message?.dataset?.state ?? null,
+      };
+    })())`));
+    if (launchState.messageState === "error") {
+      throw new Error(`${label} Showcase reported an error: ${JSON.stringify(launchState)}`);
+    }
+    if (launchState.open && launchState.entries > 0) break;
     await sleep(100);
+  }
+  if (!launchState?.open || launchState.entries < 1) {
+    throw new Error(`${label} Showcase did not become usable after launch: ${JSON.stringify(launchState)}`);
   }
 
   const value = await evaluate(send, `JSON.stringify((() => {
