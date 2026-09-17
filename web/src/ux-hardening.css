@@ -118,6 +118,25 @@ body:has(dialog[open]) {
     padding: 12px;
   }
 
+  html[data-vlab-ux-hardened="true"] .utility-dialog-head button,
+  html[data-vlab-ux-hardened="true"] .vlab-student-help-close {
+    min-height: 44px;
+  }
+
+  html[data-vlab-ux-hardened="true"] .vlab-student-help-panel {
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    height: auto;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
   html[data-vlab-ux-hardened="true"] .experiment-browser-head {
     align-items: flex-start;
     flex-wrap: wrap;
