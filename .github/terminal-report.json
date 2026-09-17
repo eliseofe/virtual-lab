@@ -1,13 +1,14 @@
 {
   "schema": "vlab.terminal-report/1",
-  "nonce": "2026-09-17-zero-actions-monitoring",
-  "outcome": "GitHub Actions monitoring has been removed from the ChatGPT execution path.",
-  "owner_impact": "After a task's terminal commit, ChatGPT no longer waits for, polls, checks, or monitors Actions at all. GitHub CI independently builds, deploys, runs the manifest-driven current-Lab smoke suite, and sends you one bot-authored success or failure email.",
-  "remaining_action": "None for the anti-stall mechanism. Future product work can resume with Actions fully asynchronous to the assistant.",
+  "nonce": "2026-09-17-zero-tolerance-actions-boundary",
+  "outcome": "Agent-side GitHub Actions monitoring is now absolutely forbidden during ordinary Virtual Lab execution.",
+  "owner_impact": "Future development remains unchanged at the product level: CI still builds, deploys and smoke-tests autonomously, but ChatGPT can no longer enter an Actions wait/status loop. There is no exact-SHA, exact-run or one-quick-check loophole.",
+  "remaining_action": "None for this safety rule. Actions may be inspected only in a separate owner-requested diagnostic turn for a specific failure notification, with no polling.",
   "technical_evidence": [
-    "AGENTS.md and CURRENT.md now forbid even one proactive workflow-run/job/log/queue/status check after a GitHub write that can trigger Actions.",
-    "The main CI workflow now owns terminal success/failure reporting directly from this structured report.",
-    "The separate success-report-notifier workflow was removed.",
-    "A regression test prevents the old agent-monitoring rules or legacy notifier workflow from returning."
+    "AGENTS.md now opens with the zero-tolerance Actions boundary before normal startup instructions.",
+    "CURRENT.md repeats the same absolute prohibition and terminal task boundary.",
+    "web/product-surface.json encodes github_actions_api_during_ordinary_execution = forbidden and fire-and-forget CI/deploy/smoke/report semantics.",
+    "web/tests/actions-nonmonitoring.test.mjs guards against reintroducing the old exact-run/same-turn loopholes.",
+    "Repository history shows the exact-run verification rule was institutionalized on 17 September 2026, i.e. very recently rather than as an original project requirement."
   ]
 }
