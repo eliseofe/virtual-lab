@@ -46,12 +46,17 @@ function connect(wsUrl) {
   const socket = new WebSocket(wsUrl);
   let nextId = 1;
   const pending = new Map();
+  const exceptions = [];
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
-    if (!message.id || !pending.has(message.id)) return;
-    const { resolve, reject } = pending.get(message.id);
-    pending.delete(message.id);
-    if (message.error) reject(new Error(message.error.message)); else resolve(message.result);
+    if (message.id && pending.has(message.id)) {
+      const { resolve, reject } = pending.get(message.id);
+      pending.delete(message.id);
+      if (message.error) reject(new Error(message.error.message)); else resolve(message.result);
+    } else if (message.method === "Runtime.exceptionThrown") {
+      const details = message.params?.exceptionDetails;
+      exceptions.push(details?.exception?.description ?? details?.text ?? "JavaScript exception");
+    }
   });
   const ready = new Promise((resolve, reject) => {
     socket.addEventListener("open", resolve, { once: true });
@@ -64,7 +69,7 @@ function connect(wsUrl) {
     socket.send(JSON.stringify({ id, method, params }));
     return promise;
   };
-  return { socket, send };
+  return { socket, send, exceptions };
 }
 
 let cdp;
@@ -74,30 +79,46 @@ try {
   await cdp.send("Runtime.enable");
 
   let state = null;
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  for (let attempt = 0; attempt < 160; attempt += 1) {
     const result = await cdp.send("Runtime.evaluate", {
       expression: `JSON.stringify((() => {
         const root = document.querySelector('#react-migration-root');
+        const chrome = root?.querySelector('[data-vlab-react-chrome="mounted"]');
+        const topbar = document.querySelector('.topbar');
+        const legacyWorker = document.querySelector('#worker-status');
+        const reactWorker = root?.querySelector('[data-vlab-worker-status]');
+        const nav = [...(root?.querySelectorAll('[data-vlab-nav]') ?? [])].map((node) => node.getAttribute('data-vlab-nav'));
+        const rect = root?.getBoundingClientRect();
         return {
           root: Boolean(root),
           hidden: Boolean(root?.hidden),
           mounted: Boolean(root?.querySelector('[data-vlab-react-foundation="mounted"]')),
+          chrome: Boolean(chrome),
+          visible: Boolean(rect && rect.height > 0 && getComputedStyle(root).display !== 'none'),
+          legacyTopbarHidden: Boolean(topbar && getComputedStyle(topbar).display === 'none'),
+          workerMirrored: Boolean(legacyWorker && reactWorker && reactWorker.textContent?.trim() === legacyWorker.textContent?.trim()),
+          nav,
           canvasOutsideRoot: Boolean(document.querySelector('#simulation-canvas')) && !root?.contains(document.querySelector('#simulation-canvas')),
           runOutsideRoot: Boolean(document.querySelector('#run')) && !root?.contains(document.querySelector('#run')),
+          experimentOutsideRoot: Boolean(document.querySelector('#experiment-select')) && !root?.contains(document.querySelector('#experiment-select')),
+          authoringOutsideRoot: Boolean(document.querySelector('#authoring-workbench')) && !root?.contains(document.querySelector('#authoring-workbench')),
         };
       })())`,
       returnByValue: true,
     });
     state = JSON.parse(result?.result?.value ?? "null");
-    if (state?.mounted) break;
+    if (state?.mounted && state?.chrome && state?.workerMirrored && state?.nav?.includes('showcase')) break;
     await sleep(100);
   }
 
-  if (!state?.root || !state.hidden || !state.mounted || !state.canvasOutsideRoot || !state.runOutsideRoot) {
-    throw new Error(`React/Mantine coexistence boundary failed: ${JSON.stringify(state)}`);
+  const requiredNav = ['experiment', 'simulation', 'results', 'authoring', 'showcase', 'account'];
+  const missingNav = requiredNav.filter((item) => !state?.nav?.includes(item));
+  if (!state?.root || state.hidden || !state.mounted || !state.chrome || !state.visible || !state.legacyTopbarHidden || !state.workerMirrored || missingNav.length || !state.canvasOutsideRoot || !state.runOutsideRoot || !state.experimentOutsideRoot || !state.authoringOutsideRoot) {
+    throw new Error(`React/Mantine application chrome failed: ${JSON.stringify({ ...state, missingNav })}`);
   }
+  if (cdp.exceptions.length) throw new Error(`browser exceptions: ${JSON.stringify(cdp.exceptions)}`);
   console.log(JSON.stringify(state, null, 2));
-  console.log("React/Mantine foundation mounted inertly beside the authoritative legacy simulator DOM.");
+  console.log("React/Mantine application chrome is visible while authoritative simulator/workspace DOM remains outside React ownership.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (chromeLog.trim()) console.error("Chrome stderr:\n" + chromeLog);

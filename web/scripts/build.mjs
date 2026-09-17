@@ -58,7 +58,8 @@ index = index
   .replace('src="./workspace-shell.js"', `src="./${assetDirName}/workspace-shell.js"`)
   .replace("<head>", `<head>\n  <meta name="vlab-build" content="${token}">`)
   .replace("</head>", `  <link rel="stylesheet" href="./${assetDirName}/react-migration-root.css">\n</head>`)
-  .replace("</body>", `  <div id="react-migration-root" hidden aria-hidden="true"></div>\n  <script type="module" src="./${assetDirName}/react-migration-root.js"></script>\n</body>`);
+  .replace("<body>", `<body>\n  <div id="react-migration-root" aria-label="Virtual Lab application navigation"></div>`)
+  .replace("</body>", `  <script type="module" src="./${assetDirName}/react-migration-root.js"></script>\n</body>`);
 await writeFile(path.join(dist, "index.html"), index);
 await writeFile(path.join(dist, "build-manifest.json"), JSON.stringify({
   token,

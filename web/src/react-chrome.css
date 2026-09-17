@@ -1,0 +1,68 @@
+.vlab-react-chrome-mounted .topbar {
+  display: none !important;
+}
+
+#react-migration-root {
+  position: sticky;
+  top: 0;
+  z-index: 210;
+}
+
+.vlab-react-chrome {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(circle at 12% -40%, rgba(57, 189, 248, 0.24), transparent 36%),
+    linear-gradient(135deg, #0b1720 0%, #102a38 58%, #173f50 100%);
+  color: #f7fbfd;
+}
+
+.vlab-react-brand {
+  min-width: 0;
+}
+
+.vlab-react-brand-title {
+  letter-spacing: -0.025em;
+}
+
+.vlab-react-experiment-name {
+  max-width: min(34rem, 42vw);
+}
+
+.vlab-react-nav-button {
+  white-space: nowrap;
+}
+
+.vlab-react-status-badge {
+  max-width: 15rem;
+}
+
+.vlab-react-status-badge .mantine-Badge-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vlab-react-role-badge {
+  text-transform: none;
+}
+
+@media (max-width: 74.99em) {
+  .vlab-react-experiment-name {
+    max-width: min(28rem, 38vw);
+  }
+}
+
+@media (max-width: 61.99em) {
+  .vlab-react-experiment-name {
+    max-width: 52vw;
+  }
+}
+
+@media (max-width: 35.99em) {
+  #react-migration-root {
+    position: sticky;
+  }
+
+  .vlab-react-experiment-name {
+    max-width: 68vw;
+  }
+}
