@@ -29,7 +29,7 @@ html[data-vlab-ux-hardened="true"] .collection-organizer-status {
 
 html[data-vlab-ux-hardened="true"] .experiment-browse,
 html[data-vlab-ux-hardened="true"] .experiment-organize {
-  min-height: 40px;
+  min-height: 44px;
 }
 
 html[data-vlab-ux-hardened="true"] .utility-dialog-shell,
