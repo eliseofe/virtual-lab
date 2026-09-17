@@ -32,17 +32,17 @@ Completed migration children:
 - Results presentation state is separate from scientific Experiment revision state.
 - Raw run results are local-first ordinary files; browser-private storage/Supabase are not the scientific bulk archive.
 
-## Current CI / production smoke
+## Current Lab surface and production smoke
 
-Ordinary product work uses one automatic CI/Pages workflow. PRs build/typecheck/test without deployment. `main` builds/tests, deploys Pages, then verifies the **current active product** in one smoke step covering:
-- core Experiment/runtime;
-- React/Mantine application shell;
-- Metrics + live Results;
-- local result persistence;
-- responsive hierarchy, unified Experiment management and Account focus behavior;
-- Showcase.
+`web/product-surface.json` is the machine-readable source of truth for **what users can use in the Lab today**. It records the current user-facing surfaces and the bounded production smoke checks required for every surface marked `active`.
 
-The old dedicated Results-layout smoke is no longer automatic because its active coverage overlaps the Metrics+Results and responsive checks. Historical benchmark/performance workflows remain removed. Profiling scripts/evidence remain available for targeted performance work without automatic Actions fan-out.
+`CURRENT.md` remains the source of truth for **what work is being done now/next**. The manifest's `work_tracking` section points back here and identifies the product surface affected by the next delivery stage. Any user-facing capability addition, removal, replacement or migration must update the manifest in the same task if the current Lab surface changes.
+
+Ordinary product work uses one automatic CI/Pages workflow. PRs build/typecheck/test without deployment. `main` builds/tests, deploys Pages, then calls `web/scripts/run-active-product-smoke.mjs`, which derives the deployed smoke suite from `web/product-surface.json`. The workflow YAML must not contain a hand-maintained list of current feature smoke scripts.
+
+The product-surface contract test fails if an active surface has no smoke coverage, if a registered smoke script is missing, if a check has no hard timeout, if the next tracked product surface is unknown, or if Actions reverts to hardcoded feature smoke commands.
+
+Historical benchmark/performance workflows remain removed. Profiling scripts/evidence remain available for targeted performance work without automatic Actions fan-out.
 
 Success reporting remains one GitHub-only terminal-success email. Reports are **high-level first** (outcome, owner impact, remaining action/caveat), with short technical evidence underneath only when useful. The notifier acts only after an explicit `notify-success` marker change; ordinary protocol edits do not resend old reports.
 
@@ -68,8 +68,9 @@ For GitHub operations, use compact calls scoped to the current file/issue/PR/SHA
 1. explicit current owner instruction;
 2. this `CURRENT.md`;
 3. active issue for the current task;
-4. `PROJECT_CONTROL.md` for strategy detail;
-5. `PROJECT_STATE.md` for stable technical contracts/evidence;
-6. older issues/docs/Git history.
+4. `web/product-surface.json` for the current user-facing Lab surface / production-smoke contract;
+5. `PROJECT_CONTROL.md` for strategy detail;
+6. `PROJECT_STATE.md` for stable technical contracts/evidence;
+7. older issues/docs/Git history.
 
 If lower-authority text is stale, repair it rather than asking the owner to repeat an already-recorded decision.
