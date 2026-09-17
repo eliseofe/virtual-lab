@@ -78,17 +78,21 @@ Reuse exactly as recorded. Do not retune/reinterpret without explicit owner auth
 
 ## CI and execution state after detox
 
-Ordinary product work uses one automatic CI/Pages workflow: PR build/typecheck/tests; `main` build/test → Pages deploy → one active-product smoke step.
+Ordinary product work uses one automatic CI/Pages workflow: PR build/typecheck/tests; `main` build/test → Pages deploy → one current-Lab smoke step.
 
-The production smoke covers the currently active product surface only:
-- core Experiment/runtime;
-- React/Mantine application shell;
-- Metrics + live Results;
-- local result persistence;
-- responsive hierarchy, unified Experiment management and Account focus behavior;
-- Showcase.
+Production smoke is **manifest-driven**, not a hand-maintained workflow list:
+- `CURRENT.md` records what work is active/next;
+- `web/product-surface.json` is the machine-readable source of truth for what user-facing Lab surfaces are active today and which bounded production checks protect them;
+- `web/scripts/run-active-product-smoke.mjs` executes every smoke check attached to every surface marked `active`;
+- `web/tests/product-surface-smoke.test.mjs` fails CI if an active surface has no check, a registered script is missing, a check lacks a hard timeout, the tracked next surface is unknown, or Actions reintroduces hardcoded feature smoke commands.
+
+Any user-facing capability addition, removal, replacement or migration must update the product-surface manifest in the same task when the current Lab surface changes. This is mandatory in `AGENTS.md`, so feature delivery and production coverage cannot intentionally complete as separate bookkeeping tasks.
+
+Current active surfaces are core Experiment/runtime, React/Mantine application shell, Metrics + live Results, local result persistence, responsive/Experiment-management/Account behavior, and Showcase. Their individual checks remain independently hard-bounded, with the overall smoke job also capped at 12 minutes.
 
 The dedicated Results-layout browser smoke is not automatic because its active coverage overlaps the Metrics+Results and responsive checks. Historical performance and neighbour benchmark Actions were removed from automatic operation; their source/examples remain available for targeted performance work. The stale #111 contract requiring the deleted performance workflow was removed after the first clean post-detox build exposed it.
+
+The manifest-driven architecture was production-verified on exact run `35210993471`: build, Pages deployment and `Verify deployed current Lab surface` all completed successfully.
 
 Terminal-success reporting remains GitHub-only. Because the original connector comment is authored as `eliseofe`, reliable email requires a separate `github-actions[bot]` mention. The notifier therefore remains, but acts only after an explicit `notify-success` marker change. Success emails lead with outcome, owner impact and remaining action/caveat; concise technical evidence follows only when useful, in the same email.
 
