@@ -4,7 +4,7 @@ This is a mandatory project-process rule.
 
 ## Approval breadth and execution breadth
 
-When the owner approves a sequence with language such as `go ahead`, `proceed`, `continue`, or equivalent, treat that as permission to execute the approved sequence as consecutive bounded tickets. Do not insert an artificial CI-wait state between those tickets.
+When the owner approves a sequence with language such as `go ahead`, `proceed`, `continue`, or equivalent, treat that as permission only for the explicitly named current lane/epic and its already-bounded tasks. Never infer permission to enter the next epic, roadmap phase or major feature lane.
 
 ## Default unit of execution
 
@@ -18,13 +18,15 @@ For each substantial ticket:
 4. update durable repository state and issue metadata;
 5. write the single terminal report and repository commit;
 6. let CI/build/deploy/smoke run independently as a non-blocking regression signal;
-7. if the owner already authorized a subsequent bounded ticket, continue to it without polling/waiting for CI.
+7. if the owner already authorized a subsequent bounded ticket within the same named lane, continue to it without polling/waiting for CI.
 
 CI can fail. A later observed failure becomes a bounded repair task for the exact failing commit/run; it is not a reason to place the ordinary workflow into a pending state.
 
 ## Liveness rule
 
 Never wait for, poll, monitor, or repeatedly query an asynchronous external process from the assistant execution loop. This includes GitHub Actions, Pages deployment, remote benchmarks, Work/browser/computer jobs, authentication/device flows, and remote service state.
+
+Deployment and production verification are not agent-side waiting steps. They run independently and may be checked once when the owner asks for current status or when a deployment result is needed for an immediate user-facing handoff.
 
 Never create a scheduled task, reminder, watchdog or automation unless the owner explicitly requests one.
 
