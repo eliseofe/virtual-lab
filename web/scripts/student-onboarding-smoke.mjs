@@ -164,6 +164,27 @@ try {
     throw new Error(`provider switching failed: ${JSON.stringify(providerState)}`);
   }
 
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 700, deviceScaleFactor: 1, mobile: true });
+  await sleep(80);
+  const mobilePanel = JSON.parse(await evaluate(cdp.send, `JSON.stringify((() => {
+    const helpPanel = document.querySelector('#vlab-student-help');
+    const close = helpPanel?.querySelector('.vlab-student-help-close');
+    const style = helpPanel ? getComputedStyle(helpPanel) : null;
+    if (helpPanel) helpPanel.scrollTop = helpPanel.scrollHeight;
+    return {
+      open: Boolean(helpPanel && !helpPanel.hidden),
+      clientHeight: helpPanel?.clientHeight ?? 0,
+      scrollHeight: helpPanel?.scrollHeight ?? 0,
+      scrollTop: helpPanel?.scrollTop ?? 0,
+      overflowY: style?.overflowY ?? null,
+      closeHeight: Math.round(close?.getBoundingClientRect().height ?? 0),
+      withinViewport: Boolean(helpPanel && helpPanel.getBoundingClientRect().top >= -1 && helpPanel.getBoundingClientRect().bottom <= window.innerHeight + 1),
+    };
+  })())`));
+  if (!mobilePanel.open || mobilePanel.scrollHeight <= mobilePanel.clientHeight || mobilePanel.scrollTop <= 0 || !["auto", "scroll"].includes(mobilePanel.overflowY) || mobilePanel.closeHeight < 44 || !mobilePanel.withinViewport) {
+    throw new Error(`mobile Getting started is not safely scrollable: ${JSON.stringify(mobilePanel)}`);
+  }
+
   await evaluate(cdp.send, `document.querySelector('.vlab-student-help-close').click()`);
 
   // Regression for the production freeze: repeatedly mutate the exact hidden state
@@ -214,8 +235,8 @@ try {
   }
 
   if (cdp.exceptions.length) throw new Error(`browser exceptions: ${JSON.stringify(cdp.exceptions)}`);
-  console.log(JSON.stringify({ initial, opened, providerState, observerStress, autoOpened }, null, 2));
-  console.log("Student registration and Getting started verified in production, including bounded observer-freeze regression coverage.");
+  console.log(JSON.stringify({ initial, opened, providerState, mobilePanel, observerStress, autoOpened }, null, 2));
+  console.log("Student registration and Getting started verified in production, including mobile scrollability and bounded observer-freeze regression coverage.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
