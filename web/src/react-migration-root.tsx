@@ -2,14 +2,17 @@ import '@mantine/core/styles.css';
 import './react-chrome.css';
 
 import {
+  ActionIcon,
   Badge,
   Box,
   Burger,
   Button,
+  Checkbox,
   Container,
   Drawer,
   Group,
   MantineProvider,
+  Menu,
   Paper,
   Stack,
   Text,
@@ -17,7 +20,19 @@ import {
   createTheme,
 } from '@mantine/core';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
+import {
+  addResultsPanel,
+  followLiveResults,
+  panelIdFromEventTarget,
+  readResultsPresentation,
+  removeResultsPanel,
+  subscribeResultsPresentation,
+  toggleResultsMetric,
+  type ResultsMetricPresentation,
+  type ResultsPresentationSnapshot,
+} from './results-react-adapter';
 
 const mount = document.querySelector<HTMLElement>('#react-migration-root');
 
@@ -210,8 +225,185 @@ function ApplicationChrome() {
   );
 }
 
+function resultsStatusColor(state: string) {
+  if (state === 'ok') return 'teal';
+  if (state === 'warning') return 'orange';
+  if (state === 'error') return 'red';
+  return 'gray';
+}
+
+function metricById(metrics: ResultsMetricPresentation[], id: string) {
+  return metrics.find((metric) => metric.id === id);
+}
+
+function panelTitle(snapshot: ResultsPresentationSnapshot, metricIds: string[]) {
+  if (metricIds.length === 0) return 'Choose series';
+  if (metricIds.length === 1) return metricById(snapshot.metrics, metricIds[0])?.label ?? metricIds[0];
+  return `${metricIds.length} series`;
+}
+
+function ResultsPresentation() {
+  const [snapshot, setSnapshot] = useState<ResultsPresentationSnapshot | null>(() => readResultsPresentation());
+  const [detached, setDetached] = useState<Set<number>>(() => new Set());
+
+  const sync = () => setSnapshot(readResultsPresentation());
+  const syncSoon = () => queueMicrotask(sync);
+
+  useEffect(() => {
+    sync();
+    return subscribeResultsPresentation(syncSoon);
+  }, []);
+
+  useEffect(() => {
+    if (!snapshot) return;
+    document.body.classList.add('vlab-react-results-mounted');
+    return () => document.body.classList.remove('vlab-react-results-mounted');
+  }, [Boolean(snapshot)]);
+
+  useEffect(() => {
+    const panelHost = document.querySelector<HTMLElement>('#results-panels');
+    if (!panelHost) return;
+    const markDetached = (event: Event) => {
+      if (event instanceof PointerEvent && event.type === 'pointermove' && event.buttons === 0) return;
+      const id = panelIdFromEventTarget(event.target);
+      if (id == null) return;
+      setDetached((current) => {
+        if (current.has(id)) return current;
+        const next = new Set(current);
+        next.add(id);
+        return next;
+      });
+    };
+    const resetDetached = () => setDetached(new Set());
+    panelHost.addEventListener('wheel', markDetached, { passive: true });
+    panelHost.addEventListener('pointermove', markDetached);
+    document.addEventListener('vlab:metric-reset', resetDetached);
+    return () => {
+      panelHost.removeEventListener('wheel', markDetached);
+      panelHost.removeEventListener('pointermove', markDetached);
+      document.removeEventListener('vlab:metric-reset', resetDetached);
+    };
+  }, [Boolean(snapshot)]);
+
+  if (!snapshot) return null;
+
+  const clearDetached = (panelId: number) => {
+    setDetached((current) => {
+      if (!current.has(panelId)) return current;
+      const next = new Set(current);
+      next.delete(panelId);
+      return next;
+    });
+  };
+
+  const header = createPortal(
+    <Paper className="vlab-react-results-head" radius={0} p="sm" data-vlab-react-results="mounted">
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Group gap="sm" wrap="nowrap" className="vlab-react-results-heading-group">
+          <Title order={3} size="h4">Results</Title>
+          <Badge variant="light" color={resultsStatusColor(snapshot.statusState)} className="vlab-react-results-status">{snapshot.statusText}</Badge>
+        </Group>
+        <Button
+          size="sm"
+          variant="light"
+          color="cyan"
+          disabled={!snapshot.canAdd}
+          onClick={() => { addResultsPanel(); syncSoon(); }}
+          data-vlab-results-add
+        >
+          Add plot
+        </Button>
+      </Group>
+    </Paper>,
+    snapshot.mount,
+  );
+
+  const panelControls = snapshot.panels.map((panel) => {
+    const isDetached = detached.has(panel.id);
+    const selected = panel.metricIds.map((id) => metricById(snapshot.metrics, id)).filter(Boolean) as ResultsMetricPresentation[];
+    return createPortal(
+      <Paper className="vlab-react-results-panel-head" radius={0} p="sm" data-vlab-results-panel-control={panel.id}>
+        <Stack gap={8}>
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Box className="vlab-react-results-panel-title">
+              <Text fw={700} size="sm" lineClamp={1}>{panelTitle(snapshot, panel.metricIds)}</Text>
+              <Group gap={5} mt={4} wrap="wrap">
+                {selected.slice(0, 3).map((metric) => (
+                  <Badge key={metric.id} size="xs" variant="light" className="vlab-react-results-series-badge">
+                    <span className="vlab-react-results-swatch" style={{ background: metric.color }} aria-hidden="true" />
+                    {metric.label}
+                  </Badge>
+                ))}
+                {selected.length > 3 && <Badge size="xs" variant="outline">+{selected.length - 3}</Badge>}
+              </Group>
+            </Box>
+            <Group gap={6} wrap="nowrap">
+              {isDetached ? (
+                <Button
+                  size="xs"
+                  variant="filled"
+                  color="cyan"
+                  className="vlab-react-results-action"
+                  onClick={() => { followLiveResults(panel.id); clearDetached(panel.id); syncSoon(); }}
+                  data-vlab-results-follow={panel.id}
+                >
+                  Follow live
+                </Button>
+              ) : (
+                <Badge size="sm" variant="dot" color="teal" data-vlab-results-live={panel.id}>Live</Badge>
+              )}
+              <Menu shadow="md" width={240} closeOnItemClick={false} position="bottom-end">
+                <Menu.Target>
+                  <Button size="xs" variant="default" className="vlab-react-results-action" data-vlab-results-series={panel.id}>
+                    Series · {panel.metricIds.length}
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Visible series</Menu.Label>
+                  <Stack gap={4} p="xs">
+                    {snapshot.metrics.map((metric) => (
+                      <Box key={metric.id} data-vlab-results-panel={panel.id} data-vlab-results-metric={metric.id}>
+                        <Checkbox
+                          checked={panel.metricIds.includes(metric.id)}
+                          onChange={() => {
+                            toggleResultsMetric(panel.id, metric.id);
+                            clearDetached(panel.id);
+                            syncSoon();
+                          }}
+                          label={metric.label}
+                          color="cyan"
+                        />
+                      </Box>
+                    ))}
+                  </Stack>
+                </Menu.Dropdown>
+              </Menu>
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                size="lg"
+                aria-label="Remove plot"
+                title="Remove plot"
+                onClick={() => { removeResultsPanel(panel.id); clearDetached(panel.id); syncSoon(); }}
+                data-vlab-results-remove={panel.id}
+              >
+                ×
+              </ActionIcon>
+            </Group>
+          </Group>
+        </Stack>
+      </Paper>,
+      panel.mount,
+      `results-panel-${panel.id}`,
+    );
+  });
+
+  return <>{header}{panelControls}</>;
+}
+
 createRoot(mount).render(
   <MantineProvider theme={theme}>
     <ApplicationChrome />
+    <ResultsPresentation />
   </MantineProvider>,
 );
