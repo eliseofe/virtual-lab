@@ -39,9 +39,10 @@ test("#254 presentation proxies existing authoritative workspace actions", () =>
 });
 
 test("#254 reconciles Account and Professor at the shell level", () => {
-  assert.match(reactRoot, /Account includes role-specific Professor tools when available/);
   assert.match(reactRoot, /professorAvailable/);
   assert.match(reactRoot, /professorLabel/);
+  assert.match(reactRoot, /state\.professorAvailable\s*&&\s*<Badge/);
+  assert.match(reactRoot, /proxyClick\('#account-menu'\)/);
   assert.doesNotMatch(reactRoot, /proxyClick\('#professor-menu'\)/);
 });
 
