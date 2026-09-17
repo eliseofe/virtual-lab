@@ -6,24 +6,47 @@ Read this first in a new session. Deep technical evidence lives in `PROJECT_STAT
 
 ## Execution rule
 
-No asynchronous external process may ever sit inside the agent's execution loop. Do not poll/wait on CI, deployments, Work/browser jobs, authentication, remote services or benchmarks. Do not create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests them.
+The project completion contract is closed-loop and bounded:
 
-A bounded repository task ends with deterministic local/static verification available in the turn, durable state updates and a terminal repository write. CI/build/deploy/smoke runs independently as a non-blocking regression signal. A later observed failure becomes a focused repair task; it does not put the project into a pending state.
+1. implement the bounded task;
+2. run deterministic local/static checks;
+3. verify the exact candidate through CI/build;
+4. verify deployment;
+5. exercise the affected deployed Lab behavior with bounded production smoke/browser checks;
+6. repair and repeat if any step fails;
+7. only after the exact deployed candidate is green, record durable completion state and report the task complete.
+
+Never call a user-facing/deployable task fixed, complete, deployed, or production-verified from local/static checks alone.
+
+The loop must also terminate. Verification stays scoped to the exact current candidate SHA/run and every test, browser process, deployment/status check, and workflow job must have a finite bound or timeout. A timeout or wedged verifier is a terminal verification failure: do not wait forever, but do not convert it into success.
+
+Do not create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests them.
+
+## Current recovery state
+
+The previous `fire-and-forget` / non-blocking-CI completion policy introduced on 17 September is retired. The project is temporarily in **closed-loop recovery**.
+
+The latest exact production run examined during this recovery (`35251936423`, commit `0bf7ff6`) built and deployed successfully but failed deployed responsive smoke because the mobile `Switch experiment` / browse touch target rendered at 40 px rather than the required 44 px. Therefore the current product state is **not fully production-verified**.
+
+The student self-registration and Getting started implementation exists and a real student has successfully registered, confirmed the account and signed in. However, onboarding completion is reopened until:
+- the current red production smoke is repaired;
+- the exact repaired candidate passes build, deploy and production smoke;
+- the student registration/onboarding path has direct bounded production liveness coverage, including protection against self-triggering observer freezes.
+
+No further substantial product/scientific feature work should outrun this recovery gate.
 
 ## Current project state
 
-The frontend architecture migration to **Vite + React + TypeScript + Mantine is complete**. The visual revamp has also been accepted by the owner as a **clean, functional and usable baseline**, not as permanently finished UI/UX.
+The frontend architecture migration to **Vite + React + TypeScript + Mantine is complete**. The visual revamp has been accepted by the owner as a **clean, functional and usable baseline**, not as permanently finished UI/UX.
 
-Ongoing presentation quality now lives in **#273 — UI/UX refinement and visual polish from real use**. It is a living evidence-driven lane, not a blocker on scientific/product work.
+Ongoing presentation quality lives in **#273 — UI/UX refinement and visual polish from real use**. It remains evidence-driven rather than a generic polishing lane.
 
-The **student self-registration and Getting started mini-epic (#268) is complete**:
+The student self-registration and Getting started mini-epic (#268) has implemented:
 - production self-registration/sign-in with intentionally open enrollment for the first student phase;
 - first-login Getting started guidance plus persistent Help;
 - Grok and Claude production connector setup instructions;
 - a minimal read-only first connection check;
 - no second student site and no mock-lab onboarding path.
-
-A real student has now successfully registered, confirmed the account and signed in. Real student use is therefore no longer hypothetical.
 
 A small post-onboarding UX cleanup was also applied:
 - Results terminology uses **Metrics** rather than the implementation-oriented **Series** wording;
@@ -32,10 +55,9 @@ A small post-onboarding UX cleanup was also applied:
 
 ## Immediate frontier
 
-The active product/scientific lane is now **real use**:
-1. let students use the production Lab and connector onboarding;
-2. let the owner use the Lab for actual experiments/scientific work;
-3. when real use exposes concrete defects or friction, repair them as small bounded tasks;
+1. restore a green exact-candidate production gate for the current Lab;
+2. add direct deployed liveness coverage for student registration/onboarding;
+3. only after the repaired candidate is green, return to real student/scientific use and bounded evidence-driven fixes;
 4. continue #273 only from observed UX/UI evidence rather than generic polishing.
 
 Do not invent a maintenance phase, a second Lab, or another broad redesign before evidence requires it.
@@ -44,7 +66,7 @@ Do not invent a maintenance phase, a second Lab, or another broad redesign befor
 
 Do **not** implement Studies yet.
 
-Student onboarding being complete and real student use beginning are necessary conditions, not authorization. Studies start only after a later explicit owner decision. Do not infer that gate from elapsed time, issue state, student activity, CI, or apparent technical readiness.
+Student onboarding and real student use are necessary conditions, not authorization. Studies start only after a later explicit owner decision. Do not infer that gate from elapsed time, issue state, student activity, CI, or apparent technical readiness.
 
 ## MVC boundary
 
