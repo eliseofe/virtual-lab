@@ -71,6 +71,10 @@ jobs:
         working-directory: web
         run: npm run build
 
+      - name: Stamp exact candidate
+        if: github.event_name != 'pull_request'
+        run: printf '%s\n' "$GITHUB_SHA" > web/dist/deploy-sha.txt
+
       - name: Verify browser artifact
         run: node web/scripts/verify-dist.mjs
 
@@ -113,6 +117,9 @@ jobs:
       - name: Checkout active-product smoke tracker
         uses: actions/checkout@v6
 
+      - name: Wait for exact deployed candidate
+        run: node web/scripts/wait-deployed-sha.mjs "https://eliseofe.github.io/virtual-lab/" "$GITHUB_SHA"
+
       - name: Verify deployed current Lab surface
         run: node web/scripts/run-active-product-smoke.mjs "https://eliseofe.github.io/virtual-lab/"
 
@@ -127,7 +134,7 @@ jobs:
           changed="$(jq -r '(((.head_commit.added // []) + (.head_commit.modified // []) + (.head_commit.removed // [])) | index(".github/terminal-report.json")) != null' "$GITHUB_EVENT_PATH")"
 
           outcome="Production deployment ${short_sha}"
-          owner_impact="Build, Pages deployment, and deployed-surface smoke verification all succeeded."
+          owner_impact="Build, Pages deployment, exact-candidate propagation, and deployed-surface smoke verification all succeeded."
           remaining="No owner action is required unless this success report explicitly says otherwise."
           technical="- Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           close_issue=""
