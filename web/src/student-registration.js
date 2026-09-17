@@ -105,8 +105,10 @@ async function signUp() {
 
 createAccount.addEventListener("click", signUp);
 
-function syncSignedOutPresentation() {
+function syncAuthPresentation() {
   const signedOut = !auth.hidden;
+  document.body.dataset.vlabAuthState = signedOut ? "signed-out" : "signed-in";
+
   const headingText = signedOut ? "Sign in or create account" : "Account";
   if (heading.textContent !== headingText) heading.textContent = headingText;
 
@@ -114,18 +116,26 @@ function syncSignedOutPresentation() {
     for (const button of document.querySelectorAll(selector)) {
       const text = signedOut ? "Sign in" : "Account";
       if (button.textContent !== text) button.textContent = text;
+      if (button.getAttribute("aria-label") !== text) button.setAttribute("aria-label", text);
     }
   }
 }
 
-const observer = new MutationObserver(syncSignedOutPresentation);
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
+const authObserver = new MutationObserver(syncAuthPresentation);
+authObserver.observe(auth, {
   attributes: true,
   attributeFilter: ["hidden"],
 });
 
+const chromeRoot = document.querySelector("#react-migration-root");
+if (chromeRoot) {
+  const chromeObserver = new MutationObserver(syncAuthPresentation);
+  chromeObserver.observe(chromeRoot, {
+    childList: true,
+    subtree: true,
+  });
+}
+
 installStyles();
-syncSignedOutPresentation();
+syncAuthPresentation();
 panel.setAttribute("data-vlab-student-registration", "ready");
