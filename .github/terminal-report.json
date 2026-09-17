@@ -1,0 +1,13 @@
+{
+  "schema": "vlab.terminal-report/1",
+  "nonce": "2026-09-17-zero-actions-monitoring",
+  "outcome": "GitHub Actions monitoring has been removed from the ChatGPT execution path.",
+  "owner_impact": "After a task's terminal commit, ChatGPT no longer waits for, polls, checks, or monitors Actions at all. GitHub CI independently builds, deploys, runs the manifest-driven current-Lab smoke suite, and sends you one bot-authored success or failure email.",
+  "remaining_action": "None for the anti-stall mechanism. Future product work can resume with Actions fully asynchronous to the assistant.",
+  "technical_evidence": [
+    "AGENTS.md and CURRENT.md now forbid even one proactive workflow-run/job/log/queue/status check after a GitHub write that can trigger Actions.",
+    "The main CI workflow now owns terminal success/failure reporting directly from this structured report.",
+    "The separate success-report-notifier workflow was removed.",
+    "A regression test prevents the old agent-monitoring rules or legacy notifier workflow from returning."
+  ]
+}
