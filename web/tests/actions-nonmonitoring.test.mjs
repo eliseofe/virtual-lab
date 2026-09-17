@@ -24,10 +24,13 @@ test("closed-loop completion policy is explicit and machine-readable", () => {
   assert.equal(manifest.agent_execution_policy?.local_success_is_completion, false);
   assert.equal(manifest.agent_execution_policy?.exact_candidate_scope_required, true);
   assert.equal(manifest.agent_execution_policy?.bounded_verification_required, true);
+  assert.equal(manifest.agent_execution_policy?.chunk_exit_rule, "production_green_or_concrete_blocker");
+  assert.equal(manifest.agent_execution_policy?.max_repaired_exact_candidates_per_chunk, 3);
   assert.equal(manifest.agent_execution_policy?.repository_wide_actions_monitoring, "forbidden");
   assert.equal(manifest.agent_execution_policy?.unbounded_status_polling, "forbidden");
   assert.equal(manifest.agent_execution_policy?.timeout_or_wedge_result, "verification_failure");
   assert.equal(manifest.agent_execution_policy?.advance_past_failed_completion_gate, "forbidden");
+  assert.equal(manifest.agent_execution_policy?.scheduled_automations_without_owner_approval, "forbidden");
 });
 
 test("fire-and-forget completion policy cannot return", () => {
@@ -41,10 +44,23 @@ test("fire-and-forget completion policy cannot return", () => {
 
 test("bounded liveness remains part of the closed loop", () => {
   assert.match(agents, /finite bound or timeout/i);
+  assert.match(agents, /at most \*\*three repaired exact-candidate cycles\*\*/i);
   assert.match(current, /finite bound or timeout/i);
   assert.match(control, /finite status checks\/timeouts/i);
   assert.match(execution, /finite timeout or finite retry bound/i);
+  assert.match(execution, /at most \*\*three repaired exact candidates\*\*/i);
   assert.equal(manifest.agent_execution_policy?.hard_timeout_required, true);
+});
+
+test("production verification waits for the exact deployed candidate", () => {
+  const stamp = workflow.indexOf("Stamp exact candidate");
+  const wait = workflow.indexOf("Wait for exact deployed candidate");
+  const verification = workflow.indexOf("Verify deployed current Lab surface");
+  assert.ok(stamp >= 0 && wait > stamp && verification > wait);
+  assert.match(workflow, /deploy-sha\.txt/);
+  assert.match(workflow, /wait-deployed-sha\.mjs/);
+  assert.equal(manifest.coverage_policy?.exact_deployed_candidate_marker_required, true);
+  assert.ok(manifest.agent_execution_policy?.completion_order?.includes("exact_candidate_propagation"));
 });
 
 test("retired Round-1 process artifacts stay retired", () => {
