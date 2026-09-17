@@ -12,16 +12,13 @@ Default to **one substantial, independently testable ticket at a time**.
 
 For each substantial user-facing/deployable ticket:
 
-1. implement only that ticket;
-2. run bounded deterministic local/static checks available in the current environment;
-3. repair deterministic failures within the ticket;
-4. create the exact candidate repository state;
-5. verify that exact candidate through CI/build;
-6. verify that exact candidate deploys;
-7. run bounded production smoke/browser verification for the affected deployed behavior;
-8. if any verification fails, diagnose and repair that exact failure, then repeat the bounded loop for the repaired candidate;
-9. only after the exact deployed candidate is green, update durable completion state, close the ticket where appropriate, and report completion;
-10. only then move to the next substantial ticket.
+1. implement and test;
+2. deploy the exact candidate;
+3. follow only that exact candidate;
+4. while external work is pending, keep the chat visibly alive with meaningful updates roughly every 30 seconds; never deliberately stay silent for more than about 50 seconds while control is available;
+5. if the exact candidate is green, stop; one green is enough;
+6. if it is red, diagnose, repair, and repeat with the repaired candidate;
+7. continue until green unless there is a real blocker or the owner tells you to stop.
 
 Local/static success is necessary but never sufficient for deployed-product completion.
 
@@ -30,23 +27,19 @@ Local/static success is necessary but never sufficient for deployed-product comp
 A conversational/approval chunk may stop only when the active deployable ticket is:
 
 - **production green**, or
-- blocked by a **specific external/authority/technical condition** that cannot be repaired in the currently available environment.
+- blocked by a **specific real condition** that prevents continuation with the currently available environment or authority.
 
-A red CI/smoke result, a queued/in-progress exact run, or another directly related completion-gate defect is not a valid chunk boundary by itself. Keep that failure inside the same approved ticket and repair it. Do not leave production red merely because the conversation has reached a convenient stopping point.
+A red CI/smoke result, a queued/in-progress exact run, elapsed time, repeated failed attempts, task complexity, or conversation size is not a blocker by itself. Keep that failure inside the same approved ticket and repair it. Do not leave production red merely because the conversation has reached a convenient stopping point.
 
-## Bounded liveness rule
+## Visible liveness rule
 
-The closed loop must be structurally terminating.
+Verification follows only the exact current candidate SHA/run needed for the active ticket. Never wait for repository-wide Actions state or unrelated activity.
 
-Verification may inspect only the exact current candidate SHA/run needed for the active ticket. Every local test, workflow job, deployment/status check, browser process and production smoke invocation must have a finite timeout or finite retry bound.
+While external work is pending and control is available, provide meaningful owner-visible progress roughly every 30 seconds and never deliberately remain silent for more than about 50 seconds.
 
-Do not perform repository-wide Actions monitoring, broad run-history scans, open-ended polling, `wait until successful` loops, or repeated same-purpose status calls without a fixed bound.
+Do not run a second green candidate merely for reassurance. The first verified green candidate completes the loop.
 
-Repair/re-verification itself is finite: after the first candidate, a single approved chunk may create at most **three repaired exact candidates**. If the task would require another repair candidate, stop and record the exact unresolved blocker/evidence rather than continuing indefinitely. Do not start unrelated work. If the current candidate has materially degraded production and a previously verified green state can be restored safely, restoring that green state is the priority before ending the chunk.
-
-A timeout, wedged external process or unavailable verification service is a **terminal verification failure**. Stop waiting, record the exact blocker and leave the ticket unverified. Do not convert failure to success and do not move substantial product work past an unresolved completion gate.
-
-Work/browser/computer verification is valid completion evidence when appropriate to the affected deployed behavior, provided each invocation is bounded. Long-running scientific benchmarks that are not product-completion gates may remain autonomous outside the completion loop.
+Work/browser/computer verification is valid completion evidence when appropriate to the affected deployed behavior. Long-running scientific benchmarks that are not product-completion gates may remain autonomous outside the completion loop.
 
 Never create a scheduled task, reminder, watchdog or automation unless the owner explicitly requests one.
 
