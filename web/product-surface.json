@@ -1,0 +1,81 @@
+{
+  "schema": "vlab.product-surface/1",
+  "work_tracking": {
+    "source": "CURRENT.md",
+    "next_stage": {
+      "parent_issue": 251,
+      "name": "Results presentation",
+      "surface_ids": ["metrics-results"]
+    }
+  },
+  "surfaces": [
+    {
+      "id": "experiment-runtime",
+      "name": "Core Experiment/runtime",
+      "state": "active",
+      "smoke": [
+        {
+          "script": "web/scripts/browser-smoke.mjs",
+          "attempts": 6,
+          "delay_seconds": 5,
+          "timeout_seconds": 45
+        }
+      ]
+    },
+    {
+      "id": "react-shell",
+      "name": "React/Mantine application shell",
+      "state": "active",
+      "smoke": [
+        {
+          "script": "web/scripts/frontend-foundation-smoke.mjs",
+          "timeout_seconds": 60
+        }
+      ]
+    },
+    {
+      "id": "metrics-results",
+      "name": "Metrics + live Results",
+      "state": "active",
+      "smoke": [
+        {
+          "script": "web/scripts/builtin-metric-smoke.mjs",
+          "timeout_seconds": 60
+        }
+      ]
+    },
+    {
+      "id": "local-result-persistence",
+      "name": "Local result persistence",
+      "state": "active",
+      "smoke": [
+        {
+          "script": "web/scripts/result-persistence-smoke.mjs",
+          "timeout_seconds": 60
+        }
+      ]
+    },
+    {
+      "id": "responsive-experiment-account",
+      "name": "Responsive hierarchy, Experiment management and Account focus",
+      "state": "active",
+      "smoke": [
+        {
+          "script": "web/scripts/responsive-smoke.mjs",
+          "timeout_seconds": 60
+        }
+      ]
+    },
+    {
+      "id": "showcase",
+      "name": "Showcase",
+      "state": "active",
+      "smoke": [
+        {
+          "script": "web/scripts/showcase-ux-smoke.mjs",
+          "timeout_seconds": 60
+        }
+      ]
+    }
+  ]
+}
