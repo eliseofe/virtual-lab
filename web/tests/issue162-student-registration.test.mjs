@@ -13,8 +13,14 @@ test('student registration is exposed without taking over the authoritative logi
   assert.doesNotMatch(registration, /service_role|sb_secret_/i);
 });
 
-test('signed-out production chrome is human-facing', () => {
+test('sign in and create account are peer actions in the same auth surface', () => {
   assert.match(registration, /Sign in or create account/);
+  assert.match(registration, /createAccount\.className = signIn\.className/);
+  assert.doesNotMatch(registration, /registry-create-account/);
+  assert.match(registration, /registry-auth-actions/);
+});
+
+test('signed-out production chrome is human-facing', () => {
   assert.match(registration, /data-vlab-nav="account"/);
   assert.match(registration, /signedOut \? "Sign in" : "Account"/);
   assert.match(registration, /New accounts start with the Student role/);
