@@ -14,9 +14,16 @@ Ordinary Virtual Lab execution must be **structurally terminating**. The agent m
 
 A GitHub write may trigger autonomous CI, but **CI is never part of the agent turn**. For terminal delivery, write `.github/terminal-report.json` once and return control immediately. GitHub independently builds, deploys, runs manifest-driven production smoke, and sends the owner one success/failure notification.
 
+**Autonomous verification must also have a finite decision deadline.** A terminal handoff is never allowed to remain “pending” indefinitely. The default deadline is **20 minutes after the terminal GitHub write** unless the current ticket explicitly records a different bounded value. At handoff, create one independent one-shot deadline check outside the GitHub Actions feedback loop. At the deadline the task must be classified as exactly one of:
+- `SUCCESS` — autonomous verification completed successfully;
+- `FAILURE` — autonomous verification completed unsuccessfully;
+- `VERIFICATION TIMEOUT` — no terminal success/failure can be established by the deadline, including a queued/wedged/unobservable verifier.
+
+`VERIFICATION TIMEOUT` is a terminal state, not “still waiting.” It returns the task to the agent for a later bounded diagnostic turn. Never extend the deadline by silently continuing to check, and never replace the one-shot deadline check with polling.
+
 Work/browser/computer verification is not an ordinary synchronous completion dependency. Use it only when explicitly required by the current owner instruction or a separately scoped diagnostic/UX task. One bounded invocation is allowed; if it does not return a terminal result, stop and return control. Never poll, retry, or wait on it in the same turn.
 
-A later owner turn may explicitly request diagnosis of a specific failure notification/run ID. In that diagnostic turn, fetch only the bounded evidence needed to explain the failure; do not monitor, poll, or wait for a retry.
+A later owner turn may explicitly request diagnosis of a specific failure notification/run ID or a `VERIFICATION TIMEOUT`. In that diagnostic turn, fetch only the bounded evidence needed to explain the failure; do not monitor, poll, or wait for a retry.
 
 Local deterministic work may iterate inside one ticket: code edits, finite repository reads, and local/test operations that return synchronously. Long-running experiments/benchmarks must run autonomously outside the agent feedback loop; the agent does not wait for them.
 
