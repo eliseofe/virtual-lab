@@ -1,27 +1,26 @@
 # Virtual Lab — Current Session Bootstrap
 
-Updated: 17 September 2026
+Updated: 18 September 2026
 
 Read this first in a new session. Deep technical evidence lives in `PROJECT_STATE.md`; strategy detail lives in `PROJECT_CONTROL.md`; the approved research object model lives in `docs/RESEARCH_MODEL.md`.
 
 ## Execution rule
 
-The project completion contract is **closed-loop, production-gated and bounded**:
+The project completion contract is **closed-loop, production-gated and visibly live**:
 
-1. implement the bounded task;
-2. run deterministic local/static checks;
-3. verify the exact candidate through CI/build;
-4. verify deployment;
-5. wait, with a finite bound, until production proves it is serving that exact candidate SHA;
-6. exercise all affected deployed Lab behavior with bounded production smoke/browser checks;
-7. repair and repeat if any completion gate fails;
-8. only after the exact deployed candidate is green, record durable completion state and report the task complete.
+1. implement and test;
+2. deploy the exact candidate;
+3. follow only that exact candidate;
+4. while external work is pending, keep the chat visibly alive with meaningful updates roughly every 30 seconds; never deliberately stay silent for more than about 50 seconds while control is available;
+5. if the exact candidate is green, stop; one green is enough;
+6. if it is red, diagnose, repair, and repeat with the repaired candidate;
+7. continue until green unless there is a real blocker or the owner tells you to stop.
 
 Never call a user-facing/deployable task fixed, complete, deployed, or production-verified from local/static checks alone.
 
-A conversational/approval chunk ends only **production green** or at a **specific concrete blocker** that cannot be repaired with the currently available environment/authority. Red CI/smoke, a queued/in-progress exact run, or another directly related completion-gate defect is not a valid stopping point merely because the conversation has become large.
+A real blocker is a specific condition that prevents continuation with the currently available environment or authority. Red CI/smoke, a queued/in-progress exact run, elapsed time, repeated failed attempts, task complexity, or conversation size is not a blocker by itself. Keep repairing within the approved task.
 
-The loop must also terminate. Verification stays scoped to the exact current candidate SHA/run and every test, browser process, deployment/status check, and workflow job has a finite bound or timeout. After the first candidate, one approved chunk may create at most **three repaired exact candidates**. A timeout, wedged verifier, unavailable external service, or exhaustion of that repair bound is a concrete verification blocker: do not wait forever, but do not convert it into success.
+Follow only the exact current candidate SHA/run; never wait for repository-wide Actions state or unrelated activity. Do not run a second green candidate merely for reassurance.
 
 Do not create scheduled tasks, reminders, watchdogs or automations unless the owner explicitly requests them.
 
