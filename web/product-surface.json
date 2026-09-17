@@ -10,14 +10,14 @@
     "source": "CURRENT.md",
     "next_stage": {
       "parent_issue": 251,
-      "name": "Results presentation",
-      "surface_ids": ["metrics-results"]
+      "name": "Authoring shell",
+      "surface_ids": ["experiment-runtime"]
     }
   },
   "surfaces": [
     {
       "id": "experiment-runtime",
-      "name": "Core Experiment/runtime",
+      "name": "Experiment authoring + simulation runtime",
       "state": "active",
       "smoke": [
         {
@@ -41,7 +41,7 @@
     },
     {
       "id": "metrics-results",
-      "name": "Metrics + live Results",
+      "name": "Metrics + React/Mantine live Results",
       "state": "active",
       "smoke": [
         {
