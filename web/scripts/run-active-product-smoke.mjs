@@ -16,10 +16,12 @@ if (active.length === 0) {
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const failures = [];
 
 for (const surface of active) {
   if (!Array.isArray(surface.smoke) || surface.smoke.length === 0) {
-    throw new Error(`Active surface ${surface.id} has no smoke coverage.`);
+    failures.push({ surface: surface.id, script: null, reason: 'no smoke coverage' });
+    continue;
   }
 
   console.log(`\n[smoke] ${surface.name} (${surface.id})`);
@@ -29,6 +31,7 @@ for (const surface of active) {
     const delayMs = (check.delay_seconds ?? 0) * 1000;
     const timeoutMs = (check.timeout_seconds ?? 60) * 1000;
     let passed = false;
+    let failureReason = 'failed';
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const result = spawnSync(process.execPath, [check.script, targetUrl], {
@@ -44,9 +47,11 @@ for (const surface of active) {
       }
 
       if (result.error?.code === 'ETIMEDOUT') {
-        console.error(`[smoke] timed out after ${check.timeout_seconds ?? 60}s: ${check.script}`);
+        failureReason = `timed out after ${check.timeout_seconds ?? 60}s`;
+        console.error(`[smoke] ${failureReason}: ${check.script}`);
       } else {
-        console.error(`[smoke] failed attempt ${attempt}/${attempts}: ${check.script}`);
+        failureReason = `failed attempt ${attempt}/${attempts}`;
+        console.error(`[smoke] ${failureReason}: ${check.script}`);
       }
 
       if (attempt < attempts && delayMs > 0) {
@@ -55,9 +60,17 @@ for (const surface of active) {
     }
 
     if (!passed) {
-      throw new Error(`Smoke coverage failed for active surface ${surface.id}: ${check.script}`);
+      failures.push({ surface: surface.id, script: check.script, reason: failureReason });
     }
   }
+}
+
+if (failures.length > 0) {
+  console.error('\n[smoke] production verification failures:');
+  for (const failure of failures) {
+    console.error(`- ${failure.surface}: ${failure.script ?? 'missing smoke'} (${failure.reason})`);
+  }
+  throw new Error(`Production smoke failed for ${failures.length} active check(s).`);
 }
 
 console.log(`\n[smoke] verified ${active.length} active Lab surfaces from ${manifest.schema}`);
