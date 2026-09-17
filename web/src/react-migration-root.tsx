@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { AuthoringPresentation } from './authoring-react-presentation';
+import { SimulationPresentation } from './simulation-react-presentation';
 import {
   addResultsPanel,
   followLiveResults,
@@ -405,6 +406,7 @@ function ResultsPresentation() {
 createRoot(mount).render(
   <MantineProvider theme={theme}>
     <ApplicationChrome />
+    <SimulationPresentation />
     <ResultsPresentation />
     <AuthoringPresentation />
   </MantineProvider>,

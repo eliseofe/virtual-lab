@@ -1,13 +1,15 @@
 {
   "schema": "vlab.terminal-report/1",
-  "nonce": "2026-09-17-issue-262-responsive-smoke-repair",
-  "outcome": "Resolved the final #262 verification mismatch: responsive smoke now measures the visible migrated Authoring controls rather than hidden legacy controls.",
-  "owner_impact": "The Authoring migration itself required no product-logic repair. Build, typecheck, deployment and Authoring-specific tests had already passed; the remaining failure was verifier drift after the React/Mantine migration.",
-  "remaining_action": "#262 is considered complete from the available direct evidence. Work proceeds to the Simulation/Arena presentation migration; no owner test is required at this point.",
+  "nonce": "2026-09-17-simulation-react-migration",
+  "outcome": "Migrated the visible Simulation/Arena presentation to React + Mantine while preserving the existing simulator, runtime controls, camera implementation and canvas renderer as authoritative.",
+  "owner_impact": "Run, Pause, Restart, new-seed restart, execution speed, runtime statistics, arena view and agent-glyph behavior keep their existing semantics. React changes the visible presentation and forwards actions through a thin adapter; it does not own scientific state or simulator control logic.",
+  "remaining_action": "The remaining frontend-migration work is legacy presentation removal plus final regression/visual acceptance. No scheduled task or owner action is required for this handoff.",
   "technical_evidence": [
-    "Exact run 35218835684 completed: build success, deploy success, smoke failure only.",
-    "The failing responsive smoke reported mobile Apply height 0 because it measured hidden #apply-workspace after React took visible ownership.",
-    "The repaired responsive smoke resolves visible React Authoring Apply/tab controls first, with legacy fallback for coexistence.",
-    "The Authoring keyboard check now targets the migrated visible tab controls while preserving the one-visible-pane assertion."
+    "simulation-react-adapter.ts mirrors existing runtime readouts and proxies the existing run/pause/restart/new-seed/speed/fit/glyph DOM targets.",
+    "simulation-react-presentation.tsx renders the migrated Simulation controls under the existing MantineProvider without importing worker, camera, compiler or scientific-runtime logic.",
+    "simulation-react.css hides only superseded stage heading/runtime/toolbar presentation; the existing simulation canvas and renderer remain visible and authoritative.",
+    "responsive-smoke.mjs now resolves visible migrated Simulation and Authoring controls first, with legacy fallback during coexistence.",
+    "A focused synchronous TypeScript compiler check of the new Simulation adapter and presentation passed before this repository write.",
+    "main.js and runtime-speed.js remain unchanged and continue to own worker/runtime/camera/rendering and achieved-speed behavior."
   ]
 }

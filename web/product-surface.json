@@ -20,15 +20,15 @@
   "work_tracking": {
     "source": "CURRENT.md",
     "next_stage": {
-      "parent_issue": 202,
-      "name": "Code authoring ergonomics",
-      "surface_ids": ["experiment-runtime"]
+      "parent_issue": 251,
+      "name": "Legacy presentation removal + final regression/visual acceptance",
+      "surface_ids": ["experiment-runtime", "react-shell", "metrics-results", "responsive-experiment-account"]
     }
   },
   "surfaces": [
     {
       "id": "experiment-runtime",
-      "name": "React/Mantine Authoring + simulation runtime",
+      "name": "React/Mantine Simulation + Authoring with authoritative scientific runtime",
       "state": "active",
       "smoke": [
         {

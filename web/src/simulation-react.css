@@ -1,0 +1,58 @@
+.vlab-react-simulation-mounted .stage-panel > .stage-heading,
+.vlab-react-simulation-mounted .stage-panel > .stage-runtime,
+.vlab-react-simulation-mounted .stage-panel > .stage-toolbar {
+  display: none !important;
+}
+
+[data-vlab-react-simulation-root] {
+  min-width: 0;
+  margin-bottom: 12px;
+}
+
+.vlab-react-simulation {
+  border: 1px solid var(--mantine-color-gray-2);
+  background: linear-gradient(180deg, #ffffff 0%, var(--mantine-color-gray-0) 100%);
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.vlab-react-simulation-actions > * {
+  min-width: 96px;
+}
+
+.vlab-react-simulation-speed,
+.vlab-react-simulation-stats > * {
+  min-width: 0;
+}
+
+.vlab-react-simulation-view {
+  border-top: 1px solid var(--mantine-color-gray-2);
+  padding-top: 12px;
+}
+
+@media (max-width: 38.75em) {
+  .vlab-react-simulation-heading,
+  .vlab-react-simulation-view {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vlab-react-simulation-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  [data-vlab-simulation-action],
+  [data-vlab-simulation-fit],
+  [data-vlab-simulation-glyph] input {
+    min-height: 44px;
+  }
+
+  .vlab-react-simulation-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  [data-vlab-simulation-glyph] {
+    width: 100% !important;
+  }
+}

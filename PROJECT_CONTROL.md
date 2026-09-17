@@ -2,61 +2,50 @@
 
 Updated: 17 September 2026
 
-Read `CURRENT.md` first. This file holds strategy detail; it is not mandatory startup context.
+Read `CURRENT.md` first. This file holds strategy detail.
 
 ## Current priority
 
-Repository detox is complete. The active product/architecture lane is **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
+Finish the progressive frontend migration to Vite + React + TypeScript + Mantine before resuming separate feature epics.
 
 Completed migration stages:
-1. #252 — foundation/coexistence;
-2. #254 — application chrome;
-3. #261 — Results presentation.
+1. frontend foundation/coexistence;
+2. application chrome/navigation;
+3. Results presentation;
+4. Authoring presentation.
 
-Current delivery stage:
-4. **#262 — Authoring shell**: delivered to `main` with React/Mantine owning visible Authoring chrome/tabs/apply presentation through the existing authoritative authoring adapters. Autonomous CI owns terminal verification/issue closeout.
+Current stage:
+5. **Simulation/Arena presentation migration** — React/Mantine owns visible Simulation layout and controls through a narrow adapter while the existing scientific/runtime/controller/renderer implementation remains authoritative.
 
-After #262 verifies successfully: **#202 — code authoring ergonomics** on the migrated foundation. The later #251 Simulation-stage presentation boundary and legacy-presentation removal remain separate stages.
+Remaining stage:
+6. legacy presentation removal + final regression/visual acceptance.
 
-Frozen direction:
+Only after this migration epic is complete should separate feature epics such as code-authoring ergonomics resume. Before choosing the next feature epic, reconcile the remaining open roadmap against the cleaned execution model and close/supersede absorbed tickets.
+
+## Frozen architecture
+
 - Vite build;
 - React presentation framework;
-- TypeScript for migrated frontend;
+- TypeScript for migrated frontend code;
 - Mantine component/design system;
 - static GitHub Pages;
 - existing Rust/WASM scientific/runtime core remains authoritative;
 - progressive coexistence/rollback, not a flag-day rewrite;
 - no Next.js/SSR.
 
-Remaining migration direction:
-- #202 editor ergonomics on the migrated Authoring shell;
-- Simulation-stage presentation boundary around the existing canvas/worker/runtime;
-- legacy presentation removal + final regression/visual acceptance;
-- #3 Studies only after the migration foundation is complete enough to receive it.
+## MVC boundary
 
-## Accepted product state
+- Model/scientific state remains outside React.
+- Existing runtime/controller semantics remain authoritative and are invoked through thin presentation adapters.
+- React/Mantine owns the View progressively.
+- The existing canvas renderer remains authoritative; React may frame/layout it but does not redraw scientific state merely for framework consistency.
 
-- #195 Metrics + live Results path complete/deployed.
-- #199 local single-run result persistence complete/deployed.
-- #200 MCP/Connector Metrics + Results authoring complete/deployed.
-- #149 Professor promotion to Showcase complete/deployed.
-- #208 unified Experiment identity/save/persistence/organization complete/deployed.
-- #210 hierarchy/microcopy/responsive cleanup complete/deployed.
-- #261 React/Mantine Results presentation complete.
-- #262 React/Mantine Authoring-shell presentation delivered; underlying source/compiler/persistence contracts intentionally unchanged.
+## Execution model
 
-## ZERO-TOLERANCE execution policy
+One substantial independently testable unit at a time. Local deterministic implementation/testing may iterate synchronously. External asynchronous systems do not participate in an agent-side wait/poll loop and no scheduled automation is created without explicit owner request.
 
-One substantial independently testable unit at a time.
-
-Local deterministic implementation/testing may iterate. **Asynchronous external systems never participate in the agent feedback loop.** The agent never waits for or polls GitHub Actions, deployment, long benchmarks, Work/browser jobs, authentication, or remote services. It never performs repeated status calls or capability discovery to keep an external process alive.
-
-At terminal delivery the agent writes `.github/terminal-report.json` and stops. Autonomous CI performs build, deployment, manifest-driven production smoke, and owner notification. A failure may be diagnosed only in a later owner-requested turn using bounded evidence for that specific failure.
-
-Work/browser/computer verification is optional diagnostic/UX tooling, not a synchronous completion loop. One bounded invocation may be used when explicitly required; no same-turn waiting, polling, or retry cycle is permitted.
-
-This policy supersedes older text that told agents to track an exact workflow run, wait for Pages, rerun browser checklists until success, or use repository-wide idleness as completion.
+CI/build/deploy/smoke remains useful as an independent regression signal. A later explicit status/failure turn may inspect one exact run/commit and repair a concrete failure, but there is no indefinite pending state in the agent workflow.
 
 ## Scientific boundary
 
-Implementation agents may reason about software architecture/performance but must not invent or alter scientific models/derivations/parameters/controllers/metric definitions/sampling semantics. Reuse owner-authorized definitions exactly. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, read-only metrics and rendering as observer.
+Implementation agents may reason about software architecture/performance but must not invent or alter scientific models, derivations, parameters, controllers, metric definitions or sampling semantics. Reuse owner-authorized definitions exactly. Preserve simulator-owned RNG, controller information boundaries, environment-owned action application, read-only metrics and rendering as observer.

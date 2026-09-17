@@ -118,6 +118,7 @@ async function structure(send) {
     const visiblePanes = [...document.querySelectorAll('[data-authoring-artifact-pane]')]
       .filter((pane) => !pane.hidden && getComputedStyle(pane).display !== 'none').length;
     const height = (selector) => Math.round(document.querySelector(selector)?.getBoundingClientRect().height ?? 0);
+    const heightOfFirstVisible = (selectors) => Math.round([...document.querySelectorAll(selectors)].find(visible)?.getBoundingClientRect().height ?? 0);
     const visibleAuthoringTabs = [...document.querySelectorAll('[data-vlab-authoring-tab]')].filter(visible);
     const authoringTabs = visibleAuthoringTabs.length
       ? visibleAuthoringTabs
@@ -145,11 +146,11 @@ async function structure(send) {
         browseLabel: browse?.textContent?.trim() ?? null,
       },
       controlHeights: {
-        run: height('#run'),
-        pause: height('#pause'),
-        restart: height('#restart'),
-        newSeed: height('#restart-new-seed'),
-        fit: height('#fit-arena'),
+        run: heightOfFirstVisible('[data-vlab-simulation-action="run"], #run'),
+        pause: heightOfFirstVisible('[data-vlab-simulation-action="pause"], #pause'),
+        restart: heightOfFirstVisible('[data-vlab-simulation-action="restart"], #restart'),
+        newSeed: heightOfFirstVisible('[data-vlab-simulation-action="new-seed"], #restart-new-seed'),
+        fit: heightOfFirstVisible('[data-vlab-simulation-fit], #fit-arena'),
         apply: Math.round(authoringApply?.getBoundingClientRect().height ?? 0),
         browse: height('.experiment-browse')
       },
@@ -184,13 +185,13 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
     throw new Error(`${label}: signed-out Experiment surface lacks direct sign-in-to-save action: ${JSON.stringify(state.experimentManagement)}`);
   }
   if (touch) {
-    for (const [name, height] of Object.entries(state.controlHeights)) {
-      if (height < 44) throw new Error(`${label}: ${name} touch target is ${height}px, expected at least 44px`);
+    for (const [name, controlHeight] of Object.entries(state.controlHeights)) {
+      if (controlHeight < 44) throw new Error(`${label}: ${name} touch target is ${controlHeight}px, expected at least 44px`);
     }
     if (state.experimentManagement.signInSaveHeight < 44) {
       throw new Error(`${label}: sign-in-to-save touch target is ${state.experimentManagement.signInSaveHeight}px, expected at least 44px`);
     }
-    if (state.tabHeights.some((height) => height < 44)) {
+    if (state.tabHeights.some((tabHeight) => tabHeight < 44)) {
       throw new Error(`${label}: authoring tab touch target below 44px: ${JSON.stringify(state.tabHeights)}`);
     }
   }
@@ -304,7 +305,7 @@ try {
   await verifyAuthoringKeyboard(cdp.send);
 
   console.log(JSON.stringify({ desktop, mobile }, null, 2));
-  console.log("Responsive smoke verified unified Experiment management, simulation-first hierarchy, no mobile overflow, 44px primary targets, migrated authoring keyboard semantics, and React Account dialog focus entry/return.");
+  console.log("Responsive smoke verified unified Experiment management, simulation-first hierarchy, migrated Simulation/Authoring touch targets, authoring keyboard semantics, and React Account dialog focus entry/return.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
