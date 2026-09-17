@@ -4,6 +4,16 @@ Updated: 17 September 2026
 
 This is the first repository file to read in a new ChatGPT/Work session. It contains only current truth needed to resume safely. Deep technical evidence lives in `PROJECT_STATE.md`; strategy detail lives in `PROJECT_CONTROL.md`; history lives in Git/closed issues.
 
+## ZERO-TOLERANCE AGENT/ACTIONS BOUNDARY
+
+**Ordinary Virtual Lab execution must NEVER include agent-side GitHub Actions inspection or waiting.** GitHub Actions are autonomous fire-and-forget infrastructure only.
+
+The agent must not call workflow-run, job, step, log, queue, check-status, commit-status or Actions-history APIs during normal product work or maintenance. This is absolute: not for an exact SHA, not for an exact run ID, not once, and not “just to see whether it finished.”
+
+The only exception is a separate owner-requested diagnostic turn for a specific failure notification/run. Even then: inspect the supplied failed run/evidence only; never poll or wait for a state transition.
+
+Normal task boundary: implement → update durable state → write `.github/terminal-report.json` → STOP. CI independently builds, deploys, runs manifest-driven production smoke and sends one success/failure notification.
+
 ## What is active now
 
 **Repository detox is complete.** Historical branch/run debris remains physically visible only where the available connector cannot safely delete/cancel it; it is inert and must not affect execution.
@@ -39,21 +49,17 @@ Completed migration children:
 
 `CURRENT.md` remains the source of truth for **what work is being done now/next**. The manifest's `work_tracking` section points back here and identifies the product surface affected by the next delivery stage. Any user-facing capability addition, removal, replacement or migration must update the manifest in the same task if the current Lab surface changes.
 
-Ordinary product work uses one automatic CI/Pages workflow. PRs build/typecheck/test without deployment. `main` builds/tests, deploys Pages, then calls `web/scripts/run-active-product-smoke.mjs`, which derives the deployed smoke suite from `web/product-surface.json`. The workflow YAML must not contain a hand-maintained list of current feature smoke scripts.
+Ordinary product work uses one automatic CI/Pages workflow. `main` builds/tests, deploys Pages, then calls `web/scripts/run-active-product-smoke.mjs`, which derives the deployed smoke suite from `web/product-surface.json`. The workflow YAML must not contain a hand-maintained list of current feature smoke scripts.
 
 The product-surface contract test fails if an active surface has no smoke coverage, if a registered smoke script is missing, if a check has no hard timeout, if the next tracked product surface is unknown, or if Actions reverts to hardcoded feature smoke commands.
 
 Historical benchmark/performance workflows remain removed. Profiling scripts/evidence remain available for targeted performance work without automatic Actions fan-out.
 
-## Autonomous verification and reporting — zero agent monitoring
+## Autonomous verification and reporting
 
-GitHub Actions owns terminal verification. ChatGPT/Work does **not** monitor it.
+For final delivery, the agent updates `.github/terminal-report.json` exactly once. The single CI workflow independently performs build → deploy → manifest-driven production smoke and then posts one bot-authored high-level success or failure notification. If configured, successful terminal verification also closes the task issue.
 
-For the final delivery of a task, the agent updates `.github/terminal-report.json` exactly once. That commit triggers the normal build → deploy → manifest-driven production smoke. The workflow itself then posts one bot-authored high-level success email, or one failure email containing the run link. If configured, a successful terminal run also closes the task issue.
-
-After any GitHub write that can trigger Actions, the agent must not call workflow-run, job, log, queue, check-status or Actions-history APIs in that execution turn. There is no exception for “one quick check,” an exact SHA, or an exact run ID. The agent returns control immediately after the terminal-report write.
-
-A failed run may be inspected only in a later user turn when the owner supplies the failure notification/run ID or explicitly requests diagnosis of that specific failure.
+The agent never waits for, polls, checks or monitors that workflow during ordinary execution. Failure diagnosis happens only after the owner explicitly brings back a failure notification/run or asks for diagnosis.
 
 ## Hard guardrails
 
@@ -68,7 +74,7 @@ A failed run may be inspected only in a later user turn when the owner supplies 
 
 Work on one substantial independently testable/deployable ticket at a time. Implement the task, update durable state/issue metadata, prepare the terminal report, write `.github/terminal-report.json`, and stop. CI performs terminal verification and owner notification autonomously.
 
-For GitHub operations before that terminal boundary, use compact calls scoped to the current file/issue/PR. Do not use recursive whole-repository trees, Actions history, broad branch/history sweeps, or connector capability discovery. If a required operation is unavailable through a known connector action, stop and report it instead of searching for alternate tool schemas.
+For GitHub operations before that terminal boundary, use compact calls scoped to the current file/issue/PR. Do not use recursive whole-repository trees, Actions execution/history APIs, broad branch/history sweeps, or connector capability discovery. If a required operation is unavailable through a known connector action, stop and report it instead of searching for alternate tool schemas.
 
 ## Source precedence
 
