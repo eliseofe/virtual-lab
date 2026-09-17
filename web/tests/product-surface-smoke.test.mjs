@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import { access, readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+const root = new URL('../../', import.meta.url);
+const manifest = JSON.parse(await readFile(new URL('../product-surface.json', import.meta.url), 'utf8'));
+const workflow = await readFile(new URL('../../.github/workflows/round1a-pages.yml', import.meta.url), 'utf8');
+
+test('product-surface manifest is the canonical active smoke registry', async () => {
+  assert.equal(manifest.schema, 'vlab.product-surface/1');
+  assert.equal(manifest.work_tracking.source, 'CURRENT.md');
+
+  const ids = new Set();
+  const active = manifest.surfaces.filter((surface) => surface.state === 'active');
+  assert.ok(active.length > 0, 'at least one active Lab surface is required');
+
+  for (const surface of manifest.surfaces) {
+    assert.ok(surface.id && surface.name, 'every surface needs stable id and name');
+    assert.ok(!ids.has(surface.id), `duplicate surface id: ${surface.id}`);
+    ids.add(surface.id);
+
+    if (surface.state !== 'active') continue;
+    assert.ok(Array.isArray(surface.smoke) && surface.smoke.length > 0, `${surface.id} lacks smoke coverage`);
+
+    for (const check of surface.smoke) {
+      assert.ok(check.script?.endsWith('.mjs'), `${surface.id} has invalid smoke script`);
+      assert.ok((check.timeout_seconds ?? 0) > 0, `${surface.id} smoke must have a hard timeout`);
+      await access(new URL(`../../${check.script}`, import.meta.url));
+    }
+  }
+
+  for (const surfaceId of manifest.work_tracking.next_stage?.surface_ids ?? []) {
+    assert.ok(ids.has(surfaceId), `next-stage surface is not tracked: ${surfaceId}`);
+  }
+});
+
+test('Actions executes the manifest runner rather than hardcoded feature smoke scripts', () => {
+  assert.match(workflow, /node web\/scripts\/run-active-product-smoke\.mjs/);
+  assert.doesNotMatch(workflow, /node web\/scripts\/(browser|frontend-foundation|builtin-metric|result-persistence|responsive|showcase-ux)-smoke\.mjs/);
+});
