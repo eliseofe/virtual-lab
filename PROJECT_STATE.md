@@ -74,13 +74,23 @@ Reuse exactly as recorded. Do not retune/reinterpret without explicit owner auth
 - Unified Experiment management accepted.
 - Current frontend migration foundation (#252) is deployed; visible application chrome from #255 is on production but #254 remains reopened because of the Account focus-return regression.
 
-## CI state after detox #258
+## CI and execution state after detox
 
-Ordinary product work uses one automatic workflow: PR build/typecheck/tests; `main` build/test → Pages deploy → bounded production smoke. Historical performance and neighbour benchmark Actions were removed from automatic operation. Their benchmark source/examples remain available if targeted performance work needs them later.
+Ordinary product work uses one automatic CI/Pages workflow: PR build/typecheck/tests; `main` build/test → Pages deploy → one active-product smoke step.
 
-The success-report notifier is separate and explicit: one tiny run only when the central success issue is deliberately edited after a terminal `[SUCCESS REPORT]`. Ordinary issue comments no longer trigger Actions.
+The production smoke covers the currently active product surface only:
+- core Experiment/runtime;
+- React/Mantine application shell;
+- Metrics + live Results;
+- local result persistence;
+- responsive hierarchy, unified Experiment management and Account focus behavior;
+- Showcase.
 
-Never wait for the repository-wide Actions queue to be empty. Use exact current SHA/PR/run IDs.
+The dedicated Results-layout browser smoke is not automatic because its active coverage overlaps the Metrics+Results and responsive checks. Historical performance and neighbour benchmark Actions were removed from automatic operation; their source/examples remain available for targeted performance work.
+
+Terminal-success reporting remains GitHub-only. Because the original connector comment is authored as `eliseofe`, reliable email requires a separate `github-actions[bot]` mention. The notifier therefore remains, but acts only after an explicit `notify-success` marker change. Success emails lead with outcome, owner impact and remaining action/caveat; concise technical evidence follows only when useful, in the same email.
+
+Historical queued run `34748709587` and undeletable old branches are inert execution debris. Never wait for repository-wide Actions idleness and never infer current work from old branches. Track only the exact current SHA/PR/run. For #254, PR #256 / `issue-254-account-focus-hotfix` is authoritative; overlapping repair branches are historical only.
 
 ## Scientific guardrail
 
