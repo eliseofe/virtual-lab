@@ -63,11 +63,11 @@ test('model, controller/runtime and renderer ownership remains outside React', (
   assert.match(runtimeSpeed, /new RuntimeRateMeter/);
 });
 
-test('product tracking records completed migration and the real-use frontier', () => {
+test('product tracking preserves completed frontend migration while allowing the operational frontier to change', () => {
   assert.equal(surface.work_tracking?.frontend_migration_state, 'complete');
   assert.equal(surface.work_tracking?.roadmap_reconciliation_state, 'complete');
-  assert.equal(surface.work_tracking?.student_onboarding_state, 'complete');
-  assert.equal(surface.work_tracking?.current_phase, 'real_use');
-  assert.match(surface.work_tracking?.next_stage?.name ?? '', /Real student and scientific use/);
-  assert.deepEqual(surface.work_tracking?.next_stage?.surface_ids ?? [], []);
+  assert.equal(typeof surface.work_tracking?.current_phase, 'string');
+  assert.ok(surface.work_tracking.current_phase.length > 0);
+  assert.equal(typeof surface.work_tracking?.next_stage?.name, 'string');
+  assert.ok(Array.isArray(surface.work_tracking?.next_stage?.surface_ids));
 });
