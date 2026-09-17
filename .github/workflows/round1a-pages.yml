@@ -105,33 +105,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - name: Checkout active-product smoke scripts
+      - name: Checkout active-product smoke tracker
         uses: actions/checkout@v6
 
-      - name: Verify deployed active product
-        shell: bash
-        run: |
-          set -euo pipefail
-          URL="https://eliseofe.github.io/virtual-lab/"
-
-          echo "[smoke] core Experiment/runtime"
-          for attempt in 1 2 3 4 5 6; do
-            if node web/scripts/browser-smoke.mjs "$URL"; then break; fi
-            if [ "$attempt" -eq 6 ]; then exit 1; fi
-            sleep 5
-          done
-
-          echo "[smoke] React/Mantine application shell"
-          node web/scripts/frontend-foundation-smoke.mjs "$URL"
-
-          echo "[smoke] Metrics + live Results"
-          node web/scripts/builtin-metric-smoke.mjs "$URL"
-
-          echo "[smoke] local result persistence"
-          node web/scripts/result-persistence-smoke.mjs "$URL"
-
-          echo "[smoke] responsive / Experiment management / Account focus"
-          node web/scripts/responsive-smoke.mjs "$URL"
-
-          echo "[smoke] Showcase"
-          node web/scripts/showcase-ux-smoke.mjs "$URL"
+      - name: Verify deployed current Lab surface
+        run: node web/scripts/run-active-product-smoke.mjs "https://eliseofe.github.io/virtual-lab/"
