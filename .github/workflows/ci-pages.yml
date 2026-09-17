@@ -116,7 +116,7 @@ jobs:
       - name: Verify deployed current Lab surface
         run: node web/scripts/run-active-product-smoke.mjs "https://eliseofe.github.io/virtual-lab/"
 
-      - name: Send terminal success report without agent monitoring
+      - name: Send owner success report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPORT_ISSUE: '145'
@@ -128,7 +128,7 @@ jobs:
 
           outcome="Production deployment ${short_sha}"
           owner_impact="Build, Pages deployment, and deployed-surface smoke verification all succeeded."
-          remaining="Use the corresponding assistant task report to determine whether owner testing is required before the next task."
+          remaining="No owner action is required unless this success report explicitly says otherwise."
           technical="- Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           close_issue=""
 
@@ -162,43 +162,3 @@ jobs:
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${close_issue}" \
               --data '{"state":"closed","state_reason":"completed"}' >/dev/null
           fi
-
-  terminal-failure-report:
-    if: ${{ always() && github.event_name != 'pull_request' && (needs.build.result != 'success' || needs.deploy.result != 'success' || needs.smoke.result != 'success') }}
-    needs: [build, deploy, smoke]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      issues: write
-    steps:
-      - name: Checkout terminal report
-        uses: actions/checkout@v6
-
-      - name: Send terminal failure report without agent monitoring
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPORT_ISSUE: '145'
-          BUILD_RESULT: ${{ needs.build.result }}
-          DEPLOY_RESULT: ${{ needs.deploy.result }}
-          SMOKE_RESULT: ${{ needs.smoke.result }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          short_sha="${GITHUB_SHA:0:7}"
-          changed="$(jq -r '(((.head_commit.added // []) + (.head_commit.modified // []) + (.head_commit.removed // [])) | index(".github/terminal-report.json")) != null' "$GITHUB_EVENT_PATH")"
-          outcome="Production deployment ${short_sha}"
-
-          if [ "$changed" = "true" ] && jq -e '.schema == "vlab.terminal-report/1" and (.outcome | type == "string")' .github/terminal-report.json >/dev/null 2>&1; then
-            outcome="$(jq -r '.outcome' .github/terminal-report.json)"
-          fi
-
-          body="$(printf '@eliseofe\n\n❌ **Virtual Lab production run failed**\n\n**%s**\n\nBuild: `%s` · Deploy: `%s` · Smoke: `%s`\n\n**Next**\nAssistant repair is required. Owner should not test this run.\n\nRun: https://github.com/%s/actions/runs/%s' "$outcome" "$BUILD_RESULT" "$DEPLOY_RESULT" "$SMOKE_RESULT" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
-          payload="$(jq -n --arg body "$body" '{body:$body}')"
-          curl --fail-with-body --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
-            --header "Accept: application/vnd.github+json" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${REPORT_ISSUE}/comments" \
-            --data "$payload" >/dev/null
