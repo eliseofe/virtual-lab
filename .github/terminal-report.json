@@ -1,17 +1,8 @@
 {
-  "schema": "vlab.terminal-report/1",
-  "nonce": "2026-09-17-post-migration-roadmap-reconciliation",
-  "outcome": "Completed the post-frontend-migration roadmap reconciliation and selected the Studies foundation as the next substantive product lane.",
-  "owner_impact": "Stale/absorbed UI and pre-migration acceptance tickets are retired, surviving near-term work now reflects the React/Mantine MVC architecture and non-blocking CI workflow, and blocked/future work is explicitly parked rather than accidentally executable. Product/scientific behavior is unchanged by this reconciliation.",
-  "remaining_action": "Continue directly with the Studies foundation: durable Study identity, exact pinned Experiment revision, Experiment-context listing and a stable React/Mantine Study workspace. No owner action is required for the reconciliation itself.",
-  "technical_evidence": [
-    "Closed the duplicate final-migration ticket and UI/UX requirements already absorbed by application chrome/Results/frontend migration.",
-    "Retired separate pre-migration collection/authoring acceptance issue trees; normal integrated product use now produces focused defects directly.",
-    "Rewrote the autonomous CI report sink as non-blocking regression evidence rather than an agent synchronization gate.",
-    "Reconciled Studies, Study storage/run semantics, editor ergonomics and production access tickets with the migrated MVC architecture and current execution model.",
-    "Corrected docs/RESEARCH_MODEL.md so Study metric files live directly under <Experiment>/studies/<Study>/ with no extra Study runs/ directory.",
-    "Created the bounded Studies-foundation implementation child and marked it as the next active substantive work.",
-    "No scheduled task, reminder, watchdog, automation or CI polling loop was created."
-  ],
-  "close_issue": 266
+  "status": "implementation_complete",
+  "lane": "frontend_visual_revamp",
+  "owner_action": "Inspect the deployed Virtual Lab and report concrete visual/UX defects or accept the revamp.",
+  "next_if_accepted": "Student self-registration and Getting started mini-epic.",
+  "blocked": "Studies remain owner-gated until after student onboarding and real student use.",
+  "ci": "non_blocking"
 }
