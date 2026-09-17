@@ -7,10 +7,11 @@ const agents = read("AGENTS.md");
 const current = read("CURRENT.md");
 const control = read("PROJECT_CONTROL.md");
 const execution = read("docs/EXECUTION_GRANULARITY.md");
-const round1 = read("docs/ROUND1_ACCEPTANCE.md");
-const workflow = read(".github/workflows/round1a-pages.yml");
+const workflow = read(".github/workflows/ci-pages.yml");
 const manifest = JSON.parse(read("web/product-surface.json"));
 const legacyNotifier = new URL("../../.github/workflows/success-report-notifier.yml", import.meta.url);
+const legacyRound1Workflow = new URL("../../.github/workflows/round1a-pages.yml", import.meta.url);
+const legacyRound1Acceptance = new URL("../../docs/ROUND1_ACCEPTANCE.md", import.meta.url);
 
 test("agent liveness policy is absolute and machine-readable", () => {
   assert.match(agents, /ZERO-TOLERANCE LIVENESS/);
@@ -27,15 +28,17 @@ test("agent liveness policy is absolute and machine-readable", () => {
   assert.equal(manifest.agent_execution_policy?.terminal_ci_boundary, "fire_and_forget");
 });
 
-test("stale synchronous verification-loop language cannot return", () => {
-  for (const source of [agents, current, control, execution, round1]) {
+test("stale synchronous verification-loop instructions cannot return", () => {
+  for (const source of [agents, current, control, execution]) {
     assert.doesNotMatch(source, /Track only (?:the )?(?:exact )?current .*run IDs/i);
     assert.doesNotMatch(source, /wait for (?:the )?(?:GitHub )?Actions/i);
-    assert.doesNotMatch(source, /monitor until/i);
   }
-  assert.doesNotMatch(round1, /This loop continues until all three Work issues pass/);
-  assert.doesNotMatch(round1, /returns to ChatGPT for repair and redeployment, after which that same Work checklist is rerun/);
   assert.match(execution, /Deployment and production verification are not agent-side waiting steps/);
+});
+
+test("retired Round-1 process artifacts stay retired", () => {
+  assert.equal(existsSync(legacyRound1Workflow), false);
+  assert.equal(existsSync(legacyRound1Acceptance), false);
 });
 
 test("terminal CI is autonomous, bounded, and legacy notifier is gone", () => {

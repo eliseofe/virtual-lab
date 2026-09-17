@@ -1,14 +1,13 @@
 {
   "schema": "vlab.terminal-report/1",
-  "nonce": "2026-09-17-full-liveness-root-repair",
-  "outcome": "The anti-stall repair now covers the original execution architecture, not only GitHub Actions monitoring.",
-  "owner_impact": "Ordinary Virtual Lab development may iterate only on bounded local work. GitHub Actions, deployment, remote benchmarks, Work/browser jobs, authentication and other asynchronous services are never waited on, polled or monitored by ChatGPT. Terminal CI is fire-and-forget and reports independently.",
-  "remaining_action": "Resume #251 with the Authoring-shell migration in the next product-work turn. If autonomous CI reports a specific failure, diagnose that failure only in a later owner-requested turn.",
+  "nonce": "2026-09-17-retire-round1-process-debris",
+  "outcome": "The remaining Round-1 operational workflow/documentation debris is retired and the anti-stall regression is repaired.",
+  "owner_impact": "The active CI workflow is now named generically as ci-pages.yml, the obsolete Round-1 acceptance document is no longer active repository process, and the liveness regression test no longer fails on its own quoted forbidden example. Product and scientific behavior are unchanged.",
+  "remaining_action": "None for this cleanup. The next substantive product stage remains #251 Authoring-shell migration.",
   "technical_evidence": [
-    "History correction: the synchronous self-verification-loop design was codified on 10 September 2026 at 23:50 GST, not introduced on 17 September.",
-    "Agent-side waiting on GitHub Actions is recoverable in project history by 11 September; multi-run CI waiting occurred again on 15 September.",
-    "Late 16 September added independent hazards: a browser MutationObserver self-trigger loop and a wedged smoke/deployment path; 17 September also exposed broad connector capability discovery as another stall mechanism.",
-    "AGENTS.md, CURRENT.md, PROJECT_CONTROL.md, ROUND1_ACCEPTANCE.md and EXECUTION_GRANULARITY.md now share one zero-tolerance asynchronous-boundary rule.",
-    "web/product-surface.json encodes the liveness prohibitions in machine-readable form and regression tests prevent the retired synchronous-loop wording from returning."
+    "Replaced .github/workflows/round1a-pages.yml with .github/workflows/ci-pages.yml without changing CI/deploy/smoke semantics.",
+    "Removed docs/ROUND1_ACCEPTANCE.md from active repository process documentation.",
+    "Fixed web/tests/actions-nonmonitoring.test.mjs so a quoted forbidden phrase cannot make the anti-stall test fail itself.",
+    "Added regression assertions that the retired Round-1 workflow and acceptance-document paths stay absent."
   ]
 }
