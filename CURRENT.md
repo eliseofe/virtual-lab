@@ -14,11 +14,13 @@ Completed detox:
 - #260 — execution debris / branch hygiene: complete at the available-control boundary. Stale run `34748709587` and undeletable historical branches are inert; never use them for completion/idleness.
 - #257 — repository detoxification epic: complete.
 
-Resume **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
+Active product lane: **#251 — Progressive frontend migration to Vite + React + TypeScript + Mantine before Studies**.
 
-Current migration child: **#254 — application chrome migration**. PR #255 merged the visible React/Mantine chrome to `main`, but production responsive smoke exposed an Account-dialog focus-return regression, so #254 remains reopened. **PR #256 / `issue-254-account-focus-hotfix` is the only authoritative repair path.** Any overlapping `issue-254-account-focus-repair` branch is historical/inert and must not be merged or treated as current work.
+Completed migration children:
+- #252 — foundation/coexistence: complete.
+- #254 — application chrome migration: complete and production-verified. PR #256 repaired Account-dialog focus return and merged to `main`; exact verification run `35209915551` passed build, Pages deploy, and all active-product smoke checks.
 
-Do not start the Results/Authoring/Simulation/Study migration children before #254 is repaired and production-verified.
+**Next planned stage: Results presentation.** #251 defines this as migrating Results controls/panels and absorbing the existing series-selection and Follow-live requirements while preserving metric runtime/sample/persistence contracts. No dedicated #251.3 child issue exists yet; do not infer one from history or create one unless the current task explicitly calls for decomposition/execution.
 
 ## Production and architecture
 
@@ -40,7 +42,7 @@ Ordinary product work uses one automatic CI/Pages workflow. PRs build/typecheck/
 - responsive hierarchy, unified Experiment management and Account focus behavior;
 - Showcase.
 
-The old dedicated Results-layout smoke is no longer automatic because its active coverage overlaps the Metrics+Results and responsive checks. Historical benchmark/performance workflows remain removed.
+The old dedicated Results-layout smoke is no longer automatic because its active coverage overlaps the Metrics+Results and responsive checks. Historical benchmark/performance workflows remain removed. Profiling scripts/evidence remain available for targeted performance work without automatic Actions fan-out.
 
 Success reporting remains one GitHub-only terminal-success email. Reports are **high-level first** (outcome, owner impact, remaining action/caveat), with short technical evidence underneath only when useful. The notifier acts only after an explicit `notify-success` marker change; ordinary protocol edits do not resend old reports.
 
