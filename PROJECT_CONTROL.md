@@ -6,78 +6,61 @@ Read `CURRENT.md` first. This file holds strategy detail.
 
 ## Strategic frontier
 
-The Vite + React + TypeScript + Mantine **architecture migration is complete**, but the graphics/UI revamp is not yet complete in human terms.
+The frontend architecture migration is complete, and the missing visual-design implementation has now been applied across the production Lab on `main`.
 
-The owner’s first deployed check found the sticky header useful but the rest of the Lab still visually close to the old interface. The remaining work is therefore a bounded **visual-design half**, not another framework migration.
+The current frontier is **human visual/product acceptance**, not Studies.
 
-After that comes a small **student self-registration + Getting started** product lane. **Studies are explicitly gated until real students have begun using the Lab and the owner later authorizes Studies.**
+The owner explicitly found the architecture migration visually underwhelming because most of the page still looked like the old Lab. The follow-up visual pass therefore established an actual visual system and applied it across the core working surfaces. The frontend/visual-revamp epic remains open until the owner inspects the deployed result and considers it materially better/coherent enough.
 
-## Human-readable priority
+## Priority order
 
-1. **Finish the visual revamp (#251).**
-   - #271: define/implement the actual Virtual Lab Mantine visual system and improve the persistent header/app shell.
-   - #272: apply that system across Experiment/workspace, Simulation, Results, Authoring and account/dialog surfaces.
-   - #265: final owner visual/product acceptance and focused repair if needed.
-2. **Student self-registration and Getting started (#268).**
-   - #162: production Create account / Sign in with intentionally open self-registration for the initial student phase.
-   - #269: first-login Getting started + persistent Help.
-   - #270: provider-specific Grok/Claude production connector setup + minimal first-use exercise.
-3. **Real student use.** This is a manual owner gate, not an automated project task.
-4. **Studies only after explicit later owner authorization.**
-5. Scientific code-editor ergonomics and other research workflow lanes remain available for later prioritization; they do not override the Studies gate.
+1. **Owner visual acceptance of the revamped Lab.** Fix only concrete defects exposed by that use.
+2. **Student self-registration and Getting started mini-epic** — open signup, first-login onboarding/help, Grok/Claude setup and a first-use exercise.
+3. **Real student use of the production Lab.** This is a manual owner gate; do not automate or track it.
+4. **Studies only after later explicit owner authorization.**
+5. Scientific code-editor ergonomics and other surviving product/research lanes remain backlog items unless reprioritized.
 
-## Visual-revamp principle
+## Visual architecture
 
-React/Mantine is the presentation architecture, not a prebuilt Hugo-like theme that automatically restyles the product. The migration was useful for maintainability and future growth, but the visual system must still be intentionally designed and applied.
+The production View now uses:
+- Vite + React + TypeScript + Mantine;
+- one coherent visual system for typography, spacing, surfaces, control hierarchy and app chrome;
+- a persistent integrated header/navigation model;
+- consistent presentation across Experiment management, Simulation/Arena, Results, Authoring and utility surfaces.
 
-The visual epic completes only when a normal human can immediately perceive that the production Lab looks materially more coherent, intentional and polished while remaining a scientific workbench.
+This is a presentation change only. It does not move model/scientific/runtime/controller/persistence authority into React.
 
-Avoid endless aesthetic polishing: one visual-system pass, one cross-surface application pass, then owner acceptance/focused fixes.
+## Student-use direction
 
-## Student-use principle
-
-The production Lab itself is the student entry point. The owner should be able to send one URL.
-
-Initial policy:
-- open self-registration is acceptable;
-- no mandatory invitation/approval workflow;
-- no mock-lab branding or hidden connector-only pathway;
-- after sign-up, the student sees concise Getting started guidance;
-- Grok and Claude each get explicit provider-specific connector instructions;
-- persistent Help remains available;
-- the Lab stays continuously usable throughout development;
-- do not spin up a separate student product merely to stage these features.
+The student mini-epic must make the production Lab self-contained for first use:
+- you send only the production Lab URL;
+- Create account / Sign in is obvious from the Lab;
+- open enrollment is intentional for the initial student phase;
+- first login leads to concise Getting started guidance;
+- Help remains accessible later;
+- Grok and Claude each receive provider-specific connector/setup instructions;
+- one small first-use exercise confirms the student can use the production connector and Lab;
+- no mock-lab or second student product.
 
 ## Studies gate
 
-Studies remain architecturally important but are **not active work**.
+Studies are not active work. Before implementation starts:
+- visual revamp must be accepted by the owner;
+- student onboarding mini-epic must be complete;
+- real students must begin using the production Lab;
+- owner must explicitly authorize Studies afterward.
 
-Do not create/implement a Study foundation merely because the frontend architecture can now support one. The owner’s required sequence is:
-visual revamp complete → student onboarding complete → real student use begins → explicit owner authorization → Studies.
-
-Do not schedule, monitor or infer completion of the real-student-use gate.
+Do not infer that gate from elapsed time, CI, issue state or apparent readiness.
 
 ## Research object direction
 
 - Experiment = one reproducible single-run definition including Metrics.
 - Study = named reproducible multi-run investigation pinned initially to one exact Experiment revision.
-- React/Mantine owns Study presentation, not Study domain authority.
+- React/Mantine owns Study presentation when that work is eventually authorized, not Study domain authority.
 - Study result storage is Experiment-first and local-first.
 - Standalone metric files: `<Experiment>/runs/`.
 - Study metric files: `<Experiment>/studies/<Study>/` directly.
 - No extra Study `runs/` directory and no directory per simulation run.
-
-`docs/RESEARCH_MODEL.md` remains the canonical research-object model, but its future Study concepts are not implementation authorization.
-
-## Frozen frontend architecture
-
-- Vite build;
-- React presentation framework;
-- TypeScript for migrated frontend code;
-- Mantine component/design system;
-- static GitHub Pages;
-- Rust/WASM scientific/runtime core remains authoritative;
-- no Next.js/SSR.
 
 ## MVC boundary
 
@@ -88,7 +71,7 @@ Do not schedule, monitor or infer completion of the real-student-use gate.
 
 ## Execution model
 
-One substantial independently testable ticket at a time, but an owner-authorized sequence may continue across ticket boundaries without waiting for CI.
+One substantial independently testable ticket at a time. An owner-authorized sequence may continue across ticket boundaries only within the authorized lane; do not jump into the next epic merely because the previous implementation ended.
 
 Local deterministic implementation/testing may iterate synchronously. CI/build/deploy/smoke is an independent non-blocking regression signal; later observed failures become bounded repairs.
 
@@ -97,13 +80,13 @@ Never poll/wait on asynchronous external verification. Never create scheduled ta
 ## Parked/blocked work
 
 Open does not mean active:
-- Studies are owner-gated as described above;
-- deterministic RNG implementation needs explicit owner approval;
-- optional executable artifact dispatch needs a concrete approved use case;
-- numerical integrator work requires owner scientific/numerical activation;
+- Studies: manual owner gate above;
+- deterministic RNG implementation: explicit owner approval required;
+- optional executable artifact dispatch: concrete approved use case required;
+- numerical integrator work: owner scientific/numerical activation required;
 - living validation/performance/environment umbrellas remain open by design;
 - native/HPC and richer physics/heterogeneous swarms are future work;
-- selected-result AI, Research Notes/Documents and synthesis depend on future Study/result foundations.
+- selected-result AI, Research Notes/Documents and synthesis depend on Study/result foundations.
 
 ## Scientific boundary
 
