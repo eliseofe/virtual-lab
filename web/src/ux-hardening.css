@@ -129,6 +129,10 @@ body:has(dialog[open]) {
     grid-template-columns: 1fr 1fr;
   }
 
+  html[data-vlab-ux-hardened="true"] .experiment-browser-head-actions button {
+    min-height: 44px;
+  }
+
   html[data-vlab-ux-hardened="true"] .experiment-browser-body,
   html[data-vlab-ux-hardened="true"] .experiment-browser-content,
   html[data-vlab-ux-hardened="true"] .experiment-results {
