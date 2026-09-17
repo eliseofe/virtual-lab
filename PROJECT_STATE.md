@@ -73,12 +73,15 @@ The frontend architecture migration is complete. React/Mantine owns visible appl
 
 The owner has accepted the current visual system as a clean, functional baseline. Ongoing visual/UX improvement is evidence-driven through the living UI/UX lane rather than a blocker on scientific work.
 
-Student onboarding is implemented in source as one production-Lab journey:
+Student onboarding is implemented and production-verified as one production-Lab journey:
 - self-registration and sign-in using existing Supabase Auth/RLS;
 - new profiles default to Student;
 - Getting started guidance plus persistent Help;
 - Grok and Claude setup against the production MCP endpoint;
 - a read-only first connection check;
+- mobile Getting started is viewport-contained and vertically scrollable;
+- mobile close target is at least 44 px;
+- bounded production regression coverage protects the prior observer-freeze path;
 - no second student site or mock-lab onboarding flow.
 
 The first post-onboarding presentation cleanup humanizes Results terminology to **Metrics**, clarifies live-data state, and removes non-actionable periodic-boundary metadata from the prominent Arena heading. These are presentation-only changes.
@@ -87,23 +90,36 @@ At least one real student has successfully registered, confirmed the account and
 
 ## Current deployment evidence
 
-The visual baseline preceding student onboarding was already observed by the owner in production and accepted as usable.
+Closed-loop recovery completed on 17 September 2026.
 
-The first student-onboarding deployment attempt exposed stale regression assertions inherited from earlier migration/process states. The implementation itself was not rolled back; the obsolete assertions and stale roadmap manifest were repaired on `main`. CI/Pages remains an independent non-blocking signal and must not be polled from the agent execution loop.
+Recovery candidate `18f5b2171cc2c43afa7ab1cc403ab00770dfb329` (Actions run `35260088984`) passed:
+- CI/build;
+- GitHub Pages deployment;
+- exact-candidate production marker verification;
+- all 7 active manifest-driven production smoke surfaces;
+- success-only owner reporting.
 
-Do not describe student onboarding as production-verified until a later completed Pages run confirms the current source has deployed.
+A separate harmless workflow-acceptance candidate `f400d3750aba79701e6d1b9fb19b5b3f2bba566b` (Actions run `35260443455`) independently repeated the same complete green path. Its only functional purpose was to encode/test the restored execution policy; all 7 active production surfaces passed again.
+
+The mobile Getting started fix is therefore production-verified, including a 390 px mobile viewport with real vertical scroll movement and a 44 px Close target.
 
 ## CI and execution contract
 
 - one automatic CI/Pages workflow protects `main`;
 - production smoke is manifest-driven through `web/product-surface.json`;
 - every active surface has a hard-bounded smoke check;
-- CI/build/deploy/smoke is a non-blocking regression signal, not an assistant waiting gate;
-- later observed failures become small bounded repair tasks;
+- each deployable task remains inside the assistant completion loop through exact-candidate CI/build, deploy, exact production propagation and affected production smoke;
+- the built Pages artifact contains `deploy-sha.txt` with the exact candidate SHA;
+- `web/scripts/wait-deployed-sha.mjs` waits with a hard 90-second deadline for production to expose that exact marker before browser smoke starts;
+- production smoke executes all active checks before returning the aggregate failure set, so an early small defect does not hide later failures;
+- a work chunk ends only production-green or at a concrete blocker;
+- after the first candidate, at most three repaired exact candidates may be created in one approved chunk;
+- broad Actions monitoring and unbounded polling are forbidden;
+- failure is never converted into completion merely because the interactive chunk has become large;
 - no scheduled reminders/watchdogs/automations without explicit owner request;
 - approval to continue applies only within the explicitly authorized lane and never implies permission to enter the next epic.
 
-The machine-readable product manifest now records frontend migration complete, roadmap reconciliation complete, student onboarding complete, and the current phase as `real_use`. It no longer points to Studies as the next implementation stage.
+The machine-readable product manifest records the closed-loop policy, exact-candidate propagation gate, `production_green_or_concrete_blocker` chunk exit rule, repair-candidate cap of 3, student onboarding production verification, and current phase `normal_operations`.
 
 ## Studies gate
 
