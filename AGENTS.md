@@ -16,7 +16,11 @@ For every substantial user-facing/deployable task, the completion loop is:
 
 **Never call a task fixed, complete, deployed, or production-verified before step 5 is green.** Local/static success alone is not completion.
 
+A conversational/approval chunk may end only in one of two states: **production green** for the task, or a **concrete blocker** that cannot be repaired with the currently available environment/authority. Do not end a chunk merely because CI or production smoke is red, queued, or has exposed another directly related completion-gate defect. A red result stays inside the same approved task until repaired or converted into a concrete blocker.
+
 The closed loop must also be structurally terminating. Verification may inspect only the exact current candidate SHA/run needed for the active task. Every test, browser process, workflow job, deployment check, and status-resolution operation must have a finite bound or timeout. Never perform repository-wide Actions monitoring, broad run-history scans, indefinite polling, “wait until successful” loops, or repeated same-purpose status calls without a fixed bound.
+
+Repair/re-verification is also bounded: an approved work chunk may advance through at most **three repaired exact-candidate cycles** after the first candidate. If a fourth candidate would be required, stop the repair chain, record the concrete unresolved blocker/evidence, and do not start unrelated work. If a failed candidate has made production materially worse and a previously verified green state can be safely restored, restoring that last green state takes priority before ending the chunk.
 
 A timeout, wedged verification process, or unavailable verification service is a **terminal verification failure**, not permission to declare success and not permission to wait forever. Record the exact blocker and leave the task unverified. When a concrete verification failure is available in the current execution, repair it before moving to another substantial product task.
 
@@ -37,6 +41,7 @@ Do **not** reconstruct the roadmap from issue chronology, branch counts, the new
 
 - One substantial independently testable/deployable ticket at a time unless the owner's current instruction explicitly authorizes a broader bounded pass.
 - Close the loop before reporting completion: implementation → tests → exact-candidate CI/build → deployment → affected deployed behavior verification → durable issue/state update.
+- A work chunk ends production-green or at a concrete blocker; never end merely because verification is red/in progress or because the conversational chunk feels large.
 - Track only the exact current candidate SHA/PR/run needed for the active task; never infer completion from unrelated repository activity.
 - Keep current truth in `CURRENT.md`; update it whenever active priority, blocker or next action changes materially.
 - `web/product-surface.json` is the machine-readable source of truth for what users can use in the Lab today and required production smoke coverage. Every active user-facing surface must retain bounded deployed smoke coverage.
