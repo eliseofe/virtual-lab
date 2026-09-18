@@ -16,14 +16,16 @@ OAuth authorization for AI clients is hosted inside the production Virtual Lab a
 
 The approved **#45 — Access, sharing, curation and Showcase** research-collaboration scope is complete through #287–#290 and is now a completed baseline. Professor accounts have automatic read-only supervision access to student/researcher Experiments; readable non-owned Experiments can be copied into an independent owned workspace; explicit ordinary sharing is read-only and revocable; student-to-student sharing is available for collaboration while redundant student-to-Professor sharing is excluded because Professor supervision already provides that access; Showcase remains a separate explicit curator action.
 
-Assistant workspace discovery now defaults to all Experiments visible through the authenticated user's existing RLS permissions. This means a Professor-connected research assistant can discover and discuss supervised student/researcher Experiments before copying them; explicit `owned_only=true` still narrows discovery when desired.
+Assistant workspace discovery defaults to all Experiments visible through the authenticated user's existing RLS permissions. A Professor-connected research assistant can therefore discover and discuss supervised student/researcher Experiments before copying them; explicit `owned_only=true` still narrows discovery when desired.
 
-Ongoing presentation refinement is tracked through **#273 — UI/UX refinement and visual polish from real use**. The current bounded child is **#299 — restructure Experiment navigation and Professor supervision UX**, queued after #298 and not yet started.
+The latest bounded **#273 — UI/UX refinement and visual polish from real use** pass is **#299 — Experiment navigation and Professor supervision UX**. Professor-supervised work now belongs to the Experiment library as a first-class read-only **Supervised** context alongside My experiments and Shared with me. The separate Student-experiments launcher/modal is removed from Professor/Account utilities. #273 remains a living evidence-driven domain and returns dormant after this bounded pass.
+
+A new **#301 — Virtual Lab security, identity and authorization** umbrella is logged from real-student evidence. Its audit child **#302** is defined but not started; no enrollment, role, OAuth/client-admission or other remediation policy has been frozen.
 
 ## Immediate frontier
 
-1. #298 — assistant discovery of all RLS-visible Experiments — is the current adapter refinement and is considered complete only after its exact production MCP deployment is green.
-2. The known successor is **#299 — Experiment navigation and Professor supervision UX** under living epic #273; it has not started yet.
+1. Complete exact-candidate production verification for **#299 — Experiment navigation and Professor supervision UX**. After it is green, #273 has no active child and returns to dormant/living status.
+2. **#302 — security audit** is separately queued under new epic #301 but is not started by the #299 authorization; a later owner turn may select it.
 3. Continue real student/owner scientific use and turn concrete evidence into focused fixes.
 4. Studies and other parked/not-started lanes remain separately gated.
 

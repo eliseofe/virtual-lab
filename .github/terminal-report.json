@@ -1,16 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Let the research assistant discover all authorized Experiments by default",
-  "owner_impact": "A Professor-connected research assistant now discovers student/researcher Experiments that are already visible through Professor supervision without requiring a copy first or a hidden ownership flag. The assistant can read and discuss that supervised work directly; `owned_only=true` remains available when the conversation specifically needs only the Professor's own Experiments. Existing RLS still determines what each account is allowed to see.",
+  "outcome": "Put Professor supervision in the Experiment library",
+  "owner_impact": "Professor-supervised student/researcher work is now discovered where Experiments live, not inside Account/Professor utilities. The Experiment library has a first-class Supervised context alongside My experiments and Shared with me, shows the student/researcher identity, preserves read-only inspection/run behavior and copy-to-workspace, and keeps supervised work available across refresh/reload. The old separate Student experiments modal is removed.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 299,
-    "text": "The approved two-front sequence continues with #299 — restructure Experiment navigation and Professor supervision UX under living UI/UX epic #273. That ticket will move supervision out of Account and rethink own/shared/supervised Experiment navigation as one coherent UI/UX pass. It has not started yet."
+    "kind": "scope_complete",
+    "disposition": "dormant",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "This bounded #273 UI/UX pass is complete and the living UI/UX epic returns dormant until new evidence appears. The newly logged security epic #301 and audit #302 are separate, queued and not started; no security policy or remediation is being inferred automatically."
   },
   "technical_evidence": [
-    "read_workspace now defaults owned_only=false and documents all-RLS-visible discovery explicitly.",
-    "owned_only=true still applies the owner_id filter, so callers can deliberately narrow discovery without changing authorization.",
-    "MCP server patch version 3.0.1 preserves interface version 8 and all write tools remain owner-scoped."
+    "registry-ui-v3 loads Professor-supervised student/researcher Experiments into the existing Experiment library and exposes a Supervised filter/group without changing write authorization.",
+    "Supervised Experiment continuity is preserved in remembered-workspace restore and library refresh paths.",
+    "The obsolete professor-supervision modal/loader is removed; Professor utilities remain focused on Professor administrative functions such as capability requests."
   ],
-  "close_issue": 298
+  "close_issue": 299
 }

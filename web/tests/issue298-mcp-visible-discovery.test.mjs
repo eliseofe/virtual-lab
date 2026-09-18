@@ -27,10 +27,7 @@ test("#298 is a patch-level MCP behavior change with stable interface", () => {
   assert.match(docs, /owned_only=true/);
 });
 
-test("#298 records #299 as the unstarted successor", () => {
-  assert.match(status, /#299 — restructure Experiment navigation and Professor supervision UX/);
+test("#298 remains recorded after its UI/UX successor evolves", () => {
+  assert.match(status, /Assistant workspace discovery defaults to all Experiments visible/);
   assert.equal(report.schema, "vlab.terminal-report/2");
-  assert.equal(report.next.kind, "epic_continues");
-  assert.equal(report.next.issue, 299);
-  assert.equal(report.close_issue, 298);
 });

@@ -7,7 +7,6 @@ const migration = readFileSync(
   "utf8",
 );
 const registry = readFileSync(new URL("../src/registry-ui-v3.js", import.meta.url), "utf8");
-const supervision = readFileSync(new URL("../src/professor-supervision.js", import.meta.url), "utf8");
 const runtimeSpeed = readFileSync(new URL("../src/runtime-speed.js", import.meta.url), "utf8");
 
 test("#287 grants Professor read access without broadening write policies", () => {
@@ -22,26 +21,25 @@ test("#287 grants Professor read access without broadening write policies", () =
 });
 
 test("#287 keeps supervised student Experiments outside My Experiments and read-only", () => {
-  assert.match(registry, /select\("id, display_name, role"\)/);
-  assert.match(registry, /Student experiment · Read-only/);
-  assert.match(registry, /Professor supervision · Read-only/);
+  assert.match(registry, /select\("id,display_name,role"\)/);
+  assert.match(registry, /Supervised research · Read-only/);
+  assert.match(registry, /Supervised · Read-only/);
   assert.match(registry, /ui\.save\.hidden = !owned/);
   assert.match(registry, /vlab:open-supervised-experiment/);
   assert.match(registry, /Experiment not found in your library or not available to this account/);
   assert.doesNotMatch(registry, /\.eq\("id", id\)\s*\.eq\("owner_id", user\.id\)/);
 });
 
-test("#287 Professor surface lists student Experiments and performs no Experiment writes", () => {
-  assert.match(supervision, /\.eq\("role", "student"\)/);
-  assert.match(supervision, /\.from\("experiments"\)/);
-  assert.match(supervision, /\.eq\("lifecycle", "active"\)/);
-  assert.match(supervision, /Student Experiments are read-only/);
-  assert.match(supervision, /vlab:open-supervised-experiment/);
-  assert.doesNotMatch(supervision, /\.from\("experiments"\)[\s\S]{0,400}\.(insert|update|delete)\(/);
+test("#287 Professor supervision remains read-only and is now integrated into Experiment discovery", () => {
+  assert.match(registry, /async function loadSupervisedExperimentList\(\)/);
+  assert.match(registry, /\.eq\("role", "student"\)/);
+  assert.match(registry, /Supervised research/);
+  assert.match(registry, /access: "supervised"/);
+  assert.match(registry, /ui\.save\.hidden = !owned/);
+  assert.doesNotMatch(registry, /\.from\("experiments"\)[\s\S]{0,400}\.(insert|update|delete)\([^\n]*supervised/i);
 });
 
-test("#287 Professor supervision remains additive to existing Professor inbox", () => {
+test("#287 Professor capability inbox remains separate from Experiment supervision", () => {
   assert.match(runtimeSpeed, /import\("\.\/professor-inbox\.js"\)/);
-  assert.match(runtimeSpeed, /import\("\.\/professor-supervision\.js"\)/);
-  assert.match(runtimeSpeed, /Professor supervision view failed to load/);
+  assert.doesNotMatch(runtimeSpeed, /professor-supervision/);
 });

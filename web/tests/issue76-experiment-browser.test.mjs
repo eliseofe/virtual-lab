@@ -36,8 +36,8 @@ test("loaded experiment exposes ownership, revision and optional location contex
 test("browser unifies built-in and account-owned experiment sources", async () => {
   const source = await browserSource();
   assert.match(source, /tabs\.hidden = true/);
-  assert.match(source, /browser\.contextTitle\.textContent = "Experiments"/);
-  assert.match(source, /Search the built-in source and all of your runnable experiments in one place/);
+  assert.match(source, /browser\.contextTitle\.textContent = "All available experiments"/);
+  assert.match(source, /Browse built-in, owned/);
   assert.match(source, /builtInResult\(\)/);
   assert.match(source, /experimentGroup\(label, filtered\)/);
   assert.doesNotMatch(source, /Showcase/);
@@ -48,7 +48,7 @@ test("collections remain optional filters rather than navigation prerequisites",
   assert.match(source, /filterButton\("All experiments", "all"\)/);
   assert.match(source, /filterButton\("No collection", "unfiled"\)/);
   assert.match(source, /for \(const collection of collections\) browser\.filters\.append/);
-  assert.match(source, /Collections are optional filters/);
+  assert.match(source, /Collections organize only your own workspace/);
   assert.match(source, /if \(browserSearch\.trim\(\)\) browserCollection = "all"/);
 });
 
