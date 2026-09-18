@@ -17,6 +17,14 @@ The deployed baseline already includes:
 
 These are baseline architecture, not future roadmap items.
 
+## Roadmap state classification
+
+- **Started and unfinished:** #45 Access / sharing / submission / curation / Showcase — substantial foundations exist; concrete product scope remains.
+- **Living / ongoing domains:** #56 Simulator performance, #65 World/environment capabilities, #273 UI/UX refinement — completed slices accumulate as evidence or new capability requests appear; the open parent does not mean abandoned unfinished work.
+- **Foundation built, waiting for a use case:** #124 Artifact capability registry / lifecycle hooks — the architectural seam exists; continue only when a concrete optional executable-artifact use case requires runtime dispatch.
+- **Not started major lanes:** #3 Studies, #202 Code authoring ergonomics, #6 Study results → AI handoff, #119 Research Notes / Research Documents.
+
+
 ## Near term
 
 1. Real student and owner use of the production Lab.

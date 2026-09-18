@@ -57,3 +57,5 @@ Other parked/gated work includes:
 - Raw scientific output remains local-first.
 
 Scientific invariants and owner-authorized scientific definitions are maintained in `docs/SCIENTIFIC_CONTRACT.md` and the relevant technical contract documents, not duplicated here.
+
+For the strategic map of major epics and whether they are unfinished, living, waiting for a use case, or not started, see `ROADMAP.md`.
