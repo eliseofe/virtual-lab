@@ -24,7 +24,7 @@ import {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
-const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/2'
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/3'
 
 type RegistryRole = 'student' | 'professor'
 type RegistryProfile = {
@@ -545,7 +545,119 @@ function registerExperimentTools(
         submission: data,
       })
     },
+
   )
+
+  if (profile.role === 'professor') {
+    server.registerTool(
+      'resume_capability_closure',
+      {
+        title: 'Resume a durable blocked Experiment capability closure',
+        description:
+          'Professor-only research-AI action. Reopen one durable blocked Experiment without relying on chat history. Return the preserved scientific draft/context, the complete ordered closure-analysis history, the latest analysis, and all linked capability requests with their current lifecycle state. Use this before revalidating after deployed capability-contract changes.',
+        inputSchema: {
+          blocked_experiment_id: z.string().uuid(),
+        },
+        annotations: READ_ONLY_ANNOTATIONS,
+      },
+      async ({ blocked_experiment_id }) => {
+        const { data: blockedExperiment, error: draftError } = await supabase
+          .from('blocked_experiment_drafts')
+          .select('*')
+          .eq('id', blocked_experiment_id)
+          .maybeSingle()
+        if (draftError) return toolError('Could not read the blocked Experiment.', draftError.message)
+        if (!blockedExperiment) return toolError('Blocked Experiment was not found or is not visible to this Professor.')
+
+        const { data: analyses, error: analysisError } = await supabase
+          .from('capability_closure_analyses')
+          .select('*')
+          .eq('blocked_experiment_id', blocked_experiment_id)
+          .order('analysis_sequence', { ascending: true })
+        if (analysisError) return toolError('Could not read capability-closure history.', analysisError.message)
+
+        const analysisHistory = analyses ?? []
+        const analysisIds = analysisHistory.map((analysis: { id: string }) => analysis.id)
+        let linkedRequests: unknown[] = []
+        if (analysisIds.length > 0) {
+          const { data: requests, error: requestsError } = await supabase
+            .from('capability_requests')
+            .select('*')
+            .in('closure_analysis_id', analysisIds)
+            .order('created_at', { ascending: true })
+          if (requestsError) return toolError('Could not read linked capability requests.', requestsError.message)
+          linkedRequests = requests ?? []
+        }
+
+        return toolResult({
+          capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
+          blocked_experiment: blockedExperiment,
+          analysis_history: analysisHistory,
+          latest_analysis: analysisHistory.length > 0 ? analysisHistory[analysisHistory.length - 1] : null,
+          linked_requests: linkedRequests,
+          revalidate_with: 'revalidate_capability_closure',
+        })
+      },
+    )
+
+    server.registerTool(
+      'revalidate_capability_closure',
+      {
+        title: 'Revalidate a whole blocked Experiment against the current capability contract',
+        description:
+          'Professor-only research-AI action. After one or more capabilities have been deployed and advertised, re-analyse the entire preserved Experiment against the current contract, not only the capability just implemented. Supply the complete remaining/new unsupported requirements and unresolved scientific ambiguity. The new analysis is appended to the same blocked Experiment. Existing capability-request rows and lifecycle states are preserved; new_requests is only for newly surfaced clear gaps that do not already have a durable request. Use analysis_status=unblocked only when no unsupported semantics and no unresolved scientific ambiguity remain.',
+        inputSchema: {
+          blocked_experiment_id: z.string().uuid(),
+          base_analysis_sequence: z.number().int().positive(),
+          analysis_status: z.enum(['best_effort_complete', 'partial_due_to_ambiguity', 'unblocked']),
+          identified_requirements: z.array(CLOSURE_REQUIREMENT_INPUT).max(100).default([]),
+          unresolved_ambiguities: z.array(CLOSURE_AMBIGUITY_INPUT).max(100).default([]),
+          new_requests: z.array(GROUPED_CAPABILITY_REQUEST_INPUT).max(50).default([]),
+        },
+        annotations: WRITE_ANNOTATIONS,
+      },
+      async ({
+        blocked_experiment_id,
+        base_analysis_sequence,
+        analysis_status,
+        identified_requirements,
+        unresolved_ambiguities,
+        new_requests,
+      }) => {
+        if (
+          analysis_status === 'unblocked'
+          && (identified_requirements.length > 0 || unresolved_ambiguities.length > 0 || new_requests.length > 0)
+        ) {
+          return toolError('Unblocked requires zero unsupported requirements, zero ambiguity, and zero new requests.')
+        }
+        if (analysis_status === 'best_effort_complete' && identified_requirements.length === 0) {
+          return toolError('best_effort_complete revalidation must retain at least one unsupported requirement.')
+        }
+        if (analysis_status === 'partial_due_to_ambiguity' && unresolved_ambiguities.length === 0) {
+          return toolError('partial_due_to_ambiguity requires unresolved scientific ambiguity.')
+        }
+
+        const { data, error } = await supabase.rpc('revalidate_capability_closure', {
+          p_blocked_experiment_id: blocked_experiment_id,
+          p_base_analysis_sequence: base_analysis_sequence,
+          p_contract_version: AUTHORING_CONTRACT.contract_version,
+          p_analysis_status: analysis_status,
+          p_identified_requirements: identified_requirements,
+          p_unresolved_ambiguities: unresolved_ambiguities,
+          p_new_requests: new_requests,
+        })
+
+        if (error) return toolError('Could not revalidate the blocked Experiment capability closure.', error.message)
+
+        return toolResult({
+          capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
+          revalidated_by_role: profile.role,
+          whole_experiment_revalidation: true,
+          revalidation: data,
+        })
+      },
+    )
+  }
 }
 
 const authenticatedMcp = pipeline(
@@ -600,10 +712,10 @@ Deno.serve(async (req: Request) => {
       auth_implementation: 'supabase-jwks-middleware',
       authoring_contract_version: AUTHORING_CONTRACT.contract_version,
       validation_mode: AUTHORING_CONTRACT.validation_mode,
-      tool_count: 7,
+      tool_count: 9,
       shared_tool_count: 7,
       student_tool_count: 7,
-      professor_tool_count: 7,
+      professor_tool_count: 9,
       simulator_access: false,
     })
   }
