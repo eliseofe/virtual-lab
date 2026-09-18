@@ -128,7 +128,8 @@ function simplifyIdentity() {
   const save = document.querySelector(".registry-save-actions .primary");
   const saveAsNew = document.querySelector(".registry-save-actions button:not(.primary)");
   setText(save, "Save");
-  if (locationText === "Student experiment" || locationText === "Shared with me") setText(saveAsNew, "Copy to my Experiments…");
+  if (locationText === "Student experiment") setText(saveAsNew, "Copy to my Experiments…");
+  else if (locationText === "Shared with me") setText(saveAsNew, "Copy to my Experiments…");
   else setText(saveAsNew, "Save as new…");
 }
 
