@@ -38,6 +38,7 @@ let profile = null;
 let remoteExperiments = [];
 let sharedExperiments = [];
 let shareRecipients = [];
+let outgoingShares = [];
 let collections = [];
 let currentRemote = null;
 let currentRemoteAccess = null;
@@ -81,6 +82,9 @@ function installStyles() {
     .registry-share-form { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 7px; align-items: end; }
     .registry-share-field { display: grid; gap: 4px; color: #52656d; font-size: 10.5px; font-weight: 650; }
     .registry-share-form button { min-height: 38px; padding: 7px 10px; }
+    .registry-share-list { display: grid; gap: 6px; }
+    .registry-share-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 8px; border: 1px solid #e0e7ea; border-radius: 8px; color: #52656d; font-size: 10.5px; }
+    .registry-share-item button { min-height: 30px; padding: 4px 8px; font-size: 10.5px; }
 
     .experiment-current { display: grid; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e5ebee; }
     .experiment-current-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -167,16 +171,48 @@ function currentLocationLabel() {
   return currentRemote.collection_id ? `Collection · ${collectionName(currentRemote.collection_id)}` : "No collection";
 }
 
+function currentOutgoingShares() {
+  if (!currentRemote || !user || currentRemote.owner_id !== user.id) return [];
+  return outgoingShares.filter((share) => share.experiment_id === currentRemote.id);
+}
+
+function availableShareRecipients() {
+  const sharedIds = new Set(currentOutgoingShares().map((share) => share.recipient_id));
+  return shareRecipients.filter((recipient) => !sharedIds.has(recipient.id));
+}
+
+function shareRecipientLabel(recipientId) {
+  const recipient = shareRecipients.find((candidate) => candidate.id === recipientId);
+  if (!recipient) return "Researcher";
+  return recipient.display_name?.trim() || recipient.role;
+}
+
 function populateShareRecipientSelect() {
   if (!ui?.shareRecipient) return;
   ui.shareRecipient.replaceChildren();
-  for (const recipient of shareRecipients) {
+  for (const recipient of availableShareRecipients()) {
     const option = document.createElement("option");
     option.value = recipient.id;
     option.textContent = recipient.display_name?.trim()
       ? `${recipient.display_name.trim()} · ${recipient.role}`
       : recipient.role;
     ui.shareRecipient.append(option);
+  }
+}
+
+function renderOutgoingShares() {
+  if (!ui?.shareList) return;
+  ui.shareList.replaceChildren();
+  for (const share of currentOutgoingShares()) {
+    const item = document.createElement("div");
+    item.className = "registry-share-item";
+    const label = document.createElement("span");
+    label.textContent = `Shared read-only with ${shareRecipientLabel(share.recipient_id)}`;
+    const revoke = document.createElement("button");
+    revoke.textContent = "Revoke";
+    revoke.addEventListener("click", () => run(() => revokeCurrentExperimentShare(share.recipient_id)));
+    item.append(label, revoke);
+    ui.shareList.append(item);
   }
 }
 
@@ -311,7 +347,9 @@ function buildAccountPanel() {
   confirmShare.className = "primary";
   confirmShare.textContent = "Share";
   shareForm.append(shareField, cancelShare, confirmShare);
-  shareRow.append(shareOpen, shareForm);
+  const shareList = document.createElement("div");
+  shareList.className = "registry-share-list";
+  shareRow.append(shareOpen, shareForm, shareList);
 
   saveRow.append(saveState, saveActions, moveRow, shareRow);
 
@@ -371,6 +409,7 @@ function buildAccountPanel() {
     shareRecipient,
     cancelShare,
     confirmShare,
+    shareList,
     newForm,
     newTitle,
     newCollection,
@@ -596,9 +635,14 @@ function updateCurrentUi() {
   ui.saveAsNew.hidden = !user;
   ui.save.hidden = !owned;
   ui.createNew.textContent = copyingReadable ? "Copy to my Experiments" : "Create private copy";
-  const canShare = Boolean(owned && shareRecipients.length > 0);
-  ui.shareRow.hidden = !canShare;
-  if (!canShare) ui.shareForm.hidden = true;
+  const availableRecipients = availableShareRecipients();
+  const hasOutgoingShares = currentOutgoingShares().length > 0;
+  const canManageShares = Boolean(owned && (availableRecipients.length > 0 || hasOutgoingShares));
+  ui.shareRow.hidden = !canManageShares;
+  ui.shareOpen.hidden = !owned || availableRecipients.length === 0;
+  if (!owned || availableRecipients.length === 0) ui.shareForm.hidden = true;
+  populateShareRecipientSelect();
+  renderOutgoingShares();
   ui.save.disabled = !owned || !dirty || conflictRevision !== null;
   ui.moveRow.hidden = !owned;
   if (owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
@@ -833,14 +877,26 @@ async function loadShareRecipients() {
     populateShareRecipientSelect();
     return;
   }
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id,display_name,role")
-    .neq("id", user.id)
-    .order("display_name", { ascending: true });
+  const { data, error } = await supabase.rpc("list_experiment_share_recipients");
   if (error) throw error;
   shareRecipients = data ?? [];
   populateShareRecipientSelect();
+}
+
+async function loadOutgoingShares() {
+  if (!user) {
+    outgoingShares = [];
+    renderOutgoingShares();
+    return;
+  }
+  const { data, error } = await supabase
+    .from("experiment_shares")
+    .select("experiment_id,recipient_id,created_at")
+    .eq("shared_by", user.id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  outgoingShares = data ?? [];
+  renderOutgoingShares();
 }
 
 async function loadSharedExperimentList() {
@@ -1062,7 +1118,7 @@ function openShareForm() {
   if (!user || !currentRemote || currentRemote.owner_id !== user.id) {
     throw new Error("Open one of your Experiments before sharing.");
   }
-  if (!shareRecipients.length) throw new Error("No share recipients are available to this account.");
+  if (!availableShareRecipients().length) throw new Error("No additional share recipients are available for this Experiment.");
   populateShareRecipientSelect();
   ui.shareForm.hidden = false;
   ui.shareRecipient.focus();
@@ -1091,11 +1147,32 @@ async function shareCurrentExperiment() {
   if (error?.code === "23505") throw new Error("This Experiment is already shared with that researcher.");
   if (error) throw error;
 
+  await loadOutgoingShares();
   closeShareForm();
+  updateCurrentUi();
   setMessage(
     `${currentRemote.title} is now shared read-only with ${recipient.display_name || recipient.role}.`,
     "success",
   );
+}
+
+async function revokeCurrentExperimentShare(recipientId) {
+  if (!user || !currentRemote || currentRemote.owner_id !== user.id) {
+    throw new Error("Only the Experiment owner can revoke sharing.");
+  }
+  const label = shareRecipientLabel(recipientId);
+  setMessage(`Revoking read-only access for ${label}…`);
+  const { error, count } = await supabase
+    .from("experiment_shares")
+    .delete({ count: "exact" })
+    .eq("experiment_id", currentRemote.id)
+    .eq("recipient_id", recipientId);
+  if (error) throw error;
+  if (count !== 1) throw new Error("The share was not found or could not be revoked.");
+
+  await loadOutgoingShares();
+  updateCurrentUi();
+  setMessage(`${label} no longer has ordinary shared access to ${currentRemote.title}.`, "success");
 }
 
 function defaultCopyTitle() {
@@ -1196,6 +1273,7 @@ function setSignedOutUi() {
   remoteExperiments = [];
   sharedExperiments = [];
   shareRecipients = [];
+  outgoingShares = [];
   collections = [];
   hiddenNonRunnableCount = 0;
   browserSource = "builtin";
@@ -1244,7 +1322,7 @@ async function initializeSession() {
   }
 
   await loadProfile();
-  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients()]);
+  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
   await restoreRememberedWorkspace();
   setSignedInUi();
   renderBrowser();
@@ -1279,7 +1357,7 @@ async function refreshRegistry() {
   const dirty = hasUnsavedRemoteEdits();
   setMessage("Refreshing your library…");
   const previousAccess = currentRemoteAccess;
-  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients()]);
+  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
 
   if (previousRemote) {
     const available = previousAccess === "shared" ? sharedExperiments : remoteExperiments;

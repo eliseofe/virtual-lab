@@ -55,9 +55,19 @@ Authenticated users may read provenance for their own copies but cannot insert/u
 
 ### `experiment_shares`
 
-Explicit read-only grants on mutable working Experiments. Each row identifies one Experiment and one recipient; it does not duplicate Experiment content. RLS permits recipients to discover their own received shares and permits an owner to create a share only for an Experiment they own and an eligible visible registry profile.
+Explicit read-only grants on mutable working Experiments. Each row identifies one Experiment and one recipient; it does not duplicate Experiment content.
 
-The Experiment SELECT policy recognizes these grants, while Experiment UPDATE/DELETE policies remain owner-only. The copy-to-workspace authorization path also recognizes an explicit share so a recipient can fork the exact saved revision into an independent private Experiment.
+RLS permits:
+- recipients to discover their received shares;
+- owners to inspect outgoing shares for Experiments they own;
+- owners to create a share only for an active Experiment they own and an eligible recipient;
+- owners to revoke an ordinary share.
+
+Eligible recipient discovery is exposed through the narrow public `list_experiment_share_recipients` SECURITY INVOKER RPC, backed by private authorization logic. Student/researchers see other Student/researchers as explicit-share candidates; Professors may share with eligible registry researchers. Student → Professor explicit sharing is rejected because Professor supervision already grants that read-only access independently.
+
+The Experiment SELECT policy recognizes active share grants, while Experiment UPDATE/DELETE policies remain owner-only. Deleting a share therefore removes the recipient's ordinary read access to the source without altering any independent copy they already created. The copy-to-workspace authorization path recognizes an explicit share only while that share exists.
+
+Professor supervision is independent of `experiment_shares`: a Professor retains read-only supervision access to Student/researcher Experiments even when no ordinary share exists or after one is revoked. Showcase curation is also a separate publication path.
 
 ### `capability_requests`
 
@@ -73,7 +83,7 @@ RLS is the authoritative database boundary.
 
 - browser/AI clients do not receive `service_role` credentials;
 - private Experiment writes are owner-scoped;
-- explicit share rows and existing supervision/public rules control readable non-owned Experiments;
+- explicit share rows, automatic Professor supervision and public visibility are separate rules controlling readable non-owned Experiments;
 - Results-presentation writes are owner-scoped;
 - Professor-only capability request behavior is enforced by role/domain rules;
 - experiment-domain authentication never grants GitHub, shell, deployment or simulator-source rights.

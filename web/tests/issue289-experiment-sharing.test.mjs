@@ -54,11 +54,11 @@ test("#289 UI separates shared sources from My Experiments and keeps them read-o
   assert.match(management, /locationText === "Shared with me"/);
 });
 
-test("#289 owner can grant a share but this ticket deliberately does not implement revocation", () => {
+test("#289 owner share-grant behavior remains present after successor work", () => {
   assert.match(registry, /Share read-only…/);
   assert.match(registry, /\.from\("experiment_shares"\)[\s\S]*\.insert\(/);
   assert.match(registry, /shared_by: user\.id/);
-  assert.doesNotMatch(registry, /\.from\("experiment_shares"\)[\s\S]{0,300}\.delete\(/);
+  assert.doesNotMatch(migration, /grant (update|delete)[^\n]*experiment_shares/i);
 });
 
 
