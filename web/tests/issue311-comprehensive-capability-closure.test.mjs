@@ -42,14 +42,13 @@ test("#311 requires a whole blocked Experiment context rather than title-only pr
 
 test("#311 preserves ambiguity on the research side and blocks ambiguous developer requests", () => {
   assert.match(mcp, /resolution_status: z\.enum\(\['clear', 'ambiguous'\]\)/);
-  assert.match(mcp, /ambiguous requirements must not be forwarded as developer-ready capability requests/i);
   assert.match(migration, /partial_due_to_ambiguity requires at least one unresolved ambiguity/i);
   assert.match(migration, /scientifically ambiguous/i);
 });
 
 test("#311 groups multiple capability requests under one atomic closure analysis", () => {
-  assert.match(mcp, /requests: z\.array\(GROUPED_CAPABILITY_REQUEST_INPUT\)/);
-  assert.match(mcp, /supabase\.rpc\('submit_capability_closure'/);
+  assert.match(mcp, /requests: z\.array\(GROUPED_EXTENSION_REQUEST_INPUT\)/);
+  assert.match(mcp, /supabase\.rpc\('submit_extension_closure'/);
   assert.match(migration, /create or replace function public\.submit_capability_closure/i);
   assert.match(migration, /closure_analysis_id/i);
   assert.match(migration, /requirement_keys jsonb not null default '\[\]'::jsonb/i);

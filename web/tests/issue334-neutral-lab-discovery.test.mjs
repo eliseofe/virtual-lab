@@ -54,8 +54,8 @@ test("#334 canonical registry is global authenticated Lab knowledge with no anon
   assert.doesNotMatch(migration, /auth\.uid|requester_id/);
 });
 
-test("#334 changes the MCP interface but not capability-request interface", () => {
-  assert.match(version, /MCP_SERVER_VERSION = '3\.3\.0'/);
-  assert.match(version, /MCP_INTERFACE_VERSION = '11'/);
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
+test("#334 neutral discovery survives later MCP/request-interface evolution", () => {
+  assert.match(version, /MCP_SERVER_VERSION = '3\.4\.0'/);
+  assert.match(version, /MCP_INTERFACE_VERSION = '12'/);
+  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/4'/);
 });

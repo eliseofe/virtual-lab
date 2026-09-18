@@ -24,7 +24,7 @@ import {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
-const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/3'
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/4'
 
 type RegistryRole = 'student' | 'professor'
 type RegistryProfile = {
@@ -77,9 +77,25 @@ const CLOSURE_AMBIGUITY_INPUT = z.object({
   evidence: z.string().max(12000).default(''),
 })
 
-const GROUPED_CAPABILITY_REQUEST_INPUT = z.object({
-  capability_domain: z.string().min(1).max(200),
-  capability_name: z.string().min(1).max(300),
+const EXTENSION_REQUEST_CLASSES = [
+  'semantic_capability',
+  'authoring_language',
+  'runtime_configuration',
+  'artifact_workflow',
+  'implementation_optimization',
+  'security_boundary',
+] as const
+
+const EXTENSION_REQUEST_CLASS = z.enum(EXTENSION_REQUEST_CLASSES)
+
+const GROUPED_EXTENSION_REQUEST_INPUT = z.object({
+  request_class: EXTENSION_REQUEST_CLASS,
+  extension_key: z.string().min(1).max(240),
+  extension_domain: z.string().min(1).max(200),
+  extension_name: z.string().min(1).max(300),
+  extension_definition: z.string().min(1).max(6000),
+  canonical_capability_id: z.string().uuid().optional(),
+  existing_request_id: z.string().uuid().optional(),
   requirement_keys: z.array(z.string().min(1).max(120)).min(1).max(50),
   context: z.string().max(20000).default(''),
   requested_artifact_type: z.string().min(1).max(200).optional(),
@@ -116,10 +132,14 @@ function unsupportedCapabilityBehavior(role: RegistryRole) {
     requestable: true,
     action: 'request_capability',
     capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
+    request_classes: EXTENSION_REQUEST_CLASSES,
+    canonical_registry_first: true,
     preserve_draft: true,
+    preserve_publication_identity: true,
     comprehensive_analysis_required: true,
     submitter_role: role,
     triage_authority: 'professor',
+    automatic_rejection_classes: [],
   }
 }
 
@@ -499,30 +519,37 @@ function registerExperimentTools(
   server.registerTool(
     'request_capability',
     {
-      title: 'Submit missing Virtual Lab capabilities for a blocked Experiment',
+      title: 'Submit unsupported Virtual Lab requirements for a blocked Experiment',
       description:
-        'Student/Professor research-AI action. Use only after analysing the whole intended Experiment against the active Virtual Lab contract. Preserve a resumable blocked draft plus all scientifically meaningful unsupported requirements found in this pass. Repeated submissions for the same blocked Experiment converge on the same durable blocked Experiment and accumulate the initial closure analysis. Matching existing nonterminal capability requests are reconciled into that closure while preserving their current lifecycle state. Do not stop at the first parser/compiler diagnostic. Group low-level diagnostics into meaningful capability requests. Mark scientifically unresolved requirements as ambiguous and preserve the question/evidence; ambiguous requirements must not be forwarded as developer-ready capability requests. Submission enters the Professor triage queue and grants no development authority.',
+        'Student/Professor research-AI action. Analyse the whole intended Experiment against the current canonical capability registry and formal Lab contract before submitting. Classify each clear unsupported requirement as semantic_capability, authoring_language, runtime_configuration, artifact_workflow, implementation_optimization, or security_boundary. All six classes may reach Professor triage; none is automatically rejected. For semantic_capability, reference canonical_capability_id when a matching non-implemented canonical capability already exists; otherwise submit a generic proposed target without pretending it is canonical truth. Preserve minimal publication title+identifier separately from scientific reasoning. Reconcile an already-created request only by its explicit existing_request_id, never by free-text name/domain matching. Submission grants no development authority.',
       inputSchema: {
+        blocked_experiment_id: z.string().uuid().optional(),
         origin_experiment_id: z.string().uuid().optional(),
         origin_revision: z.number().int().positive().optional(),
         draft_title: z.string().min(1).max(300).optional(),
         draft_description: z.string().max(20000).optional(),
         draft_artifacts: z.array(ARTIFACT_INPUT).optional(),
         source_context: z.string().max(40000).default(''),
+        publication: z.object({
+          identifier: z.string().min(1).max(500),
+          title: z.string().min(1).max(2000),
+        }),
         analysis_status: z.enum(['best_effort_complete', 'partial_due_to_ambiguity']),
         identified_requirements: z.array(CLOSURE_REQUIREMENT_INPUT).min(1).max(100),
         unresolved_ambiguities: z.array(CLOSURE_AMBIGUITY_INPUT).max(100).default([]),
-        requests: z.array(GROUPED_CAPABILITY_REQUEST_INPUT).max(50).default([]),
+        requests: z.array(GROUPED_EXTENSION_REQUEST_INPUT).max(50).default([]),
       },
       annotations: WRITE_ANNOTATIONS,
     },
     async ({
+      blocked_experiment_id,
       origin_experiment_id,
       origin_revision,
       draft_title,
       draft_description,
       draft_artifacts,
       source_context,
+      publication,
       analysis_status,
       identified_requirements,
       unresolved_ambiguities,
@@ -533,7 +560,8 @@ function registerExperimentTools(
       }
 
       if (
-        origin_experiment_id === undefined
+        blocked_experiment_id === undefined
+        && origin_experiment_id === undefined
         && draft_artifacts === undefined
         && !(draft_description?.trim())
         && !(source_context?.trim())
@@ -543,13 +571,16 @@ function registerExperimentTools(
         )
       }
 
-      const { data, error } = await supabase.rpc('submit_capability_closure', {
+      const { data, error } = await supabase.rpc('submit_extension_closure', {
+        p_blocked_experiment_id: blocked_experiment_id ?? null,
         p_origin_experiment_id: origin_experiment_id ?? null,
         p_origin_experiment_revision: origin_revision ?? null,
         p_draft_title: draft_title ?? null,
         p_draft_description: draft_description ?? null,
         p_draft_artifacts: draft_artifacts ?? null,
         p_source_context: source_context,
+        p_publication_identifier: publication.identifier,
+        p_publication_title: publication.title,
         p_contract_version: AUTHORING_CONTRACT.contract_version,
         p_analysis_status: analysis_status,
         p_identified_requirements: identified_requirements,
@@ -557,16 +588,17 @@ function registerExperimentTools(
         p_requests: requests,
       })
 
-      if (error) return toolError('Could not submit the blocked Experiment capability analysis.', error.message)
+      if (error) return toolError('Could not submit the blocked Experiment extension analysis.', error.message)
 
       return toolResult({
         capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
+        request_classes: EXTENSION_REQUEST_CLASSES,
         submitter_role: profile.role,
         triage_authority: 'professor',
+        implementation_authority: 'owner_explicit_only',
         submission: data,
       })
     },
-
   )
 
   if (profile.role === 'professor') {
@@ -575,7 +607,7 @@ function registerExperimentTools(
       {
         title: 'Resume a durable blocked Experiment capability closure',
         description:
-          'Professor-only research-AI action. Reopen one durable blocked Experiment without relying on chat history. Return the preserved scientific draft/context, the complete ordered closure-analysis history, the latest analysis, and all linked capability requests with their current lifecycle state. Use this before revalidating after deployed capability-contract changes.',
+          'Professor-only research-AI action. Reopen one durable blocked Experiment without relying on chat history. Return the preserved publication identity, scientific draft/context, complete ordered closure-analysis history, and linked classified extension requests with their lifecycle and canonical-capability bindings. Use this before whole-Experiment revalidation.',
         inputSchema: {
           blocked_experiment_id: z.string().uuid(),
         },
@@ -626,14 +658,14 @@ function registerExperimentTools(
       {
         title: 'Revalidate a whole blocked Experiment against the current capability contract',
         description:
-          'Professor-only research-AI action. After one or more capabilities have been deployed and advertised, re-analyse the entire preserved Experiment against the current contract, not only the capability just implemented. Supply the complete remaining/new unsupported requirements and unresolved scientific ambiguity. The new analysis is appended to the same blocked Experiment. Existing capability-request rows and lifecycle states are preserved; new_requests is only for newly surfaced clear gaps that do not already have a durable request. Use analysis_status=unblocked only when no unsupported semantics and no unresolved scientific ambiguity remain.',
+          'Professor-only research-AI action. Re-analyse the entire preserved Experiment against the current canonical capability registry and formal Lab contract. Preserve classified requirements across all six request classes. Reuse an existing request only by explicit existing_request_id; otherwise create a new request record, allowing multiple papers/requests to converge later on one canonical semantic capability. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
         inputSchema: {
           blocked_experiment_id: z.string().uuid(),
           base_analysis_sequence: z.number().int().positive(),
           analysis_status: z.enum(['best_effort_complete', 'partial_due_to_ambiguity', 'unblocked']),
           identified_requirements: z.array(CLOSURE_REQUIREMENT_INPUT).max(100).default([]),
           unresolved_ambiguities: z.array(CLOSURE_AMBIGUITY_INPUT).max(100).default([]),
-          new_requests: z.array(GROUPED_CAPABILITY_REQUEST_INPUT).max(50).default([]),
+          new_requests: z.array(GROUPED_EXTENSION_REQUEST_INPUT).max(50).default([]),
         },
         annotations: WRITE_ANNOTATIONS,
       },
@@ -658,7 +690,7 @@ function registerExperimentTools(
           return toolError('partial_due_to_ambiguity requires unresolved scientific ambiguity.')
         }
 
-        const { data, error } = await supabase.rpc('revalidate_capability_closure', {
+        const { data, error } = await supabase.rpc('revalidate_extension_closure', {
           p_blocked_experiment_id: blocked_experiment_id,
           p_base_analysis_sequence: base_analysis_sequence,
           p_contract_version: AUTHORING_CONTRACT.contract_version,
@@ -668,7 +700,7 @@ function registerExperimentTools(
           p_new_requests: new_requests,
         })
 
-        if (error) return toolError('Could not revalidate the blocked Experiment capability closure.', error.message)
+        if (error) return toolError('Could not revalidate the blocked Experiment extension closure.', error.message)
 
         return toolResult({
           capability_request_interface: CAPABILITY_REQUEST_INTERFACE,

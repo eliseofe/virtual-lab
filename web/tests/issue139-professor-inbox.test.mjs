@@ -29,13 +29,14 @@ test("#139 Professor inbox RLS exposes triage only to Professor", () => {
   assert.doesNotMatch(migration, /grant update on table public\.capability_requests to authenticated/i);
 });
 
-test("#139 Lab inbox is Professor-only and writes only triage fields", () => {
+test("#139 Lab inbox remains Professor-only while later triage moves behind the typed RPC", () => {
   assert.match(inbox, /select\("id, display_name, role"\)/);
   assert.match(inbox, /profile\?\.role === "professor"/);
   assert.match(inbox, /ui\.panel\.hidden = !isProfessor/);
   assert.match(inbox, /\.from\("capability_requests"\)/);
-  assert.match(inbox, /status,\s*professor_notes: note\.trim\(\) \|\| null/);
-  assert.match(inbox, /\.eq\("status", "requested"\)/);
+  assert.match(inbox, /triage_extension_request/);
+  assert.match(inbox, /p_decision: status/);
+  assert.match(inbox, /p_professor_notes: note\.trim\(\) \|\| null/);
   assert.match(inbox, /approve\.textContent = "Approve"/);
   assert.match(inbox, /decline\.textContent = "Decline"/);
   assert.doesNotMatch(inbox, /github\.com|github_issue_url|github_pr_url|service_role|deploy/i);

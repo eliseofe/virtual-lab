@@ -1,6 +1,6 @@
 # Developer capability-request handoff
 
-Status: **trusted development boundary, updated 16 September 2026**.
+Status: **trusted development boundary, updated 18 September 2026**.
 
 This is the bridge between a Professor-approved capability request and normal Virtual Lab GitHub engineering. It is intentionally outside the Experiment MCP and Professor browser.
 
@@ -72,11 +72,13 @@ No GitHub implementation issue and no `in_progress` transition is required merel
 
 ### Implementation handoff procedure — only after explicit owner approval
 
-1. Confirm the exact request ID and the owner's explicit approval of the implementation/design.
+For semantic-capability work, engineering is anchored to the canonical capability UUID, not to one paper/request row. One canonical implementation issue may satisfy multiple approved requests that reference that capability. Non-semantic extension classes remain request-level engineering work.
+
+1. Confirm the exact canonical capability ID (semantic work) or request ID (non-semantic work) and the owner's explicit approval of the implementation/design.
 2. Search `eliseofe/virtual-lab` GitHub issues for the exact capability request UUID to avoid duplicates.
-3. Reuse an existing correct implementation issue if present; otherwise create one concise engineering issue containing the stable request UUID and non-sensitive technical scope.
-4. Call the trusted developer claim operation to link that issue and transition `approved -> in_progress`.
-5. Verify the returned request row has the expected GitHub issue identity and development-start metadata.
+3. Reuse an existing correct implementation issue if present; otherwise create one concise engineering issue containing the stable canonical capability UUID (or non-semantic request UUID) and non-sensitive technical scope.
+4. For semantic work, call the trusted canonical-capability claim operation. It anchors the issue on the canonical capability and moves all currently approved linked request rows to `in_progress`. For classes 2–6, use the request-level claim operation.
+5. Verify the returned canonical capability/request rows have the expected GitHub issue identity and development-start metadata.
 6. Implement only the authorized capability scope as a substantial engineering ticket under `DEVELOPMENT_WORKFLOW.md`.
 7. Test/deploy/verify the actual capability and confirm that the active authoring/runtime contract advertises it.
 8. Only then mark the request `implemented` and record the implemented capability/contract version.

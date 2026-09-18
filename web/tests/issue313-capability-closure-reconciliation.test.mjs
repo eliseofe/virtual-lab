@@ -54,11 +54,11 @@ test("#313 reconciliation helper is private, caller-owned and schema-pinned", ()
   assert.match(migration, /grant execute on function private\.reconcile_capability_request[\s\S]*to authenticated/);
 });
 
-test("#313 keeps the capability request interface stable across later MCP evolution", () => {
+test("#313 historical reconciliation remains recorded while the current protocol uses stable typed identity", () => {
   const interfaceVersion = Number(tools.match(/MCP_INTERFACE_VERSION = '([0-9]+)'/)?.[1] ?? 0);
   assert.ok(interfaceVersion >= 10);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
-  assert.match(mcp, /converge on the same durable blocked Experiment/i);
-  assert.match(mcp, /preserving (?:its|their) current lifecycle state/i);
+  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/4'/);
+  assert.match(mcp, /existing_request_id/);
+  assert.match(mcp, /never by free-text name\/domain matching/i);
 });

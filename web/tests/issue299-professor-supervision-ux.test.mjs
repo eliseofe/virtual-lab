@@ -37,7 +37,7 @@ test("#299 preserves supervised Experiment continuity across reload and refresh"
 test("#299 removes the duplicate supervision modal and separates Account from Professor administration", () => {
   assert.doesNotMatch(runtimeSpeed, /professor-supervision/);
   assert.match(runtimeSpeed, /professor-inbox/);
-  assert.match(professorInbox, /Capability requests/);
+  assert.match(professorInbox, /Extension requests/);
   assert.doesNotMatch(professorInbox, /Student experiments/);
   assert.match(workspaceShell, /utilityTarget === "professor" \? "Professor tools" : "Account"/);
   assert.match(workspaceShell, /accountPanel\.style\.display = utilityTarget === "account"/);

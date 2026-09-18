@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Canonical capability registry established",
-  "owner_impact": "Virtual Lab now has a true canonical semantic-capability registry independent of capability-request history. It contains the 11 owner-approved implemented capabilities from #344, each with normalized published-paper provenance. Existing simulator behavior, authoring syntax, request workflow and current neutral MCP discovery are unchanged in this ticket.",
+  "outcome": "Typed extension-request workflow bound to canonical capability identity",
+  "owner_impact": "Student and Professor research AI can now submit unsupported requirements under the six owner-approved classes with minimal publication identity. All six classes remain Professor-visible and none is automatically rejected. Semantic approvals bind or create canonical capability identity; multiple requests/papers can converge on one canonical capability without using free-text labels as identity. Professor approval still does not authorize implementation.",
   "next": {
     "kind": "epic_continues",
-    "issue": 346,
-    "text": "#346 is the known successor. It will refactor capability requests and closure state to reference canonical/proposed capability identity and preserve all six owner-approved request classes. #346 has not started in this owner turn."
+    "issue": 347,
+    "text": "#347 is the known successor. It will refactor authoring-contract capability ownership and diagnostic classification without changing simulator behavior or authoring syntax. #347 has not started in this owner turn."
   },
   "technical_evidence": [
-    "PR #349 merged as 9d4e55c1efc1fadc7904be549085da8e49213c1d; migration canonical_capability_registry_v1 applied successfully in production.",
-    "Production canonical_capabilities contains exactly 11 rows, all implemented; the clean registry contains no pending RNG, heterogeneous-state, wall, ground or site capability rows.",
-    "Normalized capability_publication_provenance contains 18 edges across four publications; every canonical capability has at least one provenance edge and one capability can carry multiple publications.",
-    "Authenticated users can SELECT both registry tables and execute list_canonical_capability_registry(); anon cannot. The new RPC is SECURITY INVOKER and RLS-backed.",
-    "Legacy capability_requests remains untouched with three rows; the old request-derived neutral-discovery path is intentionally not cut over in #345.",
-    "Supabase security/performance advisor output introduced no new findings from #345; the reported warnings are pre-existing project findings."
+    "MCP request interface is vlab.capability-request/4; MCP interface is 12 and server version is 3.4.0.",
+    "Request identity is explicit: canonical_capability_id for known semantic targets, existing_request_id for exact request reconciliation, and a proposed generic target only when no canonical semantic capability exists.",
+    "All six request classes are accepted into Professor triage, including implementation/optimization and security-boundary requests; no automatic rejection class exists.",
+    "Publication title + persistent identifier are stored separately from request reasoning and attach duplicate-safely to canonical semantic capability provenance after Professor approval.",
+    "Semantic developer handoff is anchored to canonical capability identity so one engineering issue may advance multiple approved request rows; owner implementation authorization remains outside the research-AI/browser path.",
+    "No simulator/kernel/physics/compiler behavior or Configuration/Initialization/Controller/Metrics syntax was changed."
   ],
-  "close_issue": 345
+  "close_issue": 346
 }
