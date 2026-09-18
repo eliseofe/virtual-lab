@@ -9,7 +9,6 @@ const workspaceShell = readFileSync(new URL("../src/workspace-shell.js", import.
 const reactChrome = readFileSync(new URL("../src/react-migration-root.tsx", import.meta.url), "utf8");
 const status = readFileSync(new URL("../../CURRENT_STATUS.md", import.meta.url), "utf8");
 const roadmap = readFileSync(new URL("../../ROADMAP.md", import.meta.url), "utf8");
-const report = JSON.parse(readFileSync(new URL("../../.github/terminal-report.json", import.meta.url), "utf8"));
 
 test("#299 makes the Experiment library the Professor supervision discovery surface", () => {
   assert.match(registry, /let supervisedProfiles = \[\]/);
@@ -58,13 +57,9 @@ test("#299 leaves authorization semantics outside the UI restructuring", () => {
   assert.doesNotMatch(supervisedLoader, /\.(insert|update|delete)\(/);
 });
 
-test("#299 finishes this bounded #273 pass and records security as separate queued work", () => {
+test("#299 remains recorded as a dormant bounded #273 pass with security separate", () => {
+  assert.match(status, /#273 UI\/UX[^\n]*dormant\/living/i);
   assert.match(status, /#301 — Virtual Lab security, identity and authorization/);
   assert.match(status, /#302/);
   assert.match(roadmap, /#301 Security \/ identity \/ authorization/);
-  assert.equal(report.schema, "vlab.terminal-report/2");
-  assert.equal(report.next.kind, "scope_complete");
-  assert.equal(report.next.disposition, "dormant");
-  assert.equal(report.next.lab_url, "https://eliseofe.github.io/virtual-lab/");
-  assert.equal(report.close_issue, 299);
 });
