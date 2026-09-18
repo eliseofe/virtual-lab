@@ -36,7 +36,7 @@ test("owner notification is success-only and occurs after deployed smoke", () =>
   assert.match(workflow, /head_commit\.message/);
   assert.match(workflow, /change_summary/);
   assert.match(workflow, /Now live in production:/);
-  assert.match(workflow, /No owner action is required for this deployment/);
+  assert.match(workflow, /Nothing\. This change is complete\./);
   assert.match(workflow, /Verification: build, Pages deployment, exact-candidate propagation, and deployed-surface smoke all passed/);
   assert.doesNotMatch(workflow, /unless this success report explicitly says otherwise/);
 });
