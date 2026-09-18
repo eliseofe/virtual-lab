@@ -31,15 +31,15 @@ test("#346 exposes the owner-approved six-class request taxonomy without automat
     assert.equal(mcp.includes(value), true, "MCP missing request class " + value);
     assert.equal(inbox.includes(value), true, "Professor inbox missing request class " + value);
   }
-  assert.match(mcp, /automatic_rejection_classes: \\[\\]/);
+  assert.match(mcp, /automatic_rejection_classes: \[\]/);
   assert.doesNotMatch(migration, /request_class in .*declined/i);
 });
 
 test("#346 keeps requests separate from canonical capability identity", () => {
-  assert.match(migration, /canonical_capability_id uuid[\\s\\S]*references public\.canonical_capabilities\\(id\\)/i);
+  assert.match(migration, /canonical_capability_id uuid[\s\S]*references public\.canonical_capabilities\(id\)/i);
   assert.match(migration, /request_class = 'semantic_capability'/);
   assert.match(migration, /Only semantic-capability requests may reference canonical capability identity/i);
-  assert.match(migration, /implementation_state,[\\s\\S]*'not_implemented'/i);
+  assert.match(migration, /implementation_state,[\s\S]*'not_implemented'/i);
   assert.match(migration, /triage_extension_request/i);
   assert.match(migration, /Approved semantic-capability requests must be bound to canonical capability identity/i);
 });
