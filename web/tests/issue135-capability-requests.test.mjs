@@ -71,7 +71,7 @@ test("#135 request action preserves origin or draft without validating unsupport
 });
 
 test("#135 MCP interface advertises role-dependent capability requests without simulator access", () => {
-  assert.match(metricsResults, /MCP_SERVER_VERSION = '3\.0\.0'/);
+  assert.match(metricsResults, /MCP_SERVER_VERSION = '3\\.0\\.\\d+'/);
   assert.match(metricsResults, /MCP_INTERFACE_VERSION = '8'/);
   assert.match(mcp, /capability_request_interface: CAPABILITY_REQUEST_INTERFACE/);
   assert.match(mcp, /shared_tool_count: 6/);
