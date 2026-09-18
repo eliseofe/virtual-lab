@@ -1,50 +1,8 @@
-import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { createSmokeSession } from "./smoke-browser-harness.mjs";
 
 const url = process.argv[2] ?? "http://127.0.0.1:4173/";
-const chrome = process.env.CHROME_BIN ?? "google-chrome";
-const profile = `/tmp/vlab-result-persistence-chrome-${process.pid}`;
-const child = spawn(chrome, [
-  "--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--window-size=1280,900",
-  "--remote-debugging-address=127.0.0.1", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank",
-], { stdio: ["ignore", "ignore", "pipe"] });
-let chromeLog = "";
-child.stderr.on("data", (chunk) => { chromeLog += chunk.toString(); });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function waitForPort() {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    if (child.exitCode !== null) throw new Error(`Chrome exited before DevTools started (${child.exitCode})`);
-    try {
-      const text = await readFile(`${profile}/DevToolsActivePort`, "utf8");
-      const port = Number(text.split(/\r?\n/)[0]);
-      if (Number.isInteger(port) && port > 0) return port;
-    } catch {}
-    await sleep(100);
-  }
-  throw new Error("Chrome did not publish DevToolsActivePort");
-}
-async function httpJson(port, path) { const r = await fetch(`http://127.0.0.1:${port}${path}`); if (!r.ok) throw new Error(`DevTools HTTP ${r.status}`); return r.json(); }
-async function waitForTarget(port) {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    const targets = await httpJson(port, "/json/list").catch(() => []);
-    const target = targets.find((entry) => entry.type === "page");
-    if (target?.webSocketDebuggerUrl) return target.webSocketDebuggerUrl;
-    await sleep(100);
-  }
-  throw new Error("Chrome page target did not appear");
-}
-function connect(wsUrl) {
-  const socket = new WebSocket(wsUrl); let nextId = 1; const pending = new Map(); const exceptions = [];
-  socket.addEventListener("message", (event) => {
-    const message = JSON.parse(event.data);
-    if (message.id && pending.has(message.id)) { const { resolve, reject } = pending.get(message.id); pending.delete(message.id); if (message.error) reject(new Error(message.error.message)); else resolve(message.result); }
-    else if (message.method === "Runtime.exceptionThrown") exceptions.push(message.params?.exceptionDetails?.exception?.description ?? message.params?.exceptionDetails?.text ?? "JavaScript exception");
-  });
-  const ready = new Promise((resolve, reject) => { socket.addEventListener("open", resolve, { once: true }); socket.addEventListener("error", reject, { once: true }); });
-  const send = async (method, params = {}) => { await ready; const id = nextId++; const promise = new Promise((resolve, reject) => pending.set(id, { resolve, reject })); socket.send(JSON.stringify({ id, method, params })); return promise; };
-  return { socket, send, exceptions };
-}
 async function evaluate(send, expression) {
   const response = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
   if (response?.exceptionDetails) throw new Error(response.exceptionDetails.text || "Runtime evaluation failed");
@@ -131,9 +89,10 @@ function experimentTree(fs) {
   return { name: names[0], tree: fs[names[0]] };
 }
 
+let session;
 let cdp;
 try {
-  const port = await waitForPort(); cdp = connect(await waitForTarget(port));
+  session = await createSmokeSession({ url, initialUrl: "about:blank" }); cdp = session.cdp;
   await cdp.send("Runtime.enable"); await cdp.send("Page.enable");
   await cdp.send("Page.addScriptToEvaluateOnNewDocument", { source: fakeFsScript });
   await cdp.send("Page.navigate", { url });
@@ -177,5 +136,5 @@ try {
   console.log(JSON.stringify({ first: first.persistence, second: second.persistence, experimentDirectory: secondExp.name, files: secondNames }, null, 2));
   console.log("Single-run Results persistence verified: selected root, flat per-metric CSV files, incremental run numbers, hidden bookkeeping, async flush timing, and no per-run directories.");
 } catch (error) {
-  console.error(error instanceof Error ? error.stack : String(error)); if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions); if (chromeLog.trim()) console.error("Chrome stderr:\n" + chromeLog); process.exitCode = 1;
-} finally { try { cdp?.socket?.close(); } catch {} child.kill("SIGTERM"); }
+  console.error(error instanceof Error ? error.stack : String(error)); if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions); if (session?.getChromeLog()?.trim()) console.error("Chrome stderr:\n" + session.getChromeLog()); process.exitCode = 1;
+} finally { try { await session?.close(); } catch {} }
