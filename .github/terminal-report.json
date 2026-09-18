@@ -1,17 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Neutral research-AI Lab discovery",
-  "owner_impact": "A fresh research-AI session now starts from formal Virtual Lab truth rather than automatic scientific workspace/history. Neutral read_workspace discovery returns the full current authoring/runtime contract plus the global canonical capability registry. Experiment discovery remains available only when explicitly requested, and explicit Experiment reads still obey existing RLS. Historical Grok request reasoning, Professor/developer notes, Experiment descriptions and other prior scientific discourse are not part of neutral discovery.",
+  "outcome": "Canonical capability registry established",
+  "owner_impact": "Virtual Lab now has a true canonical semantic-capability registry independent of capability-request history. It contains the 11 owner-approved implemented capabilities from #344, each with normalized published-paper provenance. Existing simulator behavior, authoring syntax, request workflow and current neutral MCP discovery are unchanged in this ticket.",
   "next": {
     "kind": "epic_continues",
-    "issue": 335,
-    "text": "#335 is the known successor. It will audit the exact deployed MCP from a fresh-session viewpoint and record exactly what scientific and capability information a new research AI can see. #335 has not started in this owner turn."
+    "issue": 346,
+    "text": "#346 is the known successor. It will refactor capability requests and closure state to reference canonical/proposed capability identity and preserve all six owner-approved request classes. #346 has not started in this owner turn."
   },
   "technical_evidence": [
-    "MCP interface 11 makes neutral no-ID discovery explicit; capability-request interface vlab.capability-request/3 is unchanged.",
-    "Global authenticated canonical capability reads use a narrow SECURITY DEFINER RPC returning only canonical identity/definition/lifecycle/implementation fields and minimal publication provenance.",
-    "Default neutral discovery returns before any Experiment/collection query; include_workspace_index=true is required for RLS-governed workspace listing.",
-    "Explicit Experiment reads continue through the existing authenticated RLS client and retain complete selected workspace content.",
-    "Regression tests cover the neutral boundary, global capability memory, explicit workspace opt-in, historical-field exclusion and interface versioning."
-  ]
+    "PR #349 merged as 9d4e55c1efc1fadc7904be549085da8e49213c1d; migration canonical_capability_registry_v1 applied successfully in production.",
+    "Production canonical_capabilities contains exactly 11 rows, all implemented; the clean registry contains no pending RNG, heterogeneous-state, wall, ground or site capability rows.",
+    "Normalized capability_publication_provenance contains 18 edges across four publications; every canonical capability has at least one provenance edge and one capability can carry multiple publications.",
+    "Authenticated users can SELECT both registry tables and execute list_canonical_capability_registry(); anon cannot. The new RPC is SECURITY INVOKER and RLS-backed.",
+    "Legacy capability_requests remains untouched with three rows; the old request-derived neutral-discovery path is intentionally not cut over in #345.",
+    "Supabase security/performance advisor output introduced no new findings from #345; the reported warnings are pre-existing project findings."
+  ],
+  "close_issue": 345
 }
