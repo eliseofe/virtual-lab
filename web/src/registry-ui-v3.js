@@ -787,6 +787,17 @@ async function readExperiment(id) {
   if (!productionExperimentRunnability(data).runnable) throw new Error("This experiment cannot run in the current simulator version.");
   return data;
 }
+async function waitForSimulatorReady() {
+  const deadline = performance.now() + 15000;
+  while (applySetup.disabled && performance.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+  if (applySetup.disabled) throw new Error("Simulator is not ready yet.");
+}
+
+async function applyLoadedSources() {
+  await waitForSimulatorReady();
+  applySetup.click();
+}
+
 async function confirmDiscardIfNeeded() {
   if (!hasUnsavedRemoteEdits()) return true;
   return window.confirm("Discard the unsaved changes to the current experiment?");
