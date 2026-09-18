@@ -47,7 +47,7 @@ Issue #310 adds the durable domain foundation used by the repaired closed loop:
 - `capability_closure_analyses` stores append-only analyses against a specific capability-contract version, including identified requirements and unresolved scientific ambiguity;
 - individual capability requests may link to the closure analysis that identified them.
 
-This schema foundation is secure-by-default. #311 adopts it in the authenticated research-AI MCP for both Student and Professor submission; #312 adds resume/revalidation; the original aggregation workflow is live-tested with Grok in #313.
+This schema foundation is secure-by-default. #311 adopts it in the authenticated research-AI MCP for both Student and Professor submission. #312 adds Professor-only `resume_capability_closure` and `revalidate_capability_closure`: the first reconstructs the durable draft, analysis history and linked request lifecycle without chat history; the second appends a new whole-Experiment analysis against the current contract, preserves earlier analyses and request rows, records resolved/remaining/new requirement keys, and permits `unblocked` only when no unsupported requirement or scientific ambiguity remains. The original aggregation workflow is live-tested with Grok in #313.
 
 The two already-approved aggregation requests remain unchanged and unlinked during #310. They are reconciled only after the repaired flow exists.
 
@@ -100,7 +100,7 @@ This UI remains an Experiment/product administration surface. It does not embed 
 
 ## Research-AI request action — deployed
 
-Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/2`.
+Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/3`.
 
 The active authoring contract signals requestable unsupported-capability behavior for both roles. Before submission, the research AI performs a best-effort whole-Experiment analysis, groups low-level diagnostics into meaningful capability requests, and preserves explicit ambiguity instead of asking the developer layer to infer scientific meaning.
 
@@ -169,6 +169,6 @@ Current intended loop:
 8. Approved request waits for developer design + explicit owner implementation authorization.
 9. Trusted developer implements/deploys if authorized.
 10. Deployed versioned contract advertises the capability; request is marked implemented.
-11. Research AI revalidates/completes the originating Experiment.
+11. Professor-connected research AI resumes the same durable blocked Experiment and revalidates the whole Experiment against the current deployed contract; existing request lifecycle state is retained, newly discovered clear gaps may create new requests, and the Experiment becomes unblocked only when no gaps or unresolved ambiguity remain.
 
 This lets real papers expose simulator gaps without giving research AI development privileges, blocking Student requests, or encouraging paper-specific hacks.

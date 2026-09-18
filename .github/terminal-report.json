@@ -1,15 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Align #311 migration history with deployed Supabase state",
-  "owner_impact": "No Virtual Lab runtime behavior changed. The repository migration filename now matches the already-applied Supabase migration version for #311, keeping Git and production database history consistent.",
+  "outcome": "Add durable Professor resume and whole-Experiment capability revalidation",
+  "owner_impact": "A Professor-connected research AI can now reopen the same blocked scientific Experiment in a later session, recover its complete closure history and linked request states, and append a fresh whole-Experiment revalidation after capability deployments. Resolved gaps are removed only from the latest analysis, remaining/new gaps stay durable, existing approved/in-progress/implemented request rows are not rewritten, and the Experiment cannot be declared unblocked while any unsupported requirement or scientific ambiguity remains. Ordinary Student authoring and capability-request submission remain unchanged.",
   "next": {
     "kind": "epic_continues",
-    "issue": 312,
-    "text": "#312 remains the known successor. It will add resume and whole-Experiment revalidation after capability deployment. It has not started."
+    "issue": 313,
+    "text": "#313 is the known successor. It will return the original aggregation-paper workflow to Grok and live-test the repaired closed loop across sessions. It has not started."
   },
   "technical_evidence": [
-    "Supabase already records capability_closure_submission as migration version 20260918130234.",
-    "Repository migration and #311 contract test now use the same 20260918130234 version.",
-    "Production MCP remains Edge Function v18 pinned to the exact #311 candidate d1e35f00db0a8da11f3ee1b0efff291ed8192f2a."
-  ]
+    "Supabase migrations 20260918140225 and 20260918140253 add Professor-visible closure history, append-only revalidation and consolidated RLS policies without rewriting existing capability request lifecycle rows.",
+    "MCP server 3.2.0 / interface 10 / vlab.capability-request/3 adds Professor-only resume_capability_closure and revalidate_capability_closure while Student remains on the existing seven shared tools.",
+    "Automated #312 contract tests cover optimistic analysis sequencing, whole-Experiment resolved/remaining/new gap transitions, unblocked integrity, request preservation and Student backward compatibility."
+  ],
+  "close_issue": 312
 }
