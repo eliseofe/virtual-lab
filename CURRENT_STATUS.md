@@ -27,13 +27,13 @@ The Professor capability-request system is a **living operational queue** under 
 
 Neither request is `in_progress`; Professor approval places them in the developer design/queue only. The previously approved scalar-environment request is already implemented through #143/#144.
 
-The aggregation case exposed a flow defect: isolated capability rows can preserve individual gaps without preserving one resumable blocked Experiment or proving whole-Experiment capability closure. The repair sequence is #310–#313. #310 and #311 are complete and production-verified. #312 adds Professor-side durable resume plus append-only whole-Experiment revalidation: resolved gaps disappear from the latest analysis, remaining/new gaps stay on the same blocked Experiment, existing request lifecycle rows are preserved, and `unblocked` is legal only when no unsupported semantics or unresolved scientific ambiguity remain. #313 is the next live Grok acceptance step.
+The aggregation case exposed a flow defect: isolated capability rows can preserve individual gaps without preserving one resumable blocked Experiment or proving whole-Experiment capability closure. The repair sequence is #310–#313. #310–#312 are complete and production-verified. The first live Grok attempt in #313 exposed one remaining defect: repeated `request_capability` calls for the same scientific task fragmented into several blocked Experiments and duplicate `requested` rows instead of reconciling the two existing approved requests. #313 now contains the bounded reconciliation repair; after that exact candidate is production-green, the same black-box Grok acceptance must be rerun before #313 can close.
 
 A new **#301 — Virtual Lab security, identity and authorization** umbrella is logged from real-student evidence. Its audit child **#302** is defined but not started; no enrollment, role, OAuth/client-admission or other remediation policy has been frozen.
 
 ## Immediate frontier
 
-1. **#58 capability-flow repair is active.** #310 and #311 are complete and production-verified. #312 implements Professor-side resume and whole-Experiment revalidation while preserving ordinary Student connector behavior; its successor is #313, the live aggregation-workflow acceptance with Grok. Capability implementation (#305/#306 RNG and #304 heterogeneous initialization/state) remains paused until #313 is green.
+1. **#58 capability-flow repair is active.** #310–#312 are complete and production-verified. #313 is active: its first live Grok pass exposed fragmented initial closure submission, and the current repair makes repeated submissions converge on one blocked Experiment while reusing matching nonterminal requests without changing lifecycle state. A second live Grok pass is still required. Capability implementation (#305/#306 RNG and #304 heterogeneous initialization/state) remains paused until #313 is green.
 2. **#273 UI/UX** has no active child and is dormant/living after production-verified #299.
 3. **#302 — security audit** is separately queued under new epic #301 but has not started.
 4. Studies and other parked/not-started lanes remain separately gated.

@@ -49,7 +49,7 @@ Issue #310 adds the durable domain foundation used by the repaired closed loop:
 
 This schema foundation is secure-by-default. #311 adopts it in the authenticated research-AI MCP for both Student and Professor submission. #312 adds Professor-only `resume_capability_closure` and `revalidate_capability_closure`: the first reconstructs the durable draft, analysis history and linked request lifecycle without chat history; the second appends a new whole-Experiment analysis against the current contract, preserves earlier analyses and request rows, records resolved/remaining/new requirement keys, and permits `unblocked` only when no unsupported requirement or scientific ambiguity remains. The original aggregation workflow is live-tested with Grok in #313.
 
-The two already-approved aggregation requests remain unchanged and unlinked during #310. They are reconciled only after the repaired flow exists.
+The two already-approved aggregation requests remained unchanged and unlinked through #310–#312. #313's reconciliation repair is the point at which the live aggregation closure may attach them to the durable blocked Experiment while preserving their `approved` state.
 
 ## Durable capability request
 
@@ -102,7 +102,7 @@ This UI remains an Experiment/product administration surface. It does not embed 
 
 Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/3`.
 
-The active authoring contract signals requestable unsupported-capability behavior for both roles. Before submission, the research AI performs a best-effort whole-Experiment analysis, groups low-level diagnostics into meaningful capability requests, and preserves explicit ambiguity instead of asking the developer layer to infer scientific meaning.
+The active authoring contract signals requestable unsupported-capability behavior for both roles. Before submission, the research AI performs a best-effort whole-Experiment analysis, groups low-level diagnostics into meaningful capability requests, and preserves explicit ambiguity instead of asking the developer layer to infer scientific meaning. Repeated initial submissions for the same blocked scientific task converge on the same durable blocked Experiment and cumulative initial closure history. A matching existing nonterminal request owned by the same requester is reconciled into that closure when it is unlinked or already belongs to the same blocked Experiment; its `requested`, `approved`, or `in_progress` lifecycle state is preserved rather than reset.
 
 Current lifecycle-hook vocabulary exposed by the request path includes:
 
