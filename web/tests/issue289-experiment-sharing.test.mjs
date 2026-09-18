@@ -46,9 +46,9 @@ test("#289 explicitly shared Experiments can use the existing independent-copy p
 
 test("#289 UI separates shared sources from My Experiments and keeps them read-only", () => {
   assert.match(registry, /let sharedExperiments = \[\]/);
-  assert.match(registry, /filterButton\("Shared with me", "shared"\)/);
+  assert.match(registry, /filterButton\(\`Shared with me · \$\{sharedExperiments\.length\}\`, "shared"\)/);
   assert.match(registry, /experimentGroup\("Shared with me", filteredShared, \{ access: "shared" \}\)/);
-  assert.match(registry, /Shared with you · Read-only/);
+  assert.match(registry, /Shared with me · Read-only/);
   assert.match(registry, /currentRemoteAccess === "shared"/);
   assert.match(registry, /ui\.save\.hidden = !owned/);
   assert.match(management, /locationText === "Shared with me"/);
