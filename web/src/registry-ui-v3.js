@@ -635,9 +635,14 @@ function updateCurrentUi() {
   ui.saveAsNew.hidden = !user;
   ui.save.hidden = !owned;
   ui.createNew.textContent = copyingReadable ? "Copy to my Experiments" : "Create private copy";
-  const canShare = Boolean(owned && shareRecipients.length > 0);
-  ui.shareRow.hidden = !canShare;
-  if (!canShare) ui.shareForm.hidden = true;
+  const availableRecipients = availableShareRecipients();
+  const hasOutgoingShares = currentOutgoingShares().length > 0;
+  const canManageShares = Boolean(owned && (availableRecipients.length > 0 || hasOutgoingShares));
+  ui.shareRow.hidden = !canManageShares;
+  ui.shareOpen.hidden = !owned || availableRecipients.length === 0;
+  if (!owned || availableRecipients.length === 0) ui.shareForm.hidden = true;
+  populateShareRecipientSelect();
+  renderOutgoingShares();
   ui.save.disabled = !owned || !dirty || conflictRevision !== null;
   ui.moveRow.hidden = !owned;
   if (owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
@@ -872,14 +877,26 @@ async function loadShareRecipients() {
     populateShareRecipientSelect();
     return;
   }
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id,display_name,role")
-    .neq("id", user.id)
-    .order("display_name", { ascending: true });
+  const { data, error } = await supabase.rpc("list_experiment_share_recipients");
   if (error) throw error;
   shareRecipients = data ?? [];
   populateShareRecipientSelect();
+}
+
+async function loadOutgoingShares() {
+  if (!user) {
+    outgoingShares = [];
+    renderOutgoingShares();
+    return;
+  }
+  const { data, error } = await supabase
+    .from("experiment_shares")
+    .select("experiment_id,recipient_id,created_at")
+    .eq("shared_by", user.id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  outgoingShares = data ?? [];
+  renderOutgoingShares();
 }
 
 async function loadSharedExperimentList() {
@@ -1101,7 +1118,7 @@ function openShareForm() {
   if (!user || !currentRemote || currentRemote.owner_id !== user.id) {
     throw new Error("Open one of your Experiments before sharing.");
   }
-  if (!shareRecipients.length) throw new Error("No share recipients are available to this account.");
+  if (!availableShareRecipients().length) throw new Error("No additional share recipients are available for this Experiment.");
   populateShareRecipientSelect();
   ui.shareForm.hidden = false;
   ui.shareRecipient.focus();
