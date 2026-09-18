@@ -18,7 +18,7 @@ import {
   MCP_SERVER_VERSION,
   readResultsPresentation,
   registerMetricsResultsTool,
-  validateExperimentArtifactsV06 as validateExperimentArtifacts,
+  validateExperimentArtifactsV07 as validateExperimentArtifacts,
 } from './metrics-results-tools.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
