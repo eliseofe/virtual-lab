@@ -69,7 +69,7 @@ Batch related implementation steps inside the **one active ticket** when that pr
 
 When the final ticket of the currently approved epic scope completes, **close the epic by default**.
 
-Keep the epic open but dormant only when the conversation and nature of the work show that it is intentionally a recurring domain under which future work naturally belongs. The agent should proactively make and state that judgment; the owner may correct it. Dormant means there is no current executable child. If the case is unclear, close the epic; reopening it later is cheap.
+Keep the epic open but dormant only when the conversation and nature of the work show that it is intentionally a recurring domain under which future work naturally belongs. The agent should proactively make and state that judgment; the owner may correct it. Dormant means there is no current executable child. For recurring/living epics, consult `ROADMAP.md` under `## Roadmap state classification`, including any domain-specific authority referenced there, before deciding that the epic is dormant, complete, or has no remaining backlog. If the case is unclear, close the epic; reopening it later is cheap.
 
 ## Atomic compatibility exception
 
