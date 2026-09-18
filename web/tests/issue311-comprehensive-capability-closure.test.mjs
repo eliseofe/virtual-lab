@@ -42,7 +42,6 @@ test("#311 requires a whole blocked Experiment context rather than title-only pr
 
 test("#311 preserves ambiguity on the research side and blocks ambiguous developer requests", () => {
   assert.match(mcp, /resolution_status: z\.enum\(\['clear', 'ambiguous'\]\)/);
-  assert.match(mcp, /resolution_status: z\\.enum\\(\\['clear', 'ambiguous'\\]\\)/);
   assert.match(migration, /partial_due_to_ambiguity requires at least one unresolved ambiguity/i);
   assert.match(migration, /scientifically ambiguous/i);
 });
