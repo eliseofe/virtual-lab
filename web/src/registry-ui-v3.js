@@ -764,7 +764,7 @@ function renderBrowser() {
 
   browser.contextTitle.textContent = "Experiments";
   browser.contextHelp.textContent = user
-    ? "Your Experiments and Experiments explicitly shared with you are separate. Shared sources stay read-only; copy one when you need an independent editable version."
+    ? "Search the built-in source and all of your runnable experiments in one place. Collections are optional filters. Shared Experiments appear separately and stay read-only; copy one when you need an independent editable version."
     : "Search the built-in experiments. Sign in to include your private experiments.";
 
   const total = filtered.length + filteredShared.length + (builtinMatches ? 1 : 0);
