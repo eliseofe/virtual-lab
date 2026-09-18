@@ -13,13 +13,14 @@ The deployed baseline already includes:
 - local-first result persistence and whole-Experiment export;
 - Vite + React + TypeScript + Mantine presentation;
 - student self-registration/onboarding;
+- research-supervision collaboration: Professor read-only oversight, independent copy/fork, explicit read-only sharing and revocation;
 - Showcase publication/curation surfaces.
 
 These are baseline architecture, not future roadmap items.
 
 ## Roadmap state classification
 
-- **Started and unfinished:** #45 Access / sharing / curation / Showcase — active research-supervision work now focuses on Professor read-only visibility into student/researcher Experiments, copy-to-own-workspace, explicit read-only sharing and revocation; Showcase remains a separate curator action.
+- **Completed baseline:** #45 Access / sharing / curation / Showcase — the approved research-supervision collaboration scope is complete through Professor oversight, copy-to-own-workspace, explicit read-only sharing/revocation and separate Showcase curation.
 - **Living / ongoing domains:** #56 Simulator performance, #65 World/environment capabilities, #273 UI/UX refinement — completed slices accumulate as evidence or new capability requests appear; the open parent does not mean abandoned unfinished work.
 - **Foundation built, waiting for a use case:** #124 Artifact capability registry / lifecycle hooks — the architectural seam exists; continue only when a concrete optional executable-artifact use case requires runtime dispatch. #285 Research submission snapshots — preservation infrastructure exists, but no distinct research use case currently justifies a submission workflow; do not implement one until the owner identifies a non-overlapping need.
 - **Not started major lanes:** #3 Studies, #202 Code authoring ergonomics, #6 Study results → AI handoff, #119 Research Notes / Research Documents.
@@ -28,9 +29,9 @@ The AI maintains this classification as the project evolves: every major epic be
 
 ## Near term
 
-1. Continue #45 through bounded research-supervision collaboration slices. Professor read-only visibility (#287) and copy-to-own-workspace (#288) are production-complete; explicit sharing is the #289 slice, with revocation/boundary completion (#290) recorded as its separate successor.
-2. Continue real student and owner use of the production Lab.
-3. Turn concrete evidence from use into focused fixes, including #273 UI/UX refinement when warranted.
+1. Continue real student and owner use of the production Lab now that the approved #45 collaboration scope is complete.
+2. Turn concrete evidence from use into focused fixes, including #273 UI/UX refinement when warranted.
+3. Await explicit owner selection before starting another substantial major lane.
 4. Do not activate parked or not-started major lanes without the required use case or owner authorization.
 
 ## Owner-gated major lane: Studies
