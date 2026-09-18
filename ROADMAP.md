@@ -21,18 +21,18 @@ These are baseline architecture, not future roadmap items.
 ## Roadmap state classification
 
 - **Completed baseline:** #45 Access / sharing / curation / Showcase — the approved research-supervision collaboration scope is complete through Professor oversight, copy-to-own-workspace, explicit read-only sharing/revocation and separate Showcase curation.
-- **Living / ongoing domains:** #56 Simulator performance, #65 World/environment capabilities, #273 UI/UX refinement — #273 is active for bounded child #299, which will restructure Experiment navigation and Professor supervision placement after concrete owner feedback.
+- **Living / ongoing domains:** #56 Simulator performance, #65 World/environment capabilities, #273 UI/UX refinement — the latest bounded #273 pass (#299) consolidates Professor supervision into the Experiment library; after that pass is production-green, #273 returns dormant until new evidence appears.
 - **Foundation built, waiting for a use case:** #124 Artifact capability registry / lifecycle hooks — the architectural seam exists; continue only when a concrete optional executable-artifact use case requires runtime dispatch. #285 Research submission snapshots — preservation infrastructure exists, but no distinct research use case currently justifies a submission workflow; do not implement one until the owner identifies a non-overlapping need.
-- **Not started major lanes:** #3 Studies, #202 Code authoring ergonomics, #6 Study results → AI handoff, #119 Research Notes / Research Documents.
+- **Not started major lanes:** #3 Studies, #202 Code authoring ergonomics, #6 Study results → AI handoff, #119 Research Notes / Research Documents, #301 Security / identity / authorization — initial audit #302 is defined and queued, but no audit execution or remediation policy has started.
 
 The AI maintains this classification as the project evolves: every major epic belongs in exactly one category, and the category should change when its real execution state changes. When creating or reclassifying an epic, state the classification to the owner so it is visible and can be corrected; routine classification maintenance does not require owner approval.
 
 ## Near term
 
-1. Complete #298 so research assistants discover all RLS-visible Experiments by default, including Professor-supervised student/researcher work.
-2. Then execute #299, the bounded #273 UI/UX pass that moves Professor supervision into a coherent Experiment-centered information architecture.
-3. Continue real student and owner use and turn concrete evidence into focused fixes.
-4. Do not activate parked or not-started major lanes without the required use case or owner authorization.
+1. Complete #299, the bounded #273 UI/UX pass that makes the Experiment library the single discovery hub for owned, shared and Professor-supervised work.
+2. After #299, continue real student and owner use and let #273 return dormant until concrete UX evidence appears.
+3. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
+4. Do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
 
 ## Owner-gated major lane: Studies
 
