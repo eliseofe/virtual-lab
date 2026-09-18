@@ -6,7 +6,7 @@ This document records the paper-to-Experiment extension loop when a research AI 
 
 ## Structural boundary
 
-The authenticated Experiment MCP is an Experiment-domain interface. Research AI clients can create/read/edit supported Experiment content and, for Professor users, preserve/request missing capability. They have no GitHub, repository, shell, deployment, simulator-source, arbitrary SQL, arbitrary filesystem or Supabase-admin capability.
+The authenticated Experiment MCP is an Experiment-domain interface. Research AI clients can create/read/edit supported Experiment content and, for Student or Professor users, preserve/submit missing-capability analyses and requests. They have no GitHub, repository, shell, deployment, simulator-source, arbitrary SQL, arbitrary filesystem or Supabase-admin capability.
 
 That boundary is structural. Missing simulator functionality is not “allowed through prompt”; it is absent until implemented by the trusted developer workflow.
 
@@ -17,7 +17,7 @@ Current registry roles include:
 - `student`
 - `professor`
 
-Professor is a strict superset of Student for ordinary Experiment-domain behavior plus explicit Professor surfaces such as the capability-request workflow. Professor role never implies simulator-development authority.
+Student and Professor share ordinary Experiment-domain behavior and capability-request submission. Professor additionally owns the queue-wide inbox/triage surface. Professor role never implies simulator-development authority.
 
 ## Unsupported Experiment capabilities
 
@@ -29,11 +29,14 @@ Current policy:
 capability exists
     -> author/validate normally
 
-capability missing + professor
-    -> preserve intent/draft and create durable capability request
+capability missing + student or professor
+    -> preserve one whole blocked Experiment/analysis and submit durable grouped request(s)
 
-capability missing + student
-    -> report unsupported; no request action in the current first version
+scientific ambiguity remains
+    -> preserve it explicitly; do not hand it to developer generalization
+
+requested rows
+    -> Professor inbox for approve/decline
 ```
 
 ## Durable blocked Experiment / closure foundation
@@ -44,7 +47,7 @@ Issue #310 adds the durable domain foundation used by the repaired closed loop:
 - `capability_closure_analyses` stores append-only analyses against a specific capability-contract version, including identified requirements and unresolved scientific ambiguity;
 - individual capability requests may link to the closure analysis that identified them.
 
-This schema foundation is secure-by-default and does **not** change the production MCP connector contract. Professor MCP creation/grouping adopts it in #311; resume/revalidation adopts it in #312; the original aggregation workflow is live-tested with Grok in #313.
+This schema foundation is secure-by-default. #311 adopts it in the authenticated research-AI MCP for both Student and Professor submission; #312 adds resume/revalidation; the original aggregation workflow is live-tested with Grok in #313.
 
 The two already-approved aggregation requests remain unchanged and unlinked during #310. They are reconciled only after the repaired flow exists.
 
@@ -97,9 +100,9 @@ This UI remains an Experiment/product administration surface. It does not embed 
 
 ## Research-AI request action — deployed
 
-Professor-authenticated MCP exposes `request_capability` under `vlab.capability-request/1`.
+Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/2`.
 
-The active authoring contract can signal requestable unsupported-capability behavior for Professor users. The AI preserves the original Experiment/draft intent rather than rewriting the science to fit current simulator limitations.
+The active authoring contract signals requestable unsupported-capability behavior for both roles. Before submission, the research AI performs a best-effort whole-Experiment analysis, groups low-level diagnostics into meaningful capability requests, and preserves explicit ambiguity instead of asking the developer layer to infer scientific meaning.
 
 Current lifecycle-hook vocabulary exposed by the request path includes:
 
@@ -156,11 +159,11 @@ Do not implement either request merely because its registry status is `approved`
 
 Current intended loop:
 
-1. Professor discusses a paper/hypothesis with a research AI.
+1. A Student or Professor works on a paper/hypothesis/Experiment with a research AI.
 2. AI reads the current authoring/capability contract through MCP.
 3. Supported Experiment artifacts/Metrics/Results bindings are authored normally.
 4. If a required simulator capability is absent, validation exposes that gap.
-5. Professor-authenticated AI preserves the intent/draft and creates a capability request.
+5. The authenticated research AI preserves one durable blocked Experiment/closure analysis and submits grouped capability request(s).
 6. Request appears in the Professor inbox.
 7. Professor approves/declines.
 8. Approved request waits for developer design + explicit owner implementation authorization.
@@ -168,4 +171,4 @@ Current intended loop:
 10. Deployed versioned contract advertises the capability; request is marked implemented.
 11. Research AI revalidates/completes the originating Experiment.
 
-This lets real papers expose simulator gaps without giving research AI development privileges or encouraging paper-specific hacks.
+This lets real papers expose simulator gaps without giving research AI development privileges, blocking Student requests, or encouraging paper-specific hacks.

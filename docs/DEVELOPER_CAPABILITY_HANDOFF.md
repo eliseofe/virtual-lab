@@ -25,8 +25,8 @@ Do not create implementation work, claim the request `in_progress`, or begin cod
 
 ## Roles and security boundary
 
-- Professor AI may create a durable request.
-- Professor may approve/decline it in the Lab.
+- Student or Professor research AI may create a durable request from a preserved blocked-Experiment analysis.
+- Professor alone may approve/decline it in the Lab.
 - Neither research AI nor Professor browser may create GitHub engineering work, write developer fields, or move the request to `in_progress`.
 - Developer-side ChatGPT can read the private request through its trusted Supabase connection and discuss software design with the owner.
 - Only after explicit owner implementation approval may developer-side ChatGPT create/link the GitHub engineering issue and claim the request `in_progress`.
@@ -40,7 +40,7 @@ requested -> approved -> in_progress -> implemented
              \-> declined
 ```
 
-- `requested` — research AI/Professor has recorded a missing capability.
+- `requested` — authenticated Student/Professor research AI has recorded a missing capability; this is not approval.
 - `approved` — Professor agrees the request should enter developer design/queue. Implementation is **not yet authorized**.
 - `in_progress` — owner has explicitly authorized implementation, a trusted developer handoff has linked the GitHub engineering work, and coding/testing may proceed.
 - `implemented` — implementation is deployed/verified and the active versioned capability contract advertises it.

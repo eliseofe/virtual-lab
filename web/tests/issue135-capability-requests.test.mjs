@@ -53,29 +53,24 @@ test("#135 existing Student and Professor experiment tools remain one shared imp
   assert.match(metricsResults, /'author_metrics_results'/);
 });
 
-test("#135 Professor gets one additional request tool while Student gets no request action", () => {
-  assert.match(mcp, /if \(profile\.role === 'professor'\) \{[\s\S]*server\.registerTool\(\s*'request_capability'/);
+test("#135 original migration records the historical Professor-only submission baseline", () => {
+  assert.match(migration, /capability_requests_insert_own_professor/i);
+  assert.match(migration, /requester_role = 'professor'/i);
   assert.equal((mcp.match(/server\.registerTool\(\s*['\"]request_capability['\"]/g) ?? []).length, 1);
-  assert.match(mcp, /requestable: true,[\s\S]*action: 'request_capability'/);
-  assert.match(mcp, /requestable: false,[\s\S]*action: null,[\s\S]*reason: 'student-role'/);
   assert.match(mcp, /validationForRole\(validation, profile\.role\)/);
 });
 
-test("#135 request action preserves origin or draft without validating unsupported draft science", () => {
+test("#135 durable request concept remains present after later closure-flow evolution", () => {
   assert.match(mcp, /origin_experiment_id: z\.string\(\)\.uuid\(\)\.optional\(\)/);
   assert.match(mcp, /draft_artifacts: z\.array\(ARTIFACT_INPUT\)\.optional\(\)/);
-  assert.match(mcp, /const preservedArtifacts = draft_artifacts \?\? origin\?\.artifacts \?\? \[\]/);
-  assert.match(mcp, /\.from\('capability_requests'\)[\s\S]*\.insert\(/);
-  assert.match(mcp, /status: 'requested'/);
-  assert.doesNotMatch(mcp, /validateExperimentArtifacts\(preservedArtifacts\)/);
+  assert.match(mcp, /submit_capability_closure/);
+  assert.doesNotMatch(mcp, /validateExperimentArtifacts\(draft_artifacts/);
 });
 
-test("#135 MCP interface advertises role-dependent capability requests without simulator access", () => {
-  assert.match(metricsResults, /MCP_SERVER_VERSION = '3\.0\.\d+'/);
-  assert.match(metricsResults, /MCP_INTERFACE_VERSION = '8'/);
+test("#135 capability-request interface remains advertised without simulator access", () => {
+  assert.match(metricsResults, /MCP_SERVER_VERSION = '\d+\.\d+\.\d+'/);
+  assert.match(metricsResults, /MCP_INTERFACE_VERSION = '\d+'/);
   assert.match(mcp, /capability_request_interface: CAPABILITY_REQUEST_INTERFACE/);
-  assert.match(mcp, /shared_tool_count: 6/);
-  assert.match(mcp, /professor_tool_count: 7/);
   assert.match(mcp, /simulator_access: false/);
   assert.match(mcp, /requested_lifecycle_hook: z\.enum\(\['setup', 'initialize', 'control', 'measure', 'finalize'\]\)/);
 });

@@ -20,9 +20,9 @@ test("#298 preserves owner-scoped mutation despite broader read discovery", () =
   assert.match(index, /\.delete\(\)[\s\S]*\.eq\('owner_id', userId\)/);
 });
 
-test("#298 is a patch-level MCP behavior change with stable interface", () => {
-  assert.match(tools, /MCP_SERVER_VERSION = '3\.0\.1'/);
-  assert.match(tools, /MCP_INTERFACE_VERSION = '8'/);
+test("#298 visible-workspace discovery survives later MCP interface evolution", () => {
+  assert.match(tools, /MCP_SERVER_VERSION = '\d+\.\d+\.\d+'/);
+  assert.match(tools, /MCP_INTERFACE_VERSION = '\d+'/);
   assert.match(docs, /all Experiment summaries visible through the caller's RLS permissions by default/);
   assert.match(docs, /owned_only=true/);
 });

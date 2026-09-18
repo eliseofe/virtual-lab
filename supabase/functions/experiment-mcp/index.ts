@@ -24,7 +24,7 @@ import {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
-const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/1'
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/2'
 
 type RegistryRole = 'student' | 'professor'
 type RegistryProfile = {
@@ -63,6 +63,29 @@ const ARTIFACT_INPUT = z.object({
   content: z.string(),
 })
 
+const CLOSURE_REQUIREMENT_INPUT = z.object({
+  key: z.string().min(1).max(120),
+  summary: z.string().min(1).max(4000),
+  evidence: z.string().min(1).max(12000),
+  resolution_status: z.enum(['clear', 'ambiguous']),
+})
+
+const CLOSURE_AMBIGUITY_INPUT = z.object({
+  key: z.string().min(1).max(120),
+  requirement_key: z.string().min(1).max(120),
+  question: z.string().min(1).max(6000),
+  evidence: z.string().max(12000).default(''),
+})
+
+const GROUPED_CAPABILITY_REQUEST_INPUT = z.object({
+  capability_domain: z.string().min(1).max(200),
+  capability_name: z.string().min(1).max(300),
+  requirement_keys: z.array(z.string().min(1).max(120)).min(1).max(50),
+  context: z.string().max(20000).default(''),
+  requested_artifact_type: z.string().min(1).max(200).optional(),
+  requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'measure', 'finalize']).optional(),
+})
+
 function json(value: unknown, status = 200, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(value), {
     status,
@@ -89,18 +112,15 @@ function toolError(message: string, detail?: unknown) {
 }
 
 function unsupportedCapabilityBehavior(role: RegistryRole) {
-  return role === 'professor'
-    ? {
-        requestable: true,
-        action: 'request_capability',
-        capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
-        preserve_draft: true,
-      }
-    : {
-        requestable: false,
-        action: null,
-        reason: 'student-role',
-      }
+  return {
+    requestable: true,
+    action: 'request_capability',
+    capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
+    preserve_draft: true,
+    comprehensive_analysis_required: true,
+    submitter_role: role,
+    triage_authority: 'professor',
+  }
 }
 
 function authoringInfo(includeContract: boolean, role: RegistryRole) {
@@ -455,105 +475,77 @@ function registerExperimentTools(
 
   registerMetricsResultsTool(server, supabase, profile, clientId)
 
-  if (profile.role === 'professor') {
-    server.registerTool(
-      'request_capability',
-      {
-        title: 'Request a missing Virtual Lab experiment capability',
-        description:
-          'Professor-only. Use when the active Virtual Lab authoring/runtime contract lacks a capability required to express the professor\'s experiment intent. Preserve the intent/draft; do not invent a workaround or implement the simulator feature. This creates only a durable requested capability row for later Professor triage and separate developer work.',
-        inputSchema: {
-          capability_domain: z.string().min(1).max(200),
-          capability_name: z.string().min(1).max(300),
-          context: z.string().max(20000).default(''),
-          origin_experiment_id: z.string().uuid().optional(),
-          origin_revision: z.number().int().positive().optional(),
-          draft_title: z.string().max(300).optional(),
-          draft_description: z.string().max(20000).optional(),
-          draft_artifacts: z.array(ARTIFACT_INPUT).optional(),
-          requested_artifact_type: z.string().min(1).max(200).optional(),
-          requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'measure', 'finalize']).optional(),
-        },
-        annotations: WRITE_ANNOTATIONS,
+  server.registerTool(
+    'request_capability',
+    {
+      title: 'Submit missing Virtual Lab capabilities for a blocked Experiment',
+      description:
+        'Student/Professor research-AI action. Use only after analysing the whole intended Experiment against the active Virtual Lab contract. Preserve a resumable blocked draft plus all scientifically meaningful unsupported requirements found in this pass. Do not stop at the first parser/compiler diagnostic. Group low-level diagnostics into meaningful capability requests. Mark scientifically unresolved requirements as ambiguous and preserve the question/evidence; ambiguous requirements must not be forwarded as developer-ready capability requests. Submission enters the Professor triage queue and grants no development authority.',
+      inputSchema: {
+        origin_experiment_id: z.string().uuid().optional(),
+        origin_revision: z.number().int().positive().optional(),
+        draft_title: z.string().min(1).max(300).optional(),
+        draft_description: z.string().max(20000).optional(),
+        draft_artifacts: z.array(ARTIFACT_INPUT).optional(),
+        source_context: z.string().max(40000).default(''),
+        analysis_status: z.enum(['best_effort_complete', 'partial_due_to_ambiguity']),
+        identified_requirements: z.array(CLOSURE_REQUIREMENT_INPUT).min(1).max(100),
+        unresolved_ambiguities: z.array(CLOSURE_AMBIGUITY_INPUT).max(100).default([]),
+        requests: z.array(GROUPED_CAPABILITY_REQUEST_INPUT).max(50).default([]),
       },
-      async ({
-        capability_domain,
-        capability_name,
-        context,
-        origin_experiment_id,
-        origin_revision,
-        draft_title,
-        draft_description,
-        draft_artifacts,
-        requested_artifact_type,
-        requested_lifecycle_hook,
-      }) => {
-        const domain = capability_domain.trim()
-        const name = capability_name.trim()
-        if (!domain || !name) return toolError('Capability domain and name must contain non-whitespace text.')
-        if (origin_revision !== undefined && origin_experiment_id === undefined) {
-          return toolError('origin_revision requires origin_experiment_id.')
-        }
+      annotations: WRITE_ANNOTATIONS,
+    },
+    async ({
+      origin_experiment_id,
+      origin_revision,
+      draft_title,
+      draft_description,
+      draft_artifacts,
+      source_context,
+      analysis_status,
+      identified_requirements,
+      unresolved_ambiguities,
+      requests,
+    }) => {
+      if (origin_revision !== undefined && origin_experiment_id === undefined) {
+        return toolError('origin_revision requires origin_experiment_id.')
+      }
 
-        let origin: {
-          id: string
-          revision: number
-          title: string
-          description: string
-          artifacts: unknown[]
-        } | null = null
+      if (
+        origin_experiment_id === undefined
+        && draft_artifacts === undefined
+        && !(draft_description?.trim())
+        && !(source_context?.trim())
+      ) {
+        return toolError(
+          'A title alone is not enough. Preserve the blocked Experiment artifacts, scientific description, or source/research context.',
+        )
+      }
 
-        if (origin_experiment_id) {
-          const { data, error } = await supabase
-            .from('experiments')
-            .select('id, revision, title, description, artifacts')
-            .eq('id', origin_experiment_id)
-            .maybeSingle()
-          if (error) return toolError('Could not read the originating experiment.', error.message)
-          if (!data) return toolError('Originating experiment was not found or is not visible to this user.')
-          if (origin_revision !== undefined && data.revision !== origin_revision) {
-            return toolError(
-              `Conflict: originating experiment is at revision ${data.revision}, not requested revision ${origin_revision}. Re-read it before creating the capability request.`,
-            )
-          }
-          origin = data
-        }
+      const { data, error } = await supabase.rpc('submit_capability_closure', {
+        p_origin_experiment_id: origin_experiment_id ?? null,
+        p_origin_experiment_revision: origin_revision ?? null,
+        p_draft_title: draft_title ?? null,
+        p_draft_description: draft_description ?? null,
+        p_draft_artifacts: draft_artifacts ?? null,
+        p_source_context: source_context,
+        p_contract_version: AUTHORING_CONTRACT.contract_version,
+        p_analysis_status: analysis_status,
+        p_identified_requirements: identified_requirements,
+        p_unresolved_ambiguities: unresolved_ambiguities,
+        p_requests: requests,
+      })
 
-        const preservedTitle = draft_title?.trim() || origin?.title || null
-        const preservedDescription = draft_description ?? origin?.description ?? null
-        const preservedArtifacts = draft_artifacts ?? origin?.artifacts ?? []
-        if (!origin && !preservedTitle && preservedArtifacts.length === 0) {
-          return toolError('Preserve either an originating experiment or draft title/artifacts with the capability request.')
-        }
+      if (error) return toolError('Could not submit the blocked Experiment capability analysis.', error.message)
 
-        const { data, error } = await supabase
-          .from('capability_requests')
-          .insert({
-            requester_id: userId,
-            requester_role: profile.role,
-            origin_experiment_id: origin?.id ?? null,
-            origin_experiment_revision: origin?.revision ?? null,
-            draft_title: preservedTitle,
-            draft_description: preservedDescription,
-            draft_artifacts: preservedArtifacts,
-            capability_domain: domain,
-            capability_name: name,
-            context,
-            requested_artifact_type: requested_artifact_type?.trim() || null,
-            requested_lifecycle_hook: requested_lifecycle_hook ?? null,
-            status: 'requested',
-          })
-          .select('*')
-          .single()
-        if (error) return toolError('Could not create capability request.', error.message)
-
-        return toolResult({
-          capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
-          request: data,
-        })
-      },
-    )
-  }
+      return toolResult({
+        capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
+        submitter_role: profile.role,
+        triage_authority: 'professor',
+        submission: data,
+      })
+    },
+  )
 }
 
 const authenticatedMcp = pipeline(
@@ -608,8 +600,9 @@ Deno.serve(async (req: Request) => {
       auth_implementation: 'supabase-jwks-middleware',
       authoring_contract_version: AUTHORING_CONTRACT.contract_version,
       validation_mode: AUTHORING_CONTRACT.validation_mode,
-      tool_count: 6,
-      shared_tool_count: 6,
+      tool_count: 7,
+      shared_tool_count: 7,
+      student_tool_count: 7,
       professor_tool_count: 7,
       simulator_access: false,
     })
