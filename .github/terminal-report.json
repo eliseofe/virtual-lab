@@ -11,6 +11,7 @@
     "Migration 20260918150000 replaces initial closure submission with convergent blocked-Experiment reuse, cumulative initial analyses, and lifecycle-preserving request reconciliation.",
     "The reconciliation write is isolated in a schema-pinned private security-definer helper that can update only caller-owned nonterminal request linkage/requirement keys; request status and review/developer lifecycle fields are not rewritten.",
     "MCP server patch 3.2.1 keeps interface 10 and vlab.capability-request/3 stable; no Student/Professor role boundary or simulator scientific capability changes.",
-    "Automated #313 contract tests cover single-draft convergence, cumulative requirement preservation, request reuse without status mutation, helper authorization, and interface stability."
+    "Automated #313 contract tests cover single-draft convergence, cumulative requirement preservation, request reuse without status mutation, helper authorization, and interface stability.",
+    "Repair candidate 1 decouples the historical #312 test from the mutable patch server version and keeps the #313 wording assertion semantic rather than pronoun-specific."
   ]
 }
