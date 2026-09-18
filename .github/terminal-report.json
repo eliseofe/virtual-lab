@@ -1,11 +1,11 @@
 {
   "schema": "vlab.terminal-report/1",
-  "outcome": "Production success reports now describe the deployed change",
-  "owner_impact": "Success notifications now put the owner-facing deployed change under What changed for you; build, deployment, exact-candidate propagation, and smoke facts stay under Technical evidence.",
-  "remaining_action": "No owner action is required. Future reports will state a concrete owner action here when one exists.",
+  "outcome": "Production success reports now require a concrete Next",
+  "owner_impact": "Success notifications no longer use a generic continuation sentence. Each deployable candidate carries its actual next action, or explicitly says that nothing remains.",
+  "remaining_action": "No owner action for this reporting change. Issue #278 remains parked until Supabase dashboard authentication is available; normal Virtual Lab development can continue.",
   "technical_evidence": [
-    "The fallback success report derives a semantic change summary from the deployed commit message.",
-    "Candidate-specific terminal-report overrides remain available when an owner follow-up must be reported.",
-    "Deployment, smoke, retries, timeouts, and completion gates are unchanged."
+    "The default Next fallback is now: Nothing. This change is complete.",
+    "DEVELOPMENT_WORKFLOW.md requires candidate-specific terminal-report Next text for every deployable ticket.",
+    "Build, deployment, smoke, retries, timeouts, and completion gates are unchanged."
   ]
 }

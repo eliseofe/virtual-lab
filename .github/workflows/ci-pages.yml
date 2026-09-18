@@ -146,7 +146,7 @@ jobs:
 
           outcome="$change_summary"
           owner_impact="Now live in production: ${change_summary}"
-          remaining="No owner action is required for this deployment. Continue with the next approved development task."
+          remaining="Nothing. This change is complete."
           technical="$(printf '%s\n%s\n%s' \
             "- Commit: https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}" \
             "- Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \

@@ -67,4 +67,9 @@ Production success reports must separate product meaning from verification evide
 - **Next** states the concrete owner action when one exists; otherwise it says plainly that no owner action is required.
 - **Technical evidence** contains the commit/run links and build/deploy/exact-candidate/smoke verification facts.
 
-The default report derives its change summary from the deployed commit message. When a candidate has a specific owner follow-up or needs richer wording than the commit summary can provide, update `.github/terminal-report.json` in that same candidate. This reporting payload enriches the notification only; it is not a new completion gate.
+The default report derives its change summary from the deployed commit message. Every deployable candidate must update `.github/terminal-report.json` in that same candidate so **Next** is specific to the completed work:
+- if the owner must do something, state that concrete action;
+- if development has a known semantic next task but no owner action is needed, name that task;
+- if there is genuinely nothing to do, write exactly `Nothing. This change is complete.`.
+
+Do not use generic continuation text such as `continue with the next approved development task`. The reporting payload enriches the notification only; it is not a new build/deploy/smoke completion gate.
