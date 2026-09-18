@@ -523,6 +523,7 @@ function updateMoveButton() {
 function updateCurrentUi() {
   const dirty = hasUnsavedRemoteEdits();
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
+  const copyingReadable = Boolean(user && currentRemote && !owned);
 
   if (currentRemote) {
     currentUi.title.textContent = currentRemote.title;
@@ -539,8 +540,9 @@ function updateCurrentUi() {
   }
 
   ui.saveRow.hidden = !user;
-  ui.saveAsNew.hidden = !user || Boolean(currentRemote && !owned);
+  ui.saveAsNew.hidden = !user;
   ui.save.hidden = !owned;
+  ui.createNew.textContent = copyingReadable ? "Copy to my Experiments" : "Create private copy";
   ui.save.disabled = !owned || !dirty || conflictRevision !== null;
   ui.moveRow.hidden = !owned;
   if (owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
@@ -555,7 +557,7 @@ function updateCurrentUi() {
   } else if (!owned) {
     ui.saveState.dataset.state = "readonly";
     ui.saveState.textContent = "Professor supervision · Read-only";
-    ui.note.textContent = "This student Experiment can be inspected and run, but it cannot be changed from the Professor account.";
+    ui.note.textContent = "This student Experiment stays read-only. Copy to my Experiments creates an independent private Experiment from this exact saved revision.";
   } else if (conflictRevision !== null) {
     ui.saveState.dataset.state = "conflict";
     ui.saveState.textContent = `Newer revision r${conflictRevision} available`;
@@ -949,32 +951,58 @@ function closeSaveAsNew() {
   ui.newCollection.replaceChildren();
 }
 
+async function copyCurrentReadableExperiment(title, collectionId) {
+  if (!user || !currentRemote || currentRemote.owner_id === user.id) {
+    throw new Error("Open a readable non-owned Experiment before copying.");
+  }
+
+  const sourceId = currentRemote.id;
+  const sourceRevision = currentRemote.revision;
+  setMessage(`Copying ${currentRemote.title} revision ${sourceRevision}…`);
+  const { data: copyId, error } = await supabase.rpc("copy_experiment_to_workspace", {
+    p_source_experiment_id: sourceId,
+    p_expected_revision: sourceRevision,
+    p_title: title,
+    p_collection_id: collectionId,
+  });
+  if (error) throw error;
+  if (typeof copyId !== "string" || !copyId) throw new Error("The copied Experiment identifier is missing.");
+  return readExperiment(copyId);
+}
+
 async function createNewExperiment() {
   if (!user) throw new Error("Sign in before saving.");
   const title = ui.newTitle.value.trim();
   if (!title) throw new Error("Enter a title for the new experiment.");
   const collectionId = selectedCollectionId(ui.newCollection);
-  const artifacts = registryArtifactsForSave({ allowBuiltInCompatibility: true });
+  const copyingReadable = Boolean(currentRemote && currentRemote.owner_id !== user.id);
+  let data;
 
-  setMessage(`Creating ${title}…`);
-  const { data, error } = await supabase
-    .from("experiments")
-    .insert({
-      owner_id: user.id,
-      collection_id: collectionId,
-      title,
-      description: currentRemote?.description ?? "",
-      lifecycle: "active",
-      visibility: "private",
-      ...artifacts,
-      created_by_actor: "human",
-      created_by_ai_client: null,
-      updated_by_actor: "human",
-      updated_by_ai_client: null,
-    })
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
-    .single();
-  if (error) throw error;
+  if (copyingReadable) {
+    data = await copyCurrentReadableExperiment(title, collectionId);
+  } else {
+    const artifacts = registryArtifactsForSave({ allowBuiltInCompatibility: true });
+    setMessage(`Creating ${title}…`);
+    const { data: created, error } = await supabase
+      .from("experiments")
+      .insert({
+        owner_id: user.id,
+        collection_id: collectionId,
+        title,
+        description: currentRemote?.description ?? "",
+        lifecycle: "active",
+        visibility: "private",
+        ...artifacts,
+        created_by_actor: "human",
+        created_by_ai_client: null,
+        updated_by_actor: "human",
+        updated_by_ai_client: null,
+      })
+      .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
+      .single();
+    if (error) throw error;
+    data = created;
+  }
 
   applyExperimentArtifacts(data);
   currentRemote = data;
@@ -985,7 +1013,12 @@ async function createNewExperiment() {
   rememberCurrentWorkspace();
   renderBrowser();
   await applyLoadedSources();
-  setMessage(`${data.title} created${data.collection_id ? ` in ${collectionName(data.collection_id)}` : " without a collection"}.`, "success");
+  setMessage(
+    copyingReadable
+      ? `${data.title} copied to My experiments${data.collection_id ? ` / ${collectionName(data.collection_id)}` : ""}.`
+      : `${data.title} created${data.collection_id ? ` in ${collectionName(data.collection_id)}` : " without a collection"}.`,
+    "success",
+  );
 }
 
 function setSignedOutUi() {

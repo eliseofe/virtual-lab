@@ -1,12 +1,12 @@
 {
   "schema": "vlab.terminal-report/1",
-  "outcome": "Professor read-only supervision view for student Experiments",
-  "owner_impact": "Professor accounts can see active student/researcher Experiments in a separate Professor surface, open them in the Lab, inspect and run them, while the student's canonical Experiment remains read-only. Student-to-student privacy and owner-only mutation remain enforced by Supabase RLS.",
-  "remaining_action": "No owner action is required. Next development task in the approved epic: #288 — copy a readable Experiment into my workspace.",
+  "outcome": "Copy readable Experiments into an independent owned workspace",
+  "owner_impact": "A Professor viewing a student's read-only Experiment can copy an exact saved revision into My Experiments. The new copy is private, independently editable and organisable, while the student's source remains unchanged. The registry preserves which source Experiment and revision the copy came from.",
+  "remaining_action": "No owner action is required. Next development task in the approved epic: #289 — explicit read-only Experiment sharing.",
   "technical_evidence": [
-    "Supabase RLS adds Professor-only SELECT access to student profiles and student-owned Experiments while leaving INSERT/UPDATE/DELETE owner-only.",
-    "The Professor surface lists student Experiments separately from My Experiments and opens them through the existing Lab runtime as read-only.",
-    "Generic Save as new is deliberately hidden for supervised student Experiments so #288 remains a separate bounded ticket."
+    "copy_experiment_to_workspace atomically copies the saved canonical Experiment payload and records immutable source provenance.",
+    "The public browser RPC is SECURITY INVOKER; privileged copy logic is confined to the non-exposed private schema with explicit caller/readability/revision checks.",
+    "The copy action uses the saved source revision, not unsaved local professor-side edits; the copied Experiment then has its own identity and revision lifecycle."
   ],
-  "close_issue": 287
+  "close_issue": 288
 }
