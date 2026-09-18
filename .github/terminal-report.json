@@ -1,17 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Add durable Professor resume and whole-Experiment capability revalidation",
-  "owner_impact": "A Professor-connected research AI can now reopen the same blocked scientific Experiment in a later session, recover its complete closure history and linked request states, and append a fresh whole-Experiment revalidation after capability deployments. Resolved gaps are removed only from the latest analysis, remaining/new gaps stay durable, existing approved/in-progress/implemented request rows are not rewritten, and the Experiment cannot be declared unblocked while any unsupported requirement or scientific ambiguity remains. Ordinary Student authoring and capability-request submission remain unchanged.",
+  "outcome": "Repair fragmented capability-closure submission found by live Grok acceptance",
+  "owner_impact": "Repeated research-AI capability submissions for the same blocked scientific task now converge on one durable blocked Experiment and cumulative closure history. When the same requester already has a matching requested, approved, or in-progress capability request that is unlinked or belongs to that blocked Experiment, Virtual Lab reuses it and preserves its lifecycle state instead of creating a duplicate requested row.",
   "next": {
     "kind": "epic_continues",
     "issue": 313,
-    "text": "#313 is the known successor. It will return the original aggregation-paper workflow to Grok and live-test the repaired closed loop across sessions. It has not started."
+    "text": "#313 remains active. This candidate repairs the defect exposed by the first live Grok pass; the next step is to rerun the same black-box aggregation-paper acceptance with Grok against production. #313 must not close until that live retest proves one resumable blocked Experiment and preserved approved requests across sessions."
   },
   "technical_evidence": [
-    "Supabase migrations 20260918140225 and 20260918140253 add Professor-visible closure history, append-only revalidation and consolidated RLS policies without rewriting existing capability request lifecycle rows.",
-    "MCP server 3.2.0 / interface 10 / vlab.capability-request/3 adds Professor-only resume_capability_closure and revalidate_capability_closure while Student remains on the existing seven shared tools.",
-    "Automated #312 contract tests cover optimistic analysis sequencing, whole-Experiment resolved/remaining/new gap transitions, unblocked integrity, request preservation and Student backward compatibility.",
-    "Repair candidate 1 (88c21b49a20902109c75233b6942f29c79f6a7e2) passed build, exact-candidate Pages propagation and all seven active production smoke surfaces; this terminal-report-only candidate preserves that implementation while satisfying the per-candidate success-report contract."
-  ],
-  "close_issue": 312
+    "Migration 20260918150000 replaces initial closure submission with convergent blocked-Experiment reuse, cumulative initial analyses, and lifecycle-preserving request reconciliation.",
+    "The reconciliation write is isolated in a schema-pinned private security-definer helper that can update only caller-owned nonterminal request linkage/requirement keys; request status and review/developer lifecycle fields are not rewritten.",
+    "MCP server patch 3.2.1 keeps interface 10 and vlab.capability-request/3 stable; no Student/Professor role boundary or simulator scientific capability changes.",
+    "Automated #313 contract tests cover single-draft convergence, cumulative requirement preservation, request reuse without status mutation, helper authorization, and interface stability."
+  ]
 }
