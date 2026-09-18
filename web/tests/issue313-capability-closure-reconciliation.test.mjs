@@ -55,7 +55,7 @@ test("#313 reconciliation helper is private, caller-owned and schema-pinned", ()
 });
 
 test("#313 keeps the capability request interface stable across later MCP evolution", () => {
-  const interfaceVersion = Number(tools.match(/MCP_INTERFACE_VERSION = '(\\d+)'/)?.[1] ?? 0);
+  const interfaceVersion = Number(tools.match(/MCP_INTERFACE_VERSION = '([0-9]+)'/)?.[1] ?? 0);
   assert.ok(interfaceVersion >= 10);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
