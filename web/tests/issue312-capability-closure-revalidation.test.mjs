@@ -76,7 +76,7 @@ test("#312 keeps Student submission while allowing Professor cross-requester rev
 });
 
 test("#312 capability-request interface remains v3 across later MCP evolution", () => {
-  const interfaceVersion = Number(tools.match(/MCP_INTERFACE_VERSION = '(\\d+)'/)?.[1] ?? 0);
+  const interfaceVersion = Number(tools.match(/MCP_INTERFACE_VERSION = '([0-9]+)'/)?.[1] ?? 0);
   assert.ok(interfaceVersion >= 10);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
