@@ -38,7 +38,7 @@ test("#312 resume returns the durable blocked Experiment, ordered analysis histo
 
 test("#312 revalidation is optimistic, append-only and versioned", () => {
   assert.match(mcp, /base_analysis_sequence: z\.number\(\)\.int\(\)\.positive\(\)/);
-  assert.match(mcp, /supabase\.rpc\('revalidate_capability_closure'/);
+  assert.match(mcp, /supabase\.rpc\('revalidate_extension_closure'/);
   assert.match(migration, /v_previous\.analysis_sequence <> p_base_analysis_sequence/);
   assert.match(migration, /v_next_sequence := v_previous\.analysis_sequence \+ 1/);
   assert.match(migration, /insert into public\.capability_closure_analyses/);
@@ -75,10 +75,10 @@ test("#312 keeps Student submission while allowing Professor cross-requester rev
   assert.equal((policyMerge.match(/create policy "capability_requests_insert_researcher_or_professor_revalidation"/g) ?? []).length, 1);
 });
 
-test("#312 capability-request interface remains v3 across later MCP evolution", () => {
+test("#312 capability-request contract may version forward while preserving Professor revalidation", () => {
   const interfaceVersion = Number(tools.match(/MCP_INTERFACE_VERSION = '([0-9]+)'/)?.[1] ?? 0);
   assert.ok(interfaceVersion >= 10);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
-  assert.ok((tools.match(/capability_request_interface: 'vlab\.capability-request\/3'/g) ?? []).length >= 2);
+  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/4'/);
+  assert.ok((tools.match(/capability_request_interface: 'vlab\.capability-request\/4'/g) ?? []).length >= 2);
 });
