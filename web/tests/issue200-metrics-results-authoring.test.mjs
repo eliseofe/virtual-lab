@@ -108,13 +108,13 @@ test("#200 deployed-contract source increments versions and keeps Results outsid
   const shell = await readFile(new URL("../src/workspace-shell.js", import.meta.url), "utf8");
 
   assert.equal(RESULTS_PRESENTATION_SCHEMA, "vlab.results-presentation/1");
-  assert.match(tools, /MCP_SERVER_VERSION = '\\d+\\.\\d+\\.\\d+'/);
+  assert.match(tools, /MCP_SERVER_VERSION = '\d+\.\d+\.\d+'/);
   assert.match(tools, /contract_version: 'vlab\.authoring\/0\.6'/);
-  assert.match(tools, /MCP_INTERFACE_VERSION = '\\d+'/);
+  assert.match(tools, /MCP_INTERFACE_VERSION = '\d+'/);
   assert.match(index, /author_metrics_results/);
   assert.match(index, /requested_lifecycle_hook: z\.enum\(\['setup', 'initialize', 'control', 'measure', 'finalize'\]\)/);
-  assert.match(index, /shared_tool_count: \\d+/);
-  assert.match(index, /professor_tool_count: \\d+/);
+  assert.match(index, /shared_tool_count: \d+/);
+  assert.match(index, /professor_tool_count: \d+/);
   assert.match(migration, /create table if not exists public\.experiment_results_presentations/);
   assert.match(migration, /before update on public\.experiment_results_presentations/);
   assert.doesNotMatch(migration, /before update on public\.experiments/);
