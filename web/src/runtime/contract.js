@@ -85,7 +85,7 @@ export const RUNTIME_CONTRACT = Object.freeze({
     optional_executable: Object.freeze({
       registered_types: Object.freeze([]),
       execution_policy: "No optional executable artifact type is registered. Metrics is a required core artifact and therefore does not use optional-artifact dispatch.",
-      unsupported_request: "unsupported-capability",
+      unsupported_request_class: "artifact_workflow",
     }),
   }),
 });
