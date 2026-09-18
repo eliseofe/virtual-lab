@@ -37,6 +37,8 @@ let user = null;
 let profile = null;
 let remoteExperiments = [];
 let sharedExperiments = [];
+let supervisedProfiles = [];
+let supervisedExperiments = [];
 let shareRecipients = [];
 let outgoingShares = [];
 let collections = [];
@@ -164,10 +166,14 @@ function selectedCollectionId(select) {
   return select.value || null;
 }
 
+function supervisedResearcherName(ownerId) {
+  return supervisedProfiles.find((candidate) => candidate.id === ownerId)?.display_name?.trim() || "Student researcher";
+}
+
 function currentLocationLabel() {
   if (!currentRemote) return "Built-in";
   if (currentRemoteAccess === "shared") return "Shared with me";
-  if (currentRemoteAccess === "supervised") return "Student experiment";
+  if (currentRemoteAccess === "supervised") return `Supervised · ${supervisedResearcherName(currentRemote.owner_id)}`;
   return currentRemote.collection_id ? `Collection · ${collectionName(currentRemote.collection_id)}` : "No collection";
 }
 
@@ -591,10 +597,12 @@ function setQuickSwitchOptions() {
 
   if (user && currentRemote && currentRemote.owner_id !== user.id) {
     const group = document.createElement("optgroup");
-    group.label = currentRemoteAccess === "shared" ? "Shared with me · Read-only" : "Student experiment · Read-only";
+    group.label = currentRemoteAccess === "shared" ? "Shared with me · Read-only" : "Supervised research · Read-only";
     const option = document.createElement("option");
     option.value = `registry:${currentRemote.id}`;
-    option.textContent = `${currentRemote.title} · r${currentRemote.revision}`;
+    option.textContent = currentRemoteAccess === "supervised"
+      ? `${currentRemote.title} · ${supervisedResearcherName(currentRemote.owner_id)} · r${currentRemote.revision}`
+      : `${currentRemote.title} · r${currentRemote.revision}`;
     group.append(option);
     experimentSelect.append(group);
   }
@@ -724,8 +732,10 @@ function experimentResult(experiment, { access = "owned" } = {}) {
   const updated = formatUpdated(experiment.updated_at);
   const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";
   meta.textContent = access === "shared"
-    ? `Shared read-only · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`
-    : `Your experiment · ${location} · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`;
+    ? `Shared with me · Read-only · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`
+    : access === "supervised"
+      ? `${supervisedResearcherName(experiment.owner_id)} · Supervised · Read-only · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`
+      : `Your experiment · ${location} · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`;
   result.append(title, meta);
   result.addEventListener("click", () => run(async () => {
     if (currentRemote?.id !== experiment.id && !(await confirmDiscardIfNeeded())) return;
@@ -786,8 +796,11 @@ function renderBrowser() {
 
   browser.filters.append(filterButton("All experiments", "all"));
   if (user) {
-    browser.filters.append(filterButton("My experiments", "mine"));
-    browser.filters.append(filterButton("Shared with me", "shared"));
+    browser.filters.append(filterButton(`My experiments · ${remoteExperiments.length}`, "mine"));
+    browser.filters.append(filterButton(`Shared with me · ${sharedExperiments.length}`, "shared"));
+    if (profile?.role === "professor") {
+      browser.filters.append(filterButton(`Supervised · ${supervisedExperiments.length}`, "supervised"));
+    }
     browser.filters.append(filterButton("No collection", "unfiled"));
     for (const collection of collections) browser.filters.append(filterButton(collection.name, collection.id));
   }
@@ -796,7 +809,7 @@ function renderBrowser() {
   const builtinMatches = browserCollection === "all" && (!search || BUILTIN_TITLE.toLocaleLowerCase().includes(search));
   const filtered = remoteExperiments.filter((experiment) => {
     const matchesSearch = !search || experiment.title.toLocaleLowerCase().includes(search);
-    if (!matchesSearch || browserCollection === "shared") return false;
+    if (!matchesSearch || browserCollection === "shared" || browserCollection === "supervised") return false;
     if (browserCollection === "all" || browserCollection === "mine") return true;
     if (browserCollection === "unfiled") return !experiment.collection_id;
     return experiment.collection_id === browserCollection;
@@ -805,13 +818,32 @@ function renderBrowser() {
     if (browserCollection !== "all" && browserCollection !== "shared") return false;
     return !search || experiment.title.toLocaleLowerCase().includes(search);
   });
+  const filteredSupervised = supervisedExperiments.filter((experiment) => {
+    if (browserCollection !== "all" && browserCollection !== "supervised") return false;
+    const owner = supervisedResearcherName(experiment.owner_id).toLocaleLowerCase();
+    return !search || experiment.title.toLocaleLowerCase().includes(search) || owner.includes(search);
+  });
 
-  browser.contextTitle.textContent = "Experiments";
-  browser.contextHelp.textContent = user
-    ? "Search the built-in source and all of your runnable experiments in one place. Collections are optional filters. Shared Experiments appear separately and stay read-only; copy one when you need an independent editable version."
-    : "Search the built-in experiments. Sign in to include your private experiments.";
+  if (!user) {
+    browser.contextTitle.textContent = "Built-in experiments";
+    browser.contextHelp.textContent = "Search the built-in experiments. Sign in to include your private experiments.";
+  } else if (browserCollection === "shared") {
+    browser.contextTitle.textContent = "Shared with me";
+    browser.contextHelp.textContent = "Experiments another researcher shared with you. They remain read-only; copy one to create an independent editable Experiment.";
+  } else if (browserCollection === "supervised") {
+    browser.contextTitle.textContent = "Supervised research";
+    browser.contextHelp.textContent = "Student and researcher Experiments available through Professor supervision. Inspect and run them read-only, or copy one into your workspace when you need an independent editable version.";
+  } else if (browserCollection === "mine" || browserCollection === "unfiled" || collections.some((collection) => collection.id === browserCollection)) {
+    browser.contextTitle.textContent = "My experiments";
+    browser.contextHelp.textContent = "Experiments you own and can edit. Collections organize only your own workspace.";
+  } else {
+    browser.contextTitle.textContent = "All available experiments";
+    browser.contextHelp.textContent = profile?.role === "professor"
+      ? "Browse built-in, owned, explicitly shared, and supervised research in one place. Read-only sources remain separate from your own editable Experiments."
+      : "Browse built-in, owned, and explicitly shared Experiments in one place. Read-only sources remain separate from your own editable Experiments.";
+  }
 
-  const total = filtered.length + filteredShared.length + (builtinMatches ? 1 : 0);
+  const total = filtered.length + filteredShared.length + filteredSupervised.length + (builtinMatches ? 1 : 0);
   browser.count.textContent = `${total} experiment${total === 1 ? "" : "s"}`;
 
   if (builtinMatches) {
@@ -842,6 +874,10 @@ function renderBrowser() {
 
   if (filteredShared.length) {
     browser.results.append(experimentGroup("Shared with me", filteredShared, { access: "shared" }));
+  }
+
+  if (filteredSupervised.length) {
+    browser.results.append(experimentGroup("Supervised research", filteredSupervised, { access: "supervised" }));
   }
 
   if (!total) {
@@ -934,6 +970,42 @@ async function loadSharedExperimentList() {
   setQuickSwitchOptions();
 }
 
+async function loadSupervisedExperimentList() {
+  if (!user || profile?.role !== "professor") {
+    supervisedProfiles = [];
+    supervisedExperiments = [];
+    setQuickSwitchOptions();
+    return;
+  }
+
+  const { data: students, error: studentsError } = await supabase
+    .from("profiles")
+    .select("id,display_name,role")
+    .eq("role", "student")
+    .order("display_name", { ascending: true });
+  if (studentsError) throw studentsError;
+  supervisedProfiles = students ?? [];
+
+  const ids = supervisedProfiles.map((student) => student.id);
+  if (!ids.length) {
+    supervisedExperiments = [];
+    setQuickSwitchOptions();
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("experiments")
+    .select("id,owner_id,collection_id,title,revision,updated_at,artifacts,config_source,initializer_source,controller_source")
+    .in("owner_id", ids)
+    .eq("lifecycle", "active")
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+
+  supervisedExperiments = (data ?? [])
+    .filter((experiment) => productionExperimentRunnability(experiment).runnable);
+  setQuickSwitchOptions();
+}
+
 async function loadExperimentList() {
   if (!user) {
     remoteExperiments = [];
@@ -1019,7 +1091,9 @@ function connectedMessage() {
     ? ` ${hiddenNonRunnableCount} older or incompatible experiment${hiddenNonRunnableCount === 1 ? " is" : "s are"} hidden.`
     : "";
   const shared = sharedExperiments.length;
-  return `Your library is ready: ${count} experiment${count === 1 ? "" : "s"} in ${collectionCount} collection${collectionCount === 1 ? "" : "s"} plus Unfiled, with ${shared} shared with you.${hidden}`;
+  const supervised = profile?.role === "professor" ? supervisedExperiments.length : 0;
+  const supervision = profile?.role === "professor" ? ` and ${supervised} supervised` : "";
+  return `Your library is ready: ${count} experiment${count === 1 ? "" : "s"} in ${collectionCount} collection${collectionCount === 1 ? "" : "s"} plus Unfiled, with ${shared} shared with you${supervision}.${hidden}`;
 }
 
 function registryArtifactsForSave({ allowBuiltInCompatibility = false } = {}) {
@@ -1272,6 +1346,8 @@ function setSignedOutUi() {
   ui.signOut.hidden = true;
   remoteExperiments = [];
   sharedExperiments = [];
+  supervisedProfiles = [];
+  supervisedExperiments = [];
   shareRecipients = [];
   outgoingShares = [];
   collections = [];
@@ -1306,6 +1382,10 @@ async function restoreRememberedWorkspace() {
     await loadRemoteExperiment(id, { access: "shared" });
     return true;
   }
+  if (supervisedExperiments.some((experiment) => experiment.id === id)) {
+    await loadRemoteExperiment(id, { access: "supervised" });
+    return true;
+  }
   clearRememberedWorkspace();
   return false;
 }
@@ -1322,7 +1402,7 @@ async function initializeSession() {
   }
 
   await loadProfile();
-  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
+  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadSupervisedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
   await restoreRememberedWorkspace();
   setSignedInUi();
   renderBrowser();
@@ -1357,10 +1437,14 @@ async function refreshRegistry() {
   const dirty = hasUnsavedRemoteEdits();
   setMessage("Refreshing your library…");
   const previousAccess = currentRemoteAccess;
-  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
+  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadSupervisedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
 
   if (previousRemote) {
-    const available = previousAccess === "shared" ? sharedExperiments : remoteExperiments;
+    const available = previousAccess === "shared"
+      ? sharedExperiments
+      : previousAccess === "supervised"
+        ? supervisedExperiments
+        : remoteExperiments;
     const fresh = available.find((experiment) => experiment.id === previousRemote.id);
     if (!fresh) {
       if (dirty) {
@@ -1426,7 +1510,11 @@ experimentSelect.addEventListener("change", () => run(async () => {
     setQuickSwitchOptions();
     return;
   }
-  const access = sharedExperiments.some((experiment) => experiment.id === id) ? "shared" : "owned";
+  const access = sharedExperiments.some((experiment) => experiment.id === id)
+    ? "shared"
+    : supervisedExperiments.some((experiment) => experiment.id === id)
+      ? "supervised"
+      : "owned";
   await loadRemoteExperiment(id, { access });
 }));
 
