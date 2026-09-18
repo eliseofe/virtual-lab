@@ -96,6 +96,14 @@ The copy is created from one exact saved source revision. Its canonical artifact
 
 The copied Experiment is thereafter independent: source edits, loss of source visibility, or deletion of the source working Experiment do not mutate or remove the copy. Provenance deliberately retains the source identity even if that source record later disappears.
 
+## Explicit read-only sharing
+
+A working Experiment owner may explicitly grant another authenticated registry user read-only access to that same working Experiment. Sharing is a permission on the original mutable Experiment; it is not a copy, ownership transfer, preserved snapshot, submission, or Showcase publication.
+
+A recipient sees shared Experiments separately from their own Experiments, may inspect and run the shared source, and may create an independent owned copy through the normal copy-to-workspace operation. The recipient cannot update, move, archive or delete the shared source because working-Experiment mutation remains owner-scoped.
+
+Share grants are explicit rows under RLS. Ordinary private Experiments remain invisible to unrelated students/researchers unless another existing authorization rule applies. Revocation semantics are completed separately by #290.
+
 ## Experiment lifecycle
 
 Working Experiments support active/archive/restore and eligible permanent delete semantics.
@@ -138,6 +146,8 @@ The registry must not silently become the bulk trajectory/Monte-Carlo warehouse.
 | Capability | Student | Professor/curator | Simulator developer via registry |
 | --- | --- | --- | --- |
 | Read own Experiment | yes | yes | only if separately a registry user |
+| Read explicitly shared Experiment | yes, when recipient | yes, when recipient | only if separately a registry user |
+| Share an owned Experiment read-only | where an eligible recipient is available | yes | only if separately a registry user |
 | Create/edit own Experiment | yes | yes | only if separately a registry user |
 | Organize/archive/restore own Experiment | yes | yes | only if separately a registry user |
 | Permanent-delete eligible own working Experiment | yes | yes | only if separately a registry user |
