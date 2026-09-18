@@ -38,6 +38,7 @@ let profile = null;
 let remoteExperiments = [];
 let sharedExperiments = [];
 let shareRecipients = [];
+let outgoingShares = [];
 let collections = [];
 let currentRemote = null;
 let currentRemoteAccess = null;
@@ -81,6 +82,9 @@ function installStyles() {
     .registry-share-form { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 7px; align-items: end; }
     .registry-share-field { display: grid; gap: 4px; color: #52656d; font-size: 10.5px; font-weight: 650; }
     .registry-share-form button { min-height: 38px; padding: 7px 10px; }
+    .registry-share-list { display: grid; gap: 6px; }
+    .registry-share-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 8px; border: 1px solid #e0e7ea; border-radius: 8px; color: #52656d; font-size: 10.5px; }
+    .registry-share-item button { min-height: 30px; padding: 4px 8px; font-size: 10.5px; }
 
     .experiment-current { display: grid; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e5ebee; }
     .experiment-current-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -311,7 +315,9 @@ function buildAccountPanel() {
   confirmShare.className = "primary";
   confirmShare.textContent = "Share";
   shareForm.append(shareField, cancelShare, confirmShare);
-  shareRow.append(shareOpen, shareForm);
+  const shareList = document.createElement("div");
+  shareList.className = "registry-share-list";
+  shareRow.append(shareOpen, shareForm, shareList);
 
   saveRow.append(saveState, saveActions, moveRow, shareRow);
 
@@ -371,6 +377,7 @@ function buildAccountPanel() {
     shareRecipient,
     cancelShare,
     confirmShare,
+    shareList,
     newForm,
     newTitle,
     newCollection,
