@@ -1273,6 +1273,7 @@ function setSignedOutUi() {
   remoteExperiments = [];
   sharedExperiments = [];
   shareRecipients = [];
+  outgoingShares = [];
   collections = [];
   hiddenNonRunnableCount = 0;
   browserSource = "builtin";
@@ -1321,7 +1322,7 @@ async function initializeSession() {
   }
 
   await loadProfile();
-  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients()]);
+  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
   await restoreRememberedWorkspace();
   setSignedInUi();
   renderBrowser();
@@ -1356,7 +1357,7 @@ async function refreshRegistry() {
   const dirty = hasUnsavedRemoteEdits();
   setMessage("Refreshing your library…");
   const previousAccess = currentRemoteAccess;
-  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients()]);
+  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
 
   if (previousRemote) {
     const available = previousAccess === "shared" ? sharedExperiments : remoteExperiments;
