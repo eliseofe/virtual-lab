@@ -1,17 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Expose pending capability commitments through workspace discovery",
-  "owner_impact": "A fresh research-AI session can discover caller-visible pending Virtual Lab capability commitments through read_workspace instead of relying on prior chat memory or owner hints. Requested, approved, and in-progress rows are surfaced as pending protocol state; approved still means queued for development, while the current authoring contract remains the authority for capabilities available now.",
+  "outcome": "Canonical capability metadata cleanup",
+  "owner_impact": "The three known Virtual Lab capabilities keep their existing stable request IDs and lifecycle states, while gaining a clean owner-approved generic definition and minimal publication provenance. Historical Grok request reasoning, Professor notes, Experiment linkage and other discourse remain preserved internally but are not part of the canonical capability meaning. This ticket does not yet change what MCP returns; that is the next ticket.",
   "next": {
     "kind": "epic_continues",
-    "issue": 325,
-    "text": "#325 is the known successor. After this exact #328 candidate is production-green, rerun the Firat/Ferrante/Gillet/Tuci aggregation workflow from a fresh Grok chat using only the ordinary scientific prompt. #325 has not started in this owner turn."
+    "issue": 334,
+    "text": "#334 is the known successor. It will change the MCP read surface so fresh research-AI sessions receive the formal Lab contract and canonical capability metadata instead of raw Experiment/request discourse. #334 has not started in this owner turn."
   },
   "technical_evidence": [
-    "read_workspace discovery queries capability_requests through the existing authenticated Supabase client and existing RLS; no privileged queue read is introduced.",
-    "The pending queue filter is exactly requested, approved, and in_progress; implemented and declined rows are not advertised as pending commitments.",
-    "The response exposes lifecycle identity/context needed to distinguish an existing commitment from a new missing capability without changing lifecycle state.",
-    "MCP server patch 3.2.2 keeps interface 10 and vlab.capability-request/3 stable; no scientific simulator capability or role boundary changes.",
-    "Automated #328 regression tests cover queue exposure, terminal-state exclusion, RLS-client use, pending-vs-implemented semantics, and interface stability."
+    "Existing capability-request UUIDs remain the stable capability identities; no second capability table or duplicate lifecycle state is introduced.",
+    "canonical_definition is seeded only from already owner-approved/repository-authoritative generic capability meaning.",
+    "publication_provenance contains only published title plus DOI/arXiv identifier.",
+    "Historical request context, draft descriptions, Professor notes and lifecycle fields are not deleted or rewritten.",
+    "Regression coverage rejects historical paper-specific reasoning from the canonical seed and rejects lifecycle/deletion changes."
   ]
 }
