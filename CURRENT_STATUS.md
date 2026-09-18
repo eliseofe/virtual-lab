@@ -24,8 +24,8 @@ A new **#301 — Virtual Lab security, identity and authorization** umbrella is 
 
 ## Immediate frontier
 
-1. Complete exact-candidate production verification for **#299 — Experiment navigation and Professor supervision UX**. After it is green, #273 has no active child and returns to dormant/living status.
-2. **#302 — security audit** is separately queued under new epic #301 but is not started by the #299 authorization; a later owner turn may select it.
+1. **#273 UI/UX** has no active child and is dormant/living after production-verified #299.
+2. **#302 — security audit** is separately queued under new epic #301 but has not started; a later owner turn may select it.
 3. Continue real student/owner scientific use and turn concrete evidence into focused fixes.
 4. Studies and other parked/not-started lanes remain separately gated.
 
