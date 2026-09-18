@@ -61,6 +61,12 @@ If two changes truly cannot be deployed safely except atomically, document why b
 
 ## Reporting rule
 
+Owner-facing communication must be **human-readable first**. Repository authorities may use technical names, issue numbers, taxonomy labels and compact implementation language, but status, recovery, roadmap and completion answers must translate that material into ordinary language before presenting it to the owner.
+
+Assume the owner may not remember decisions or terminology from earlier days. Give enough context to recognize what each item actually means, what has already been done, what remains, and why its current state matters. Do not answer by dumping or lightly reformatting `ROADMAP.md`, `CURRENT_STATUS.md`, issue titles, taxonomy categories, commit text or other repository metadata.
+
+Issue numbers, epic names and formal roadmap categories are supporting references only. When useful, pair them with a short human explanation rather than expecting the owner to decode them.
+
 Owner-facing reports must answer three human questions directly:
 - What just finished and was production-verified?
 - Is there anything the owner needs to do now?

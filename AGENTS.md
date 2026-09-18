@@ -24,4 +24,6 @@ When an older issue or document conflicts with a later accepted/current authorit
 
 User-facing issue references should pair the issue number with its meaning; do not expect humans to remember bare numbers.
 
+When recovering or summarizing project state, do not mirror repository prose back to the owner. Synthesize it into plain language with enough context to make sense without remembering prior conversations; use the repository wording only as supporting evidence.
+
 Git history, closed issues and `docs/archive/` are historical evidence, not current execution authority.
