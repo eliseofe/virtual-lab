@@ -1,11 +1,12 @@
 {
   "schema": "vlab.terminal-report/1",
-  "outcome": "Production smoke now reuses one shared Chrome host",
-  "owner_impact": "The full production smoke breadth is preserved, but active surface checks no longer launch seven independent Chrome processes. Each check runs in an isolated browser context under one shared host, reducing startup duplication and the Chrome-launch failure mode that caused the previous red run.",
-  "remaining_action": "No owner action is required for the smoke refactor. Next project action: complete issue #278 OAuth cutover once the correct Supabase platform login is established.",
+  "outcome": "Professor read-only supervision view for student Experiments",
+  "owner_impact": "Professor accounts can see active student/researcher Experiments in a separate Professor surface, open them in the Lab, inspect and run them, while the student's canonical Experiment remains read-only. Student-to-student privacy and owner-only mutation remain enforced by Supabase RLS.",
+  "remaining_action": "No owner action is required. Next development task in the approved epic: #288 — copy a readable Experiment into my workspace.",
   "technical_evidence": [
-    "Every active manifest smoke must use smoke-browser-harness.mjs; a regression test rejects future smoke scripts that launch Chrome directly.",
-    "Each surface receives an isolated browser context/target, preserving storage/auth/test isolation.",
-    "All existing surface assertions and hard per-check timeouts remain in place; production completion still requires green exact-candidate smoke."
-  ]
+    "Supabase RLS adds Professor-only SELECT access to student profiles and student-owned Experiments while leaving INSERT/UPDATE/DELETE owner-only.",
+    "The Professor surface lists student Experiments separately from My Experiments and opens them through the existing Lab runtime as read-only.",
+    "Generic Save as new is deliberately hidden for supervised student Experiments so #288 remains a separate bounded ticket."
+  ],
+  "close_issue": 287
 }

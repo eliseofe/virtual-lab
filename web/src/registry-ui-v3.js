@@ -153,6 +153,7 @@ function selectedCollectionId(select) {
 
 function currentLocationLabel() {
   if (!currentRemote) return "Built-in";
+  if (user && currentRemote.owner_id !== user.id) return "Student experiment";
   return currentRemote.collection_id ? `Collection · ${collectionName(currentRemote.collection_id)}` : "No collection";
 }
 
@@ -478,15 +479,15 @@ function setQuickSwitchOptions() {
   builtin.textContent = BUILTIN_TITLE;
   experimentSelect.append(builtin);
 
-  const experiments = [...remoteExperiments];
-  if (currentRemote && !experiments.some((experiment) => experiment.id === currentRemote.id)) {
-    experiments.unshift(currentRemote);
+  const ownedExperiments = [...remoteExperiments];
+  if (currentRemote && currentRemote.owner_id === user?.id && !ownedExperiments.some((experiment) => experiment.id === currentRemote.id)) {
+    ownedExperiments.unshift(currentRemote);
   }
 
-  if (user && experiments.length) {
+  if (user && ownedExperiments.length) {
     const group = document.createElement("optgroup");
     group.label = "Your experiments";
-    for (const experiment of experiments) {
+    for (const experiment of ownedExperiments) {
       const option = document.createElement("option");
       option.value = `registry:${experiment.id}`;
       const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";
@@ -496,12 +497,21 @@ function setQuickSwitchOptions() {
     experimentSelect.append(group);
   }
 
+  if (user && currentRemote && currentRemote.owner_id !== user.id) {
+    const group = document.createElement("optgroup");
+    group.label = "Student experiment · Read-only";
+    const option = document.createElement("option");
+    option.value = `registry:${currentRemote.id}`;
+    option.textContent = `${currentRemote.title} · r${currentRemote.revision}`;
+    group.append(option);
+    experimentSelect.append(group);
+  }
+
   experimentSelect.value = currentRemote ? `registry:${currentRemote.id}` : BUILTIN_VALUE;
   currentUi.quickHint.textContent = user
-    ? "Switch directly here, or use Find experiment to search everything. Collections are optional organization."
+    ? "Switch directly here, or use Find experiment to search everything. Collections are optional organization. Professor-supervised student work stays separate and read-only."
     : "The built-in experiment is available now. Sign in to add your private experiments to this switcher.";
 }
-
 function updateMoveButton() {
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
   const dirty = hasUnsavedRemoteEdits();
@@ -529,7 +539,7 @@ function updateCurrentUi() {
   }
 
   ui.saveRow.hidden = !user;
-  ui.saveAsNew.hidden = !user;
+  ui.saveAsNew.hidden = !user || Boolean(currentRemote && !owned);
   ui.save.hidden = !owned;
   ui.save.disabled = !owned || !dirty || conflictRevision !== null;
   ui.moveRow.hidden = !owned;
@@ -544,8 +554,8 @@ function updateCurrentUi() {
     ui.note.textContent = "The built-in experiment cannot be overwritten. Save as new lets you choose where its private copy is stored.";
   } else if (!owned) {
     ui.saveState.dataset.state = "readonly";
-    ui.saveState.textContent = "Read-only source";
-    ui.note.textContent = "This source cannot be overwritten from this account. Save as new creates your own private copy.";
+    ui.saveState.textContent = "Professor supervision · Read-only";
+    ui.note.textContent = "This student Experiment can be inspected and run, but it cannot be changed from the Professor account.";
   } else if (conflictRevision !== null) {
     ui.saveState.dataset.state = "conflict";
     ui.saveState.textContent = `Newer revision r${conflictRevision} available`;
@@ -724,7 +734,7 @@ function renderBrowser() {
 }
 
 async function loadProfile() {
-  const { data, error } = await supabase.from("profiles").select("id, display_name").eq("id", user.id).maybeSingle();
+  const { data, error } = await supabase.from("profiles").select("id, display_name, role").eq("id", user.id).maybeSingle();
   if (error) throw error;
   profile = data;
 }
@@ -771,14 +781,12 @@ async function readExperiment(id) {
     .from("experiments")
     .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
     .eq("id", id)
-    .eq("owner_id", user.id)
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("Experiment not found in your library.");
+  if (!data) throw new Error("Experiment not found in your library or not available to this account.");
   if (!productionExperimentRunnability(data).runnable) throw new Error("This experiment cannot run in the current simulator version.");
   return data;
 }
-
 async function waitForSimulatorReady() {
   const deadline = performance.now() + 15000;
   while (applySetup.disabled && performance.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1182,6 +1190,14 @@ for (const descriptor of EXPERIMENT_ARTIFACTS) {
 document.querySelector("#additional-experiment-artifacts")?.addEventListener("input", (event) => {
   if (event.target?.dataset?.experimentArtifactEditor === "true") updateCurrentUi();
 });
+
+window.addEventListener("vlab:open-supervised-experiment", (event) => run(async () => {
+  const id = event instanceof CustomEvent ? event.detail?.id : null;
+  if (typeof id !== "string" || !id) throw new Error("Student Experiment identifier is missing.");
+  if (profile?.role !== "professor") throw new Error("Professor supervision is not available to this account.");
+  if (!(await confirmDiscardIfNeeded())) return;
+  await loadRemoteExperiment(id);
+}));
 
 supabase.auth.onAuthStateChange((_event, session) => {
   if (session?.user?.id === user?.id || (!session && !user)) return;
