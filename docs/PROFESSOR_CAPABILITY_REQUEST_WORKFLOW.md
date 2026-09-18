@@ -1,6 +1,6 @@
 # Professor capability-request workflow
 
-Status: **deployed baseline and standing development boundary, updated 16 September 2026**.
+Status: **deployed baseline and standing development boundary, updated 18 September 2026**.
 
 This document records the paper-to-Experiment extension loop when a research AI discovers that the current Virtual Lab cannot express a required simulator capability.
 
@@ -51,6 +51,23 @@ This schema foundation is secure-by-default. #311 adopts it in the authenticated
 
 The two already-approved aggregation requests remained unchanged and unlinked through #310–#312. #313's reconciliation repair is the point at which the live aggregation closure may attach them to the durable blocked Experiment while preserving their `approved` state.
 
+## Six-class request model
+
+The request queue is broader than the canonical semantic-capability registry. Every clear unsupported requirement is classified as one of:
+
+1. `semantic_capability`
+2. `authoring_language`
+3. `runtime_configuration`
+4. `artifact_workflow`
+5. `implementation_optimization`
+6. `security_boundary`
+
+All six are valid Professor-visible requests. None is automatically approved or rejected. In particular, classes 5 and 6 remain visible so the owner can observe whether real research tasks ever elicit them and decide manually.
+
+Only class 1 can reference or create canonical semantic-capability identity. Classes 2–6 remain typed extension requests.
+
+Each new research task carries minimal publication identity (title + persistent identifier) separately from scientific reasoning. Multiple request records/papers may converge on one canonical capability; publication links are duplicate-safe.
+
 ## Durable capability request
 
 A request is a first-class Supabase domain row with stable identity and retained context. The deployed model preserves information such as:
@@ -100,11 +117,11 @@ This UI remains an Experiment/product administration surface. It does not embed 
 
 ## Research-AI request action — deployed
 
-Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/3`.
+Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/4`.
 
 Normal `read_workspace` discovery also exposes the caller-visible nonterminal capability queue (`requested`, `approved`, `in_progress`). Existing RLS remains authoritative: a Professor sees queue rows already visible to Professor; a Student sees only rows already visible to that Student. This protocol state lets a fresh research-AI session distinguish an already-requested or approved capability from a genuinely new gap without relying on chat memory. `approved` remains a pending developer-queue commitment, not evidence that the capability is implemented; the active authoring contract remains authoritative for what can be executed now.
 
-The active authoring contract signals requestable unsupported-capability behavior for both roles. Before submission, the research AI performs a best-effort whole-Experiment analysis, groups low-level diagnostics into meaningful capability requests, and preserves explicit ambiguity instead of asking the developer layer to infer scientific meaning. Repeated initial submissions for the same blocked scientific task converge on the same durable blocked Experiment and cumulative initial closure history. A matching existing nonterminal request owned by the same requester is reconciled into that closure when it is unlinked or already belongs to the same blocked Experiment; its `requested`, `approved`, or `in_progress` lifecycle state is preserved rather than reset.
+The active authoring contract signals requestable unsupported-capability behavior for both roles. Before submission, the research AI performs a best-effort whole-Experiment analysis, groups low-level diagnostics into meaningful capability requests, and preserves explicit ambiguity instead of asking the developer layer to infer scientific meaning. Request reconciliation is now by explicit stable request UUID or canonical capability UUID. Free-text domain/name matching is not an identity mechanism. Reusing a request preserves its lifecycle state; a different paper normally creates a different request record even when both requests later bind to the same canonical capability.
 
 Current lifecycle-hook vocabulary exposed by the request path includes:
 
