@@ -63,7 +63,7 @@ test("#135 original migration records the historical Professor-only submission b
 test("#135 durable request concept remains present after later closure-flow evolution", () => {
   assert.match(mcp, /origin_experiment_id: z\.string\(\)\.uuid\(\)\.optional\(\)/);
   assert.match(mcp, /draft_artifacts: z\.array\(ARTIFACT_INPUT\)\.optional\(\)/);
-  assert.match(mcp, /submit_capability_closure/);
+  assert.match(mcp, /submit_extension_closure/);
   assert.doesNotMatch(mcp, /validateExperimentArtifacts\(draft_artifacts/);
 });
 
