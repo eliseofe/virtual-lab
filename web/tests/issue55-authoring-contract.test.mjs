@@ -36,7 +36,7 @@ test("issue #55/#63/#196 edge validator vendors the exact production compilers a
 });
 
 test("issue #55/#196 contract contains software interface only, not a scientific reference experiment", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.5");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.7");
   assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "7");
   assert.equal(AUTHORING_CONTRACT.experiment_artifact_interface, "vlab.experiment-artifacts/3");
   assert.equal(AUTHORING_CONTRACT.runtime_contract.version, "vlab.runtime/0.2");
@@ -59,7 +59,7 @@ test("issue #55/#196 contract contains software interface only, not a scientific
 test("issue #55/#63/#196 a generic experiment with arbitrary scientific parameter names and empty Metrics validates", () => {
   const result = validateExperimentSources(SOFTWARE_FIXTURE);
   assert.equal(result.valid, true, JSON.stringify(result, null, 2));
-  assert.equal(result.contract_version, "vlab.authoring/0.5");
+  assert.equal(result.contract_version, "vlab.authoring/0.7");
   assert.equal(result.compiled.configuration, "vlab.config/0.2");
   assert.equal(result.compiled.initializer, "vlab.initializer-state/0.2");
   assert.equal(result.compiled.controller_language, "python-vlab/0.1");
@@ -92,7 +92,9 @@ test("issue #55 unsupported controller observation is an explicit capability dia
   const result = validateExperimentSources({ ...SOFTWARE_FIXTURE, controller_source: `class Probe(Agent):\n    def step(self, obs):\n        x = obs.global_positions\n        return Motion(0.0, 0.0)\n` });
   assert.equal(result.valid, false);
   assert.equal(result.diagnostics[0].artifact, "controller");
-  assert.equal(result.diagnostics[0].category, "unsupported-capability");
+  assert.equal(result.diagnostics[0].category, "invalid-observation-field");
+  assert.equal(result.diagnostics[0].diagnostic_class, "semantic_capability");
+  assert.equal(result.diagnostics[0].request_class, "semantic_capability");
   assert.equal(result.diagnostics[0].compiler_category, "invalid-observation-field");
   assert.ok(Number.isInteger(result.diagnostics[0].line));
 });
@@ -103,11 +105,10 @@ test("issue #55 forbidden controller host access remains forbidden", () => {
   assert.equal(result.diagnostics[0].category, "forbidden-capability");
 });
 
-test("issue #55/#196 contract exposes extensible capability classes and no AI execution path", () => {
-  assert.ok(AUTHORING_CONTRACT.capability_model.observations.length >= 1);
-  assert.ok(AUTHORING_CONTRACT.capability_model.metrics.length >= 1);
-  assert.ok(AUTHORING_CONTRACT.capability_model.actions.length >= 1);
-  assert.ok(AUTHORING_CONTRACT.capability_model.intrinsics.length >= 1);
+test("issue #55/#196 contract exposes canonical capability bindings and no AI execution path", () => {
+  assert.equal(AUTHORING_CONTRACT.canonical_capability_bindings.length, 11);
+  assert.equal(Object.prototype.hasOwnProperty.call(AUTHORING_CONTRACT, "capability_model"), false);
+  assert.ok(AUTHORING_CONTRACT.canonical_capability_bindings.every((binding) => binding.canonical_capability_id && binding.capability_key && binding.surfaces.length));
   assert.equal(AUTHORING_CONTRACT.execution_boundary.validator_runs_simulation, false);
   assert.equal(AUTHORING_CONTRACT.execution_boundary.ai_can_run_simulation, false);
   assert.equal(AUTHORING_CONTRACT.execution_boundary.ai_can_observe_results, false);
