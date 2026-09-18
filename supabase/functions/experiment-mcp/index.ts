@@ -172,20 +172,21 @@ function registerExperimentTools(
   server.registerTool(
     'read_workspace',
     {
-      title: 'Read Virtual Lab experiment workspace',
+      title: 'Read Virtual Lab knowledge or an explicit experiment workspace',
       description:
-        'Start here. Without experiment_id, return the authenticated identity, owned collections, all Experiment summaries visible through the caller\'s RLS permissions by default, and the caller-visible pending capability queue (requested, approved, or in_progress). The pending queue is durable protocol state: approved means accepted into the developer queue, not implemented. The current authoring contract remains the authority for capabilities available now. Professor supervision and ordinary sharing remain governed by existing RLS. Set owned_only=true only when the caller specifically wants to narrow discovery to Experiments they own; it does not broaden or bypass capability-request visibility. With experiment_id, return that visible experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. This tool never writes.',
+        'Start here for neutral Lab knowledge. Without experiment_id, return the authenticated identity, the complete current Virtual Lab authoring/runtime contract, and the global canonical capability registry. Canonical capabilities contain only generic identity/definition, lifecycle/implementation state, and minimal publication provenance; historical request reasoning and workspace science are not returned. Set include_workspace_index=true only when the user actually wants to discover accessible Experiments; that explicit index is still governed by normal RLS and may be narrowed with owned_only/lifecycle. With experiment_id, return that visible Experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in explicit Experiment responses for compatibility and must not be treated as a second source of truth. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
+        include_workspace_index: z.boolean().default(false),
         lifecycle: z.enum(['active', 'archived', 'all']).default('active'),
         owned_only: z.boolean().default(false),
         include_authoring_contract: z.boolean().default(false),
       },
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    async ({ experiment_id, lifecycle, owned_only, include_authoring_contract }) => {
+    async ({ experiment_id, include_workspace_index, lifecycle, owned_only, include_authoring_contract }) => {
       const identity = { ...profile, email, oauth_client_id: clientId }
-      const authoring = authoringInfo(include_authoring_contract, profile.role)
+      const authoring = authoringInfo(experiment_id ? include_authoring_contract : true, profile.role)
 
       if (experiment_id) {
         const { data: experiment, error } = await supabase
@@ -203,6 +204,20 @@ function registerExperimentTools(
         }
       }
 
+      const { data: capabilityRegistry, error: capabilityRegistryError } = await supabase
+        .rpc('list_canonical_capabilities')
+      if (capabilityRegistryError) {
+        return toolError('Could not read canonical Virtual Lab capabilities.', capabilityRegistryError.message)
+      }
+
+      const neutralLabKnowledge = {
+        identity,
+        authoring,
+        capability_registry: capabilityRegistry ?? [],
+      }
+
+      if (!include_workspace_index) return toolResult(neutralLabKnowledge)
+
       const { data: collections, error: collectionsError } = await supabase
         .from('experiment_collections')
         .select('id, name, created_at, updated_at')
@@ -212,7 +227,7 @@ function registerExperimentTools(
       let query = supabase
         .from('experiments')
         .select(
-          'id, owner_id, collection_id, title, description, lifecycle, visibility, revision, schema_version, interface_version, created_at, updated_at',
+          'id, owner_id, collection_id, title, lifecycle, visibility, revision, schema_version, interface_version, created_at, updated_at',
         )
         .order('updated_at', { ascending: false })
 
@@ -222,23 +237,12 @@ function registerExperimentTools(
       const { data: experiments, error: experimentsError } = await query
       if (experimentsError) return toolError('Could not list experiments.', experimentsError.message)
 
-      const { data: capabilityQueue, error: capabilityQueueError } = await supabase
-        .from('capability_requests')
-        .select(
-          'id, requester_role, origin_experiment_id, origin_experiment_revision, draft_title, capability_domain, capability_name, context, requested_artifact_type, requested_lifecycle_hook, status, professor_notes, requirement_keys, created_at, updated_at',
-        )
-        .in('status', ['requested', 'approved', 'in_progress'])
-        .order('updated_at', { ascending: false })
-      if (capabilityQueueError) {
-        return toolError('Could not read pending capability commitments.', capabilityQueueError.message)
-      }
-
       return toolResult({
-        identity,
-        authoring,
-        collections,
-        experiments,
-        capability_queue: capabilityQueue ?? [],
+        ...neutralLabKnowledge,
+        workspace_index: {
+          collections,
+          experiments,
+        },
       })
     },
   )

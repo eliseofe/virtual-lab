@@ -75,9 +75,10 @@ test("#312 keeps Student submission while allowing Professor cross-requester rev
   assert.equal((policyMerge.match(/create policy "capability_requests_insert_researcher_or_professor_revalidation"/g) ?? []).length, 1);
 });
 
-test("#312 bumps the MCP and capability-request interfaces", () => {
-  assert.match(tools, /MCP_SERVER_VERSION = '3\.2\.\d+'/);
-  assert.match(tools, /MCP_INTERFACE_VERSION = '10'/);
+test("#312 capability-request interface remains v3 across later MCP evolution", () => {
+  const interfaceVersion = Number(tools.match(/MCP_INTERFACE_VERSION = '([0-9]+)'/)?.[1] ?? 0);
+  assert.ok(interfaceVersion >= 10);
+  assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
   assert.ok((tools.match(/capability_request_interface: 'vlab\.capability-request\/3'/g) ?? []).length >= 2);
 });

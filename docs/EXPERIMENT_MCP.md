@@ -10,16 +10,15 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- Edge Function version: `18`
-- MCP server: `3.1.0`
-- interface: `9`
+- MCP server: `3.3.0`
+- interface: `11`
 - authoring contract: `vlab.authoring/0.6`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
 - registry schema: `vlab.registry-experiment/3`
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
 - Results presentation: `vlab.results-presentation/1`
-- capability requests: `vlab.capability-request/2`
+- capability requests: `vlab.capability-request/3`
 
 A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is canonical. Legacy three-source arguments remain a bounded compatibility input and mechanically preserve/add the compulsory Metrics artifact rather than creating a second source of truth.
 
@@ -47,7 +46,9 @@ Supabase Auth is the authorization server. Authentication and RLS are the enforc
 
 Read/discovery entry point.
 
-Without `experiment_id`, returns authenticated identity, owned collections and **all Experiment summaries visible through the caller's RLS permissions by default**. For a Professor this naturally includes supervised student/researcher Experiments; for any user it includes explicitly shared/public Experiments only when existing authorization allows them. Set `owned_only=true` to narrow discovery to Experiments owned by the caller. With `experiment_id`, returns the visible Experiment at its current scientific revision, canonical ordered artifacts and separate current Results presentation. `include_authoring_contract=true` exposes the complete machine-readable authoring contract/capabilities. This tool never writes.
+Without `experiment_id`, this is a **neutral Lab-knowledge read**: it returns authenticated identity, the complete machine-readable authoring/runtime contract, and the global canonical capability registry. The registry exposes only stable capability identity/domain/name, owner-approved generic definition, lifecycle/implementation state and minimal publication provenance. It does not expose historical request context, drafts, Professor/developer notes, requirement keys, origin Experiments or prior scientific discourse.
+
+Experiment discovery is explicit. Set `include_workspace_index=true` only when the user wants to list accessible workspace objects. That returns an RLS-governed metadata index (collections plus Experiment identity/title/lifecycle metadata, without Experiment descriptions); `owned_only=true` may narrow it to owned Experiments. With `experiment_id`, the tool returns that explicitly selected visible Experiment at its current scientific revision, canonical ordered artifacts and separate Results presentation. This tool never writes.
 
 ### `manage_collection`
 
@@ -130,4 +131,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the current MCP authoring/Results contract. #298 changes only workspace discovery semantics: Workspace discovery remains RLS-visible by default. #311 evolves the MCP to server `3.1.0`, interface `9`, capability-request interface `vlab.capability-request/2`, with shared Student/Professor submission and Professor-only triage. RLS remains the authorization boundary.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 preserves that capability as an explicit workspace-index read instead of injecting it into neutral Lab discovery. #334 uses MCP server `3.3.0`, interface `11`, while capability-request interface `vlab.capability-request/3` remains unchanged. Canonical capability knowledge is global authenticated Lab truth; Experiment/workspace reads remain governed by existing RLS.

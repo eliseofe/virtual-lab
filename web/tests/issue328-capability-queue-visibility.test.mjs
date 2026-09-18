@@ -6,42 +6,28 @@ const mcp = readFileSync(
   new URL("../../supabase/functions/experiment-mcp/index.ts", import.meta.url),
   "utf8",
 );
-const tools = readFileSync(
-  new URL("../../supabase/functions/experiment-mcp/metrics-results-tools.ts", import.meta.url),
+const migration = readFileSync(
+  new URL("../../supabase/migrations/20260918172500_global_canonical_capability_registry.sql", import.meta.url),
   "utf8",
 );
 
-test("#328 workspace discovery exposes caller-visible nonterminal capability commitments", () => {
-  assert.match(mcp, /caller-visible pending capability queue/i);
-  assert.match(mcp, /\.from\('capability_requests'\)[\s\S]*\.in\('status', \['requested', 'approved', 'in_progress'\]\)/);
-  assert.match(mcp, /capability_queue: capabilityQueue \?\? \[\]/);
-  assert.match(mcp, /Could not read pending capability commitments/);
+test("#328 pending-capability memory survives #334 through the canonical registry", () => {
+  assert.match(mcp, /capability_registry: capabilityRegistry \?\? \[\]/);
+  assert.match(mcp, /\.rpc\('list_canonical_capabilities'\)/);
+  assert.match(migration, /status in \('requested', 'approved', 'in_progress', 'implemented'\)/);
 });
 
-test("#328 pending queue does not advertise terminal lifecycle rows as pending", () => {
-  const match = mcp.match(/\.in\('status', \[(.*?)\]\)/s);
-  assert.ok(match, "pending capability status filter must be present");
-  assert.match(match[1], /requested/);
-  assert.match(match[1], /approved/);
-  assert.match(match[1], /in_progress/);
-  assert.doesNotMatch(match[1], /implemented|declined/);
+test("#328/#334 canonical registry excludes declined capabilities and historical request fields", () => {
+  assert.doesNotMatch(migration, /draft_title|draft_description|context|professor_notes|developer_notes|requirement_keys|origin_experiment/);
+  assert.match(migration, /canonical_definition/);
+  assert.match(migration, /publication_provenance/);
+  assert.doesNotMatch(migration, /'declined'/);
 });
 
-test("#328 workspace visibility relies on the authenticated RLS client rather than a privileged queue read", () => {
+test("#328/#334 global capability memory is not caller-owned request discovery", () => {
   const workspaceBlock = mcp.match(/server\.registerTool\(\s*'read_workspace',[\s\S]*?server\.registerTool\(\s*'manage_collection'/);
   assert.ok(workspaceBlock, "read_workspace implementation must be found");
-  assert.match(workspaceBlock[0], /supabase[\s\S]*\.from\('capability_requests'\)/);
-  assert.doesNotMatch(workspaceBlock[0], /service_role|SUPABASE_SERVICE_ROLE_KEY|createClient\(/);
+  assert.doesNotMatch(workspaceBlock[0], /\.from\('capability_requests'\)/);
   assert.doesNotMatch(workspaceBlock[0], /\.eq\('requester_id'/);
-});
-
-test("#328 distinguishes pending commitments from currently implemented authoring support", () => {
-  assert.match(mcp, /approved means accepted into the developer queue, not implemented/i);
-  assert.match(mcp, /current authoring contract remains the authority for capabilities available now/i);
-});
-
-test("#328 is a backward-compatible MCP patch", () => {
-  assert.match(tools, /MCP_SERVER_VERSION = '3\.2\.2'/);
-  assert.match(tools, /MCP_INTERFACE_VERSION = '10'/);
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
+  assert.match(workspaceBlock[0], /\.rpc\('list_canonical_capabilities'\)/);
 });

@@ -1,17 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Canonical capability metadata cleanup",
-  "owner_impact": "The three known Virtual Lab capabilities keep their existing stable request IDs and lifecycle states, while gaining a clean owner-approved generic definition and minimal publication provenance. Historical Grok request reasoning, Professor notes, Experiment linkage and other discourse remain preserved internally but are not part of the canonical capability meaning. This ticket does not yet change what MCP returns; that is the next ticket.",
+  "outcome": "Neutral research-AI Lab discovery",
+  "owner_impact": "A fresh research-AI session now starts from formal Virtual Lab truth rather than automatic scientific workspace/history. Neutral read_workspace discovery returns the full current authoring/runtime contract plus the global canonical capability registry. Experiment discovery remains available only when explicitly requested, and explicit Experiment reads still obey existing RLS. Historical Grok request reasoning, Professor/developer notes, Experiment descriptions and other prior scientific discourse are not part of neutral discovery.",
   "next": {
     "kind": "epic_continues",
-    "issue": 334,
-    "text": "#334 is the known successor. It will change the MCP read surface so fresh research-AI sessions receive the formal Lab contract and canonical capability metadata instead of raw Experiment/request discourse. #334 has not started in this owner turn."
+    "issue": 335,
+    "text": "#335 is the known successor. It will audit the exact deployed MCP from a fresh-session viewpoint and record exactly what scientific and capability information a new research AI can see. #335 has not started in this owner turn."
   },
   "technical_evidence": [
-    "Existing capability-request UUIDs remain the stable capability identities; no second capability table or duplicate lifecycle state is introduced.",
-    "canonical_definition is seeded only from already owner-approved/repository-authoritative generic capability meaning.",
-    "publication_provenance contains only published title plus DOI/arXiv identifier.",
-    "Historical request context, draft descriptions, Professor notes and lifecycle fields are not deleted or rewritten.",
-    "Regression coverage rejects historical paper-specific reasoning from the canonical seed and rejects lifecycle/deletion changes."
+    "MCP interface 11 makes neutral no-ID discovery explicit; capability-request interface vlab.capability-request/3 is unchanged.",
+    "Global authenticated canonical capability reads use a narrow SECURITY DEFINER RPC returning only canonical identity/definition/lifecycle/implementation fields and minimal publication provenance.",
+    "Default neutral discovery returns before any Experiment/collection query; include_workspace_index=true is required for RLS-governed workspace listing.",
+    "Explicit Experiment reads continue through the existing authenticated RLS client and retain complete selected workspace content.",
+    "Regression tests cover the neutral boundary, global capability memory, explicit workspace opt-in, historical-field exclusion and interface versioning."
   ]
 }
