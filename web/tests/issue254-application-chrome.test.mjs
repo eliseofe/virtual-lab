@@ -38,12 +38,13 @@ test("#254 presentation proxies existing authoritative workspace actions", () =>
   assert.doesNotMatch(reactRoot, /createClient|supabase|vlab_kernel|ControllerRuntime|simulation-canvas|#run|#pause/);
 });
 
-test("#254 reconciles Account and Professor at the shell level", () => {
+test("#254 keeps Account and Professor utilities represented in the React shell", () => {
   assert.match(reactRoot, /professorAvailable/);
   assert.match(reactRoot, /professorLabel/);
-  assert.match(reactRoot, /state\.professorAvailable\s*&&\s*<Badge/);
   assert.match(reactRoot, /proxyClick\('#account-menu'\)/);
-  assert.doesNotMatch(reactRoot, /proxyClick\('#professor-menu'\)/);
+  assert.match(reactRoot, /proxyClick\('#professor-menu'\)/);
+  assert.match(reactRoot, /data-vlab-nav="account"/);
+  assert.match(reactRoot, /data-vlab-nav="professor"/);
 });
 
 test("#254 hides only the superseded legacy topbar after React mounts", () => {
