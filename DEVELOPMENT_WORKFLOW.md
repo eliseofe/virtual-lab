@@ -61,3 +61,10 @@ Owner-facing reports must answer three human questions directly:
 Never use `complete`, `fixed`, `deployed`, or `production-verified` for a deployable task before exact-candidate production verification is green.
 
 Do not expect the owner to remember bare issue numbers; pair identifiers with semantic names when identifiers are useful.
+
+Production success reports must separate product meaning from verification evidence:
+- **What changed for you** states the owner-facing effect of the deployed change, not CI status.
+- **Next** states the concrete owner action when one exists; otherwise it says plainly that no owner action is required.
+- **Technical evidence** contains the commit/run links and build/deploy/exact-candidate/smoke verification facts.
+
+The default report derives its change summary from the deployed commit message. When a candidate has a specific owner follow-up or needs richer wording than the commit summary can provide, update `.github/terminal-report.json` in that same candidate. This reporting payload enriches the notification only; it is not a new completion gate.

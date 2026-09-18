@@ -33,6 +33,12 @@ test("owner notification is success-only and occurs after deployed smoke", () =>
   assert.doesNotMatch(workflow, /terminal-failure-report:/);
   assert.doesNotMatch(workflow, /Virtual Lab production run failed/);
   assert.equal(existsSync(legacyNotifier), false);
+  assert.match(workflow, /head_commit\.message/);
+  assert.match(workflow, /change_summary/);
+  assert.match(workflow, /Now live in production:/);
+  assert.match(workflow, /No owner action is required for this deployment/);
+  assert.match(workflow, /Verification: build, Pages deployment, exact-candidate propagation, and deployed-surface smoke all passed/);
+  assert.doesNotMatch(workflow, /unless this success report explicitly says otherwise/);
 });
 
 test("every active production surface has executable smoke coverage", () => {

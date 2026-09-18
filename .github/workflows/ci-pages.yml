@@ -133,10 +133,24 @@ jobs:
           short_sha="${GITHUB_SHA:0:7}"
           changed="$(jq -r '(((.head_commit.added // []) + (.head_commit.modified // []) + (.head_commit.removed // [])) | index(".github/terminal-report.json")) != null' "$GITHUB_EVENT_PATH")"
 
-          outcome="Production deployment ${short_sha}"
-          owner_impact="Build, Pages deployment, exact-candidate propagation, and deployed-surface smoke verification all succeeded."
-          remaining="No owner action is required unless this success report explicitly says otherwise."
-          technical="- Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          commit_message="$(jq -r '.head_commit.message // empty' "$GITHUB_EVENT_PATH")"
+          first_line="$(printf '%s\n' "$commit_message" | sed -n '1p')"
+          if [[ "$first_line" == "Merge pull request #"* ]]; then
+            change_summary="$(printf '%s\n' "$commit_message" | awk 'seen_blank && NF { print; exit } !NF { seen_blank=1 }')"
+          else
+            change_summary="$first_line"
+          fi
+          if [ -z "$change_summary" ]; then
+            change_summary="Production change ${short_sha}"
+          fi
+
+          outcome="$change_summary"
+          owner_impact="Now live in production: ${change_summary}"
+          remaining="No owner action is required for this deployment. Continue with the next approved development task."
+          technical="$(printf '%s\n%s\n%s' \
+            "- Commit: https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}" \
+            "- Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            "- Verification: build, Pages deployment, exact-candidate propagation, and deployed-surface smoke all passed.")"
           close_issue=""
 
           if [ "$changed" = "true" ] && jq -e '.schema == "vlab.terminal-report/1" and (.outcome | type == "string") and (.owner_impact | type == "string") and (.remaining_action | type == "string")' .github/terminal-report.json >/dev/null 2>&1; then
