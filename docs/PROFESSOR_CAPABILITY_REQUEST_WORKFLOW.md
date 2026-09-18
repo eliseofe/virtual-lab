@@ -36,6 +36,18 @@ capability missing + student
     -> report unsupported; no request action in the current first version
 ```
 
+## Durable blocked Experiment / closure foundation
+
+Issue #310 adds the durable domain foundation used by the repaired closed loop:
+
+- `blocked_experiment_drafts` preserves one resumable scientific draft/intent rather than relying on isolated request rows;
+- `capability_closure_analyses` stores append-only analyses against a specific capability-contract version, including identified requirements and unresolved scientific ambiguity;
+- individual capability requests may link to the closure analysis that identified them.
+
+This schema foundation is secure-by-default and does **not** change the production MCP connector contract. Professor MCP creation/grouping adopts it in #311; resume/revalidation adopts it in #312; the original aggregation workflow is live-tested with Grok in #313.
+
+The two already-approved aggregation requests remain unchanged and unlinked during #310. They are reconciled only after the repaired flow exists.
+
 ## Durable capability request
 
 A request is a first-class Supabase domain row with stable identity and retained context. The deployed model preserves information such as:

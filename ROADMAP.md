@@ -33,10 +33,11 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. Treat #58's nonterminal Supabase capability requests as active roadmap backlog: two Professor-approved requests are waiting for owner implementation authorization/design selection (#57 RNG; #304 heterogeneous initialization/state).
-2. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
-3. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
-4. Turn concrete evidence from use into focused fixes; do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
+1. Repair #58's capability-request closed loop through #310 → #311 → #312 → #313 before implementing the queued scientific capabilities. The repair preserves one durable blocked Experiment, comprehensive/grouped gap analysis, whole-Experiment revalidation, and final live Grok acceptance.
+2. Keep the two existing approved capability requests visible but paused for implementation: RNG/controller stochasticity (#57 with planned #305/#306) and heterogeneous initialization/state (#304).
+3. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
+4. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
+5. Turn concrete evidence from use into focused fixes; do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
 
 ## Owner-gated major lane: Studies
 
