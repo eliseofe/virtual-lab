@@ -59,5 +59,5 @@ test("#313 keeps the capability request interface stable while shipping a patch 
   assert.match(tools, /MCP_INTERFACE_VERSION = '10'/);
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
   assert.match(mcp, /converge on the same durable blocked Experiment/i);
-  assert.match(mcp, /preserving its current lifecycle state/i);
+  assert.match(mcp, /preserving (?:its|their) current lifecycle state/i);
 });
