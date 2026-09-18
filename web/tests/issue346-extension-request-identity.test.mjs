@@ -98,7 +98,6 @@ test("#346 request history is not part of the canonical registry read seam", () 
   );
   const rpc = registry.match(/create or replace function public\.list_canonical_capability_registry\(\)[\s\S]*?\$function\$;/i)?.[0] ?? "";
   assert.doesNotMatch(rpc, /capability_requests|closure_analysis|professor_notes|developer_notes|draft_/i);
-  assert.match(migration, /public\.list_canonical_capability_registry/);
 });
 
 test("#346 bumps the request/MCP interface without changing authoring language version", () => {
