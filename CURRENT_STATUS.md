@@ -20,8 +20,8 @@ Ongoing presentation refinement is tracked through **#273 — UI/UX refinement a
 
 ## Immediate frontier
 
-1. Complete exact-candidate production verification for **#290 — sharing revocation and final collaboration boundaries**, then close #45 as the finished approved scope.
-2. After that closed loop, await the owner's next substantial product/scientific lane rather than inferring one.
+1. There is no active executable child under #45; its approved research-collaboration scope is complete.
+2. Await the owner's next substantial product/scientific lane rather than inferring one.
 3. Continue real student/owner scientific use and turn concrete evidence into focused fixes.
 4. Use #273 only for observed UI/UX evidence rather than generic polishing.
 
