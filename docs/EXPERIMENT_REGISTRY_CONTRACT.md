@@ -102,7 +102,17 @@ A working Experiment owner may explicitly grant another authenticated registry u
 
 A recipient sees shared Experiments separately from their own Experiments, may inspect and run the shared source, and may create an independent owned copy through the normal copy-to-workspace operation. The recipient cannot update, move, archive or delete the shared source because working-Experiment mutation remains owner-scoped.
 
-Share grants are explicit rows under RLS. Ordinary private Experiments remain invisible to unrelated students/researchers unless another existing authorization rule applies. Revocation semantics are completed separately by #290.
+Share grants are explicit rows under RLS and are revocable by the Experiment owner. Revocation removes ordinary shared access to the source Experiment immediately; it does not delete or alter an independent copy that the recipient previously created.
+
+Eligible explicit-sharing targets are role-aware to avoid duplicate access mechanisms. A Student/researcher may explicitly share with other Student/researchers. A Professor may explicitly share with eligible registry researchers, including Student/researchers. Student → Professor explicit sharing is intentionally excluded because Professor supervision already grants read-only access to Student/researcher Experiments independently of sharing.
+
+Professor supervision, ordinary explicit sharing, independent copies and Showcase curation are separate mechanisms:
+- supervision gives a Professor automatic read-only access to Student/researcher working Experiments;
+- sharing gives a selected eligible recipient revocable read-only access to the working Experiment;
+- copying creates a new independently owned Experiment that survives later share revocation;
+- Showcase is a separate explicit curator/publication action.
+
+Ordinary private Experiments remain invisible to unrelated students/researchers unless one of these explicit authorization rules applies.
 
 ## Experiment lifecycle
 
@@ -147,7 +157,9 @@ The registry must not silently become the bulk trajectory/Monte-Carlo warehouse.
 | --- | --- | --- | --- |
 | Read own Experiment | yes | yes | only if separately a registry user |
 | Read explicitly shared Experiment | yes, when recipient | yes, when recipient | only if separately a registry user |
-| Share an owned Experiment read-only | where an eligible recipient is available | yes | only if separately a registry user |
+| Share an owned Experiment read-only | yes, with other Student/researchers | yes, with eligible registry researchers | only if separately a registry user |
+| Revoke an ordinary share | yes, for own Experiment | yes, for own Experiment | only if separately a registry user |
+| Automatic Professor supervision of Student/researcher Experiment | no | yes, read-only | no special access |
 | Create/edit own Experiment | yes | yes | only if separately a registry user |
 | Organize/archive/restore own Experiment | yes | yes | only if separately a registry user |
 | Permanent-delete eligible own working Experiment | yes | yes | only if separately a registry user |
