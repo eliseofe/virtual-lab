@@ -226,7 +226,7 @@ function errorDiagnostic(artifact, error) {
 export function validateExperimentArtifacts(artifacts) {
   let normalized;
   try { normalized = normalizeExperimentArtifacts(artifacts); }
-  catch (error) { return invalid([{ artifact: "artifacts", category: "syntax", compiler_category: null, parameter: null, message: error instanceof Error ? error.message : String(error), line: null, column: null }]); }
+  catch (error) { return invalid([errorDiagnostic("artifacts", error)]); }
   const byId = new Map(normalized.map((artifact) => [artifact.id, artifact]));
   return validateExperimentSources({
     ...sourcesFromArtifacts(normalized),
