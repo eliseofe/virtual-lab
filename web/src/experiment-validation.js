@@ -1,3 +1,4 @@
+import { validateProfileController } from "./runtime/profiles.js";
 import { compileController } from "./controller/compiler.js";
 import { compileConfig, numericParameters } from "./config/compiler.js";
 import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./environment/compiler.js";
@@ -50,6 +51,8 @@ function compileExperiment(experiment, runtimeValues, { seed = 0 } = {}) {
   validateEnvironmentControllerPair(environment, controller);
   const metrics = compileMetrics(metricsSource, { parameters: parameterTypes });
 
+  validateProfileController(runtime.profile, controller, metrics);
+  if (runtime.profile && environment) throw Error("Runtime profiles do not support static scalar fields yet");
   return { config, runtime, initializer, environment, controller, metrics, parameters };
 }
 

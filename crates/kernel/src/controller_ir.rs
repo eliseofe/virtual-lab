@@ -83,13 +83,13 @@ fn validate_expression(
             if !value.is_finite() { return Err(at_line(*line, "numeric constants must be finite")); }
         }
         Expression::Load { path, line } => {
-            if path == "obs.heading" || path == "obs.neighbours" || path == "obs.environmental_scalar" { return Ok(()); }
+            if path == "obs.group" || path == "obs.heading" || path == "obs.neighbours" || path == "obs.environmental_scalar" { return Ok(()); }
             if let Some(name) = path.strip_prefix("self.") {
                 if state.contains(name) { return Ok(()); }
                 return Err(at_line(*line, format!("private state '{name}' is not declared")));
             }
             if let Some(variable) = loop_variable {
-                if path.strip_prefix(variable) == Some(".relative_position") { return Ok(()); }
+                if matches!(path.strip_prefix(variable), Some(".relative_position" | ".group" | ".kind")) { return Ok(()); }
             }
             if path.contains('.') {
                 return Err(at_line(*line, format!("observation field '{path}' is unavailable")));
@@ -110,7 +110,7 @@ fn validate_expression(
         }
         Expression::Call { name, args, line } => {
             let arity = match name.as_str() {
-                "Vec2" | "dot" | "pow" | "Motion" => 2,
+                "Vec2" | "dot" | "pow" | "Motion" | "min" | "max" | "eq" | "le" => 2,
                 "perpendicular" | "norm" => 1,
                 _ => return Err(at_line(*line, format!("unsupported call '{name}'"))),
             };
@@ -185,10 +185,13 @@ fn collect_local_names(body: &[Statement], out: &mut BTreeSet<String>) {
 enum BinaryOp { Add, Subtract, Multiply, Divide }
 
 #[derive(Debug, Clone, Copy)]
-enum Intrinsic { Vec2, Dot, Perpendicular, Norm, Pow, Motion }
+enum Intrinsic { Vec2, Dot, Perpendicular, Norm, Pow, Motion, Min, Max, Equal, LessEqual }
 
 #[derive(Debug, Clone, Copy)]
 enum PreparedLoad {
+    Group,
+    NeighbourGroup,
+    NeighbourKind,
     Heading,
     EnvironmentalScalar,
     NeighbourRelativePosition,
@@ -231,6 +234,7 @@ fn resolve_load(
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
 ) -> Result<PreparedLoad, String> {
+    if path == "obs.group" { return Ok(PreparedLoad::Group); }
     if path == "obs.heading" {
         return Ok(PreparedLoad::Heading);
     }
@@ -242,6 +246,8 @@ fn resolve_load(
             .ok_or_else(|| at_line(line, "validated private state slot missing"))?));
     }
     if let Some(variable) = loop_variable {
+        if path.strip_prefix(variable) == Some(".group") { return Ok(PreparedLoad::NeighbourGroup); }
+        if path.strip_prefix(variable) == Some(".kind") { return Ok(PreparedLoad::NeighbourKind); }
         if path.strip_prefix(variable) == Some(".relative_position") {
             return Ok(PreparedLoad::NeighbourRelativePosition);
         }
@@ -318,6 +324,10 @@ fn emit_expression(
                 "norm" => Intrinsic::Norm,
                 "pow" => Intrinsic::Pow,
                 "Motion" => Intrinsic::Motion,
+                "min" => Intrinsic::Min,
+                "max" => Intrinsic::Max,
+                "eq" => Intrinsic::Equal,
+                "le" => Intrinsic::LessEqual,
                 _ => unreachable!("validated intrinsic"),
             };
             ops.push(EvalOp::Intrinsic(intrinsic));
@@ -407,6 +417,9 @@ fn push_load(
     stack: &mut Vec<Value>,
 ) {
     stack.push(match load {
+        PreparedLoad::Group => Value::Scalar(observation.group),
+        PreparedLoad::NeighbourGroup => Value::Scalar(neighbour.expect("neighbour").group),
+        PreparedLoad::NeighbourKind => Value::Scalar(neighbour.expect("neighbour").kind),
         PreparedLoad::Heading => Value::Vec2(observation.heading),
         PreparedLoad::EnvironmentalScalar => Value::Scalar(
             observation.environmental_scalar.expect("validated environmental scalar observation")
@@ -422,6 +435,17 @@ fn push_load(
 
 fn execute_intrinsic(intrinsic: Intrinsic, stack: &mut Vec<Value>) {
     match intrinsic {
+        Intrinsic::Min | Intrinsic::Max | Intrinsic::Equal | Intrinsic::LessEqual => {
+            let b = stack.pop().expect("scalar right").scalar();
+            let a = stack.pop().expect("scalar left").scalar();
+            let value = match intrinsic {
+                Intrinsic::Min => a.min(b), Intrinsic::Max => a.max(b),
+                Intrinsic::Equal => if a == b { 1.0 } else { 0.0 },
+                Intrinsic::LessEqual => if a <= b { 1.0 } else { 0.0 },
+                _ => unreachable!(),
+            };
+            stack.push(Value::Scalar(value));
+        }
         Intrinsic::Vec2 => {
             let y = stack.pop().expect("validated Vec2 y").scalar();
             let x = stack.pop().expect("validated Vec2 x").scalar();
@@ -664,10 +688,10 @@ mod tests {
         let mut runtime = compile(ir, r#"{"GAIN":2.0}"#);
         runtime.reset(1);
         let observation = Observation {
-            heading: Vec2::new(1.0, 0.0),
+            group: 0.0, heading: Vec2::new(1.0, 0.0),
             neighbours: vec![
-                NeighbourObservation { relative_position: Vec2::new(0.5, 1.0) },
-                NeighbourObservation { relative_position: Vec2::new(1.0, -1.0) },
+                NeighbourObservation { group: 0.0, kind: 0.0, relative_position: Vec2::new(0.5, 1.0) },
+                NeighbourObservation { group: 0.0, kind: 0.0, relative_position: Vec2::new(1.0, -1.0) },
             ],
             environmental_scalar: None,
         };
@@ -675,8 +699,8 @@ mod tests {
         assert!((action.forward - 9.0).abs() < 1e-12);
         assert_eq!(action.turning, 0.0);
         let second = runtime.step(0, &Observation {
-            heading: Vec2::new(1.0, 0.0),
-            neighbours: vec![NeighbourObservation { relative_position: Vec2::new(1.0, 0.0) }],
+            group: 0.0, heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![NeighbourObservation { group: 0.0, kind: 0.0, relative_position: Vec2::new(1.0, 0.0) }],
             environmental_scalar: None,
         });
         assert!((second.forward - 4.0).abs() < 1e-12);
@@ -695,7 +719,7 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, "{}");
         runtime.reset(2);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        let observation = Observation { group: 0.0, heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
         assert_eq!(runtime.step(0, &observation).forward, 2.0);
         assert_eq!(runtime.step(1, &observation).forward, 1.0);
@@ -723,15 +747,15 @@ mod tests {
         let mut runtime = compile(ir, r#"{"GAIN":2.0}"#);
         runtime.reset(1);
         let observation = Observation {
-            heading: Vec2::new(1.0, 0.0),
+            group: 0.0, heading: Vec2::new(1.0, 0.0),
             neighbours: vec![
-                NeighbourObservation { relative_position: Vec2::new(3.0, 4.0) },
-                NeighbourObservation { relative_position: Vec2::new(0.0, 2.0) },
+                NeighbourObservation { group: 0.0, kind: 0.0, relative_position: Vec2::new(3.0, 4.0) },
+                NeighbourObservation { group: 0.0, kind: 0.0, relative_position: Vec2::new(0.0, 2.0) },
             ],
             environmental_scalar: None,
         };
         assert_eq!(runtime.step(0, &observation).forward, 16.0);
-        assert_eq!(runtime.step(0, &Observation { heading: observation.heading, neighbours: vec![], environmental_scalar: None }).forward, 3.0);
+        assert_eq!(runtime.step(0, &Observation { group: 0.0, heading: observation.heading, neighbours: vec![], environmental_scalar: None }).forward, 3.0);
     }
 
     #[test]
@@ -750,7 +774,7 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, "{}");
         runtime.reset(1);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        let observation = Observation { group: 0.0, heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
     }
 
@@ -766,7 +790,7 @@ mod tests {
         let mut runtime = compile(ir, "{}");
         runtime.reset(1);
         let observation = Observation {
-            heading: Vec2::new(1.0, 0.0),
+            group: 0.0, heading: Vec2::new(1.0, 0.0),
             neighbours: vec![],
             environmental_scalar: Some(0.375),
         };
@@ -781,5 +805,27 @@ mod tests {
           "body":[{"kind":"return","value":{"kind":"load","path":"world.position"}}]
         }"#;
         assert!(IrControllerRuntime::from_json(invalid, "{}").is_err());
+    }
+}
+
+#[cfg(test)]
+mod profile_tests {
+    use super::*;
+    #[test]
+    fn group_predicates_and_limits_execute_in_the_existing_runtime() {
+        let ir = r#"{"schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Groups","entry":"step","parameters":{},"state":[],"body":[
+          {"kind":"assign","target":"count","value":{"kind":"const","value":0}},
+          {"kind":"for_each","variable":"n","iterable":{"kind":"load","path":"obs.neighbours"},"body":[
+            {"kind":"aug_assign","target":"count","op":"+","value":{"kind":"call","name":"eq","args":[{"kind":"load","path":"obs.group"},{"kind":"load","path":"n.group"}]}}
+          ]},
+          {"kind":"return","value":{"kind":"call","name":"Motion","args":[{"kind":"call","name":"min","args":[{"kind":"load","path":"count"},{"kind":"const","value":0.15}]},{"kind":"call","name":"le","args":[{"kind":"load","path":"count"},{"kind":"const","value":1}]}]}}
+        ]}"#;
+        let mut runtime = IrControllerRuntime::from_json(ir,"{}").unwrap(); runtime.reset(2);
+        let obs = Observation { group: 1.0, heading: Vec2::new(1.0,0.0), environmental_scalar: None,
+            neighbours: vec![NeighbourObservation {group: 0.0,kind:0.0,relative_position:Vec2::new(1.0,0.0)},
+                             NeighbourObservation {group: 1.0,kind:0.0,relative_position:Vec2::new(0.0,1.0)}] };
+        assert_eq!(runtime.step(0,&obs),Action {forward:0.15,turning:1.0});
+        let empty=Observation { neighbours: vec![], ..obs };
+        assert_eq!(runtime.step(1,&empty),Action {forward:0.0,turning:1.0});
     }
 }

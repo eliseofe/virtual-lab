@@ -99,7 +99,7 @@ fn uniform_grid(n: usize, arena: f64) -> Vec<AgentPhysicalState> {
     let spacing = arena / side as f64;
     let half = arena / 2.0;
     (0..n).map(|i| AgentPhysicalState {
-        position: Vec2::new(
+        metadata: Default::default(), position: Vec2::new(
             -half + ((i % side) as f64 + 0.5) * spacing,
             -half + ((i / side) as f64 + 0.5) * spacing,
         ),

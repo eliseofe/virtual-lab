@@ -8,6 +8,10 @@ const CALL_SIGNATURES = {
   perpendicular: { args: ["vec2"], result: "vec2" },
   norm: { args: ["vec2"], result: "scalar" },
   pow: { args: ["scalar", "scalar"], result: "scalar" },
+  min: { args: ["scalar", "scalar"], result: "scalar" },
+  max: { args: ["scalar", "scalar"], result: "scalar" },
+  eq: { args: ["scalar", "scalar"], result: "scalar" },
+  le: { args: ["scalar", "scalar"], result: "scalar" },
   Motion: { args: ["scalar", "scalar"], result: "action" },
 };
 
@@ -242,6 +246,7 @@ function inferExpression(expr, scope) {
   }
   if (expr.kind === "load") {
     if (expr.path === "obs.heading") return "vec2";
+    if (expr.path === "obs.group") return "scalar";
     if (expr.path === "obs.neighbours") return "neighbours";
     if (expr.path === "obs.environmental_scalar") return "scalar";
     if (expr.path.startsWith("obs.")) throw new ControllerCompileError("invalid-observation-field", `unknown observation field '${expr.path}'`, expr.line);
@@ -254,6 +259,7 @@ function inferExpression(expr, scope) {
     const pieces = expr.path.split(".");
     if (pieces.length === 2 && scope.loopVariables.get(pieces[0]) === "neighbour") {
       if (pieces[1] === "relative_position") return "vec2";
+      if (["group", "kind"].includes(pieces[1])) return "scalar";
       throw new ControllerCompileError("invalid-observation-field", `unknown neighbour field '${pieces[1]}'`, expr.line);
     }
     if (pieces.length > 1) throw new ControllerCompileError("invalid-observation-field", `field path '${expr.path}' is not available`, expr.line);

@@ -294,7 +294,7 @@ function loadType(path, locals, parameters, line) {
   const [root, field] = path.split(".");
   if (locals[root] === "agent") {
     if (field === "position" || field === "heading") return "vec2";
-    if (field === "heading_angle") return "scalar";
+    if (["heading_angle", "group", "active", "status", "speed", "altitude"].includes(field)) return "scalar";
     throw new MetricsCompileError("invalid-observation-field", `unknown agent field '${field}'`, line);
   }
   if (path === "snapshot" || path.startsWith("snapshot.")) {

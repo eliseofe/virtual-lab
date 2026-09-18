@@ -6,8 +6,8 @@ use vlab_kernel::{Action, AgentPhysicalState, KinematicPhysics, PhysicsModel, Ve
 fn agents_pass_through_each_other_without_hidden_contact_response() {
     let physics = KinematicPhysics;
     let mut state = vec![
-        AgentPhysicalState { position: Vec2::new(-0.10, 0.0), heading_angle: 0.0 },
-        AgentPhysicalState { position: Vec2::new(0.10, 0.0), heading_angle: PI },
+        AgentPhysicalState { metadata: Default::default(), position: Vec2::new(-0.10, 0.0), heading_angle: 0.0 },
+        AgentPhysicalState { metadata: Default::default(), position: Vec2::new(0.10, 0.0), heading_angle: PI },
     ];
     let actions = vec![
         Action { forward: 1.0, turning: 0.0 },

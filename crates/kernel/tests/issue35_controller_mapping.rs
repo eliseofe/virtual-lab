@@ -51,7 +51,7 @@ fn controller() -> IrControllerRuntime {
 fn signed_forward_velocity_really_moves_backward() {
     let physics = KinematicPhysics;
     let mut state = vec![AgentPhysicalState {
-        position: Vec2::new(0.0, 0.0),
+        metadata: Default::default(), position: Vec2::new(0.0, 0.0),
         heading_angle: 0.0,
     }];
     physics.step(
@@ -70,9 +70,9 @@ fn exact_controller_can_command_backward_motion() {
     let action = runtime.step(
         0,
         &Observation {
-            heading: Vec2::new(1.0, 0.0),
+            group: 0.0, heading: Vec2::new(1.0, 0.0),
             neighbours: vec![NeighbourObservation {
-                relative_position: Vec2::new(0.40, 0.0),
+                group: 0.0, kind: 0.0, relative_position: Vec2::new(0.40, 0.0),
             }],
             environmental_scalar: None,
         },
@@ -88,9 +88,9 @@ fn exact_controller_turns_for_an_off_axis_neighbour() {
     let action = runtime.step(
         0,
         &Observation {
-            heading: Vec2::new(1.0, 0.0),
+            group: 0.0, heading: Vec2::new(1.0, 0.0),
             neighbours: vec![NeighbourObservation {
-                relative_position: Vec2::new(0.60, 0.05),
+                group: 0.0, kind: 0.0, relative_position: Vec2::new(0.60, 0.05),
             }],
             environmental_scalar: None,
         },
@@ -103,8 +103,8 @@ fn exact_controller_turns_for_an_off_axis_neighbour() {
 fn desired_distance_aligned_pair_translates_together() {
     let init = SwarmInitialization {
         state: vec![
-            AgentPhysicalState { position: Vec2::new(-0.225, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new( 0.225, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(-0.225, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new( 0.225, 0.0), heading_angle: 0.0 },
         ],
     };
     let config = SimulationConfig {

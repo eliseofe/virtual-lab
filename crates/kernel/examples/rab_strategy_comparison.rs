@@ -216,7 +216,7 @@ fn uniform_grid(n: usize, arena: f64) -> Vec<AgentPhysicalState> {
     let half = arena / 2.0;
     (0..n)
         .map(|i| AgentPhysicalState {
-            position: Vec2::new(
+            metadata: Default::default(), position: Vec2::new(
                 -half + ((i % side) as f64 + 0.5) * spacing,
                 -half + ((i / side) as f64 + 0.5) * spacing,
             ),
@@ -237,7 +237,7 @@ fn clustered(n: usize, arena: f64, fraction: f64, span_fraction: f64) -> Vec<Age
 
     for i in 0..dense_n {
         state.push(AgentPhysicalState {
-            position: Vec2::new(
+            metadata: Default::default(), position: Vec2::new(
                 min + ((i % side) as f64 + 0.5) * spacing,
                 min + ((i / side) as f64 + 0.5) * spacing,
             ),
@@ -268,7 +268,7 @@ fn boundary_bands(n: usize, arena: f64, offset_fraction: f64) -> Vec<AgentPhysic
                 _ => Vec2::new(along, half - offset),
             };
             AgentPhysicalState {
-                position,
+                metadata: Default::default(), position,
                 heading_angle: (i % 64) as f64 * 0.03125,
             }
         })

@@ -128,7 +128,7 @@ mod tests {
         let mut rng = crate::DeterministicRng::new(9917);
         let half = arena_size / 2.0;
         (0..count).map(|_| AgentPhysicalState {
-            position: Vec2::new(
+            metadata: Default::default(), position: Vec2::new(
                 (rng.unit() * arena_size) - half,
                 (rng.unit() * arena_size) - half,
             ),
@@ -164,11 +164,11 @@ mod tests {
     #[test]
     fn periodic_grid_is_exact_across_wrapped_boundaries() {
         let state = vec![
-            AgentPhysicalState { position: Vec2::new(-4.9, -4.9), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(4.9, -4.9), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(-4.9, 4.9), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(4.9, 4.9), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(-4.9, -4.9), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(4.9, -4.9), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(-4.9, 4.9), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(4.9, 4.9), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
         ];
         assert_matches_brute_force(&state, 10.0, &[0.15, 0.25, 0.5, 7.5]);
     }

@@ -208,6 +208,11 @@ fn eval_expression(
                         "position" => Ok(Value::Vec2(agent.position)),
                         "heading" => Ok(Value::Vec2(agent.heading())),
                         "heading_angle" => Ok(Value::Scalar(agent.heading_angle)),
+                        "group" => Ok(Value::Scalar(agent.metadata.group)),
+                        "active" => Ok(Value::Scalar(agent.metadata.active)),
+                        "status" => Ok(Value::Scalar(agent.metadata.status)),
+                        "speed" => Ok(Value::Scalar(agent.metadata.speed)),
+                        "altitude" => Ok(Value::Scalar(agent.metadata.altitude)),
                         _ => Err(at_line(*line, format!("unknown metric agent field '{field}'"))),
                     };
                 }
@@ -709,8 +714,8 @@ mod tests {
 
     fn state() -> Vec<AgentPhysicalState> {
         vec![
-            AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(1.0, 0.0), heading_angle: 0.5 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(1.0, 0.0), heading_angle: 0.5 },
         ]
     }
 

@@ -25,7 +25,7 @@ fn boundary_bands(count: usize, arena: f64, band_offset_fraction: f64) -> Vec<Ag
                 _ => Vec2::new(along, half - offset),
             };
             AgentPhysicalState {
-                position,
+                metadata: Default::default(), position,
                 heading_angle: (i % 64) as f64 * 0.03125,
             }
         })

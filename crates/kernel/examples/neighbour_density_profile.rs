@@ -181,7 +181,7 @@ fn state(agents: usize, arena: f64) -> Vec<AgentPhysicalState> {
     let half = arena / 2.0;
     (0..agents)
         .map(|i| AgentPhysicalState {
-            position: Vec2::new(
+            metadata: Default::default(), position: Vec2::new(
                 -half + ((i % side) as f64 + 0.5) * spacing,
                 -half + ((i / side) as f64 + 0.5) * spacing,
             ),

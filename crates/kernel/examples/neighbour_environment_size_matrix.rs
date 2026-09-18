@@ -111,7 +111,7 @@ fn occupied_lattice(n: usize, footprint_side: f64) -> Vec<AgentPhysicalState> {
     let spacing = footprint_side / side as f64;
     let half = footprint_side / 2.0;
     (0..n).map(|i| AgentPhysicalState {
-        position: Vec2::new(
+        metadata: Default::default(), position: Vec2::new(
             -half + ((i % side) as f64 + 0.5) * spacing,
             -half + ((i / side) as f64 + 0.5) * spacing,
         ),

@@ -240,7 +240,7 @@ mod tests {
         let half = arena_size / 2.0;
         (0..count)
             .map(|_| AgentPhysicalState {
-                position: Vec2::new(rng.unit() * arena_size - half, rng.unit() * arena_size - half),
+                metadata: Default::default(), position: Vec2::new(rng.unit() * arena_size - half, rng.unit() * arena_size - half),
                 heading_angle: rng.unit() * crate::TAU,
             })
             .collect()
@@ -262,7 +262,7 @@ mod tests {
                     2 => Vec2::new(along, -half + offset),
                     _ => Vec2::new(along, half - offset),
                 };
-                AgentPhysicalState { position, heading_angle: 0.0 }
+                AgentPhysicalState { metadata: Default::default(), position, heading_angle: 0.0 }
             })
             .collect()
     }

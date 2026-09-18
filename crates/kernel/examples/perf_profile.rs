@@ -50,7 +50,7 @@ fn synthetic_state(agents: usize, arena_size: f64) -> Vec<AgentPhysicalState> {
             let row = index / side;
             let col = index % side;
             AgentPhysicalState {
-                position: Vec2::new(
+                metadata: Default::default(), position: Vec2::new(
                     -half + (col as f64 + 0.5) * spacing,
                     -half + (row as f64 + 0.5) * spacing,
                 ),

@@ -1,3 +1,4 @@
+import { parseRuntimeProfile } from "./profiles.js";
 export const RUNTIME_CONTRACT_VERSION = "vlab.runtime/0.2";
 
 export const RUNTIME_CONTRACT = Object.freeze({
@@ -117,7 +118,8 @@ function requireStride(period, physicsDt, name) {
 }
 
 export function validateRuntimeValues(values) {
-  const physicsDt = RUNTIME_CONTRACT.simulator_constants.PHYSICS_DT;
+  const profile = parseRuntimeProfile(values);
+  const physicsDt = profile?.physicsDt ?? RUNTIME_CONTRACT.simulator_constants.PHYSICS_DT;
   const metricDt = RUNTIME_CONTRACT.simulator_constants.METRIC_DT;
   const agentCount = requireNumber(values, "N", { integer: true, positive: true });
   const arenaSize = requireNumber(values, "ARENA_SIZE", { positive: true });
@@ -129,7 +131,7 @@ export function validateRuntimeValues(values) {
   const maxAngularSpeed = requireNumber(values, "MAX_ANGULAR_SPEED", { positive: true });
   requireStride(controlDt, physicsDt, "CONTROL_DT");
   requireStride(metricDt, physicsDt, "METRIC_DT");
-  return { version: RUNTIME_CONTRACT_VERSION, agentCount, arenaSize, controlDt, sensorNoise, experimentDuration, interactionRadius, maxForwardSpeed, maxAngularSpeed, physicsDt, metricDt };
+  return { profile, version: RUNTIME_CONTRACT_VERSION, agentCount, arenaSize, controlDt, sensorNoise, experimentDuration, interactionRadius, maxForwardSpeed, maxAngularSpeed, physicsDt, metricDt };
 }
 
 export function validateInitialStateForRuntime(state, runtime) {
@@ -137,7 +139,7 @@ export function validateInitialStateForRuntime(state, runtime) {
     throw new RuntimeContractError("N", `Initializer produced ${Array.isArray(state) ? state.length : 0} agents, expected N=${runtime.agentCount}.`);
   }
   const half = runtime.arenaSize / 2;
-  const outside = state.findIndex((agent) => !agent || typeof agent.x !== "number" || !Number.isFinite(agent.x) || typeof agent.y !== "number" || !Number.isFinite(agent.y) || typeof agent.heading !== "number" || !Number.isFinite(agent.heading) || Math.abs(agent.x) > half || Math.abs(agent.y) > half);
+  const outside = state.findIndex((agent) => !agent || typeof agent.x !== "number" || !Number.isFinite(agent.x) || typeof agent.y !== "number" || !Number.isFinite(agent.y) || typeof agent.heading !== "number" || !Number.isFinite(agent.heading) || (!runtime.profile && (Math.abs(agent.x) > half || Math.abs(agent.y) > half)));
   if (outside !== -1) throw new RuntimeContractError("ARENA_SIZE", `Initial agent ${outside} does not fit inside ARENA_SIZE=${runtime.arenaSize}.`);
   return state;
 }
@@ -145,6 +147,7 @@ export function validateInitialStateForRuntime(state, runtime) {
 export function simulationSetupFromRuntime(runtime, seed, initialState, environment = null) {
   return {
     initialState,
+    profile: runtime.profile ?? null,
     environment,
     simulation: {
       seed,

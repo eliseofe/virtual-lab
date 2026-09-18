@@ -12,7 +12,7 @@ pub use neighbour_index::PeriodicGridNeighbourIndex;
 
 const TAU: f64 = std::f64::consts::PI * 2.0;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize)]
 pub struct Vec2 {
     pub x: f64,
     pub y: f64,
@@ -42,10 +42,24 @@ impl std::ops::Mul<f64> for Vec2 {
     fn mul(self, rhs: f64) -> Vec2 { Vec2::new(self.x * rhs, self.y * rhs) }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize)]
+pub struct AgentMetadata {
+    pub group: f64,
+    pub active: f64,
+    pub status: f64,
+    pub speed: f64,
+    pub altitude: f64,
+}
+impl Default for AgentMetadata {
+    fn default() -> Self { Self { group: 0.0, active: 1.0, status: 0.0, speed: 0.0, altitude: 0.0 } }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize)]
 pub struct AgentPhysicalState {
     pub position: Vec2,
     pub heading_angle: f64,
+    #[serde(default)]
+    pub metadata: AgentMetadata,
 }
 
 impl AgentPhysicalState {
@@ -53,11 +67,16 @@ impl AgentPhysicalState {
     pub fn heading_perpendicular(self) -> Vec2 { Vec2::new(-self.heading_angle.sin(), self.heading_angle.cos()) }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NeighbourObservation { pub relative_position: Vec2 }
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize)]
+pub struct NeighbourObservation {
+    pub relative_position: Vec2,
+    #[serde(default)] pub group: f64,
+    #[serde(default)] pub kind: f64,
+}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
 pub struct Observation {
+    #[serde(default)] pub group: f64,
     pub heading: Vec2,
     pub neighbours: Vec<NeighbourObservation>,
     pub environmental_scalar: Option<f64>,
@@ -206,7 +225,7 @@ impl LocalObservationModel {
                 cos * relative.x - sin * relative.y,
                 sin * relative.x + cos * relative.y,
             );
-            out.neighbours.push(NeighbourObservation { relative_position: relative });
+            out.neighbours.push(NeighbourObservation { group: 0.0, kind: 0.0, relative_position: relative });
         }
     }
 }
@@ -221,7 +240,7 @@ impl ObservationModel for LocalObservationModel {
         bearing_noise: f64,
     ) -> Observation {
         let mut neighbour_indices = Vec::new();
-        let mut observation = Observation { heading: Vec2::ZERO, neighbours: Vec::new(), environmental_scalar: None };
+        let mut observation = Observation { group: 0.0, heading: Vec2::ZERO, neighbours: Vec::new(), environmental_scalar: None };
         self.observe_into(
             state,
             agent_index,
@@ -369,7 +388,7 @@ impl<C: ControllerRuntime> Simulation<C> {
             physics: KinematicPhysics,
             observation_model: LocalObservationModel,
             neighbour_index: AdaptivePeriodicBvh::default(),
-            observation_scratch: Observation { heading: Vec2::ZERO, neighbours: Vec::new(), environmental_scalar: None },
+            observation_scratch: Observation { group: 0.0, heading: Vec2::ZERO, neighbours: Vec::new(), environmental_scalar: None },
             neighbour_indices_scratch: Vec::new(),
             environment,
             controller,
@@ -486,7 +505,7 @@ fn parse_initial_state(json: &str) -> Result<SwarmInitialization, String> {
     let agents: Vec<InitialAgentJson> = serde_json::from_str(json).map_err(|error| format!("invalid initial state JSON: {error}"))?;
     let initialization = SwarmInitialization {
         state: agents.into_iter().map(|agent| AgentPhysicalState {
-            position: Vec2::new(agent.x, agent.y),
+            metadata: Default::default(), position: Vec2::new(agent.x, agent.y),
             heading_angle: agent.heading,
         }).collect(),
     };
@@ -619,7 +638,7 @@ mod tests {
     fn initialization(offset: f64, count: usize) -> SwarmInitialization {
         SwarmInitialization {
             state: (0..count).map(|index| AgentPhysicalState {
-                position: Vec2::new(offset + index as f64 * 0.1, 0.0),
+                metadata: Default::default(), position: Vec2::new(offset + index as f64 * 0.1, 0.0),
                 heading_angle: index as f64 * 0.01,
             }).collect(),
         }
@@ -679,9 +698,9 @@ mod tests {
     #[test]
     fn periodic_neighbour_query_uses_minimum_image_distance() {
         let state = vec![
-            AgentPhysicalState { position: Vec2::new(-4.9, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(4.9, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(-4.9, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(4.9, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
         ];
         let mut out = Vec::new();
         BruteForceNeighbourIndex.query(&state, 0, 0.5, 10.0, &mut out);
@@ -714,17 +733,17 @@ mod tests {
     #[test]
     fn reusable_observation_path_matches_owned_observation() {
         let state = vec![
-            AgentPhysicalState { position: Vec2::new(-4.9, 0.0), heading_angle: 0.3 },
-            AgentPhysicalState { position: Vec2::new(4.9, 0.0), heading_angle: 1.0 },
-            AgentPhysicalState { position: Vec2::new(-4.7, 0.2), heading_angle: 2.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(-4.9, 0.0), heading_angle: 0.3 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(4.9, 0.0), heading_angle: 1.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(-4.7, 0.2), heading_angle: 2.0 },
         ];
         let mut grid = PeriodicGridNeighbourIndex::default();
         grid.rebuild(&state, 10.0);
         let expected = LocalObservationModel.observe(&state, 0, &grid, 0.5, 10.0, 0.17);
         let mut indices = vec![999];
         let mut actual = Observation {
-            heading: Vec2::new(99.0, 99.0),
-            neighbours: vec![NeighbourObservation { relative_position: Vec2::new(99.0, 99.0) }],
+            group: 0.0, heading: Vec2::new(99.0, 99.0),
+            neighbours: vec![NeighbourObservation { group: 0.0, kind: 0.0, relative_position: Vec2::new(99.0, 99.0) }],
             environmental_scalar: Some(99.0),
         };
         LocalObservationModel.observe_into(&state, 0, &grid, 0.5, 10.0, 0.17, &mut indices, &mut actual);
@@ -778,7 +797,7 @@ mod tests {
         }"#).unwrap();
         let mut cfg = config();
         cfg.physics_dt = 0.1; cfg.control_dt = 0.1; cfg.metric_dt = 0.1;
-        let init = SwarmInitialization { state: vec![AgentPhysicalState { position: Vec2::new(0.5, 0.0), heading_angle: 0.0 }] };
+        let init = SwarmInitialization { state: vec![AgentPhysicalState { metadata: Default::default(), position: Vec2::new(0.5, 0.0), heading_angle: 0.0 }] };
         let mut sim = Simulation::new_with_environment(init, cfg, ScalarController, environment).unwrap();
         sim.advance_physics_ticks(1);
         assert!((sim.snapshot().state[0].position.x - 0.65).abs() < 1e-12);
@@ -802,7 +821,7 @@ mod tests {
     fn positions_wrap_across_periodic_boundaries() {
         let mut cfg = config();
         cfg.physics_dt = 0.1; cfg.control_dt = 0.1; cfg.metric_dt = 0.1; cfg.arena_size = 1.0;
-        let init = SwarmInitialization { state: vec![AgentPhysicalState { position: Vec2::new(0.49, 0.0), heading_angle: 0.0 }] };
+        let init = SwarmInitialization { state: vec![AgentPhysicalState { metadata: Default::default(), position: Vec2::new(0.49, 0.0), heading_angle: 0.0 }] };
         let mut sim = Simulation::new(init, cfg, ConstantController { action: Action { forward: 0.2, turning: 0.0 } }).unwrap();
         sim.advance_physics_ticks(1);
         assert!((sim.snapshot().state[0].position.x + 0.49).abs() < 1e-12);
@@ -811,8 +830,8 @@ mod tests {
     #[test]
     fn bearing_noise_rotates_observed_neighbour_bearing_without_changing_range() {
         let state = vec![
-            AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(1.0, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState { metadata: Default::default(), position: Vec2::new(1.0, 0.0), heading_angle: 0.0 },
         ];
         let observation = LocalObservationModel.observe(&state, 0, &BruteForceNeighbourIndex, 2.0, 10.0, std::f64::consts::FRAC_PI_2);
         let relative = observation.neighbours[0].relative_position;
