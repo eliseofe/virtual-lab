@@ -100,6 +100,15 @@ test("#346 request history is not part of the canonical registry read seam", () 
   assert.doesNotMatch(rpc, /capability_requests|closure_analysis|professor_notes|developer_notes|draft_/i);
 });
 
+test("#346 preserves whole-Experiment ambiguity and revalidation invariants", () => {
+  assert.match(migration, /Every ambiguity must reference an identified ambiguous requirement/i);
+  assert.match(migration, /identified_requirements keys must be unique/i);
+  assert.match(migration, /resolved_requirement_keys/);
+  assert.match(migration, /remaining_requirement_keys/);
+  assert.match(migration, /new_requirement_keys/);
+  assert.match(migration, /set lifecycle = case when p_analysis_status = 'unblocked' then 'unblocked' else 'blocked' end/i);
+});
+
 test("#346 bumps the request/MCP interface without changing authoring language version", () => {
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/4'/);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.4\.0'/);
