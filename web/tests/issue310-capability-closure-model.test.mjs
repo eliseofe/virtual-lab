@@ -77,7 +77,7 @@ test("#310 new closure tables are RLS protected and not exposed yet", () => {
 
 test("#310 analyst foreign key has a covering index", () => {
   assert.match(indexesMigration, /closure_analyses_analyst_idx/i);
-  assert.match(indexesMigration, /capability_closure_analyses\\(analyst_id\\)/i);
+  assert.match(indexesMigration, /capability_closure_analyses\(analyst_id\)/i);
 });
 
 test("#310 leaves the current MCP connector contract unchanged", () => {
