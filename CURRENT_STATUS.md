@@ -20,14 +20,21 @@ Assistant workspace discovery defaults to all Experiments visible through the au
 
 The latest bounded **#273 — UI/UX refinement and visual polish from real use** pass is **#299 — Experiment navigation and Professor supervision UX**. Professor-supervised work now belongs to the Experiment library as a first-class read-only **Supervised** context alongside My experiments and Shared with me. The separate Student-experiments launcher/modal is removed from Professor/Account utilities. #273 remains a living evidence-driven domain and returns dormant after this bounded pass.
 
+
+The Professor capability-request system is a **living operational queue** under #58, not a completed one-shot epic. Supabase currently contains two Professor-approved requests awaiting explicit owner implementation authorization:
+- controller stochasticity / RNG distributions — request `7492c39d-fdd0-4f29-9661-63dbc6461bf5`, architecture candidate #57;
+- heterogeneous agent initialization/state — request `49368c8e-dff7-4ce0-9072-bc3f4b37ada2`, architecture candidate #304.
+
+Neither request is `in_progress`; Professor approval places them in the developer design/queue only. The previously approved scalar-environment request is already implemented through #143/#144.
+
 A new **#301 — Virtual Lab security, identity and authorization** umbrella is logged from real-student evidence. Its audit child **#302** is defined but not started; no enrollment, role, OAuth/client-admission or other remediation policy has been frozen.
 
 ## Immediate frontier
 
 1. **#273 UI/UX** has no active child and is dormant/living after production-verified #299.
-2. **#302 — security audit** is separately queued under new epic #301 but has not started; a later owner turn may select it.
-3. Continue real student/owner scientific use and turn concrete evidence into focused fixes.
-4. Studies and other parked/not-started lanes remain separately gated.
+2. **#58 capability queue** is living and currently has two approved-but-not-implementation-authorized capability designs: RNG (#57) and heterogeneous initialization/state (#304).
+3. **#302 — security audit** is separately queued under new epic #301 but has not started; a later owner turn may select it.
+4. Continue real student/owner scientific use and turn concrete evidence into focused fixes; Studies and other parked/not-started lanes remain separately gated.
 
 Do not invent a maintenance phase, a second Lab, another broad redesign, a duplicate collaboration mechanism, or an automatic successor to the completed #45 scope.
 
