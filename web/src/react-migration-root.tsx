@@ -167,9 +167,17 @@ function ApplicationChrome() {
     const restoreFocus = () => {
       syncOpen();
       requestAnimationFrame(() => {
+        const view = dialog.dataset.view === 'professor' ? 'professor' : 'account';
+        const desktopTarget = document.querySelector<HTMLElement>(`[data-vlab-nav="${view}"]`);
         const desktopAccount = document.querySelector<HTMLElement>('[data-vlab-nav="account"]');
         const navigationToggle = document.querySelector<HTMLElement>('[data-vlab-nav-toggle="true"]');
-        const target = visible(desktopAccount) ? desktopAccount : visible(navigationToggle) ? navigationToggle : null;
+        const target = visible(desktopTarget)
+          ? desktopTarget
+          : visible(desktopAccount)
+            ? desktopAccount
+            : visible(navigationToggle)
+              ? navigationToggle
+              : null;
         target?.focus({ preventScroll: true });
       });
     };
@@ -209,7 +217,7 @@ function ApplicationChrome() {
 
             <Group gap="xs" wrap="nowrap">
               <Badge className="vlab-react-status-badge" color={workerColor(state.workerState)} variant="light" data-vlab-worker-status>{state.workerText}</Badge>
-              {state.professorAvailable && <Badge visibleFrom="md" className="vlab-react-role-badge" color="violet" variant="outline">{state.professorLabel}</Badge>}
+              {state.professorAvailable && <Button className="vlab-react-account-button" visibleFrom="sm" variant="subtle" color="violet" onClick={() => proxyClick('#professor-menu')} data-vlab-nav="professor" {...accountA11y}>{state.professorLabel}</Button>}
               <Button className="vlab-react-account-button" visibleFrom="sm" variant="outline" color="gray" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account" {...accountA11y}>Account</Button>
               <Burger hiddenFrom="lg" opened={mobileOpen} onClick={() => setMobileOpen((value) => !value)} color="white" aria-label="Open workspace navigation" data-vlab-nav-toggle="true" />
             </Group>
@@ -221,8 +229,8 @@ function ApplicationChrome() {
         <Stack gap="xs">
           <WorkspaceNav closeMobile={() => setMobileOpen(false)} />
           <Button variant="light" color="cyan" onClick={() => { proxyClick('.showcase-launcher'); setMobileOpen(false); }} disabled={!state.showcaseAvailable} data-vlab-nav="showcase-mobile">Showcase</Button>
+          {state.professorAvailable && <Button variant="light" color="violet" onClick={() => { proxyClick('#professor-menu'); setMobileOpen(false); }} data-vlab-nav="professor-mobile" {...accountA11y}>{state.professorLabel}</Button>}
           <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile" {...accountA11y}>Account</Button>
-          {state.professorAvailable && <Badge className="vlab-react-role-badge" color="violet" variant="light">{state.professorLabel}</Badge>}
         </Stack>
       </Drawer>
     </Box>
