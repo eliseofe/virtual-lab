@@ -1,15 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Make every production report state the real next step",
-  "owner_impact": "Success emails can no longer say that nothing remains when an approved epic already has a known next ticket. Each deployed ticket must now report either the next ticket in plain language or that the approved scope is finished.",
+  "outcome": "Share owned Experiments read-only with a specific researcher",
+  "owner_impact": "An Experiment owner can explicitly share an owned Experiment read-only with an available registry researcher. Recipients see shared Experiments separately from My Experiments, can inspect/run them, and can copy an exact saved revision into their own workspace without gaining write access to the source.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "This workflow/reporting update is complete. The Lab remains live at https://eliseofe.github.io/virtual-lab/ and future ticket-completion reports will use the new two-outcome Next rule."
+    "kind": "epic_continues",
+    "issue": 290,
+    "text": "The #45 collaboration epic continues with #290 — revoke sharing and preserve collaboration boundaries. That ticket will add share removal, prove that revoked access disappears while independent copies survive, and confirm Showcase and Professor-supervision access stay separate. It has not started yet."
   },
   "technical_evidence": [
-    "Success reporting requires terminal-report v2 and rejects missing, stale or invalid report data instead of falling back.",
-    "Merge commits detect the candidate-specific report by comparing the deployed commit with its first parent."
-  ]
+    "experiment_shares is an RLS-protected permission table with recipient-only read access and owner-scoped share creation.",
+    "The Experiment SELECT boundary recognizes explicit recipients while existing Experiment mutation remains owner-only.",
+    "The copy-to-workspace path recognizes explicit shares so recipients can create independent owned copies."
+  ],
+  "close_issue": 289
 }

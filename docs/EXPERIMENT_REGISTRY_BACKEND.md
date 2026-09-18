@@ -53,6 +53,12 @@ Immutable metadata for independent Experiments created from a readable non-owned
 
 Authenticated users may read provenance for their own copies but cannot insert/update/delete provenance directly. The browser calls the public `copy_experiment_to_workspace` SECURITY INVOKER RPC; privileged atomic copy logic lives in the non-exposed `private.copy_experiment_to_workspace_impl` SECURITY DEFINER function, which performs explicit caller, readability, revision and destination checks before creating the new private Experiment and provenance.
 
+### `experiment_shares`
+
+Explicit read-only grants on mutable working Experiments. Each row identifies one Experiment and one recipient; it does not duplicate Experiment content. RLS permits recipients to discover their own received shares and permits an owner to create a share only for an Experiment they own and an eligible visible registry profile.
+
+The Experiment SELECT policy recognizes these grants, while Experiment UPDATE/DELETE policies remain owner-only. The copy-to-workspace authorization path also recognizes an explicit share so a recipient can fork the exact saved revision into an independent private Experiment.
+
 ### `capability_requests`
 
 Durable Professor-originated requests for missing simulator/authoring capabilities. Request lifecycle is separate from trusted implementation authorization.
@@ -67,7 +73,7 @@ RLS is the authoritative database boundary.
 
 - browser/AI clients do not receive `service_role` credentials;
 - private Experiment writes are owner-scoped;
-- visibility rules control readable non-owned Experiments;
+- explicit share rows and existing supervision/public rules control readable non-owned Experiments;
 - Results-presentation writes are owner-scoped;
 - Professor-only capability request behavior is enforced by role/domain rules;
 - experiment-domain authentication never grants GitHub, shell, deployment or simulator-source rights.
