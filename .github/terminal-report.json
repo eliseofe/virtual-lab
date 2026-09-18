@@ -5,8 +5,8 @@
   "remaining_action": "No owner action is required. Next development task in the approved epic: #289 — explicit read-only Experiment sharing.",
   "technical_evidence": [
     "copy_experiment_to_workspace atomically copies the saved canonical Experiment payload and records immutable source provenance.",
-    "The copy action uses the saved source revision, not unsaved local professor-side edits.",
-    "Copy provenance survives later deletion of the source working Experiment, and the copied Experiment receives its own identity and revision lifecycle."
+    "The public browser RPC is SECURITY INVOKER; privileged copy logic is confined to the non-exposed private schema with explicit caller/readability/revision checks.",
+    "The copy action uses the saved source revision, not unsaved local professor-side edits; the copied Experiment then has its own identity and revision lifecycle."
   ],
   "close_issue": 288
 }
