@@ -16,10 +16,13 @@ const utilityLoading = document.querySelector("#utility-loading");
 const accountButton = document.querySelector("#account-menu");
 const professorButton = document.querySelector("#professor-menu");
 const closeButton = document.querySelector("#utility-close");
+const utilityHeading = utilityDialog?.querySelector(".utility-dialog-head h2");
 
-if (!utilityDialog || !utilityContent || !utilityLoading || !accountButton || !professorButton || !closeButton) {
+if (!utilityDialog || !utilityContent || !utilityLoading || !accountButton || !professorButton || !closeButton || !utilityHeading) {
   throw new Error("Workspace shell UI mismatch.");
 }
+
+let utilityTarget = "account";
 
 function movePanel(panel) {
   if (!panel || panel.parentElement === utilityContent) return;
@@ -51,13 +54,22 @@ function syncUtilityPanels() {
     ? `Professor · ${pendingCount}`
     : "Professor";
   setText(professorButton, professorLabel);
+
+  if (accountPanel) accountPanel.style.display = utilityTarget === "account" ? "" : "none";
+  if (professorPanel) professorPanel.style.display = utilityTarget === "professor" && professorAvailable ? "" : "none";
+  utilityContent.dataset.view = utilityTarget;
 }
 
 function openUtilities(target = "account") {
+  utilityTarget = target === "professor" ? "professor" : "account";
   syncUtilityPanels();
+
+  utilityHeading.textContent = utilityTarget === "professor" ? "Professor tools" : "Account";
+  utilityDialog.setAttribute("aria-label", utilityTarget === "professor" ? "Professor tools" : "Account");
+  closeButton.setAttribute("aria-label", utilityTarget === "professor" ? "Close Professor tools" : "Close Account");
   if (!utilityDialog.open) utilityDialog.showModal();
 
-  const panel = target === "professor"
+  const panel = utilityTarget === "professor"
     ? utilityContent.querySelector(".professor-panel:not([hidden])")
     : utilityContent.querySelector(".registry-panel");
 
