@@ -102,6 +102,8 @@ This UI remains an Experiment/product administration surface. It does not embed 
 
 Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/3`.
 
+Normal `read_workspace` discovery also exposes the caller-visible nonterminal capability queue (`requested`, `approved`, `in_progress`). Existing RLS remains authoritative: a Professor sees queue rows already visible to Professor; a Student sees only rows already visible to that Student. This protocol state lets a fresh research-AI session distinguish an already-requested or approved capability from a genuinely new gap without relying on chat memory. `approved` remains a pending developer-queue commitment, not evidence that the capability is implemented; the active authoring contract remains authoritative for what can be executed now.
+
 The active authoring contract signals requestable unsupported-capability behavior for both roles. Before submission, the research AI performs a best-effort whole-Experiment analysis, groups low-level diagnostics into meaningful capability requests, and preserves explicit ambiguity instead of asking the developer layer to infer scientific meaning. Repeated initial submissions for the same blocked scientific task converge on the same durable blocked Experiment and cumulative initial closure history. A matching existing nonterminal request owned by the same requester is reconciled into that closure when it is unlinked or already belongs to the same blocked Experiment; its `requested`, `approved`, or `in_progress` lifecycle state is preserved rather than reset.
 
 Current lifecycle-hook vocabulary exposed by the request path includes:
