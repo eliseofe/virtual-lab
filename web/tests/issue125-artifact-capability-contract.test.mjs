@@ -53,7 +53,7 @@ test("#125/#196 optional artifacts remain passive and Metrics does not consume o
   assert.match(capabilities.optional_passive.execution_policy, /passive unless/i);
 
   assert.deepEqual(capabilities.optional_executable.registered_types, []);
-  assert.equal(capabilities.optional_executable.unsupported_request, "unsupported-capability");
+  assert.equal(capabilities.optional_executable.unsupported_request, "artifact_workflow");
   assert.match(capabilities.optional_executable.execution_policy, /Metrics is a required core artifact/i);
 
   assert.equal(capabilities.optional_executable.registered_types.includes("world"), false);

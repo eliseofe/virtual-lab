@@ -8,6 +8,7 @@ import {
   validateInitialStateForRuntime,
   validateRuntimeValues,
 } from "./vendor/runtime-contract.js";
+import { CANONICAL_CAPABILITY_BINDINGS } from "./canonical-capability-bindings.js";
 
 export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
   Object.freeze({ id: "configuration", type: "configuration", label: "Configuration", format: "python-vlab", order: 10 }),
@@ -17,7 +18,7 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.5",
+  contract_version: "vlab.authoring/0.7",
   experiment_interface_version: "7",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
@@ -96,35 +97,29 @@ export const AUTHORING_CONTRACT = Object.freeze({
     required_fields: ["id", "type", "label", "format", "order", "content"],
     compatibility_note: "Legacy three-source experiments and clients normalize mechanically to the four-artifact model by adding an empty Metrics artifact. Legacy source mirrors remain bounded compatibility fields for Configuration/Initialization/Controller only."
   },
-  capability_model: {
-    observations: [
-      { id: "local.heading", source_name: "obs.heading", type: "vec2" },
-      { id: "local.neighbours", source_name: "obs.neighbours", type: "sequence<neighbour>" },
-      { id: "local.neighbour.relative_position", source_name: "neighbour.relative_position", type: "vec2" },
-      { id: "local.environmental_scalar", source_name: "obs.environmental_scalar", type: "scalar", requires: "environment.static_scalar_field", information_boundary: "local scalar measurement only; no global position, field function or gradient" }
+  canonical_capability_bindings: CANONICAL_CAPABILITY_BINDINGS,
+  diagnostic_model: {
+    classes: [
+      "semantic_capability",
+      "authoring_language",
+      "runtime_configuration",
+      "forbidden_security_boundary",
+      "type_validation"
     ],
-    metrics: [{
-      id: "experiment.read_only_metrics",
-      language: METRICS_LANGUAGE,
-      measurement_phase: METRIC_MEASUREMENT_PHASE,
-      information_boundary: "global read-only physical snapshot; no mutation, RNG, filesystem, network, controller-private state or unrestricted simulator access"
-    }],
-    environment: [{
-      id: "environment.static_scalar_field",
-      definition: "Initialization environmental_scalar(x, y, config)",
-      compiled_schema: "vlab.environment-scalar-ir/0.1",
-      cadence: "static",
-      deterministic: true,
-      rendering: "same simulator field evaluator used for sensing"
-    }],
-    actions: [{ id: "motion.forward_turning", constructor: "Motion", arguments: ["scalar", "scalar"] }],
-    intrinsics: ["Vec2", "dot", "perpendicular", "norm", "pow"],
-    extension_policy: "Capabilities are versioned simulator-defined interfaces. Unsupported capabilities are reported explicitly; research AI cannot implement simulator capabilities."
+    extension_request_classes: [
+      "semantic_capability",
+      "authoring_language",
+      "runtime_configuration",
+      "artifact_workflow",
+      "implementation_optimization",
+      "security_boundary"
+    ],
+    compiler_categories: [
+      "syntax", "configuration", "runtime-parameter", "initializer", "metrics", "sampling", "metric-id", "metric-name",
+      "unsupported-capability", "unsupported-feature", "type", "forbidden-capability", "invalid-observation-field", "invalid-private-state"
+    ],
+    routing: "Compiler categories remain low-level validation evidence. diagnostic_class separates semantic capability, authoring-language, runtime/configuration, forbidden/security and ordinary type/validation failures. request_class is present only when the diagnostic directly represents a durable extension-request class."
   },
-  diagnostic_categories: [
-    "syntax", "configuration", "runtime-parameter", "initializer", "metrics", "sampling", "metric-id", "metric-name",
-    "unsupported-capability", "unsupported-feature", "type", "forbidden-capability", "invalid-observation-field", "invalid-private-state"
-  ],
   execution_boundary: {
     validator_runs_simulation: false,
     ai_can_run_simulation: false,
@@ -187,18 +182,51 @@ export function mergeLegacySourcesIntoArtifacts(artifacts, changes = {}) {
   return current.map((artifact) => replacements[artifact.id] === undefined ? { ...artifact } : { ...artifact, content: replacements[artifact.id] });
 }
 
+export function classifyAuthoringDiagnostic(artifact, compilerCategory, message) {
+  const category = compilerCategory
+    ?? (artifact === "configuration" ? "configuration"
+      : artifact === "initializer" ? "initializer"
+      : artifact === "metrics" ? "metrics"
+      : "syntax");
+
+  if (category === "unsupported-capability" || category === "invalid-observation-field") {
+    return { category, diagnostic_class: "semantic_capability", request_class: "semantic_capability" };
+  }
+
+  if (category === "unsupported-feature") {
+    return { category, diagnostic_class: "authoring_language", request_class: "authoring_language" };
+  }
+
+  if (category === "runtime-parameter" || category === "configuration") {
+    return { category, diagnostic_class: "runtime_configuration", request_class: "runtime_configuration" };
+  }
+
+  if (category === "forbidden-capability") {
+    return { category, diagnostic_class: "forbidden_security_boundary", request_class: "security_boundary" };
+  }
+
+  return { category, diagnostic_class: "type_validation", request_class: null };
+}
+
 function errorDiagnostic(artifact, error) {
   const message = error instanceof Error ? error.message : String(error);
   const compilerCategory = typeof error?.category === "string" ? error.category : null;
-  let category = compilerCategory ?? (artifact === "initializer" ? "initializer" : artifact === "metrics" ? "metrics" : "syntax");
-  if (category === "unsupported-feature" || category === "invalid-observation-field" || /unsupported call|unknown observation field|unknown metric snapshot field|is not in python-vlab/i.test(message)) category = "unsupported-capability";
-  return { artifact, category, compiler_category: compilerCategory, parameter: typeof error?.parameter === "string" ? error.parameter : null, message, line: Number.isInteger(error?.line) ? error.line : null, column: Number.isInteger(error?.column) ? error.column : null };
+  const classification = classifyAuthoringDiagnostic(artifact, compilerCategory, message);
+  return {
+    artifact,
+    ...classification,
+    compiler_category: compilerCategory,
+    parameter: typeof error?.parameter === "string" ? error.parameter : null,
+    message,
+    line: Number.isInteger(error?.line) ? error.line : null,
+    column: Number.isInteger(error?.column) ? error.column : null
+  };
 }
 
 export function validateExperimentArtifacts(artifacts) {
   let normalized;
   try { normalized = normalizeExperimentArtifacts(artifacts); }
-  catch (error) { return invalid([{ artifact: "artifacts", category: "syntax", compiler_category: null, parameter: null, message: error instanceof Error ? error.message : String(error), line: null, column: null }]); }
+  catch (error) { return invalid([errorDiagnostic("artifacts", error)]); }
   const byId = new Map(normalized.map((artifact) => [artifact.id, artifact]));
   return validateExperimentSources({
     ...sourcesFromArtifacts(normalized),

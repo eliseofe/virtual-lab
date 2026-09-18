@@ -1,8 +1,8 @@
 # Experiment Authoring Contract
 
-Status: **current deployed contract, 16 September 2026**.
+Status: **current deployed contract, 18 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.6`, exposed by production `experiment-mcp` server `3.0.0`, interface `8`.
+Current machine-readable contract: `vlab.authoring/0.7`, exposed by production `experiment-mcp` server `3.5.0`, interface `13`.
 
 ## Canonical Experiment artifacts
 
@@ -36,6 +36,22 @@ The contract may describe:
 
 Scientific content comes from the researcher/research-AI workflow. Developer-side tooling validates support; it must not invent a substitute scientific model when requested semantics are unsupported.
 
+## Canonical capability ownership and authoring bindings
+
+Canonical semantic capability truth lives in the Supabase canonical capability registry. The registry owns stable capability UUID/key, generic meaning, implementation state/version and minimal publication provenance.
+
+The authoring contract does **not** duplicate that truth. It carries only static references from implemented canonical capability IDs to the existing authoring/runtime surfaces that expose them. The current bindings cover the frozen 11 implemented semantic capabilities and point to existing constructs such as:
+
+- `ARENA_SIZE` for the periodic 2-D world;
+- `Motion(forward, turning)` and speed/turn limits for forward/turning kinematics;
+- `place(i, x, y, heading)` and `rng.uniform(a, b)` for Initialization;
+- controller scalar private state;
+- `obs.heading`, `obs.neighbours`, `neighbour.relative_position` and `obs.environmental_scalar`;
+- `environmental_scalar(x, y, config)`;
+- the current Metrics snapshot fields and `every(...)` / `final()` sampling surfaces.
+
+The simulator/compiler/kernel remain static code and do **not** query Supabase at runtime. Build/static consistency tests tie these bindings to the frozen canonical registry identities so the two layers cannot silently drift.
+
 ## Validation path
 
 AI-authored Experiment writes use server-side **compile-without-simulation** validation aligned with the production browser/compiler contracts.
@@ -50,7 +66,15 @@ Validation covers, as applicable:
 - Metrics parsing/type/capability validation;
 - stable metric IDs, name/unit metadata and supported sampling declarations.
 
-Invalid writes are rejected with structured diagnostics. Validation does not run the scientific simulation and does not add missing scientific semantics.
+Invalid writes are rejected with structured diagnostics. Low-level compiler categories remain available as evidence, while the public diagnostic classification distinguishes:
+
+- `semantic_capability` — a missing simulator/product semantic mechanism;
+- `authoring_language` — restricted-language syntax/expressivity not currently supported;
+- `runtime_configuration` — runtime/configuration contract failure;
+- `forbidden_security_boundary` — currently forbidden information/action boundary;
+- `type_validation` — ordinary syntax/type/validation failure that is not itself an extension request.
+
+When a diagnostic directly represents one of the six durable extension-request classes, it also carries the corresponding `request_class`. This prevents an unsupported language feature from being mislabeled as a simulator semantic capability. Validation does not run the scientific simulation and does not add missing scientific semantics.
 
 ## Metrics contract
 
@@ -104,17 +128,17 @@ Presentation state has its own optimistic revision. Changing panels therefore do
 
 No arbitrary plotting code is accepted through the MCP contract.
 
-## Capability requests
+## Classified extension requests
 
-Unsupported simulator capabilities are not emulated by the authoring layer.
+Student and Professor research-AI sessions use `vlab.capability-request/4`. All six owner-approved request classes may be submitted to the durable Professor-visible workflow:
 
-For Professor users, supported validation paths can expose the durable `vlab.capability-request/1` request workflow. The lifecycle-hook vocabulary includes:
+`semantic_capability | authoring_language | runtime_configuration | artifact_workflow | implementation_optimization | security_boundary`
 
-```text
-setup | initialize | control | measure | finalize
-```
+None is automatically accepted or rejected. Professor alone approves/declines. Only semantic-capability requests may bind or create canonical semantic capability identity; classes 2–6 remain typed extension requests.
 
-Professor approval of a capability request is not implementation authorization. The standing handoff remains:
+Validation diagnostics can advertise the relevant request class when the failure is genuinely an extension need. Ordinary type/validation errors do not become extension requests automatically.
+
+Professor approval is still queue/design approval, not implementation authorization. The standing handoff remains:
 
 `research AI request → Professor review → developer design discussion → explicit owner implementation approval → trusted implementation/deploy → research AI resumes`
 
@@ -124,4 +148,4 @@ Experiment-domain AI clients have no GitHub/repository, shell, deployment, arbit
 
 ## Accepted scientific fixture
 
-The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.6`.
+The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.7`.

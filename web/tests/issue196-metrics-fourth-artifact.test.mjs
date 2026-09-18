@@ -63,11 +63,13 @@ test("#196 complete experiment validation compiles Metrics and reports metric di
   const invalid = validateExperimentArtifacts(artifacts.map((artifact) => artifact.id === "metrics" ? { ...artifact, content: `@metric(id="x", name="X", sampling=every(0.1))\ndef x(snapshot):\n    return snapshot.secret\n` } : artifact));
   assert.equal(invalid.valid, false);
   assert.equal(invalid.diagnostics[0].artifact, "metrics");
-  assert.equal(invalid.diagnostics[0].category, "unsupported-capability");
+  assert.equal(invalid.diagnostics[0].category, "invalid-observation-field");
+  assert.equal(invalid.diagnostics[0].diagnostic_class, "semantic_capability");
+  assert.equal(invalid.diagnostics[0].request_class, "semantic_capability");
 });
 
 test("#196 authoring/artifact contracts are versioned for four compulsory artifacts", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.5");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.7");
   assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "7");
   assert.equal(AUTHORING_CONTRACT.experiment_artifact_interface, "vlab.experiment-artifacts/3");
   assert.deepEqual(AUTHORING_CONTRACT.artifact_collection.required_core_ids, ["configuration", "initialization", "controller", "metrics"]);
