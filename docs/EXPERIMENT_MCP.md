@@ -10,16 +10,16 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- Edge Function version: `17`
-- MCP server: `3.0.1`
-- interface: `8`
+- Edge Function version: `18`
+- MCP server: `3.1.0`
+- interface: `9`
 - authoring contract: `vlab.authoring/0.6`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
 - registry schema: `vlab.registry-experiment/3`
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
 - Results presentation: `vlab.results-presentation/1`
-- capability requests: `vlab.capability-request/1`
+- capability requests: `vlab.capability-request/2`
 
 A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is canonical. Legacy three-source arguments remain a bounded compatibility input and mechanically preserve/add the compulsory Metrics artifact rather than creating a second source of truth.
 
@@ -86,9 +86,11 @@ Results presentation has its own optimistic revision. Panel edits therefore do *
 
 The browser loads a saved `vlab.results-presentation/1` layout for registry Experiments. No saved presentation means the normal Lab default layout remains in effect; a saved presentation with `panels=[]` is an explicit empty layout.
 
-## Professor-only capability request
+## Capability request submission
 
-Professor profiles additionally receive `request_capability`. It records a durable missing-capability request while preserving the originating Experiment/draft. It does not implement simulator functionality.
+Student and Professor profiles both receive `request_capability`. The research AI must analyse the whole intended Experiment against the active contract, preserve one durable blocked Experiment/closure analysis, distinguish clear requirements from unresolved scientific ambiguity, and submit grouped capability requests rather than one row per low-level parser/compiler error.
+
+Student submission enters the same Professor inbox. Only Professor may approve/decline requested rows. Submission does not implement simulator functionality or authorize development.
 
 Lifecycle-hook vocabulary:
 
@@ -98,7 +100,7 @@ Standing boundary:
 
 `research AI request → Professor review → developer design discussion → explicit owner implementation approval → trusted developer implementation/deploy → research AI resumes`
 
-Professor approval of a request is not implementation authorization.
+Professor approval of a request is not implementation authorization. Student submission is never approval.
 
 ## Validation and concurrency
 
@@ -128,4 +130,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the current MCP authoring/Results contract. #298 changes only workspace discovery semantics: Edge Function version `17` / MCP `3.0.1` defaults `read_workspace` discovery to all RLS-visible Experiments while preserving `owned_only=true` as an explicit narrowing filter. RLS remains the authorization boundary.
+#200 established the current MCP authoring/Results contract. #298 changes only workspace discovery semantics: Workspace discovery remains RLS-visible by default. #311 evolves the MCP to server `3.1.0`, interface `9`, capability-request interface `vlab.capability-request/2`, with shared Student/Professor submission and Professor-only triage. RLS remains the authorization boundary.
