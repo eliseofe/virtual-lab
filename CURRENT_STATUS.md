@@ -27,13 +27,13 @@ The Professor capability-request system is a **living operational queue** under 
 
 Neither request is `in_progress`; Professor approval places them in the developer design/queue only. The previously approved scalar-environment request is already implemented through #143/#144.
 
-The aggregation case exposed a flow defect: isolated capability rows can preserve individual gaps without preserving one resumable blocked Experiment or proving whole-Experiment capability closure. The repair sequence is #310–#313. #310 is complete and production-verified: the durable schema foundation exists without changing the MCP connector contract. #311/#312 repair the authenticated capability-request/resume path; live Grok acceptance occurs in #313 after automated protocol tests are green.
+The aggregation case exposed a flow defect: isolated capability rows can preserve individual gaps without preserving one resumable blocked Experiment or proving whole-Experiment capability closure. The repair sequence is #310–#313. #310 is complete and production-verified: the durable schema foundation exists without changing the MCP connector contract. #311 is complete and production-verified; #312 remains to add resume/whole-Experiment revalidation; live Grok acceptance occurs in #313 after automated protocol tests are green.
 
 A new **#301 — Virtual Lab security, identity and authorization** umbrella is logged from real-student evidence. Its audit child **#302** is defined but not started; no enrollment, role, OAuth/client-admission or other remediation policy has been frozen.
 
 ## Immediate frontier
 
-1. **#58 capability-flow repair is active.** #310 — the durable blocked-Experiment / closure-analysis foundation — is complete and production-verified. #311 is active. It changes capability-request submission so both Student and Professor research-AI clients can submit comprehensive blocked-Experiment analyses; Professor alone retains triage. Capability implementation (#305/#306 RNG and #304 heterogeneous initialization/state) remains paused until the repair/acceptance sequence #311 → #312 → #313 is green.
+1. **#58 capability-flow repair is active.** #310 — the durable blocked-Experiment / closure-analysis foundation — is complete and production-verified. #311 is complete and production-verified: both Student and Professor research-AI clients can submit comprehensive blocked-Experiment analyses/requests, while Professor alone retains triage. #312 is the known next ticket and has not started. Capability implementation (#305/#306 RNG and #304 heterogeneous initialization/state) remains paused until #312 → #313 are green.
 2. **#273 UI/UX** has no active child and is dormant/living after production-verified #299.
 3. **#302 — security audit** is separately queued under new epic #301 but has not started.
 4. Studies and other parked/not-started lanes remain separately gated.
