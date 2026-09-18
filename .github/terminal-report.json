@@ -1,17 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Put Professor supervision in the Experiment library",
-  "owner_impact": "Professor-supervised student/researcher work is now discovered where Experiments live, not inside Account/Professor utilities. The Experiment library has a first-class Supervised context alongside My experiments and Shared with me, shows the student/researcher identity, preserves read-only inspection/run behavior and copy-to-workspace, and keeps supervised work available across refresh/reload. The old separate Student experiments modal is removed.",
+  "outcome": "Add durable blocked-Experiment capability-closure foundation",
+  "owner_impact": "Virtual Lab now has a durable database model for one blocked scientific Experiment/draft, versioned whole-Experiment closure analyses, explicit unresolved ambiguities, and links from individual capability requests back to the analysis that identified them. This ticket does not change the MCP connector contract, so current Student connector behavior is unchanged.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "dormant",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "This bounded #273 UI/UX pass is complete and the living UI/UX epic returns dormant until new evidence appears. The newly logged security epic #301 and audit #302 are separate, queued and not started; no security policy or remediation is being inferred automatically."
+    "kind": "epic_continues",
+    "issue": 311,
+    "text": "#311 is the known next ticket. It will make the Professor-side MCP request flow perform comprehensive whole-Experiment gap analysis and grouped capability requests using this new durable model. It has not started yet."
   },
   "technical_evidence": [
-    "registry-ui-v3 loads Professor-supervised student/researcher Experiments into the existing Experiment library and exposes a Supervised filter/group without changing write authorization.",
-    "Supervised Experiment continuity is preserved in remembered-workspace restore and library refresh paths.",
-    "The obsolete professor-supervision modal/loader is removed; Professor utilities remain focused on Professor administrative functions such as capability requests."
+    "New blocked_experiment_drafts and capability_closure_analyses tables are RLS-protected and expose no new authenticated Data API access in #310.",
+    "Existing capability_requests gain only a nullable closure_analysis_id link, preserving legacy rows and lifecycle states.",
+    "Automated contract tests cover non-title-only preservation, analysis sequencing/status integrity, nullable request linkage, RLS closure, and unchanged MCP tool registration."
   ],
-  "close_issue": 299
+  "close_issue": 310
 }
