@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. Repair #58's capability-request closed loop through #313 before implementing the queued scientific capabilities. #310–#312 and #323/#324/#327/#328 are complete. Cleanup epic #330 is now the active gate before black-box acceptance resumes: #331 audit and #332 owner boundary agreement are complete; #333 canonical capability metadata is complete and production-verified; #334 MCP surface cleanup is next, followed by #335 fresh-session audit and #336 fresh-chat scientific acceptance. #325/#326 remain paused until #330 finishes.
+1. Repair #58's capability-request closed loop through #313 before implementing the queued scientific capabilities. #310–#312 and #323/#324/#327/#328 are complete. Cleanup epic #330 is now the active gate before black-box acceptance resumes: #331 audit and #332 owner boundary agreement are complete; #333 canonical capability metadata and #334 neutral MCP surface cleanup are complete and production-verified; #335 fresh-session production audit is next, followed by #336 fresh-chat scientific acceptance. #325/#326 remain paused until #330 finishes.
 2. Keep the two existing approved capability requests visible but paused for implementation: RNG/controller stochasticity (#57 with planned #305/#306) and heterogeneous initialization/state (#304).
 3. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
 4. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
