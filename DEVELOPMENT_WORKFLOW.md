@@ -10,6 +10,10 @@ When the owner approves a sequence with language such as `go ahead`, `proceed`, 
 
 Default to **one substantial, independently testable ticket at a time**.
 
+A single owner turn may authorize planning or creation of multiple tickets, but execution may proceed through only **one substantial ticket**. Complete that ticket through the full closed loop and then stop. Do not begin the next substantial ticket until a later owner turn explicitly continues the work.
+
+When splitting work into tickets, choose substantial, coherent, independently testable units that are small enough to be completed through the full closed loop in one execution chunk. Avoid both oversized tickets that combine multiple separable capabilities and trivial tickets that fragment one natural change.
+
 For each substantial user-facing/deployable ticket:
 
 1. implement and test;
@@ -53,7 +57,7 @@ The browser/compiler contract test enforces this structure for every active smok
 
 ## When batching is acceptable
 
-Adjacent tickets may be batched only when each is genuinely small/trivial, low-risk, and the combined work still forms one clear independently verifiable deployed unit. Otherwise retain separate commits/issues even when the owner has authorized the whole sequence.
+Batch related implementation steps inside the **one active ticket** when that preserves one coherent independently verifiable unit. Once work has been split into separate tickets, do not execute a second ticket in the same owner turn, even when the owner authorized or created the whole sequence.
 
 ## Atomic compatibility exception
 
