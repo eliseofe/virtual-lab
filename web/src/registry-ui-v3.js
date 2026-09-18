@@ -783,7 +783,7 @@ async function readExperiment(id) {
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("Experiment not found or not available to this account.");
+  if (!data) throw new Error("Experiment not found in your library or not available to this account.");
   if (!productionExperimentRunnability(data).runnable) throw new Error("This experiment cannot run in the current simulator version.");
   return data;
 }
