@@ -36,8 +36,11 @@ const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 let user = null;
 let profile = null;
 let remoteExperiments = [];
+let sharedExperiments = [];
+let shareRecipients = [];
 let collections = [];
 let currentRemote = null;
+let currentRemoteAccess = null;
 let conflictRevision = null;
 let hiddenNonRunnableCount = 0;
 let browserSource = "builtin";
@@ -56,8 +59,8 @@ function installStyles() {
     .registry-account strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .registry-sign-out { min-height: 28px; padding: 3px 8px; font-size: 11px; white-space: nowrap; }
     .registry-auth { display: grid; gap: 8px; }
-    .registry-auth input, .registry-new-form input, .registry-new-form select, .registry-move-select, .experiment-browser-search { width: 100%; min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; color: #172127; background: #fff; }
-    .registry-auth input:focus, .registry-new-form input:focus, .registry-new-form select:focus, .registry-move-select:focus, .experiment-browser-search:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
+    .registry-auth input, .registry-new-form input, .registry-new-form select, .registry-move-select, .registry-share-select, .experiment-browser-search { width: 100%; min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; color: #172127; background: #fff; }
+    .registry-auth input:focus, .registry-new-form input:focus, .registry-new-form select:focus, .registry-move-select:focus, .registry-share-select:focus, .experiment-browser-search:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
     .registry-message { margin: 0; min-height: 1.4em; font-size: 11.5px; line-height: 1.4; color: #64757c; }
     .registry-message[data-state="error"] { color: #9e2d29; }
     .registry-message[data-state="success"] { color: #246240; }
@@ -74,6 +77,10 @@ function installStyles() {
     .registry-new-actions { display: flex; gap: 7px; justify-content: flex-end; }
     .registry-move-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; align-items: end; }
     .registry-move-row button { min-height: 38px; padding: 7px 10px; }
+    .registry-share-row { display: grid; gap: 7px; padding-top: 2px; }
+    .registry-share-form { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 7px; align-items: end; }
+    .registry-share-field { display: grid; gap: 4px; color: #52656d; font-size: 10.5px; font-weight: 650; }
+    .registry-share-form button { min-height: 38px; padding: 7px 10px; }
 
     .experiment-current { display: grid; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e5ebee; }
     .experiment-current-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -122,6 +129,8 @@ function installStyles() {
       .experiment-browser-filters { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid #e6ecef; padding: 0 0 9px; }
       .experiment-filter { width: auto; white-space: nowrap; }
       .experiment-browser-shell { min-height: min(640px, calc(100vh - 32px)); }
+      .registry-share-form { grid-template-columns: 1fr; }
+      .registry-share-row button { min-height: 44px; }
     }
   `;
   document.head.append(style);
@@ -153,8 +162,22 @@ function selectedCollectionId(select) {
 
 function currentLocationLabel() {
   if (!currentRemote) return "Built-in";
-  if (user && currentRemote.owner_id !== user.id) return "Student experiment";
+  if (currentRemoteAccess === "shared") return "Shared with me";
+  if (currentRemoteAccess === "supervised") return "Student experiment";
   return currentRemote.collection_id ? `Collection · ${collectionName(currentRemote.collection_id)}` : "No collection";
+}
+
+function populateShareRecipientSelect() {
+  if (!ui?.shareRecipient) return;
+  ui.shareRecipient.replaceChildren();
+  for (const recipient of shareRecipients) {
+    const option = document.createElement("option");
+    option.value = recipient.id;
+    option.textContent = recipient.display_name?.trim()
+      ? `${recipient.display_name.trim()} · ${recipient.role}`
+      : recipient.role;
+    ui.shareRecipient.append(option);
+  }
 }
 
 function buildCurrentExperimentUi() {
@@ -266,7 +289,31 @@ function buildAccountPanel() {
   const move = document.createElement("button");
   move.textContent = "Move";
   moveRow.append(moveField, move);
-  saveRow.append(saveState, saveActions, moveRow);
+
+  const shareRow = document.createElement("div");
+  shareRow.className = "registry-share-row";
+  shareRow.hidden = true;
+  const shareOpen = document.createElement("button");
+  shareOpen.textContent = "Share read-only…";
+  const shareForm = document.createElement("div");
+  shareForm.className = "registry-share-form";
+  shareForm.hidden = true;
+  const shareField = document.createElement("label");
+  shareField.className = "registry-share-field";
+  shareField.append("Share with");
+  const shareRecipient = document.createElement("select");
+  shareRecipient.className = "registry-share-select";
+  shareRecipient.setAttribute("aria-label", "Share current experiment with researcher");
+  shareField.append(shareRecipient);
+  const cancelShare = document.createElement("button");
+  cancelShare.textContent = "Cancel";
+  const confirmShare = document.createElement("button");
+  confirmShare.className = "primary";
+  confirmShare.textContent = "Share";
+  shareForm.append(shareField, cancelShare, confirmShare);
+  shareRow.append(shareOpen, shareForm);
+
+  saveRow.append(saveState, saveActions, moveRow, shareRow);
 
   const newForm = document.createElement("div");
   newForm.className = "registry-new-form";
@@ -318,6 +365,12 @@ function buildAccountPanel() {
     moveRow,
     moveCollection,
     move,
+    shareRow,
+    shareOpen,
+    shareForm,
+    shareRecipient,
+    cancelShare,
+    confirmShare,
     newForm,
     newTitle,
     newCollection,
@@ -499,7 +552,7 @@ function setQuickSwitchOptions() {
 
   if (user && currentRemote && currentRemote.owner_id !== user.id) {
     const group = document.createElement("optgroup");
-    group.label = "Student experiment · Read-only";
+    group.label = currentRemoteAccess === "shared" ? "Shared with me · Read-only" : "Student experiment · Read-only";
     const option = document.createElement("option");
     option.value = `registry:${currentRemote.id}`;
     option.textContent = `${currentRemote.title} · r${currentRemote.revision}`;
@@ -509,7 +562,7 @@ function setQuickSwitchOptions() {
 
   experimentSelect.value = currentRemote ? `registry:${currentRemote.id}` : BUILTIN_VALUE;
   currentUi.quickHint.textContent = user
-    ? "Switch directly here, or use Find experiment to search everything. Collections are optional organization. Professor-supervised student work stays separate and read-only."
+    ? "Switch directly here, or use Find experiment to search everything. Collections are optional organization. Shared and Professor-supervised work stay read-only and separate from your own Experiments."
     : "The built-in experiment is available now. Sign in to add your private experiments to this switcher.";
 }
 function updateMoveButton() {
@@ -543,6 +596,9 @@ function updateCurrentUi() {
   ui.saveAsNew.hidden = !user;
   ui.save.hidden = !owned;
   ui.createNew.textContent = copyingReadable ? "Copy to my Experiments" : "Create private copy";
+  const canShare = Boolean(owned && shareRecipients.length > 0);
+  ui.shareRow.hidden = !canShare;
+  if (!canShare) ui.shareForm.hidden = true;
   ui.save.disabled = !owned || !dirty || conflictRevision !== null;
   ui.moveRow.hidden = !owned;
   if (owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
@@ -556,8 +612,13 @@ function updateCurrentUi() {
     ui.note.textContent = "The built-in experiment cannot be overwritten. Save as new lets you choose where its private copy is stored.";
   } else if (!owned) {
     ui.saveState.dataset.state = "readonly";
-    ui.saveState.textContent = "Professor supervision · Read-only";
-    ui.note.textContent = "This student Experiment stays read-only. Copy to my Experiments creates an independent private Experiment from this exact saved revision.";
+    if (currentRemoteAccess === "shared") {
+      ui.saveState.textContent = "Shared with you · Read-only";
+      ui.note.textContent = "The owner's Experiment stays read-only. Copy to my Experiments creates an independent private Experiment from this exact saved revision.";
+    } else {
+      ui.saveState.textContent = "Professor supervision · Read-only";
+      ui.note.textContent = "This student Experiment stays read-only. Copy to my Experiments creates an independent private Experiment from this exact saved revision.";
+    }
   } else if (conflictRevision !== null) {
     ui.saveState.dataset.state = "conflict";
     ui.saveState.textContent = `Newer revision r${conflictRevision} available`;
@@ -609,7 +670,7 @@ function filteredExperimentsForCollection(collectionId, search) {
   });
 }
 
-function experimentResult(experiment) {
+function experimentResult(experiment, { access = "owned" } = {}) {
   const result = document.createElement("button");
   result.className = "experiment-result";
   const title = document.createElement("strong");
@@ -618,17 +679,19 @@ function experimentResult(experiment) {
   meta.className = "experiment-result-meta";
   const updated = formatUpdated(experiment.updated_at);
   const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";
-  meta.textContent = `Your experiment · ${location} · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`;
+  meta.textContent = access === "shared"
+    ? `Shared read-only · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`
+    : `Your experiment · ${location} · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`;
   result.append(title, meta);
   result.addEventListener("click", () => run(async () => {
     if (currentRemote?.id !== experiment.id && !(await confirmDiscardIfNeeded())) return;
-    await loadRemoteExperiment(experiment.id);
+    await loadRemoteExperiment(experiment.id, { access });
     browser.dialog.close();
   }));
   return result;
 }
 
-function experimentGroup(label, experiments, { showEmpty = false } = {}) {
+function experimentGroup(label, experiments, { showEmpty = false, access = "owned" } = {}) {
   if (!experiments.length && !showEmpty) return null;
   const section = document.createElement("section");
   section.className = "experiment-group";
@@ -647,7 +710,7 @@ function experimentGroup(label, experiments, { showEmpty = false } = {}) {
     empty.textContent = "No experiments here yet.";
     items.append(empty);
   } else {
-    for (const experiment of experiments) items.append(experimentResult(experiment));
+    for (const experiment of experiments) items.append(experimentResult(experiment, { access }));
   }
   section.append(head, items);
   return section;
@@ -679,6 +742,8 @@ function renderBrowser() {
 
   browser.filters.append(filterButton("All experiments", "all"));
   if (user) {
+    browser.filters.append(filterButton("My experiments", "mine"));
+    browser.filters.append(filterButton("Shared with me", "shared"));
     browser.filters.append(filterButton("No collection", "unfiled"));
     for (const collection of collections) browser.filters.append(filterButton(collection.name, collection.id));
   }
@@ -687,18 +752,22 @@ function renderBrowser() {
   const builtinMatches = browserCollection === "all" && (!search || BUILTIN_TITLE.toLocaleLowerCase().includes(search));
   const filtered = remoteExperiments.filter((experiment) => {
     const matchesSearch = !search || experiment.title.toLocaleLowerCase().includes(search);
-    if (!matchesSearch) return false;
-    if (browserCollection === "all") return true;
+    if (!matchesSearch || browserCollection === "shared") return false;
+    if (browserCollection === "all" || browserCollection === "mine") return true;
     if (browserCollection === "unfiled") return !experiment.collection_id;
     return experiment.collection_id === browserCollection;
+  });
+  const filteredShared = sharedExperiments.filter((experiment) => {
+    if (browserCollection !== "all" && browserCollection !== "shared") return false;
+    return !search || experiment.title.toLocaleLowerCase().includes(search);
   });
 
   browser.contextTitle.textContent = "Experiments";
   browser.contextHelp.textContent = user
-    ? "Search the built-in source and all of your runnable experiments in one place. Collections are optional filters."
+    ? "Your Experiments and Experiments explicitly shared with you are separate. Shared sources stay read-only; copy one when you need an independent editable version."
     : "Search the built-in experiments. Sign in to include your private experiments.";
 
-  const total = filtered.length + (builtinMatches ? 1 : 0);
+  const total = filtered.length + filteredShared.length + (builtinMatches ? 1 : 0);
   browser.count.textContent = `${total} experiment${total === 1 ? "" : "s"}`;
 
   if (builtinMatches) {
@@ -719,12 +788,16 @@ function renderBrowser() {
   }
 
   if (filtered.length) {
-    const label = browserCollection === "all"
+    const label = browserCollection === "all" || browserCollection === "mine"
       ? "Your experiments"
       : browserCollection === "unfiled"
         ? "No collection"
         : collectionName(browserCollection);
     browser.results.append(experimentGroup(label, filtered));
+  }
+
+  if (filteredShared.length) {
+    browser.results.append(experimentGroup("Shared with me", filteredShared, { access: "shared" }));
   }
 
   if (!total) {
@@ -752,6 +825,57 @@ async function loadCollections() {
     .order("name", { ascending: true });
   if (error) throw error;
   collections = data ?? [];
+}
+
+async function loadShareRecipients() {
+  if (!user) {
+    shareRecipients = [];
+    populateShareRecipientSelect();
+    return;
+  }
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,display_name,role")
+    .neq("id", user.id)
+    .order("display_name", { ascending: true });
+  if (error) throw error;
+  shareRecipients = data ?? [];
+  populateShareRecipientSelect();
+}
+
+async function loadSharedExperimentList() {
+  if (!user) {
+    sharedExperiments = [];
+    setQuickSwitchOptions();
+    return;
+  }
+
+  const { data: shares, error: sharesError } = await supabase
+    .from("experiment_shares")
+    .select("experiment_id,created_at")
+    .eq("recipient_id", user.id)
+    .order("created_at", { ascending: false });
+  if (sharesError) throw sharesError;
+
+  const ids = (shares ?? []).map((share) => share.experiment_id);
+  if (!ids.length) {
+    sharedExperiments = [];
+    setQuickSwitchOptions();
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("experiments")
+    .select("id,owner_id,collection_id,title,revision,updated_at,artifacts,config_source,initializer_source,controller_source")
+    .in("id", ids)
+    .eq("lifecycle", "active");
+  if (error) throw error;
+
+  const byId = new Map((data ?? []).map((experiment) => [experiment.id, experiment]));
+  sharedExperiments = ids
+    .map((id) => byId.get(id))
+    .filter((experiment) => experiment && productionExperimentRunnability(experiment).runnable);
+  setQuickSwitchOptions();
 }
 
 async function loadExperimentList() {
@@ -808,6 +932,7 @@ async function confirmDiscardIfNeeded() {
 async function restoreBuiltIn({ apply = true } = {}) {
   applyExperimentArtifacts(builtinArtifacts);
   currentRemote = null;
+  currentRemoteAccess = null;
   conflictRevision = null;
   ui.newForm.hidden = true;
   updateCurrentUi();
@@ -816,12 +941,13 @@ async function restoreBuiltIn({ apply = true } = {}) {
   if (apply) await applyLoadedSources();
 }
 
-async function loadRemoteExperiment(id) {
-  if (!user) throw new Error("Sign in to open your private experiments.");
+async function loadRemoteExperiment(id, { access = "owned" } = {}) {
+  if (!user) throw new Error("Sign in to open Experiments.");
   setMessage("Opening experiment…");
   const experiment = await readExperiment(id);
   applyExperimentArtifacts(experiment);
   currentRemote = experiment;
+  currentRemoteAccess = access;
   conflictRevision = null;
   ui.newForm.hidden = true;
   updateCurrentUi();
@@ -836,7 +962,8 @@ function connectedMessage() {
   const hidden = hiddenNonRunnableCount > 0
     ? ` ${hiddenNonRunnableCount} older or incompatible experiment${hiddenNonRunnableCount === 1 ? " is" : "s are"} hidden.`
     : "";
-  return `Your library is ready: ${count} experiment${count === 1 ? "" : "s"} in ${collectionCount} collection${collectionCount === 1 ? "" : "s"} plus Unfiled.${hidden}`;
+  const shared = sharedExperiments.length;
+  return `Your library is ready: ${count} experiment${count === 1 ? "" : "s"} in ${collectionCount} collection${collectionCount === 1 ? "" : "s"} plus Unfiled, with ${shared} shared with you.${hidden}`;
 }
 
 function registryArtifactsForSave({ allowBuiltInCompatibility = false } = {}) {
@@ -931,6 +1058,46 @@ async function moveCurrentExperiment() {
   setMessage(`${data.title} moved to My experiments / ${collectionName(data.collection_id)} as revision ${data.revision}.`, "success");
 }
 
+function openShareForm() {
+  if (!user || !currentRemote || currentRemote.owner_id !== user.id) {
+    throw new Error("Open one of your Experiments before sharing.");
+  }
+  if (!shareRecipients.length) throw new Error("No share recipients are available to this account.");
+  populateShareRecipientSelect();
+  ui.shareForm.hidden = false;
+  ui.shareRecipient.focus();
+}
+
+function closeShareForm() {
+  ui.shareForm.hidden = true;
+}
+
+async function shareCurrentExperiment() {
+  if (!user || !currentRemote || currentRemote.owner_id !== user.id) {
+    throw new Error("Only the Experiment owner can share it.");
+  }
+  const recipientId = ui.shareRecipient.value;
+  const recipient = shareRecipients.find((candidate) => candidate.id === recipientId);
+  if (!recipient) throw new Error("Choose a researcher to share with.");
+
+  setMessage(`Sharing ${currentRemote.title} read-only with ${recipient.display_name || recipient.role}…`);
+  const { error } = await supabase
+    .from("experiment_shares")
+    .insert({
+      experiment_id: currentRemote.id,
+      recipient_id: recipient.id,
+      shared_by: user.id,
+    });
+  if (error?.code === "23505") throw new Error("This Experiment is already shared with that researcher.");
+  if (error) throw error;
+
+  closeShareForm();
+  setMessage(
+    `${currentRemote.title} is now shared read-only with ${recipient.display_name || recipient.role}.`,
+    "success",
+  );
+}
+
 function defaultCopyTitle() {
   return currentRemote?.title ? `${currentRemote.title} copy` : `${BUILTIN_TITLE} copy`;
 }
@@ -1006,6 +1173,7 @@ async function createNewExperiment() {
 
   applyExperimentArtifacts(data);
   currentRemote = data;
+  currentRemoteAccess = "owned";
   conflictRevision = null;
   closeSaveAsNew();
   await Promise.all([loadCollections(), loadExperimentList()]);
@@ -1026,6 +1194,8 @@ function setSignedOutUi() {
   ui.auth.hidden = false;
   ui.signOut.hidden = true;
   remoteExperiments = [];
+  sharedExperiments = [];
+  shareRecipients = [];
   collections = [];
   hiddenNonRunnableCount = 0;
   browserSource = "builtin";
@@ -1050,12 +1220,16 @@ async function restoreRememberedWorkspace() {
     return false;
   }
   const id = remembered.slice("registry:".length);
-  if (!remoteExperiments.some((experiment) => experiment.id === id)) {
-    clearRememberedWorkspace();
-    return false;
+  if (remoteExperiments.some((experiment) => experiment.id === id)) {
+    await loadRemoteExperiment(id, { access: "owned" });
+    return true;
   }
-  await loadRemoteExperiment(id);
-  return true;
+  if (sharedExperiments.some((experiment) => experiment.id === id)) {
+    await loadRemoteExperiment(id, { access: "shared" });
+    return true;
+  }
+  clearRememberedWorkspace();
+  return false;
 }
 
 async function initializeSession() {
@@ -1070,7 +1244,7 @@ async function initializeSession() {
   }
 
   await loadProfile();
-  await Promise.all([loadCollections(), loadExperimentList()]);
+  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients()]);
   await restoreRememberedWorkspace();
   setSignedInUi();
   renderBrowser();
@@ -1104,10 +1278,12 @@ async function refreshRegistry() {
   const previousRemote = currentRemote;
   const dirty = hasUnsavedRemoteEdits();
   setMessage("Refreshing your library…");
-  await Promise.all([loadCollections(), loadExperimentList()]);
+  const previousAccess = currentRemoteAccess;
+  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadShareRecipients()]);
 
   if (previousRemote) {
-    const fresh = remoteExperiments.find((experiment) => experiment.id === previousRemote.id);
+    const available = previousAccess === "shared" ? sharedExperiments : remoteExperiments;
+    const fresh = available.find((experiment) => experiment.id === previousRemote.id);
     if (!fresh) {
       if (dirty) {
         setMessage("This experiment is no longer in your available library. Your local edits are still here.", "error");
@@ -1124,7 +1300,7 @@ async function refreshRegistry() {
         updateCurrentUi();
         setMessage(`Revision ${fresh.revision} is now in the library. Your local edits are preserved.`, "error");
       } else {
-        await loadRemoteExperiment(previousRemote.id);
+        await loadRemoteExperiment(previousRemote.id, { access: previousAccess || "owned" });
       }
       renderBrowser();
       return;
@@ -1172,7 +1348,7 @@ experimentSelect.addEventListener("change", () => run(async () => {
     setQuickSwitchOptions();
     return;
   }
-  await loadRemoteExperiment(id);
+  await loadRemoteExperiment(id, { access: "supervised" });
 }));
 
 browser.close.addEventListener("click", () => browser.dialog.close());
@@ -1210,6 +1386,9 @@ ui.save.addEventListener("click", () => run(saveCurrentExperiment));
 ui.saveAsNew.addEventListener("click", () => run(openSaveAsNew));
 ui.moveCollection.addEventListener("change", updateMoveButton);
 ui.move.addEventListener("click", () => run(moveCurrentExperiment));
+ui.shareOpen.addEventListener("click", () => run(openShareForm));
+ui.cancelShare.addEventListener("click", closeShareForm);
+ui.confirmShare.addEventListener("click", () => run(shareCurrentExperiment));
 ui.cancelNew.addEventListener("click", closeSaveAsNew);
 ui.createNew.addEventListener("click", () => run(createNewExperiment));
 ui.newTitle.addEventListener("keydown", (event) => {
