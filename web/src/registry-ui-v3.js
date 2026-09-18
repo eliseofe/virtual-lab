@@ -171,16 +171,48 @@ function currentLocationLabel() {
   return currentRemote.collection_id ? `Collection · ${collectionName(currentRemote.collection_id)}` : "No collection";
 }
 
+function currentOutgoingShares() {
+  if (!currentRemote || !user || currentRemote.owner_id !== user.id) return [];
+  return outgoingShares.filter((share) => share.experiment_id === currentRemote.id);
+}
+
+function availableShareRecipients() {
+  const sharedIds = new Set(currentOutgoingShares().map((share) => share.recipient_id));
+  return shareRecipients.filter((recipient) => !sharedIds.has(recipient.id));
+}
+
+function shareRecipientLabel(recipientId) {
+  const recipient = shareRecipients.find((candidate) => candidate.id === recipientId);
+  if (!recipient) return "Researcher";
+  return recipient.display_name?.trim() || recipient.role;
+}
+
 function populateShareRecipientSelect() {
   if (!ui?.shareRecipient) return;
   ui.shareRecipient.replaceChildren();
-  for (const recipient of shareRecipients) {
+  for (const recipient of availableShareRecipients()) {
     const option = document.createElement("option");
     option.value = recipient.id;
     option.textContent = recipient.display_name?.trim()
       ? `${recipient.display_name.trim()} · ${recipient.role}`
       : recipient.role;
     ui.shareRecipient.append(option);
+  }
+}
+
+function renderOutgoingShares() {
+  if (!ui?.shareList) return;
+  ui.shareList.replaceChildren();
+  for (const share of currentOutgoingShares()) {
+    const item = document.createElement("div");
+    item.className = "registry-share-item";
+    const label = document.createElement("span");
+    label.textContent = `Shared read-only with ${shareRecipientLabel(share.recipient_id)}`;
+    const revoke = document.createElement("button");
+    revoke.textContent = "Revoke";
+    revoke.addEventListener("click", () => run(() => revokeCurrentExperimentShare(share.recipient_id)));
+    item.append(label, revoke);
+    ui.shareList.append(item);
   }
 }
 
