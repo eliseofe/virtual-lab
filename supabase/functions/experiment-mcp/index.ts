@@ -127,7 +127,7 @@ function toolError(message: string, detail?: unknown) {
   }
 }
 
-function unsupportedCapabilityBehavior(role: RegistryRole) {
+function extensionRequestBehavior(role: RegistryRole) {
   return {
     requestable: true,
     action: 'request_capability',
@@ -152,7 +152,7 @@ function authoringInfo(includeContract: boolean, role: RegistryRole) {
     capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
     validation_required_for_source_writes: true,
     invalid_write_policy: AUTHORING_CONTRACT.invalid_write_policy,
-    unsupported_capability_behavior: unsupportedCapabilityBehavior(role),
+    extension_request_behavior: extensionRequestBehavior(role),
     ...(includeContract ? { contract: AUTHORING_CONTRACT } : {}),
   }
 }
@@ -161,11 +161,21 @@ function validationForRole(
   validation: ReturnType<typeof validateExperimentArtifacts>,
   role: RegistryRole,
 ) {
-  const unsupported = validation.diagnostics?.some(
-    (diagnostic: { category?: string }) => diagnostic.category === 'unsupported-capability',
-  )
-  return unsupported
-    ? { ...validation, unsupported_capability_behavior: unsupportedCapabilityBehavior(role) }
+  const requestClasses = [
+    ...new Set(
+      (validation.diagnostics ?? [])
+        .map((diagnostic: { request_class?: string | null }) => diagnostic.request_class)
+        .filter((value: string | null | undefined): value is string => Boolean(value)),
+    ),
+  ]
+  return requestClasses.length
+    ? {
+        ...validation,
+        extension_request_behavior: {
+          ...extensionRequestBehavior(role),
+          diagnostic_request_classes: requestClasses,
+        },
+      }
     : validation
 }
 
