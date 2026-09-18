@@ -1147,11 +1147,32 @@ async function shareCurrentExperiment() {
   if (error?.code === "23505") throw new Error("This Experiment is already shared with that researcher.");
   if (error) throw error;
 
+  await loadOutgoingShares();
   closeShareForm();
+  updateCurrentUi();
   setMessage(
     `${currentRemote.title} is now shared read-only with ${recipient.display_name || recipient.role}.`,
     "success",
   );
+}
+
+async function revokeCurrentExperimentShare(recipientId) {
+  if (!user || !currentRemote || currentRemote.owner_id !== user.id) {
+    throw new Error("Only the Experiment owner can revoke sharing.");
+  }
+  const label = shareRecipientLabel(recipientId);
+  setMessage(`Revoking read-only access for ${label}…`);
+  const { error, count } = await supabase
+    .from("experiment_shares")
+    .delete({ count: "exact" })
+    .eq("experiment_id", currentRemote.id)
+    .eq("recipient_id", recipientId);
+  if (error) throw error;
+  if (count !== 1) throw new Error("The share was not found or could not be revoked.");
+
+  await loadOutgoingShares();
+  updateCurrentUi();
+  setMessage(`${label} no longer has ordinary shared access to ${currentRemote.title}.`, "success");
 }
 
 function defaultCopyTitle() {
