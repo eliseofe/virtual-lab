@@ -487,10 +487,6 @@ begin
       raise exception 'Blocked Experiment was not found, is not owned by the caller, or is no longer blocked.';
     end if;
 
-    if d.publication_identifier is distinct from null then
-      null;
-    end if;
-
     if v_draft.publication_identifier is distinct from p_publication_identifier
        or v_draft.publication_title is distinct from p_publication_title then
       raise exception 'A blocked Experiment keeps one stable source publication identity.';
