@@ -21,18 +21,22 @@ These are baseline architecture, not future roadmap items.
 ## Roadmap state classification
 
 - **Completed baseline:** #45 Access / sharing / curation / Showcase — the approved research-supervision collaboration scope is complete through Professor oversight, copy-to-own-workspace, explicit read-only sharing/revocation and separate Showcase curation.
-- **Living / ongoing domains:** #56 Simulator performance, #65 World/environment capabilities, #273 UI/UX refinement — the latest bounded #273 pass (#299) consolidates Professor supervision into the Experiment library; after that pass is production-green, #273 returns dormant until new evidence appears.
+- **Living / ongoing domains:** #56 Simulator performance, #65 World/environment capabilities, #273 UI/UX refinement, **#58 Professor capability-request queue/lifecycle**. #58 is operationally living even when its infrastructure is complete because new Grok/Professor capability requests can arrive at any time. Its current nonterminal queue contains two `approved` requests awaiting explicit owner implementation authorization: RNG/controller stochasticity (#57) and heterogeneous agent initialization/state (#304).
 - **Foundation built, waiting for a use case:** #124 Artifact capability registry / lifecycle hooks — the architectural seam exists; continue only when a concrete optional executable-artifact use case requires runtime dispatch. #285 Research submission snapshots — preservation infrastructure exists, but no distinct research use case currently justifies a submission workflow; do not implement one until the owner identifies a non-overlapping need.
 - **Not started major lanes:** #3 Studies, #202 Code authoring ergonomics, #6 Study results → AI handoff, #119 Research Notes / Research Documents, #301 Security / identity / authorization — initial audit #302 is defined and queued, but no audit execution or remediation policy has started.
 
 The AI maintains this classification as the project evolves: every major epic belongs in exactly one category, and the category should change when its real execution state changes. When creating or reclassifying an epic, state the classification to the owner so it is visible and can be corrected; routine classification maintenance does not require owner approval.
 
+### Capability-request queue invariant
+
+For living epic #58, GitHub issue closure is never evidence that the capability backlog is empty. The authoritative operational backlog is Supabase `capability_requests`. Any project recovery, roadmap review, or “what work remains?” assessment must surface every nonterminal request in `requested`, `approved`, or `in_progress` status. Professor approval does not itself authorize implementation; approved requests remain visible backlog until explicitly declined, implemented, or otherwise resolved by owner-authorized policy.
+
 ## Near term
 
-1. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
-2. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
-3. Turn concrete evidence from use into focused fixes in the appropriate living domain.
-4. Do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
+1. Treat #58's nonterminal Supabase capability requests as active roadmap backlog: two Professor-approved requests are waiting for owner implementation authorization/design selection (#57 RNG; #304 heterogeneous initialization/state).
+2. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
+3. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
+4. Turn concrete evidence from use into focused fixes; do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
 
 ## Owner-gated major lane: Studies
 
