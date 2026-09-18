@@ -475,6 +475,22 @@ begin
     raise exception 'partial_due_to_ambiguity requires at least one unresolved ambiguity.';
   end if;
 
+  if exists (
+    select 1
+    from jsonb_array_elements(p_unresolved_ambiguities) amb
+    where nullif(btrim(amb ->> 'key'), '') is null
+       or nullif(btrim(amb ->> 'requirement_key'), '') is null
+       or nullif(btrim(amb ->> 'question'), '') is null
+       or not exists (
+         select 1
+         from jsonb_array_elements(p_identified_requirements) req
+         where req ->> 'key' = amb ->> 'requirement_key'
+           and req ->> 'resolution_status' = 'ambiguous'
+       )
+  ) then
+    raise exception 'Every ambiguity must reference an identified ambiguous requirement.';
+  end if;
+
   if p_blocked_experiment_id is not null then
     select d.* into v_draft
     from public.blocked_experiment_drafts d
@@ -487,8 +503,8 @@ begin
       raise exception 'Blocked Experiment was not found, is not owned by the caller, or is no longer blocked.';
     end if;
 
-    if v_draft.publication_identifier is distinct from p_publication_identifier
-       or v_draft.publication_title is distinct from p_publication_title then
+    if v_draft.publication_identifier is distinct from btrim(p_publication_identifier)
+       or v_draft.publication_title is distinct from btrim(p_publication_title) then
       raise exception 'A blocked Experiment keeps one stable source publication identity.';
     end if;
 
@@ -499,7 +515,7 @@ begin
     where d.requester_id = v_user_id
       and d.lifecycle = 'blocked'
       and d.origin_experiment_id = p_origin_experiment_id
-      and d.publication_identifier = p_publication_identifier
+      and d.publication_identifier = btrim(p_publication_identifier)
     order by d.created_at asc
     limit 1
     for update;
@@ -673,13 +689,19 @@ begin
             'Canonical capability % is already implemented; classify the actual remaining gap instead.',
             v_canonical.capability_key;
         end if;
-      elsif exists (
-        select 1 from public.canonical_capabilities c
-        where c.capability_key = btrim(v_request ->> 'extension_key')
-      ) then
-        raise exception
-          'Canonical capability key % already exists; reference its canonical_capability_id instead of proposing it again.',
-          btrim(v_request ->> 'extension_key');
+      else
+        select c.* into v_canonical
+        from public.canonical_capabilities c
+        where c.capability_key = btrim(v_request ->> 'extension_key');
+
+        if found then
+          if v_canonical.implementation_state = 'implemented' then
+            raise exception
+              'Canonical capability % is already implemented; classify the actual remaining gap instead.',
+              v_canonical.capability_key;
+          end if;
+          v_canonical_id := v_canonical.id;
+        end if;
       end if;
     elsif v_canonical_id is not null then
       raise exception 'Only semantic-capability requests may reference canonical capability identity.';
@@ -836,6 +858,9 @@ declare
   v_existing_request_id uuid;
   v_keys jsonb;
   v_next_sequence bigint;
+  v_resolved_keys jsonb := '[]'::jsonb;
+  v_remaining_keys jsonb := '[]'::jsonb;
+  v_new_keys jsonb := '[]'::jsonb;
 begin
   if v_user_id is null then
     raise exception 'Authentication is required.';
@@ -877,19 +902,69 @@ begin
     raise exception 'Closure analysis conflict.';
   end if;
 
+  if exists (
+    select 1
+    from jsonb_array_elements(p_identified_requirements) req
+    where nullif(btrim(req ->> 'key'), '') is null
+       or nullif(btrim(req ->> 'summary'), '') is null
+       or nullif(btrim(req ->> 'evidence'), '') is null
+       or coalesce(req ->> 'resolution_status', '') not in ('clear', 'ambiguous')
+  ) then
+    raise exception 'Each identified requirement needs key, summary, evidence and clear|ambiguous resolution_status.';
+  end if;
+
+  if (
+    select count(*) from jsonb_array_elements(p_identified_requirements)
+  ) <> (
+    select count(distinct req ->> 'key')
+    from jsonb_array_elements(p_identified_requirements) req
+  ) then
+    raise exception 'identified_requirements keys must be unique.';
+  end if;
+
   if p_analysis_status = 'unblocked' then
     if jsonb_array_length(p_identified_requirements) <> 0
        or jsonb_array_length(p_unresolved_ambiguities) <> 0
        or jsonb_array_length(p_new_requests) <> 0 then
-      raise exception 'unblocked requires zero requirements, ambiguities and new requests.';
+      raise exception 'unblocked requires zero unsupported requirements, zero ambiguity, and zero new requests.';
     end if;
   elsif p_analysis_status = 'best_effort_complete' then
-    if jsonb_array_length(p_identified_requirements) = 0
-       or jsonb_array_length(p_unresolved_ambiguities) <> 0 then
-      raise exception 'best_effort_complete requires remaining requirements and no ambiguity.';
+    if jsonb_array_length(p_identified_requirements) = 0 then
+      raise exception 'best_effort_complete revalidation must retain at least one unsupported requirement.';
     end if;
-  elsif jsonb_array_length(p_unresolved_ambiguities) = 0 then
-    raise exception 'partial_due_to_ambiguity requires unresolved ambiguity.';
+    if jsonb_array_length(p_unresolved_ambiguities) <> 0
+       or exists (
+         select 1
+         from jsonb_array_elements(p_identified_requirements) req
+         where req ->> 'resolution_status' = 'ambiguous'
+       ) then
+      raise exception 'best_effort_complete cannot contain unresolved ambiguity.';
+    end if;
+  else
+    if jsonb_array_length(p_unresolved_ambiguities) = 0
+       or not exists (
+         select 1
+         from jsonb_array_elements(p_identified_requirements) req
+         where req ->> 'resolution_status' = 'ambiguous'
+       ) then
+      raise exception 'partial_due_to_ambiguity requires an ambiguous requirement and unresolved ambiguity.';
+    end if;
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_array_elements(p_unresolved_ambiguities) amb
+    where nullif(btrim(amb ->> 'key'), '') is null
+       or nullif(btrim(amb ->> 'requirement_key'), '') is null
+       or nullif(btrim(amb ->> 'question'), '') is null
+       or not exists (
+         select 1
+         from jsonb_array_elements(p_identified_requirements) req
+         where req ->> 'key' = amb ->> 'requirement_key'
+           and req ->> 'resolution_status' = 'ambiguous'
+       )
+  ) then
+    raise exception 'Every ambiguity must reference an identified ambiguous requirement.';
   end if;
 
   v_next_sequence := v_previous.analysis_sequence + 1;
@@ -962,11 +1037,17 @@ begin
         if v_canonical.implementation_state = 'implemented' then
           raise exception 'Referenced canonical capability is already implemented.';
         end if;
-      elsif exists (
-        select 1 from public.canonical_capabilities c
-        where c.capability_key = btrim(v_request ->> 'extension_key')
-      ) then
-        raise exception 'Existing canonical capability key must be referenced by ID.';
+      else
+        select c.* into v_canonical
+        from public.canonical_capabilities c
+        where c.capability_key = btrim(v_request ->> 'extension_key');
+
+        if found then
+          if v_canonical.implementation_state = 'implemented' then
+            raise exception 'Referenced canonical capability is already implemented.';
+          end if;
+          v_canonical_id := v_canonical.id;
+        end if;
       end if;
     elsif v_canonical_id is not null then
       raise exception 'Only semantic-capability requests may reference canonical capability identity.';
@@ -1067,17 +1148,49 @@ begin
     v_request_rows := v_request_rows || jsonb_build_array(to_jsonb(v_request_row));
   end loop;
 
-  if p_analysis_status = 'unblocked' then
-    update public.blocked_experiment_drafts
-    set lifecycle = 'unblocked'
-    where id = v_draft.id
-    returning * into v_draft;
-  end if;
+  update public.blocked_experiment_drafts
+  set lifecycle = case when p_analysis_status = 'unblocked' then 'unblocked' else 'blocked' end
+  where id = v_draft.id
+  returning * into v_draft;
+
+  select coalesce(jsonb_agg(key order by key), '[]'::jsonb)
+  into v_resolved_keys
+  from (
+    select req ->> 'key' as key
+    from jsonb_array_elements(v_previous.identified_requirements) req
+    except
+    select req ->> 'key' as key
+    from jsonb_array_elements(p_identified_requirements) req
+  ) resolved;
+
+  select coalesce(jsonb_agg(key order by key), '[]'::jsonb)
+  into v_remaining_keys
+  from (
+    select req ->> 'key' as key
+    from jsonb_array_elements(v_previous.identified_requirements) req
+    intersect
+    select req ->> 'key' as key
+    from jsonb_array_elements(p_identified_requirements) req
+  ) remaining;
+
+  select coalesce(jsonb_agg(key order by key), '[]'::jsonb)
+  into v_new_keys
+  from (
+    select req ->> 'key' as key
+    from jsonb_array_elements(p_identified_requirements) req
+    except
+    select req ->> 'key' as key
+    from jsonb_array_elements(v_previous.identified_requirements) req
+  ) added;
 
   return jsonb_build_object(
     'blocked_experiment', to_jsonb(v_draft),
+    'previous_analysis', to_jsonb(v_previous),
     'analysis', to_jsonb(v_analysis),
-    'requests', v_request_rows
+    'resolved_requirement_keys', v_resolved_keys,
+    'remaining_requirement_keys', v_remaining_keys,
+    'new_requirement_keys', v_new_keys,
+    'new_requests', v_request_rows
   );
 end;
 $$;
