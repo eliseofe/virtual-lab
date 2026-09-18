@@ -15,11 +15,11 @@ import {
   pruneMetricFromPanels,
 } from './results-authoring.js'
 
-export const MCP_SERVER_VERSION = '3.4.0'
-export const MCP_INTERFACE_VERSION = '12'
+export const MCP_SERVER_VERSION = '3.5.0'
+export const MCP_INTERFACE_VERSION = '13'
 export const MCP_AUTHORING_CONTRACT = Object.freeze({
   ...BASE_AUTHORING_CONTRACT,
-  contract_version: 'vlab.authoring/0.6',
+  contract_version: 'vlab.authoring/0.7',
   experiment_interface_version: MCP_INTERFACE_VERSION,
   capability_request_interface: 'vlab.capability-request/4',
   results_presentation: RESULTS_PRESENTATION_CONTRACT,
@@ -59,18 +59,36 @@ function toolError(message: string, detail?: unknown) {
 }
 
 function validationForRole(validation: any, role: 'student' | 'professor') {
-  const unsupported = validation.diagnostics?.some((diagnostic: { category?: string }) => diagnostic.category === 'unsupported-capability')
-  if (!unsupported) return validation
+  const requestClasses = [
+    ...new Set(
+      (validation.diagnostics ?? [])
+        .map((diagnostic: { request_class?: string | null }) => diagnostic.request_class)
+        .filter((value: string | null | undefined): value is string => Boolean(value)),
+    ),
+  ]
+  if (!requestClasses.length) return validation
   return {
     ...validation,
-    unsupported_capability_behavior: {
+    extension_request_behavior: {
       requestable: true,
       action: 'request_capability',
       capability_request_interface: 'vlab.capability-request/4',
+      request_classes: [
+        'semantic_capability',
+        'authoring_language',
+        'runtime_configuration',
+        'artifact_workflow',
+        'implementation_optimization',
+        'security_boundary',
+      ],
+      diagnostic_request_classes: requestClasses,
+      canonical_registry_first: true,
       preserve_draft: true,
+      preserve_publication_identity: true,
       comprehensive_analysis_required: true,
       submitter_role: role,
       triage_authority: 'professor',
+      automatic_rejection_classes: [],
     },
   }
 }
@@ -158,6 +176,8 @@ function metricOperationError(error: unknown) {
     diagnostics: [{
       artifact: 'metrics',
       category: /unknown metric|does not exist|already exists|stable metric id/i.test(message) ? 'metric-id' : 'metrics',
+      diagnostic_class: 'type_validation',
+      request_class: null,
       compiler_category: null,
       parameter: null,
       message,
