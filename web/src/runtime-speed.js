@@ -62,6 +62,9 @@ import("./registry-ui-v3.js").then(() => {
     import("./professor-development-links.js").catch((error) => {
       console.error("Professor development links failed to load:", error);
     });
+    import("./professor-supervision.js").catch((error) => {
+      console.error("Professor supervision view failed to load:", error);
+    });
   }).catch((error) => {
     console.error("Professor inbox failed to load:", error);
   });
