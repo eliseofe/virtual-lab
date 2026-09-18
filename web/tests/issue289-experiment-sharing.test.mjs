@@ -10,6 +10,10 @@ const recursionRepair = readFileSync(
   new URL("../../supabase/migrations/20260918074800_fix_experiment_share_policy_recursion.sql", import.meta.url),
   "utf8",
 );
+const performanceMigration = readFileSync(
+  new URL("../../supabase/migrations/20260918075200_index_experiment_shares_shared_by.sql", import.meta.url),
+  "utf8",
+);
 const registry = readFileSync(new URL("../src/registry-ui-v3.js", import.meta.url), "utf8");
 const management = readFileSync(new URL("../src/experiment-management.js", import.meta.url), "utf8");
 
@@ -69,4 +73,10 @@ test("#289 final share-insert authorization avoids RLS recursion", () => {
     recursionRepair,
     /create policy "experiment_shares_insert_owned"[\s\S]*from public\.experiments/i,
   );
+});
+
+
+test("#289 indexes the share-owner foreign key used by the collaboration lifecycle", () => {
+  assert.match(performanceMigration, /create index if not exists experiment_shares_shared_by_idx/i);
+  assert.match(performanceMigration, /on public\.experiment_shares\(shared_by\)/i);
 });
