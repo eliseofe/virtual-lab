@@ -6,7 +6,11 @@ const migration = readFileSync(
   new URL("../../supabase/migrations/20260918120918_capability_closure_analyses.sql", import.meta.url),
   "utf8",
 );
-const indexesMigration = readFileSync(\n  new URL("../../supabase/migrations/20260918121001_capability_closure_analysis_indexes.sql", import.meta.url),\n  "utf8",\n);\nconst mcp = readFileSync(
+const indexesMigration = readFileSync(
+  new URL("../../supabase/migrations/20260918121001_capability_closure_analysis_indexes.sql", import.meta.url),
+  "utf8",
+);
+const mcp = readFileSync(
   new URL("../../supabase/functions/experiment-mcp/index.ts", import.meta.url),
   "utf8",
 );
@@ -71,7 +75,12 @@ test("#310 new closure tables are RLS protected and not exposed yet", () => {
   assert.doesNotMatch(migration, /grant .*capability_closure_analyses.*authenticated/i);
 });
 
-test("#310 analyst foreign key has a covering index", () => {\n  assert.match(indexesMigration, /closure_analyses_analyst_idx/i);\n  assert.match(indexesMigration, /capability_closure_analyses\\(analyst_id\\)/i);\n});\n\ntest("#310 leaves the current MCP connector contract unchanged", () => {
+test("#310 analyst foreign key has a covering index", () => {
+  assert.match(indexesMigration, /closure_analyses_analyst_idx/i);
+  assert.match(indexesMigration, /capability_closure_analyses\\(analyst_id\\)/i);
+});
+
+test("#310 leaves the current MCP connector contract unchanged", () => {
   assert.equal(
     (mcp.match(/server\.registerTool\(\s*['"]request_capability['"]/g) ?? []).length,
     1,
