@@ -14,22 +14,25 @@ The student self-registration and Getting started work is complete and productio
 
 OAuth authorization for AI clients is hosted inside the production Virtual Lab artifact at `/oauth/consent/` and shares the normal Lab browser session. The former standalone mock-sim site is historical infrastructure and is not part of the active product path once Supabase Auth points at the production Lab authorization route.
 
+The owner has now activated **#45 — Access, sharing, curation and Showcase** as the next substantial product epic for research supervision. The active design is deliberately small: Professor read-only visibility into student/researcher Experiments, copy-to-own-workspace, explicit read-only sharing with revocation, and separate Showcase curation.
+
 Ongoing presentation refinement is tracked through **#273 — UI/UX refinement and visual polish from real use** and should remain evidence-driven rather than become a generic redesign lane.
 
 ## Immediate frontier
 
-1. Await the next explicit owner-approved substantial Lab task.
-2. Continue real student/owner scientific use of production.
-3. Turn concrete evidence from use into focused fixes.
+1. Execute #45 in bounded slices, beginning with a separate Professor read-only view of student/researcher Experiments.
+2. Follow with copy-to-own-workspace and explicit read-only sharing/revocation as separate bounded work.
+3. Continue real student/owner scientific use and turn concrete evidence into focused fixes.
 4. Use #273 only for observed UI/UX evidence rather than generic polishing.
 
-Do not invent a maintenance phase, a second Lab, or another broad redesign before evidence requires it.
+Do not invent a maintenance phase, a second Lab, another broad redesign, or a duplicate collaboration mechanism.
 
 ## Explicit gates and parked work
 
 **Studies are not authorized yet.** Student onboarding, real student use, elapsed time, issue state or apparent technical readiness do not activate Studies. Only a later explicit owner instruction does.
 
 Other parked/gated work includes:
+- #285 Research submission snapshots — foundation exists, but there is no current distinct research use case; do not implement a submission workflow until the owner identifies one that is not already served by supervision visibility, sharing, copying or Showcase;
 - deterministic RNG service implementation — requires explicit owner authorization;
 - optional executable artifact dispatch — requires a concrete approved use case;
 - numerical-integrator evaluation — requires owner scientific/numerical activation;
