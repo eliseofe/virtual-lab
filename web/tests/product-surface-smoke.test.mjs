@@ -4,6 +4,8 @@ import test from 'node:test';
 
 const manifest = JSON.parse(await readFile(new URL('../product-surface.json', import.meta.url), 'utf8'));
 const workflow = await readFile(new URL('../../.github/workflows/ci-pages.yml', import.meta.url), 'utf8');
+const runner = await readFile(new URL('../scripts/run-active-product-smoke.mjs', import.meta.url), 'utf8');
+const harness = await readFile(new URL('../scripts/smoke-browser-harness.mjs', import.meta.url), 'utf8');
 
 test('product-surface manifest is the canonical active smoke registry', async () => {
   assert.equal(manifest.schema, 'vlab.product-surface/1');
@@ -25,7 +27,11 @@ test('product-surface manifest is the canonical active smoke registry', async ()
     for (const check of surface.smoke) {
       assert.ok(check.script?.endsWith('.mjs'), `${surface.id} has invalid smoke script`);
       assert.ok((check.timeout_seconds ?? 0) > 0, `${surface.id} smoke must have a hard timeout`);
-      await access(new URL(`../../${check.script}`, import.meta.url));
+      const smokeUrl = new URL(`../../${check.script}`, import.meta.url);
+      await access(smokeUrl);
+      const smokeSource = await readFile(smokeUrl, 'utf8');
+      assert.match(smokeSource, /createSmokeSession/, `${surface.id} must use the shared smoke browser harness`);
+      assert.doesNotMatch(smokeSource, /node:child_process|google-chrome|--remote-debugging-port/, `${surface.id} must not launch its own Chrome process`);
     }
   }
 });
@@ -33,4 +39,12 @@ test('product-surface manifest is the canonical active smoke registry', async ()
 test('Actions executes the manifest runner rather than hardcoded feature smoke scripts', () => {
   assert.match(workflow, /node web\/scripts\/run-active-product-smoke\.mjs/);
   assert.doesNotMatch(workflow, /node web\/scripts\/(browser|frontend-foundation|builtin-metric|result-persistence|responsive|showcase-ux)-smoke\.mjs/);
+});
+
+test('production smoke uses one shared Chrome host and isolated harness sessions', () => {
+  assert.match(runner, /launchSmokeBrowserHost/);
+  assert.match(runner, /VLAB_SMOKE_CHROME_PORT/);
+  assert.match(harness, /Target\.createBrowserContext/);
+  assert.match(harness, /Target\.disposeBrowserContext/);
+  assert.match(harness, /Target\.attachToTarget/);
 });

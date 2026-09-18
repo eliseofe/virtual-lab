@@ -43,6 +43,14 @@ Work/browser/computer verification is valid completion evidence when appropriate
 
 Never create a scheduled task, reminder, watchdog or automation unless the owner explicitly requests one.
 
+## Production smoke browser structure
+
+Manifest-driven production browser smoke uses one shared Chrome host from `web/scripts/smoke-browser-harness.mjs`. Each surface check receives its own isolated browser context/target through that harness, so cookies, local storage, auth state and test mutations remain isolated without launching another Chrome process.
+
+New product surfaces and regression checks must reuse this shared harness. Do not add a production smoke script that imports `node:child_process`, launches `google-chrome`, or configures its own remote-debugging port. Add assertions to an existing smoke scope when they naturally belong there, or add a new manifest smoke script that obtains its isolated session from `createSmokeSession`.
+
+The browser/compiler contract test enforces this structure for every active smoke entry in `web/product-surface.json`.
+
 ## When batching is acceptable
 
 Adjacent tickets may be batched only when each is genuinely small/trivial, low-risk, and the combined work still forms one clear independently verifiable deployed unit. Otherwise retain separate commits/issues even when the owner has authorized the whole sequence.

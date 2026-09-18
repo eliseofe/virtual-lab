@@ -1,11 +1,11 @@
 {
   "schema": "vlab.terminal-report/1",
-  "outcome": "Production success reports now require a concrete Next",
-  "owner_impact": "Success notifications no longer use a generic continuation sentence. Each deployable candidate carries its actual next action, or explicitly says that nothing remains.",
-  "remaining_action": "No owner action for this reporting change. Issue #278 remains parked until Supabase dashboard authentication is available; normal Virtual Lab development can continue.",
+  "outcome": "Production smoke now reuses one shared Chrome host",
+  "owner_impact": "The full production smoke breadth is preserved, but active surface checks no longer launch seven independent Chrome processes. Each check runs in an isolated browser context under one shared host, reducing startup duplication and the Chrome-launch failure mode that caused the previous red run.",
+  "remaining_action": "No owner action is required for the smoke refactor. Next project action: complete issue #278 OAuth cutover once the correct Supabase platform login is established.",
   "technical_evidence": [
-    "The default Next fallback is now: Nothing. This change is complete.",
-    "DEVELOPMENT_WORKFLOW.md requires candidate-specific terminal-report Next text for every deployable ticket.",
-    "Build, deployment, smoke, retries, timeouts, and completion gates are unchanged."
+    "Every active manifest smoke must use smoke-browser-harness.mjs; a regression test rejects future smoke scripts that launch Chrome directly.",
+    "Each surface receives an isolated browser context/target, preserving storage/auth/test isolation.",
+    "All existing surface assertions and hard per-check timeouts remain in place; production completion still requires green exact-candidate smoke."
   ]
 }

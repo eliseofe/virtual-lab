@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { launchSmokeBrowserHost } from './smoke-browser-harness.mjs';
 
 const manifestUrl = new URL('../product-surface.json', import.meta.url);
 const manifest = JSON.parse(await readFile(manifestUrl, 'utf8'));
@@ -18,6 +19,37 @@ if (active.length === 0) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const failures = [];
 
+async function runCheck(script, timeoutMs, env) {
+  return new Promise((resolve) => {
+    let timedOut = false;
+    let settled = false;
+    const child = spawn(process.execPath, [script, targetUrl], {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+      env,
+    });
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, timeoutMs);
+
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ ...result, timedOut });
+    };
+
+    child.once('error', (error) => finish({ status: null, error }));
+    child.once('exit', (code, signal) => finish({ status: code, signal, error: null }));
+  });
+}
+
+const browserHost = await launchSmokeBrowserHost();
+const smokeEnv = { ...process.env, VLAB_SMOKE_CHROME_PORT: String(browserHost.port) };
+
+try {
 for (const surface of active) {
   if (!Array.isArray(surface.smoke) || surface.smoke.length === 0) {
     failures.push({ surface: surface.id, script: null, reason: 'no smoke coverage' });
@@ -34,19 +66,14 @@ for (const surface of active) {
     let failureReason = 'failed';
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      const result = spawnSync(process.execPath, [check.script, targetUrl], {
-        cwd: process.cwd(),
-        stdio: 'inherit',
-        timeout: timeoutMs,
-        killSignal: 'SIGKILL',
-      });
+      const result = await runCheck(check.script, timeoutMs, smokeEnv);
 
-      if (result.status === 0 && !result.error) {
+      if (result.status === 0 && !result.error && !result.timedOut) {
         passed = true;
         break;
       }
 
-      if (result.error?.code === 'ETIMEDOUT') {
+      if (result.timedOut) {
         failureReason = `timed out after ${check.timeout_seconds ?? 60}s`;
         console.error(`[smoke] ${failureReason}: ${check.script}`);
       } else {
@@ -65,7 +92,13 @@ for (const surface of active) {
   }
 }
 
+} finally {
+  await browserHost.close();
+}
+
 if (failures.length > 0) {
+  const chromeLog = browserHost.getChromeLog();
+  if (chromeLog.trim()) console.error("\n[smoke] shared Chrome stderr:\n" + chromeLog);
   console.error('\n[smoke] production verification failures:');
   for (const failure of failures) {
     console.error(`- ${failure.surface}: ${failure.script ?? 'missing smoke'} (${failure.reason})`);
