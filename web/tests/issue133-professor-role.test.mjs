@@ -25,7 +25,7 @@ test("#133 profile role is server controlled and defaults to student", () => {
 
 test("#133 shared Student behavior remains one implementation as Professor-only tools are added later", () => {
   assert.match(mcp, /\.select\('id, display_name, role'\)/);
-  assert.match(metricsResults, /MCP_SERVER_VERSION = '3\.0\.0'/);
+  assert.match(metricsResults, /MCP_SERVER_VERSION = '3\.0\.\d+'/);
   assert.match(metricsResults, /MCP_INTERFACE_VERSION = '8'/);
 
   for (const tool of [

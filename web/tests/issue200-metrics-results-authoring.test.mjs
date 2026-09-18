@@ -108,7 +108,7 @@ test("#200 deployed-contract source increments versions and keeps Results outsid
   const shell = await readFile(new URL("../src/workspace-shell.js", import.meta.url), "utf8");
 
   assert.equal(RESULTS_PRESENTATION_SCHEMA, "vlab.results-presentation/1");
-  assert.match(tools, /MCP_SERVER_VERSION = '3\.0\.0'/);
+  assert.match(tools, /MCP_SERVER_VERSION = '3\.0\.\d+'/);
   assert.match(tools, /contract_version: 'vlab\.authoring\/0\.6'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '8'/);
   assert.match(index, /author_metrics_results/);

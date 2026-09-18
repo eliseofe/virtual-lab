@@ -154,11 +154,11 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab experiment workspace',
       description:
-        'Start here. Without experiment_id, return the authenticated identity, owned collections, and visible experiment summaries. With experiment_id, return that visible experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. This tool never writes.',
+        'Start here. Without experiment_id, return the authenticated identity, owned collections, and all Experiment summaries visible through the caller\'s RLS permissions by default. This includes Professor-supervised student/researcher Experiments and explicitly shared Experiments when authorized. Set owned_only=true only when the caller specifically wants to narrow discovery to Experiments they own. With experiment_id, return that visible experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         lifecycle: z.enum(['active', 'archived', 'all']).default('active'),
-        owned_only: z.boolean().default(true),
+        owned_only: z.boolean().default(false),
         include_authoring_contract: z.boolean().default(false),
       },
       annotations: READ_ONLY_ANNOTATIONS,

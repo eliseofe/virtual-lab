@@ -52,12 +52,9 @@ test("#290 preserves copy and supervision as independent mechanisms", () => {
   assert.doesNotMatch(migration, /drop policy if exists "experiments_select_student_for_professor"/i);
 });
 
-test("#290 closes the currently approved collaboration epic scope", () => {
+test("#290 leaves the collaboration scope classified as completed baseline after later tickets", () => {
   assert.match(status, /#287–#290/);
   assert.doesNotMatch(roadmap, /\*\*Started and unfinished:\*\* #45/);
+  assert.match(roadmap, /\*\*Completed baseline:\*\* #45/);
   assert.equal(report.schema, "vlab.terminal-report/2");
-  assert.equal(report.next.kind, "scope_complete");
-  assert.equal(report.next.disposition, "closed");
-  assert.equal(report.next.lab_url, "https://eliseofe.github.io/virtual-lab/");
-  assert.equal(report.close_issue, 290);
 });

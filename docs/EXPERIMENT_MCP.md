@@ -1,6 +1,6 @@
 # Virtual Lab Experiment MCP
 
-Status: **production deployed and integrated, 16 September 2026**.
+Status: **production deployed and integrated, 18 September 2026**.
 
 Endpoint:
 
@@ -10,8 +10,8 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- Edge Function version: `16`
-- MCP server: `3.0.0`
+- Edge Function version: `17`
+- MCP server: `3.0.1`
 - interface: `8`
 - authoring contract: `vlab.authoring/0.6`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -47,7 +47,7 @@ Supabase Auth is the authorization server. Authentication and RLS are the enforc
 
 Read/discovery entry point.
 
-Without `experiment_id`, returns authenticated identity, owned collections and visible Experiment summaries. With `experiment_id`, returns the visible Experiment at its current scientific revision, canonical ordered artifacts and separate current Results presentation. `include_authoring_contract=true` exposes the complete machine-readable authoring contract/capabilities. This tool never writes.
+Without `experiment_id`, returns authenticated identity, owned collections and **all Experiment summaries visible through the caller's RLS permissions by default**. For a Professor this naturally includes supervised student/researcher Experiments; for any user it includes explicitly shared/public Experiments only when existing authorization allows them. Set `owned_only=true` to narrow discovery to Experiments owned by the caller. With `experiment_id`, returns the visible Experiment at its current scientific revision, canonical ordered artifacts and separate current Results presentation. `include_authoring_contract=true` exposes the complete machine-readable authoring contract/capabilities. This tool never writes.
 
 ### `manage_collection`
 
@@ -128,4 +128,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 merged through PR #231 as `31239dea1174cddf0c4d2d5578034ca55e6b941d`. Production Pages run `35083140486` passed deployed browser smoke; the production Results-presentation migration is applied; Edge Function version `16` is pinned to that merged commit.
+#200 established the current MCP authoring/Results contract. #298 changes only workspace discovery semantics: Edge Function version `17` / MCP `3.0.1` defaults `read_workspace` discovery to all RLS-visible Experiments while preserving `owned_only=true` as an explicit narrowing filter. RLS remains the authorization boundary.

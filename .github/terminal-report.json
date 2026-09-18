@@ -1,17 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Complete the research-collaboration access and sharing lifecycle",
-  "owner_impact": "The approved collaboration scope now has one coherent model: Professors automatically supervise student/researcher Experiments read-only; readable work can be copied into an independent owned Experiment; eligible researchers can receive explicit revocable read-only shares; revoking a share removes access to the original without deleting an existing copy; Showcase remains a separate curator/publication action. Student-to-Professor explicit sharing is excluded because supervision already provides that access, while student-to-student collaboration remains available.",
+  "outcome": "Let the research assistant discover all authorized Experiments by default",
+  "owner_impact": "A Professor-connected research assistant now discovers student/researcher Experiments that are already visible through Professor supervision without requiring a copy first or a hidden ownership flag. The assistant can read and discuss that supervised work directly; `owned_only=true` remains available when the conversation specifically needs only the Professor's own Experiments. Existing RLS still determines what each account is allowed to see.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved #45 research-collaboration scope is complete and the epic is being closed. No owner action is required for this ticket. The completed capability is available in the live Virtual Lab; any new substantial lane should be selected explicitly in a later owner turn rather than inferred automatically."
+    "kind": "epic_continues",
+    "issue": 299,
+    "text": "The approved two-front sequence continues with #299 — restructure Experiment navigation and Professor supervision UX under living UI/UX epic #273. That ticket will move supervision out of Account and rethink own/shared/supervised Experiment navigation as one coherent UI/UX pass. It has not started yet."
   },
   "technical_evidence": [
-    "Owners can list and revoke outgoing experiment_shares under RLS; Experiment mutation remains owner-only.",
-    "The recipient directory is role-aware: Student/researchers can share with other Student/researchers, while redundant Student-to-Professor explicit sharing is rejected server-side because Professor supervision is independent.",
-    "Production acceptance verifies share → read → copy → revoke: source access disappears after revocation, the independent copy survives, Professor supervision remains available, and Showcase state is unaffected."
+    "read_workspace now defaults owned_only=false and documents all-RLS-visible discovery explicitly.",
+    "owned_only=true still applies the owner_id filter, so callers can deliberately narrow discovery without changing authorization.",
+    "MCP server patch version 3.0.1 preserves interface version 8 and all write tools remain owner-scoped."
   ],
-  "close_issue": 290
+  "close_issue": 298
 }
