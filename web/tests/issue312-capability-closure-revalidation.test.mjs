@@ -79,4 +79,5 @@ test("#312 bumps the MCP and capability-request interfaces", () => {
   assert.match(tools, /MCP_SERVER_VERSION = '3\.2\.0'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '10'/);
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
+  assert.ok((tools.match(/capability_request_interface: 'vlab\.capability-request\/3'/g) ?? []).length >= 2);
 });
