@@ -1,18 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Repair fragmented capability-closure submission found by live Grok acceptance",
-  "owner_impact": "Repeated research-AI capability submissions for the same blocked scientific task now converge on one durable blocked Experiment and cumulative closure history. When the same requester already has a matching requested, approved, or in-progress capability request that is unlinked or belongs to that blocked Experiment, Virtual Lab reuses it and preserves its lifecycle state instead of creating a duplicate requested row.",
+  "outcome": "Expose pending capability commitments through workspace discovery",
+  "owner_impact": "A fresh research-AI session can discover caller-visible pending Virtual Lab capability commitments through read_workspace instead of relying on prior chat memory or owner hints. Requested, approved, and in-progress rows are surfaced as pending protocol state; approved still means queued for development, while the current authoring contract remains the authority for capabilities available now.",
   "next": {
     "kind": "epic_continues",
-    "issue": 313,
-    "text": "#313 remains active. This candidate repairs the defect exposed by the first live Grok pass; the next step is to rerun the same black-box aggregation-paper acceptance with Grok against production. #313 must not close until that live retest proves one resumable blocked Experiment and preserved approved requests across sessions."
+    "issue": 325,
+    "text": "#325 is the known successor. After this exact #328 candidate is production-green, rerun the Firat/Ferrante/Gillet/Tuci aggregation workflow from a fresh Grok chat using only the ordinary scientific prompt. #325 has not started in this owner turn."
   },
   "technical_evidence": [
-    "Migration 20260918151213 replaces initial closure submission with convergent blocked-Experiment reuse, cumulative initial analyses, and lifecycle-preserving request reconciliation.",
-    "The reconciliation write is isolated in a schema-pinned private security-definer helper that can update only caller-owned nonterminal request linkage/requirement keys; request status and review/developer lifecycle fields are not rewritten.",
-    "MCP server patch 3.2.1 keeps interface 10 and vlab.capability-request/3 stable; no Student/Professor role boundary or simulator scientific capability changes.",
-    "Automated #313 contract tests cover single-draft convergence, cumulative requirement preservation, request reuse without status mutation, helper authorization, and interface stability.",
-    "Repair candidate 1 decouples the historical #312 test from the mutable patch server version and keeps the #313 wording assertion semantic rather than pronoun-specific.",
-    "Repair candidate 2 aligns the committed migration filename with the actual Supabase production migration history version 20260918151213; runtime semantics are unchanged from the green reconciliation candidate."
+    "read_workspace discovery queries capability_requests through the existing authenticated Supabase client and existing RLS; no privileged queue read is introduced.",
+    "The pending queue filter is exactly requested, approved, and in_progress; implemented and declined rows are not advertised as pending commitments.",
+    "The response exposes lifecycle identity/context needed to distinguish an existing commitment from a new missing capability without changing lifecycle state.",
+    "MCP server patch 3.2.2 keeps interface 10 and vlab.capability-request/3 stable; no scientific simulator capability or role boundary changes.",
+    "Automated #328 regression tests cover queue exposure, terminal-state exclusion, RLS-client use, pending-vs-implemented semantics, and interface stability."
   ]
 }
