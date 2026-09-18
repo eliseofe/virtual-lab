@@ -509,7 +509,7 @@ function setQuickSwitchOptions() {
 
   experimentSelect.value = currentRemote ? `registry:${currentRemote.id}` : BUILTIN_VALUE;
   currentUi.quickHint.textContent = user
-    ? "Switch directly here, or use Find experiment to search your library. Professor-supervised student work stays separate and read-only."
+    ? "Switch directly here, or use Find experiment to search everything. Collections are optional organization. Professor-supervised student work stays separate and read-only."
     : "The built-in experiment is available now. Sign in to add your private experiments to this switcher.";
 }
 function updateMoveButton() {
