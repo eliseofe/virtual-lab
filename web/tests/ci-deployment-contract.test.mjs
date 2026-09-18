@@ -33,10 +33,12 @@ test("owner notification is success-only and occurs after deployed smoke", () =>
   assert.doesNotMatch(workflow, /terminal-failure-report:/);
   assert.doesNotMatch(workflow, /Virtual Lab production run failed/);
   assert.equal(existsSync(legacyNotifier), false);
-  assert.match(workflow, /head_commit\.message/);
-  assert.match(workflow, /change_summary/);
-  assert.match(workflow, /Now live in production:/);
-  assert.match(workflow, /Nothing\. This change is complete\./);
+  assert.match(workflow, /vlab\.terminal-report\/2/);
+  assert.match(workflow, /\.next\.kind == "epic_continues"/);
+  assert.match(workflow, /\.next\.kind == "scope_complete"/);
+  assert.match(workflow, /git diff --name-only/);
+  assert.match(workflow, /terminal-report\.json was not updated by this deployed candidate/);
+  assert.doesNotMatch(workflow, /Nothing\. This change is complete\./);
   assert.match(workflow, /Verification: build, Pages deployment, exact-candidate propagation, and deployed-surface smoke all passed/);
   assert.doesNotMatch(workflow, /unless this success report explicitly says otherwise/);
 });
