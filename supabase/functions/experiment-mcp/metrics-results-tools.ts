@@ -21,6 +21,7 @@ export const MCP_AUTHORING_CONTRACT = Object.freeze({
   ...BASE_AUTHORING_CONTRACT,
   contract_version: 'vlab.authoring/0.6',
   experiment_interface_version: MCP_INTERFACE_VERSION,
+  capability_request_interface: 'vlab.capability-request/3',
   results_presentation: RESULTS_PRESENTATION_CONTRACT,
 })
 
@@ -65,7 +66,7 @@ function validationForRole(validation: any, role: 'student' | 'professor') {
     unsupported_capability_behavior: {
       requestable: true,
       action: 'request_capability',
-      capability_request_interface: 'vlab.capability-request/2',
+      capability_request_interface: 'vlab.capability-request/3',
       preserve_draft: true,
       comprehensive_analysis_required: true,
       submitter_role: role,
