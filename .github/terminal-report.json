@@ -10,7 +10,8 @@
   "technical_evidence": [
     "Supabase migrations 20260918140225 and 20260918140253 add Professor-visible closure history, append-only revalidation and consolidated RLS policies without rewriting existing capability request lifecycle rows.",
     "MCP server 3.2.0 / interface 10 / vlab.capability-request/3 adds Professor-only resume_capability_closure and revalidate_capability_closure while Student remains on the existing seven shared tools.",
-    "Automated #312 contract tests cover optimistic analysis sequencing, whole-Experiment resolved/remaining/new gap transitions, unblocked integrity, request preservation and Student backward compatibility."
+    "Automated #312 contract tests cover optimistic analysis sequencing, whole-Experiment resolved/remaining/new gap transitions, unblocked integrity, request preservation and Student backward compatibility.",
+    "Repair candidate 1 (88c21b49a20902109c75233b6942f29c79f6a7e2) passed build, exact-candidate Pages propagation and all seven active production smoke surfaces; this terminal-report-only candidate preserves that implementation while satisfying the per-candidate success-report contract."
   ],
   "close_issue": 312
 }
