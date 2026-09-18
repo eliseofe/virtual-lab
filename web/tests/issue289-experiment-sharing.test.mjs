@@ -6,6 +6,10 @@ const migration = readFileSync(
   new URL("../../supabase/migrations/20260918072500_explicit_experiment_sharing.sql", import.meta.url),
   "utf8",
 );
+const recursionRepair = readFileSync(
+  new URL("../../supabase/migrations/20260918074800_fix_experiment_share_policy_recursion.sql", import.meta.url),
+  "utf8",
+);
 const registry = readFileSync(new URL("../src/registry-ui-v3.js", import.meta.url), "utf8");
 const management = readFileSync(new URL("../src/experiment-management.js", import.meta.url), "utf8");
 
@@ -51,4 +55,18 @@ test("#289 owner can grant a share but this ticket deliberately does not impleme
   assert.match(registry, /\.from\("experiment_shares"\)[\s\S]*\.insert\(/);
   assert.match(registry, /shared_by: user\.id/);
   assert.doesNotMatch(registry, /\.from\("experiment_shares"\)[\s\S]{0,300}\.delete\(/);
+});
+
+
+test("#289 final share-insert authorization avoids RLS recursion", () => {
+  assert.match(recursionRepair, /function private\.current_user_owns_active_experiment/i);
+  assert.match(recursionRepair, /security definer/i);
+  assert.match(recursionRepair, /set search_path = ''/i);
+  assert.match(recursionRepair, /e\.owner_id = \(select auth\.uid\(\)\)/i);
+  assert.match(recursionRepair, /drop policy if exists "experiment_shares_insert_owned"/i);
+  assert.match(recursionRepair, /select private\.current_user_owns_active_experiment\(experiment_shares\.experiment_id\)/i);
+  assert.doesNotMatch(
+    recursionRepair,
+    /create policy "experiment_shares_insert_owned"[\s\S]*from public\.experiments/i,
+  );
 });
