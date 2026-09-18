@@ -545,7 +545,8 @@ function registerExperimentTools(
         submission: data,
       })
     },
-  )}
+  )
+}
 
 const authenticatedMcp = pipeline(
   [withRequiredClaims(), withSupabaseClient()],
