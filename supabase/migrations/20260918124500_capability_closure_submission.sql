@@ -108,12 +108,22 @@ with check (
   )
 );
 
+drop policy if exists "capability_requests_select_professor_inbox"
+  on public.capability_requests;
 drop policy if exists "capability_requests_select_own_researcher"
   on public.capability_requests;
-create policy "capability_requests_select_own_researcher"
+create policy "capability_requests_select_visible"
 on public.capability_requests for select
 to authenticated
-using (requester_id = (select auth.uid()));
+using (
+  requester_id = (select auth.uid())
+  or exists (
+    select 1
+    from public.profiles p
+    where p.id = (select auth.uid())
+      and p.role = 'professor'
+  )
+);
 
 create or replace function public.submit_capability_closure(
   p_origin_experiment_id uuid default null,
