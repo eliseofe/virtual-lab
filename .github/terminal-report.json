@@ -1,16 +1,15 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Make capability discovery comprehensive and allow Student submission",
-  "owner_impact": "Student and Professor research-AI clients can now submit one durable whole-Experiment capability-closure analysis with grouped missing-capability requests. Scientific ambiguity is preserved on the research side and cannot be forwarded as developer-ready work. Professor alone retains approve/decline triage. Ordinary Student Experiment authoring remains unchanged.",
+  "outcome": "Align #311 migration history with deployed Supabase state",
+  "owner_impact": "No Virtual Lab runtime behavior changed. The repository migration filename now matches the already-applied Supabase migration version for #311, keeping Git and production database history consistent.",
   "next": {
     "kind": "epic_continues",
     "issue": 312,
-    "text": "#312 is the known successor. It will add resume and whole-Experiment revalidation after capability deployment. It has not started."
+    "text": "#312 remains the known successor. It will add resume and whole-Experiment revalidation after capability deployment. It has not started."
   },
   "technical_evidence": [
-    "Capability-request interface v2 preserves blocked draft, contract version, clear/ambiguous scientific requirements and grouped request-to-requirement links.",
-    "Student and Professor share request_capability; Professor-only queue triage remains unchanged.",
-    "Atomic database submission creates the blocked draft, closure analysis and grouped request rows together, and the request lifecycle hook contract now accepts measure."
-  ],
-  "close_issue": 311
+    "Supabase already records capability_closure_submission as migration version 20260918130234.",
+    "Repository migration and #311 contract test now use the same 20260918130234 version.",
+    "Production MCP remains Edge Function v18 pinned to the exact #311 candidate d1e35f00db0a8da11f3ee1b0efff291ed8192f2a."
+  ]
 }
