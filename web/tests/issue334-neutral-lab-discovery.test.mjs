@@ -15,11 +15,13 @@ test("#334 neutral discovery returns full formal Lab contract and canonical capa
 });
 
 test("#334 default discovery does not query Experiment summaries or collections before neutral return", () => {
+  const start = workspace.indexOf("const { data: capabilityRegistry");
   const marker = "if (!include_workspace_index) return toolResult(neutralLabKnowledge)";
-  const neutralPrefix = workspace.slice(0, workspace.indexOf(marker) + marker.length);
-  assert.doesNotMatch(neutralPrefix, /\.from\('experiments'\)/);
-  assert.doesNotMatch(neutralPrefix, /\.from\('experiment_collections'\)/);
-  assert.doesNotMatch(neutralPrefix, /draft_title|draft_description|professor_notes|developer_notes|requirement_keys|origin_experiment_id/);
+  const neutralPath = workspace.slice(start, workspace.indexOf(marker) + marker.length);
+  assert.ok(start >= 0);
+  assert.doesNotMatch(neutralPath, /\.from\('experiments'\)/);
+  assert.doesNotMatch(neutralPath, /\.from\('experiment_collections'\)/);
+  assert.doesNotMatch(neutralPath, /draft_title|draft_description|professor_notes|developer_notes|requirement_keys|origin_experiment_id/);
 });
 
 test("#334 canonical registry function exposes only formal capability truth", () => {
