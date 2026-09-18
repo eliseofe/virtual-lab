@@ -1,19 +1,21 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Typed extension-request workflow bound to canonical capability identity",
-  "owner_impact": "Student and Professor research AI can now submit unsupported requirements under the six owner-approved classes with minimal publication identity. All six classes remain Professor-visible and none is automatically rejected. Semantic approvals bind or create canonical capability identity; multiple requests/papers can converge on one canonical capability without using free-text labels as identity. Professor approval still does not authorize implementation.",
+  "outcome": "Authoring contract bound to canonical capabilities with separated diagnostics",
+  "owner_impact": "The formal authoring contract no longer carries an independent semantic capability model. It references the 11 implemented canonical capability UUIDs/keys through static existing-interface bindings, while canonical meaning/status/version/provenance remain registry-owned. Validation now distinguishes semantic capability gaps from authoring-language, runtime/configuration, forbidden/security-boundary and ordinary type/validation failures. All six extension-request classes remain available for Professor triage with no automatic rejection.",
   "next": {
     "kind": "epic_continues",
-    "issue": 347,
-    "text": "#347 is the known successor. It will refactor authoring-contract capability ownership and diagnostic classification without changing simulator behavior or authoring syntax. #347 has not started in this owner turn."
+    "issue": 348,
+    "text": "#348 is the known successor for production cutover and legacy capability-state retirement. #348 has not started in this owner turn."
   },
   "technical_evidence": [
-    "MCP request interface is vlab.capability-request/4; MCP interface is 12 and server version is 3.4.0.",
-    "Request identity is explicit: canonical_capability_id for known semantic targets, existing_request_id for exact request reconciliation, and a proposed generic target only when no canonical semantic capability exists.",
-    "All six request classes are accepted into Professor triage, including implementation/optimization and security-boundary requests; no automatic rejection class exists.",
-    "Publication title + persistent identifier are stored separately from request reasoning and attach duplicate-safely to canonical semantic capability provenance after Professor approval.",
-    "Semantic developer handoff is anchored to canonical capability identity so one engineering issue may advance multiple approved request rows; owner implementation authorization remains outside the research-AI/browser path.",
-    "No simulator/kernel/physics/compiler behavior or Configuration/Initialization/Controller/Metrics syntax was changed."
+    "Authoring contract vlab.authoring/0.7 exposes canonical_capability_bindings for all 11 frozen implemented capabilities and no longer exposes capability_model.",
+    "Bindings contain canonical UUID/key and existing authoring/runtime surfaces only; they do not duplicate canonical definitions, implementation state/version, or publication provenance.",
+    "Static consistency tests require every frozen implemented canonical registry row to have exactly one matching authoring binding and prohibit unbound/duplicate capability identity.",
+    "Compiler/runtime code remains static and does not query Supabase/canonical registry at runtime.",
+    "Diagnostics preserve low-level compiler category and add diagnostic_class plus request_class only when the failure maps to a durable extension class.",
+    "Unsupported authoring-language features are no longer remapped to semantic simulator-capability gaps; forbidden boundaries map to security_boundary and runtime contract failures map to runtime_configuration.",
+    "Existing Configuration/Initialization/Controller/Metrics syntax, observations/actions/runtime semantics, simulator/kernel/physics behavior and Experiment artifact interface are unchanged.",
+    "MCP server/interface are 3.5.0/13; capability-request interface remains vlab.capability-request/4."
   ],
-  "close_issue": 346
+  "close_issue": 347
 }
