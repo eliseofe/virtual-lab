@@ -97,7 +97,8 @@ test("#347 authoring contract carries bindings, not canonical meaning/status/pro
 });
 
 test("#347 runtime/compiler authoring remains static and has no Supabase capability lookup", () => {
-  assert.doesNotMatch(bindingSource, /supabase|canonical_capabilities|capability_publication_provenance/i);
+  assert.doesNotMatch(bindingSource, /^\s*import\s/m);
+  assert.doesNotMatch(bindingSource, /\.from\(|\.rpc\(|fetch\(/);
   assert.doesNotMatch(authoringSource, /\.from\(['"]canonical_capabilities['"]\)|list_canonical_capability_registry/);
   assert.match(authoringSource, /canonical_capability_bindings: CANONICAL_CAPABILITY_BINDINGS/);
 });
