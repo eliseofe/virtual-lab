@@ -25,7 +25,7 @@ export const MCP_AUTHORING_CONTRACT = Object.freeze({
   results_presentation: RESULTS_PRESENTATION_CONTRACT,
 })
 
-export function validateExperimentArtifactsV06(artifacts: unknown[]) {
+export function validateExperimentArtifactsV07(artifacts: unknown[]) {
   const validation = validateBaseExperimentArtifacts(artifacts)
   return { ...validation, contract_version: MCP_AUTHORING_CONTRACT.contract_version }
 }
@@ -266,7 +266,7 @@ export function registerMetricsResultsTool(
             return toolError('Metric operation is not valid for the current Virtual Lab authoring contract.', validationForRole(metricOperationError(error), profile.role))
           }
 
-          const validation = validateExperimentArtifactsV06(mutated.artifacts)
+          const validation = validateExperimentArtifactsV07(mutated.artifacts)
           if (!validation.valid) {
             return toolError('Experiment artifacts are not valid for the current Virtual Lab authoring contract.', validationForRole(validation, profile.role))
           }
