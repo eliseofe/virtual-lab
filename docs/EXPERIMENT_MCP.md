@@ -10,9 +10,9 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.3.0`
-- interface: `12`
-- authoring contract: `vlab.authoring/0.6`
+- MCP server: `3.5.0`
+- interface: `13`
+- authoring contract: `vlab.authoring/0.7`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
 - registry schema: `vlab.registry-experiment/3`
 - Metrics language: `python-vlab-metrics/0.1`
@@ -113,7 +113,11 @@ Lifecycle-hook vocabulary remains:
 
 ## Validation and concurrency
 
-Scientific Experiment writes are validated against the advertised authoring contract before persistence. Unsupported simulator capabilities are surfaced explicitly. Experiment mutations use the scientific Experiment `revision`; Results presentation mutations use their independent presentation `revision`.
+Scientific Experiment writes are validated against the advertised authoring contract before persistence. The contract now references the canonical capability registry through static implemented-capability bindings rather than maintaining an independent semantic capability catalog.
+
+Diagnostics keep their low-level compiler category and add a separate `diagnostic_class`. Genuine semantic capability gaps, authoring-language gaps, runtime/configuration gaps and forbidden/security-boundary changes carry a typed `request_class` suitable for the six-class extension workflow; ordinary type/validation errors carry no request class. Unsupported language syntax is therefore no longer relabeled as a simulator capability gap.
+
+Experiment mutations use the scientific Experiment `revision`; Results presentation mutations use their independent presentation `revision`.
 
 This separation prevents a plot-layout change from masquerading as a scientific Experiment revision.
 
@@ -139,4 +143,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 preserves that capability as an explicit workspace-index read instead of injecting it into neutral Lab discovery. #346 uses MCP server `3.4.0`, interface `12`, and capability-request interface `vlab.capability-request/4` for typed extension requests. Canonical capability knowledge is global authenticated Lab truth; Experiment/workspace reads remain governed by existing RLS.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 preserves that capability as an explicit workspace-index read instead of injecting it into neutral Lab discovery. #346 established typed extension requests. #347 uses MCP server `3.5.0`, interface `13`, authoring contract `vlab.authoring/0.7`, and the unchanged capability-request interface `vlab.capability-request/4`; the authoring contract now carries canonical capability UUID/key bindings rather than a parallel semantic capability model. Canonical capability knowledge remains global authenticated Lab truth; Experiment/workspace reads remain governed by existing RLS.
