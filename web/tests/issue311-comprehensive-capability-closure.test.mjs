@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readFileSync(
-  new URL("../../supabase/migrations/20260918124500_capability_closure_submission.sql", import.meta.url),
+  new URL("../../supabase/migrations/20260918130234_capability_closure_submission.sql", import.meta.url),
   "utf8",
 );
 const mcp = readFileSync(
