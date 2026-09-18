@@ -29,9 +29,9 @@ The AI maintains this classification as the project evolves: every major epic be
 
 ## Near term
 
-1. Complete #299, the bounded #273 UI/UX pass that makes the Experiment library the single discovery hub for owned, shared and Professor-supervised work.
-2. After #299, continue real student and owner use and let #273 return dormant until concrete UX evidence appears.
-3. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
+1. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
+2. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
+3. Turn concrete evidence from use into focused fixes in the appropriate living domain.
 4. Do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
 
 ## Owner-gated major lane: Studies
