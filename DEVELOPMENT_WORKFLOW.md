@@ -14,6 +14,12 @@ A single owner turn may authorize planning or creation of multiple tickets, but 
 
 When splitting work into tickets, choose substantial, coherent, independently testable units that are small enough to be completed through the full closed loop in one execution chunk. Avoid both oversized tickets that combine multiple separable capabilities and trivial tickets that fragment one natural change.
 
+When an approved epic/scope is split into tickets, record for each ticket which of these is true:
+- **a known successor exists** — name the exact next ticket and explain its purpose in plain language;
+- **this ticket finishes the currently approved epic scope**.
+
+Keep that relationship current if the plan changes. It is project-state metadata, not a reason to start the successor in the same owner turn.
+
 For each substantial user-facing/deployable ticket:
 
 1. implement and test;
@@ -59,6 +65,12 @@ The browser/compiler contract test enforces this structure for every active smok
 
 Batch related implementation steps inside the **one active ticket** when that preserves one coherent independently verifiable unit. Once work has been split into separate tickets, do not execute a second ticket in the same owner turn, even when the owner authorized or created the whole sequence.
 
+## Epic completion state
+
+When the final ticket of the currently approved epic scope completes, **close the epic by default**.
+
+Keep the epic open but dormant only when the conversation and nature of the work show that it is intentionally a recurring domain under which future work naturally belongs. The agent should proactively make and state that judgment; the owner may correct it. Dormant means there is no current executable child. If the case is unclear, close the epic; reopening it later is cheap.
+
 ## Atomic compatibility exception
 
 If two changes truly cannot be deployed safely except atomically, document why before combining them. Prefer bounded compatibility layers and staged deployment when that preserves a clean ticket boundary.
@@ -85,9 +97,11 @@ Production success reports must separate product meaning from verification evide
 - **Next** states the concrete owner action when one exists; otherwise it says plainly that no owner action is required.
 - **Technical evidence** contains the commit/run links and build/deploy/exact-candidate/smoke verification facts.
 
-The default report derives its change summary from the deployed commit message. Every deployable candidate must update `.github/terminal-report.json` in that same candidate so **Next** is specific to the completed work:
-- if the owner must do something, state that concrete action;
-- if development has a known semantic next task but no owner action is needed, name that task;
-- if there is genuinely nothing to do, write exactly `Nothing. This change is complete.`.
+Every deployable candidate must update `.github/terminal-report.json` in that same candidate. The success report has exactly **two** legal `Next` states:
 
-Do not use generic continuation text such as `continue with the next approved development task`. The reporting payload enriches the notification only; it is not a new build/deploy/smoke completion gate.
+1. **Epic continues** — a known successor ticket exists. Name it, explain in ordinary language what it will add, and make clear that it has not started yet. Do not start it in the same owner turn.
+2. **Approved epic scope is complete** — summarize in ordinary language what the epic/scope achieved, state whether the epic is being closed or left dormant under the rule above, and point the owner to the live Lab where the completed capability is available to use/test.
+
+There is no generic or inferred fallback. `.github/terminal-report.json` uses `vlab.terminal-report/2` and must encode one of those two states. Missing, stale or invalid report data makes the success-report step fail rather than inventing a `Next` message.
+
+Do not use generic continuation text such as `continue with the next approved development task` or `Nothing. This change is complete.`.
