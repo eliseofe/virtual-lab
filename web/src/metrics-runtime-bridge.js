@@ -1,3 +1,4 @@
+import { validateProfileController } from "./runtime/profiles.js";
 import { compileMetrics } from "./metrics/compiler.js";
 import "./builtin-active-elastic-metrics.js";
 import "./results-ui.js";
@@ -6,9 +7,18 @@ import "./result-persistence.js";
 const NativeWorker = globalThis.Worker;
 let activeSimulationWorker = null;
 let activeParameters = {};
+let pendingRuntimeProfile = null;
 let lastBatch = null;
 let lastBuffer = null;
 let lastRuntimeContext = {};
+let acceptedRuntimeContext = {};
+
+function restoreAcceptedRuntime() {
+  lastRuntimeContext = acceptedRuntimeContext;
+  activeParameters = acceptedRuntimeContext.parameters ?? {};
+  pendingRuntimeProfile = acceptedRuntimeContext.setup?.profile ?? null;
+}
+
 let pendingMetricResetReason = null;
 let pendingControllerApply = false;
 let pendingSetupApply = false;
@@ -35,7 +45,8 @@ function dispatch(name, detail = {}) {
 }
 
 function compiledMetrics(parameters) {
-  const ir = compileMetrics(metricSource(), { parameters: parameterTypes(parameters) });
+  const ir = compileMetrics(metricSource(), { parameters: parameterTypes(parameters), profile: Boolean(pendingRuntimeProfile) });
+  validateProfileController(pendingRuntimeProfile, null, ir);
   dispatch("vlab:metrics-definition", { ir });
   return ir;
 }
@@ -45,7 +56,7 @@ function rememberRuntimeMessage(message) {
   if (message.type === "initialize" || message.type === "apply-setup") {
     lastRuntimeContext = {
       ...lastRuntimeContext,
-      setup: { simulation: message.setup?.simulation ?? null },
+      setup: { simulation: message.setup?.simulation ?? null, profile: message.setup?.profile ?? null },
       controllerIr: message.ir ?? null,
       parameters: message.parameters ?? {},
       metricsIr: message.metricsIr ?? null,
@@ -144,6 +155,7 @@ class MetricsAwareWorker extends NativeWorker {
         metricsApplyPending = false;
         metricsDirty = false;
         syncMetricsAuthoringUi();
+        acceptedRuntimeContext = lastRuntimeContext;
         dispatch("vlab:metrics-applied", message);
       } else if (message.type === "metrics-error" || message.type === "metrics-runtime-error") {
         const wasApply = metricsApplyPending;
@@ -159,20 +171,25 @@ class MetricsAwareWorker extends NativeWorker {
           neighbourStrategy: message.neighbourStrategy ?? lastRuntimeContext.neighbourStrategy ?? null,
         };
         pendingSetupApply = false;
+        acceptedRuntimeContext = lastRuntimeContext;
         dispatch("vlab:runtime-ready", lastRuntimeContext);
       } else if (message.type === "paused") {
         dispatch("vlab:run-paused", message);
       } else if (message.type === "completed") {
         dispatch("vlab:run-complete", message);
       } else if (message.type === "setup-applied") {
+        acceptedRuntimeContext = lastRuntimeContext;
         pendingSetupApply = false;
       } else if (message.type === "controller-applied") {
+        acceptedRuntimeContext = lastRuntimeContext;
         pendingControllerApply = false;
       } else if (message.type === "setup-error") {
+        restoreAcceptedRuntime();
         pendingSetupApply = false;
         pendingMetricResetReason = null;
       } else if (message.type === "controller-runtime-error") {
         const wasApply = pendingControllerApply;
+        if (wasApply) restoreAcceptedRuntime();
         pendingControllerApply = false;
         pendingMetricResetReason = null;
         if (!wasApply) dispatch("vlab:run-error", message);
@@ -184,12 +201,15 @@ class MetricsAwareWorker extends NativeWorker {
 
   postMessage(message, transferOrOptions) {
     let next = message;
+    if (message && ["initialize", "apply-setup"].includes(message.type)) pendingRuntimeProfile = message.setup?.profile ?? null;
     if (message && ["initialize", "apply-setup", "apply-controller"].includes(message.type)) {
       activeParameters = message.parameters ?? activeParameters;
-      next = {
-        ...message,
-        metricsIr: compiledMetrics(activeParameters),
-      };
+      try {
+        next = { ...message, metricsIr: compiledMetrics(activeParameters) };
+      } catch (error) {
+        restoreAcceptedRuntime();
+        throw error;
+      }
     }
     if (next?.type === "initialize") pendingMetricResetReason = "initialize";
     else if (next?.type === "reset") pendingMetricResetReason = "restart";

@@ -1,3 +1,5 @@
+import { validateProfileController } from "./runtime/profiles.js";
+import { drawPhysicalSnapshot, drawGroupLegend, groupColors } from "./visualization/physical.js";
 import { compileController } from "./controller/compiler.js";
 import { compileConfig, numericParameters } from "./config/compiler.js";
 import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./environment/compiler.js";
@@ -136,6 +138,7 @@ ui.source.value = referenceSource;
 let wasmReady = false;
 let initialized = false;
 let running = false;
+let latestProfileState = null;
 let latestState = [];
 let activeArenaSize = 10.0;
 let activeSeed = INTERNAL_SEED;
@@ -240,6 +243,7 @@ function compileSetup({ seed = activeSeed, configSource = ui.config.value, initi
     firstAgents: initializer.state.slice(0, 5),
   }, null, 2);
 
+  if (runtime.profile && environment) throw Error("Runtime profiles do not support static scalar fields yet");
   return {
     config,
     environment,
@@ -251,6 +255,7 @@ function compileControllerFor(config, environment = appliedEnvironment) {
   const parameters = numericParameters(config);
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
   const compiled = compileController(ui.source.value, { parameters: parameterTypes });
+  validateProfileController(validateRuntimeValues(runtimeValuesForCurrentBuiltIn(config.values)).profile, compiled, null);
   validateEnvironmentControllerPair(environment, compiled);
   ui.ir.textContent = JSON.stringify(compiled, null, 2);
   return { compiled, parameters };
@@ -333,6 +338,7 @@ function initializeIfReady() {
 }
 
 function updateSnapshot(message) {
+  latestProfileState = message.profileState ?? null;
   if (Array.isArray(message.state) || ArrayBuffer.isView(message.state)) {
     latestState = Array.from(message.state);
     ui.canvasEmpty.hidden = latestState.length > 0;
@@ -421,6 +427,7 @@ function drawSnapshot() {
   const height = Math.max(1, Math.floor(rect.height * ratio));
   if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
 
+  if (latestProfileState?.backend === "quadrotor") { drawPhysicalSnapshot(context, latestProfileState, width, height, ratio); requestAnimationFrame(drawSnapshot); return; }
   context.clearRect(0, 0, width, height);
   context.fillStyle = "#edf2f3";
   context.fillRect(0, 0, width, height);
@@ -479,6 +486,9 @@ function drawSnapshot() {
   const glyph = ui.agentGlyph.value;
   const margin = 16 * ratio;
   for (let i = 0; i + 2 < latestState.length; i += 3) {
+    const agent=latestProfileState?.agents[i/3];
+    if(agent && !agent.active) continue;
+    if(agent) context.strokeStyle = context.fillStyle = groupColors[agent.group % groupColors.length];
     const x = frame.toCanvasX(latestState[i]);
     const y = frame.toCanvasY(latestState[i + 1]);
     if (x < -margin || x > width + margin || y < -margin || y > height + margin) continue;
@@ -501,6 +511,7 @@ function drawSnapshot() {
     labelY,
   );
 
+  if (latestProfileState) drawGroupLegend(context, latestProfileState, ratio);
   requestAnimationFrame(drawSnapshot);
 }
 
@@ -534,7 +545,7 @@ worker.addEventListener("message", (event) => {
     if (message.type === "completed") {
       setRunning(false, { notifyWorker: false });
       const duration = appliedConfig?.values?.EXPERIMENT_DURATION;
-      ui.status.textContent = Number.isFinite(duration) ? `Run complete (${duration} s)` : "Run complete";
+      ui.status.textContent = Number.isFinite(duration) ? `Run complete (${message.scientificTime.toFixed(2)} s${message.profileState?.stopReason ? " · "+message.profileState.stopReason : ""})` : "Run complete";
     } else if (message.type === "controller-applied") {
       if (pendingController) appliedController = pendingController;
       pendingController = null;
@@ -738,3 +749,5 @@ ui.restartNewSeed.addEventListener("click", () => {
 });
 
 requestAnimationFrame(drawSnapshot);
+
+document.addEventListener("vlab:fresh-preset-seed", () => { activeSeed = randomSeedDifferentFromCurrent(); });

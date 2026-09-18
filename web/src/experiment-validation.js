@@ -49,7 +49,7 @@ function compileExperiment(experiment, runtimeValues, { seed = 0 } = {}) {
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
   const controller = compileController(controllerSource, { parameters: parameterTypes });
   validateEnvironmentControllerPair(environment, controller);
-  const metrics = compileMetrics(metricsSource, { parameters: parameterTypes });
+  const metrics = compileMetrics(metricsSource, { parameters: parameterTypes, profile: Boolean(runtime.profile) });
 
   validateProfileController(runtime.profile, controller, metrics);
   if (runtime.profile && environment) throw Error("Runtime profiles do not support static scalar fields yet");

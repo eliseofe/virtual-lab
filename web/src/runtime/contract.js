@@ -30,6 +30,21 @@ export const RUNTIME_CONTRACT = Object.freeze({
       controller_boundary: "The controller receives the sampled scalar only; global position, the field function and spatial gradient are not exposed.",
     }),
   }),
+  profile_capabilities: Object.freeze({
+    schema: "vlab.runtime-profile/1",
+    configuration: "RUNTIME_PROFILE: JSON string; $NAME references an existing Configuration value",
+    backends: ["unicycle", "quadrotor"],
+    assignment: "Contiguous initialized agent indices in profiles array order; stable IDs survive removal",
+    observations: ["obs.group", "neighbour.group", "neighbour.kind"],
+    neighbour_kinds: {agent: 0, landmark: 1, wall: 2},
+    topology: ["unbounded", "bounded"],
+    lifecycle: "Ordered proximity/region rules resolve active targets after a control interval; later rule wins",
+    measurements: ["agent.group", "agent.active", "agent.status", "agent.speed", "agent.altitude"],
+    measurement_phase: "post-physics-state/1",
+    phase_semantics: "Unwrapped physical state after lifecycle transitions. Inactive records retained with active=0. Speed is measured displacement velocity; quadrotor heading is measured body yaw.",
+    unsupported: ["periodic geometry", "static scalar fields with profiles", "user-supplied physics code"],
+    privilege_policy: "Existing experiment ownership and role permissions apply without modification",
+  }),
   artifact_capabilities: Object.freeze({
     version: "vlab.artifact-capabilities/0.3",
     lifecycle_hooks: Object.freeze(["setup", "initialize", "control", "measure", "finalize"]),
@@ -141,6 +156,11 @@ export function validateInitialStateForRuntime(state, runtime) {
   const half = runtime.arenaSize / 2;
   const outside = state.findIndex((agent) => !agent || typeof agent.x !== "number" || !Number.isFinite(agent.x) || typeof agent.y !== "number" || !Number.isFinite(agent.y) || typeof agent.heading !== "number" || !Number.isFinite(agent.heading) || (!runtime.profile && (Math.abs(agent.x) > half || Math.abs(agent.y) > half)));
   if (outside !== -1) throw new RuntimeContractError("ARENA_SIZE", `Initial agent ${outside} does not fit inside ARENA_SIZE=${runtime.arenaSize}.`);
+  if (runtime.profile?.topology === "bounded") {
+    const [w,l] = runtime.profile.bounds;
+    if (state.some(a => a.x <= 0 || a.x >= w || a.y <= 0 || a.y >= l))
+      throw new RuntimeContractError("RUNTIME_PROFILE", "Initial positions must be inside the bounded arena");
+  }
   return state;
 }
 

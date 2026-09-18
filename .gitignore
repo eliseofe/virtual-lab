@@ -24,3 +24,6 @@ web/.vite-react/
 .env
 .env.*
 !.env.example
+
+# Generated physics bundles (built from pinned dependency)
+web/public/vendor/

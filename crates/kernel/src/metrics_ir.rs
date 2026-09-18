@@ -369,6 +369,7 @@ struct BatchOutput {
 
 #[derive(Debug)]
 pub struct IrMetricsRuntime {
+    measurement_phase: &'static str,
     metrics: Vec<RuntimeMetric>,
     parameters: BTreeMap<String, f64>,
     buffer: VecDeque<RawSample>,
@@ -401,7 +402,7 @@ impl IrMetricsRuntime {
         if ir.language != METRICS_LANGUAGE {
             return Err(format!("unsupported Metrics language '{}'", ir.language));
         }
-        if ir.measurement_phase != METRIC_MEASUREMENT_PHASE {
+        if ir.measurement_phase != METRIC_MEASUREMENT_PHASE && ir.measurement_phase != "post-physics-state/1" {
             return Err(format!("unsupported Metrics measurement phase '{}'", ir.measurement_phase));
         }
         let parameters: BTreeMap<String, f64> = serde_json::from_str(parameters_json)
@@ -426,6 +427,7 @@ impl IrMetricsRuntime {
         }
 
         Ok(Self {
+            measurement_phase: if ir.measurement_phase == METRIC_MEASUREMENT_PHASE { METRIC_MEASUREMENT_PHASE } else { "post-physics-state/1" },
             metrics,
             parameters,
             buffer: VecDeque::with_capacity(buffer_capacity.min(4096)),
@@ -538,7 +540,7 @@ impl IrMetricsRuntime {
         }
         let output = BatchOutput {
             version: METRIC_SAMPLE_BATCH_VERSION,
-            measurement_phase: METRIC_MEASUREMENT_PHASE,
+            measurement_phase: self.measurement_phase,
             batch_sequence: self.batch_sequence,
             samples,
             buffer: self.buffer_output(),

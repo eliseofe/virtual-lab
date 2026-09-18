@@ -385,7 +385,7 @@ function parseMetricFunctions(source, parameters) {
   return metrics;
 }
 
-export function compileMetrics(source, { parameters = {} } = {}) {
+export function compileMetrics(source, { parameters = {}, profile = false } = {}) {
   if (typeof source !== "string") throw new MetricsCompileError("syntax", "Metrics source must be a string");
   const parameterTypes = {};
   for (const [name, type] of Object.entries(parameters)) {
@@ -404,10 +404,10 @@ export function compileMetrics(source, { parameters = {} } = {}) {
   return {
     language: METRICS_LANGUAGE,
     schema: METRICS_IR_SCHEMA,
-    measurement_phase: METRIC_MEASUREMENT_PHASE,
+    measurement_phase: profile ? "post-physics-state/1" : METRIC_MEASUREMENT_PHASE,
     observation_contract: {
       mode: "read-only-global-snapshot",
-      fields: ["snapshot.scientific_time", "snapshot.agent_count", "snapshot.agents[].position", "snapshot.agents[].heading", "snapshot.agents[].heading_angle"],
+      fields: ["snapshot.scientific_time", "snapshot.agent_count", "snapshot.agents[].position", "snapshot.agents[].heading", "snapshot.agents[].heading_angle", ...(profile ? ["snapshot.agents[].group", "snapshot.agents[].active", "snapshot.agents[].status", "snapshot.agents[].speed", "snapshot.agents[].altitude"] : [])],
     },
     metrics,
   };

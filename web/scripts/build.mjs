@@ -1,3 +1,4 @@
+import "./prepare-physics-assets.mjs";
 import { createHash } from "node:crypto";
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";

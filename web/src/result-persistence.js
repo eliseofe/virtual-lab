@@ -67,6 +67,7 @@ function runtimeContext() {
       maxForwardSpeed: simulation.maxForwardSpeed ?? null,
       maxAngularSpeed: simulation.maxAngularSpeed ?? null,
     } : null,
+    runtimeProfile: context.setup?.profile ?? null,
     parameters: context.parameters ?? null,
     metricsIr: context.metricsIr ?? definitionsIr,
     controllerSchema: context.controllerIr?.schema ?? context.controllerIr?.version ?? null,

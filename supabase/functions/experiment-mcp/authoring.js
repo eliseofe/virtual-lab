@@ -1,3 +1,4 @@
+import { validateProfileController } from "./vendor/profiles.js";
 import { compileConfig, numericParameters } from "./vendor/config-compiler.js";
 import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./vendor/environment-compiler.js";
 import { compileInitializer } from "./vendor/initializer-compiler.js";
@@ -63,7 +64,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
         "obs.environmental_scalar": "scalar when Initialization defines environmental_scalar(x, y, config)"
       },
       actions: { Motion: { arguments: ["forward: scalar", "turning: scalar"], result: "action" } },
-      intrinsics: { Vec2: ["scalar", "scalar"], dot: ["vec2", "vec2"], perpendicular: ["vec2"], norm: ["vec2"], pow: ["scalar", "scalar"] },
+      intrinsics: { Vec2: ["scalar", "scalar"], dot: ["vec2", "vec2"], perpendicular: ["vec2"], norm: ["vec2"], pow: ["scalar", "scalar"], min: ["scalar", "scalar"], max: ["scalar", "scalar"], eq: ["scalar", "scalar"], le: ["scalar", "scalar"] },
       forbidden_roots: ["random", "rng", "seed", "world", "simulator", "environment", "agents", "filesystem", "network"]
     },
     metrics: {
@@ -97,6 +98,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
     compatibility_note: "Legacy three-source experiments and clients normalize mechanically to the four-artifact model by adding an empty Metrics artifact. Legacy source mirrors remain bounded compatibility fields for Configuration/Initialization/Controller only."
   },
   capability_model: {
+    runtime_profiles: RUNTIME_CONTRACT.profile_capabilities,
     observations: [
       { id: "local.heading", source_name: "obs.heading", type: "vec2" },
       { id: "local.neighbours", source_name: "obs.neighbours", type: "sequence<neighbour>" },
@@ -118,7 +120,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
       rendering: "same simulator field evaluator used for sensing"
     }],
     actions: [{ id: "motion.forward_turning", constructor: "Motion", arguments: ["scalar", "scalar"] }],
-    intrinsics: ["Vec2", "dot", "perpendicular", "norm", "pow"],
+    intrinsics: ["Vec2", "dot", "perpendicular", "norm", "pow", "min", "max", "eq", "le"],
     extension_policy: "Capabilities are versioned simulator-defined interfaces. Unsupported capabilities are reported explicitly; research AI cannot implement simulator capabilities."
   },
   diagnostic_categories: [
@@ -234,8 +236,13 @@ export function validateExperimentSources({ config_source, initializer_source, c
   } catch (error) { diagnostics.push(errorDiagnostic("controller", error)); return invalid(diagnostics); }
 
   let metrics;
-  try { metrics = compileMetrics(metrics_source, { parameters: parameterTypes }); }
+  try { metrics = compileMetrics(metrics_source, { parameters: parameterTypes, profile: Boolean(runtime.profile) }); }
   catch (error) { diagnostics.push(errorDiagnostic("metrics", error)); return invalid(diagnostics); }
+
+  try {
+    validateProfileController(runtime.profile, controller, metrics);
+    if (runtime.profile && environment) throw Error("Runtime profiles do not support static scalar fields yet");
+  } catch (error) { diagnostics.push(errorDiagnostic("configuration", error)); return invalid(diagnostics); }
 
   return {
     valid: true,
@@ -250,7 +257,7 @@ export function validateExperimentSources({ config_source, initializer_source, c
       controller_ir_schema: controller.schema,
       metrics_language: metrics.language,
       metrics_ir_schema: metrics.schema,
-      metric_measurement_phase: metrics.measurement_phase,
+      metric_measurement_phase: runtime.profile ? "post-physics-state/1" : metrics.measurement_phase,
       metric_count: metrics.metrics.length,
       runtime_contract: runtime.version
     }

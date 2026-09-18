@@ -1,3 +1,4 @@
+import { ProfileSimulation } from "./runtime/profile-simulation.js";
 import { RuntimePacer } from "./runtime/scheduler.js";
 
 let simulation = null;
@@ -53,6 +54,7 @@ function emitSnapshot(type) {
     seed: activeSeed,
     neighbourStrategy: simulation.neighbour_strategy(),
     state,
+    profileState: simulation.snapshot_metadata?.() ?? null,
   });
 }
 
@@ -115,6 +117,7 @@ function simulationValues(setup = {}) {
   return {
     initialState: Array.isArray(setup.initialState) ? setup.initialState : [],
     environment: setup.environment ?? null,
+    profile: setup.profile ?? null,
     seed: Number(simulationSetup.seed),
     physicsDt: Number(simulationSetup.physicsDt),
     controlDt: Number(simulationSetup.controlDt),
@@ -163,7 +166,7 @@ function metricRuntimeError(error) {
 }
 
 function finishRunIfNeeded() {
-  if (ticksUntilStop() > 0) return false;
+  if (ticksUntilStop() > 0 && !simulation?.stopReason) return false;
   stopLoop();
   try {
     simulation.finalize_metrics();
@@ -256,7 +259,31 @@ async function loadWasm() {
   });
 }
 
-self.addEventListener("message", (event) => {
+let ammoPromise;
+async function createSimulation(setup, message) {
+  if (setup.profile) {
+    let ammo = null;
+    if (setup.profile.backend === "quadrotor") {
+      // The UMD factory writes to `this`; ES module namespaces are read-only.
+      ammoPromise ??= import(new URL("./vendor/ammo.mjs", import.meta.url))
+        .then(module => module.default.call({}, {
+          locateFile: name => new URL(`./vendor/${name}`, import.meta.url).href,
+        }))
+        .catch(error => { ammoPromise = null; throw error; });
+      ammo = await ammoPromise;
+    }
+    return new ProfileSimulation(wasm, setup, message.ir, metricsIr(message), message.parameters ?? {}, ammo);
+  }
+  return new wasm.MetricProbeSimulation(
+    JSON.stringify(setup.initialState), setup.seed, setup.physicsDt,
+    setup.controlDt, setup.metricDt, setup.interactionRadius, setup.arenaSize,
+    setup.sensorNoise, setup.maxForwardSpeed, setup.maxAngularSpeed,
+    JSON.stringify(setup.environment), JSON.stringify(message.ir),
+    JSON.stringify(metricsIr(message)), JSON.stringify(message.parameters ?? {}),
+  );
+}
+
+async function handleMessage(event) {
   const message = event.data ?? {};
   if (!wasmReady) {
     self.postMessage({ type: "error", message: "WASM kernel is still loading" });
@@ -266,25 +293,12 @@ self.addEventListener("message", (event) => {
     if (message.type === "initialize") {
       stopLoop();
       const setup = simulationValues(message.setup);
+      const next = await createSimulation(setup, message);
+      simulation?.free?.();
+      simulation = next;
       activeArenaSize = setup.arenaSize;
       activeSeed = setup.seed >>> 0;
       activePhysicsDt = setup.physicsDt;
-      simulation = new wasm.MetricProbeSimulation(
-        JSON.stringify(setup.initialState),
-        setup.seed,
-        setup.physicsDt,
-        setup.controlDt,
-        setup.metricDt,
-        setup.interactionRadius,
-        setup.arenaSize,
-        setup.sensorNoise,
-        setup.maxForwardSpeed,
-        setup.maxAngularSpeed,
-        JSON.stringify(setup.environment),
-        JSON.stringify(message.ir),
-        JSON.stringify(metricsIr(message)),
-        JSON.stringify(message.parameters ?? {}),
-      );
       pacer = new RuntimePacer(activePhysicsDt);
       resetMetricTransportClock();
       self.postMessage({
@@ -374,24 +388,30 @@ self.addEventListener("message", (event) => {
     if (message.type === "apply-setup") {
       stopLoop();
       const setup = simulationValues(message.setup);
+      if (!setup.profile && !simulation.profile) {
+        simulation.set_setup(
+          JSON.stringify(setup.initialState),
+          setup.seed,
+          setup.physicsDt,
+          setup.controlDt,
+          setup.metricDt,
+          setup.interactionRadius,
+          setup.arenaSize,
+          setup.sensorNoise,
+          setup.maxForwardSpeed,
+          setup.maxAngularSpeed,
+          JSON.stringify(setup.environment),
+          JSON.stringify(metricsIr(message)),
+          JSON.stringify(message.parameters ?? {}),
+        );
+        simulation.set_controller(JSON.stringify(message.ir), JSON.stringify(message.parameters ?? {}));
+      } else {
+        const next = await createSimulation(setup, message);
+        simulation.free?.();
+        simulation = next;
+      }
       activeArenaSize = setup.arenaSize;
       activePhysicsDt = setup.physicsDt;
-      simulation.set_setup(
-        JSON.stringify(setup.initialState),
-        setup.seed,
-        setup.physicsDt,
-        setup.controlDt,
-        setup.metricDt,
-        setup.interactionRadius,
-        setup.arenaSize,
-        setup.sensorNoise,
-        setup.maxForwardSpeed,
-        setup.maxAngularSpeed,
-        JSON.stringify(setup.environment),
-        JSON.stringify(metricsIr(message)),
-        JSON.stringify(message.parameters ?? {}),
-      );
-      simulation.set_controller(JSON.stringify(message.ir), JSON.stringify(message.parameters ?? {}));
       activeSeed = setup.seed >>> 0;
       pacer = new RuntimePacer(activePhysicsDt);
       resetMetricTransportClock();
@@ -433,6 +453,14 @@ self.addEventListener("message", (event) => {
         : "controller-runtime-error";
     self.postMessage({ type, message: errorMessage });
   }
+}
+// Serialize asynchronous physics setup with run/reset/edit commands.
+let messageQueue = Promise.resolve();
+self.addEventListener("message", event => {
+  messageQueue = messageQueue.then(() => handleMessage(event)).catch(error => {
+    stopLoop();
+    self.postMessage({ type: "error", message: String(error.message ?? error) });
+  });
 });
 
 loadWasm().catch((error) => {
