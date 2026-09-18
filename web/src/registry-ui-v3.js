@@ -1348,7 +1348,8 @@ experimentSelect.addEventListener("change", () => run(async () => {
     setQuickSwitchOptions();
     return;
   }
-  await loadRemoteExperiment(id, { access: "supervised" });
+  const access = sharedExperiments.some((experiment) => experiment.id === id) ? "shared" : "owned";
+  await loadRemoteExperiment(id, { access });
 }));
 
 browser.close.addEventListener("click", () => browser.dialog.close());
@@ -1408,7 +1409,7 @@ window.addEventListener("vlab:open-supervised-experiment", (event) => run(async 
   if (typeof id !== "string" || !id) throw new Error("Student Experiment identifier is missing.");
   if (profile?.role !== "professor") throw new Error("Professor supervision is not available to this account.");
   if (!(await confirmDiscardIfNeeded())) return;
-  await loadRemoteExperiment(id);
+  await loadRemoteExperiment(id, { access: "supervised" });
 }));
 
 supabase.auth.onAuthStateChange((_event, session) => {
