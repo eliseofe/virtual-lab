@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. Repair #58's capability-request closed loop through #310 → #311 → #312 → #313 before implementing the queued scientific capabilities. The repair preserves one durable blocked Experiment, comprehensive/grouped gap analysis, whole-Experiment revalidation, and final live Grok acceptance.
+1. Repair #58's capability-request closed loop through #310 → #311 → #312 → #313 before implementing the queued scientific capabilities. #311 includes Student as well as Professor capability-request submission, with Professor-only triage. The repair preserves one durable blocked Experiment, comprehensive/grouped gap analysis, whole-Experiment revalidation, and final live Grok acceptance.
 2. Keep the two existing approved capability requests visible but paused for implementation: RNG/controller stochasticity (#57 with planned #305/#306) and heterogeneous initialization/state (#304).
 3. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
 4. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
