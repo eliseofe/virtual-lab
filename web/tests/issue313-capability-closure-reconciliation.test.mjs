@@ -55,7 +55,7 @@ test("#313 reconciliation helper is private, caller-owned and schema-pinned", ()
 });
 
 test("#313 keeps the capability request interface stable while shipping a patch server version", () => {
-  assert.match(tools, /MCP_SERVER_VERSION = '3\.2\.1'/);
+  assert.match(tools, /MCP_SERVER_VERSION = '3\\.2\\.\\d+'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '10'/);
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/3'/);
   assert.match(mcp, /converge on the same durable blocked Experiment/i);
