@@ -1,16 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Add durable blocked-Experiment capability-closure foundation",
-  "owner_impact": "Virtual Lab now has a durable database model for one blocked scientific Experiment/draft, versioned whole-Experiment closure analyses, explicit unresolved ambiguities, and links from individual capability requests back to the analysis that identified them. This ticket does not change the MCP connector contract, so current Student connector behavior is unchanged.",
+  "outcome": "Make capability discovery comprehensive and allow Student submission",
+  "owner_impact": "Student and Professor research-AI clients can now submit one durable whole-Experiment capability-closure analysis with grouped missing-capability requests. Scientific ambiguity is preserved on the research side and cannot be forwarded as developer-ready work. Professor alone retains approve/decline triage. Ordinary Student Experiment authoring remains unchanged.",
   "next": {
     "kind": "epic_continues",
-    "issue": 311,
-    "text": "#311 is the known next ticket. It will make the Professor-side MCP request flow perform comprehensive whole-Experiment gap analysis and grouped capability requests using this new durable model. It has not started yet."
+    "issue": 312,
+    "text": "#312 is the known successor. It will add resume and whole-Experiment revalidation after capability deployment. It has not started."
   },
   "technical_evidence": [
-    "New blocked_experiment_drafts and capability_closure_analyses tables are RLS-protected and expose no new authenticated Data API access in #310.",
-    "Existing capability_requests gain only a nullable closure_analysis_id link, preserving legacy rows and lifecycle states.",
-    "Automated contract tests cover non-title-only preservation, analysis sequencing/status integrity, nullable request linkage, RLS closure, and unchanged MCP tool registration."
+    "Capability-request interface v2 preserves blocked draft, contract version, clear/ambiguous scientific requirements and grouped request-to-requirement links.",
+    "Student and Professor share request_capability; Professor-only queue triage remains unchanged.",
+    "Atomic database submission creates the blocked draft, closure analysis and grouped request rows together, and the request lifecycle hook contract now accepts measure."
   ],
-  "close_issue": 310
+  "close_issue": 311
 }
