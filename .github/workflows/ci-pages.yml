@@ -116,6 +116,8 @@ jobs:
     steps:
       - name: Checkout active-product smoke tracker
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Wait for exact deployed candidate
         run: node web/scripts/wait-deployed-sha.mjs "https://eliseofe.github.io/virtual-lab/" "$GITHUB_SHA"
@@ -130,39 +132,48 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          short_sha="${GITHUB_SHA:0:7}"
-          changed="$(jq -r '(((.head_commit.added // []) + (.head_commit.modified // []) + (.head_commit.removed // [])) | index(".github/terminal-report.json")) != null' "$GITHUB_EVENT_PATH")"
-
-          commit_message="$(jq -r '.head_commit.message // empty' "$GITHUB_EVENT_PATH")"
-          first_line="$(printf '%s\n' "$commit_message" | sed -n '1p')"
-          if [[ "$first_line" == "Merge pull request #"* ]]; then
-            change_summary="$(printf '%s\n' "$commit_message" | awk 'seen_blank && NF { print; exit } !NF { seen_blank=1 }')"
-          else
-            change_summary="$first_line"
-          fi
-          if [ -z "$change_summary" ]; then
-            change_summary="Production change ${short_sha}"
+          parent_sha="$(git rev-parse "${GITHUB_SHA}^1")"
+          if ! git diff --name-only "$parent_sha" "$GITHUB_SHA" -- .github/terminal-report.json | grep -qx '.github/terminal-report.json'; then
+            echo "::error::.github/terminal-report.json was not updated by this deployed candidate."
+            exit 1
           fi
 
-          outcome="$change_summary"
-          owner_impact="Now live in production: ${change_summary}"
-          remaining="Nothing. This change is complete."
+          if ! jq -e '
+            .schema == "vlab.terminal-report/2"
+            and (.outcome | type == "string") and (.outcome | length > 0)
+            and (.owner_impact | type == "string") and (.owner_impact | length > 0)
+            and (.next | type == "object")
+            and (.next.text | type == "string") and (.next.text | length > 0)
+            and (
+              (
+                .next.kind == "epic_continues"
+                and (.next.issue | type == "number") and (.next.issue > 0)
+              )
+              or
+              (
+                .next.kind == "scope_complete"
+                and ((.next.disposition == "closed") or (.next.disposition == "dormant"))
+                and (.next.lab_url == "https://eliseofe.github.io/virtual-lab/")
+              )
+            )
+            and ((.technical_evidence // []) | type == "array")
+          ' .github/terminal-report.json >/dev/null; then
+            echo "::error::.github/terminal-report.json must use vlab.terminal-report/2 and exactly one supported Next state."
+            exit 1
+          fi
+
+          outcome="$(jq -r '.outcome' .github/terminal-report.json)"
+          owner_impact="$(jq -r '.owner_impact' .github/terminal-report.json)"
+          remaining="$(jq -r '.next.text' .github/terminal-report.json)"
           technical="$(printf '%s\n%s\n%s' \
             "- Commit: https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}" \
             "- Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             "- Verification: build, Pages deployment, exact-candidate propagation, and deployed-surface smoke all passed.")"
-          close_issue=""
-
-          if [ "$changed" = "true" ] && jq -e '.schema == "vlab.terminal-report/1" and (.outcome | type == "string") and (.owner_impact | type == "string") and (.remaining_action | type == "string")' .github/terminal-report.json >/dev/null 2>&1; then
-            outcome="$(jq -r '.outcome' .github/terminal-report.json)"
-            owner_impact="$(jq -r '.owner_impact' .github/terminal-report.json)"
-            remaining="$(jq -r '.remaining_action' .github/terminal-report.json)"
-            report_technical="$(jq -r '(.technical_evidence // []) | map("- " + .) | join("\n")' .github/terminal-report.json)"
-            if [ -n "$report_technical" ]; then
-              technical="$(printf '%s\n%s' "$technical" "$report_technical")"
-            fi
-            close_issue="$(jq -r '.close_issue // empty' .github/terminal-report.json)"
+          report_technical="$(jq -r '(.technical_evidence // []) | map("- " + .) | join("\n")' .github/terminal-report.json)"
+          if [ -n "$report_technical" ]; then
+            technical="$(printf '%s\n%s' "$technical" "$report_technical")"
           fi
+          close_issue="$(jq -r '.close_issue // empty' .github/terminal-report.json)"
 
           body="$(printf '@eliseofe\n\n✅ **Virtual Lab production deployment succeeded**\n\n**%s**\n\n**What changed for you**\n%s\n\n**Next**\n%s\n\n**Technical evidence**\n%s' "$outcome" "$owner_impact" "$remaining" "$technical")"
           payload="$(jq -n --arg body "$body" '{body:$body}')"
