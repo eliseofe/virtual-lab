@@ -28,7 +28,7 @@ The AI maintains this classification as the project evolves: every major epic be
 
 ## Near term
 
-1. Continue #45 through bounded research-supervision collaboration slices, beginning with Professor read-only visibility into student/researcher Experiments.
+1. Continue #45 through bounded research-supervision collaboration slices. Professor read-only visibility is production-complete (#287); next is copy-to-own-workspace (#288), followed by explicit sharing (#289) and revocation/boundary completion (#290).
 2. Continue real student and owner use of the production Lab.
 3. Turn concrete evidence from use into focused fixes, including #273 UI/UX refinement when warranted.
 4. Do not activate parked or not-started major lanes without the required use case or owner authorization.
