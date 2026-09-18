@@ -174,7 +174,7 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab experiment workspace',
       description:
-        'Start here. Without experiment_id, return the authenticated identity, owned collections, and all Experiment summaries visible through the caller\'s RLS permissions by default. This includes Professor-supervised student/researcher Experiments and explicitly shared Experiments when authorized. Set owned_only=true only when the caller specifically wants to narrow discovery to Experiments they own. With experiment_id, return that visible experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. This tool never writes.',
+        'Start here. Without experiment_id, return the authenticated identity, owned collections, all Experiment summaries visible through the caller\'s RLS permissions by default, and the caller-visible pending capability queue (requested, approved, or in_progress). The pending queue is durable protocol state: approved means accepted into the developer queue, not implemented. The current authoring contract remains the authority for capabilities available now. Professor supervision and ordinary sharing remain governed by existing RLS. Set owned_only=true only when the caller specifically wants to narrow discovery to Experiments they own; it does not broaden or bypass capability-request visibility. With experiment_id, return that visible experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in responses for compatibility and must not be treated as a second source of truth. Before authoring or changing artifacts, set include_authoring_contract=true. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         lifecycle: z.enum(['active', 'archived', 'all']).default('active'),
@@ -222,7 +222,24 @@ function registerExperimentTools(
       const { data: experiments, error: experimentsError } = await query
       if (experimentsError) return toolError('Could not list experiments.', experimentsError.message)
 
-      return toolResult({ identity, authoring, collections, experiments })
+      const { data: capabilityQueue, error: capabilityQueueError } = await supabase
+        .from('capability_requests')
+        .select(
+          'id, requester_role, origin_experiment_id, origin_experiment_revision, draft_title, capability_domain, capability_name, context, requested_artifact_type, requested_lifecycle_hook, status, professor_notes, requirement_keys, created_at, updated_at',
+        )
+        .in('status', ['requested', 'approved', 'in_progress'])
+        .order('updated_at', { ascending: false })
+      if (capabilityQueueError) {
+        return toolError('Could not read pending capability commitments.', capabilityQueueError.message)
+      }
+
+      return toolResult({
+        identity,
+        authoring,
+        collections,
+        experiments,
+        capability_queue: capabilityQueue ?? [],
+      })
     },
   )
 
