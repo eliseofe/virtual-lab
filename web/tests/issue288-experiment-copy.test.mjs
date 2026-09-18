@@ -6,6 +6,10 @@ const migration = readFileSync(
   new URL("../../supabase/migrations/20260918063500_experiment_copy_provenance.sql", import.meta.url),
   "utf8",
 );
+const hardeningMigration = readFileSync(
+  new URL("../../supabase/migrations/20260918070000_harden_experiment_copy_rpc.sql", import.meta.url),
+  "utf8",
+);
 const registry = readFileSync(new URL("../src/registry-ui-v3.js", import.meta.url), "utf8");
 const management = readFileSync(new URL("../src/experiment-management.js", import.meta.url), "utf8");
 
@@ -57,4 +61,17 @@ test("#288 presents copying as a distinct action while preserving ordinary Save 
   assert.match(management, /if \(locationText === "Student experiment"\) setText\(saveAsNew, "Copy to my Experiments…"\)/);
   assert.match(management, /else setText\(saveAsNew, "Save as new…"\)/);
   assert.match(registry, /ui\.createNew\.textContent = copyingReadable \? "Copy to my Experiments" : "Create private copy"/);
+});
+
+
+test("#288 final RPC boundary keeps privileged logic private", () => {
+  assert.match(hardeningMigration, /function private\.copy_experiment_to_workspace_impl/i);
+  assert.match(hardeningMigration, /security definer/i);
+  assert.match(hardeningMigration, /function public\.copy_experiment_to_workspace/i);
+  assert.match(hardeningMigration, /security invoker/i);
+  assert.match(hardeningMigration, /select private\.copy_experiment_to_workspace_impl/i);
+  assert.match(hardeningMigration, /revoke all on function private\.copy_experiment_to_workspace_impl/i);
+  assert.match(hardeningMigration, /grant execute on function private\.copy_experiment_to_workspace_impl[^\n]*\n\s*to authenticated/i);
+  assert.match(hardeningMigration, /revoke all on function public\.copy_experiment_to_workspace/i);
+  assert.match(hardeningMigration, /grant execute on function public\.copy_experiment_to_workspace[^\n]*\n\s*to authenticated/i);
 });
