@@ -1,11 +1,11 @@
 {
   "schema": "vlab.terminal-report/1",
-  "outcome": "Critical mobile onboarding regression repaired and deployed",
-  "owner_impact": "Production contains the freeze fix and sign-in/create-account parity. This run verifies the repaired terminal notification path and the deployed Lab surface.",
-  "remaining_action": "After the terminal success notification, owner tests exactly three things on phone: normal scrolling, simulator gets past Starting simulator, and signed-out Sign in/Create account are peer actions.",
+  "outcome": "Production success reports now describe the deployed change",
+  "owner_impact": "Success notifications now put the owner-facing deployed change under What changed for you; build, deployment, exact-candidate propagation, and smoke facts stay under Technical evidence.",
+  "remaining_action": "No owner action is required. Future reports will state a concrete owner action here when one exists.",
   "technical_evidence": [
-    "Critical freeze fix removed the self-triggering registration MutationObserver loop.",
-    "Sign in and Create account now use the same button treatment.",
-    "Terminal success/failure reporting is unconditional for production runs and durable in issue #145."
+    "The fallback success report derives a semantic change summary from the deployed commit message.",
+    "Candidate-specific terminal-report overrides remain available when an owner follow-up must be reported.",
+    "Deployment, smoke, retries, timeouts, and completion gates are unchanged."
   ]
 }
