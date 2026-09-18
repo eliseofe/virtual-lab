@@ -53,7 +53,7 @@ test("#290 preserves copy and supervision as independent mechanisms", () => {
 });
 
 test("#290 closes the currently approved collaboration epic scope", () => {
-  assert.match(status, /#287[\s\S]*#288[\s\S]*#289[\s\S]*#290/);
+  assert.match(status, /#287–#290/);
   assert.doesNotMatch(roadmap, /\*\*Started and unfinished:\*\* #45/);
   assert.equal(report.schema, "vlab.terminal-report/2");
   assert.equal(report.next.kind, "scope_complete");
