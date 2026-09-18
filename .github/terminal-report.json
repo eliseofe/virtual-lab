@@ -1,12 +1,15 @@
 {
-  "schema": "vlab.terminal-report/1",
-  "outcome": "Copy readable Experiments into an independent owned workspace",
-  "owner_impact": "A Professor viewing a student's read-only Experiment can copy an exact saved revision into My Experiments. The new copy is private, independently editable and organisable, while the student's source remains unchanged. The registry preserves which source Experiment and revision the copy came from.",
-  "remaining_action": "No owner action is required. Next development task in the approved epic: #289 — explicit read-only Experiment sharing.",
+  "schema": "vlab.terminal-report/2",
+  "outcome": "Make every production report state the real next step",
+  "owner_impact": "Success emails can no longer say that nothing remains when an approved epic already has a known next ticket. Each deployed ticket must now report either the next ticket in plain language or that the approved scope is finished.",
+  "next": {
+    "kind": "scope_complete",
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "This workflow/reporting update is complete. The Lab remains live at https://eliseofe.github.io/virtual-lab/ and future ticket-completion reports will use the new two-outcome Next rule."
+  },
   "technical_evidence": [
-    "copy_experiment_to_workspace atomically copies the saved canonical Experiment payload and records immutable source provenance.",
-    "The public browser RPC is SECURITY INVOKER; privileged copy logic is confined to the non-exposed private schema with explicit caller/readability/revision checks.",
-    "The copy action uses the saved source revision, not unsaved local professor-side edits; the copied Experiment then has its own identity and revision lifecycle."
-  ],
-  "close_issue": 288
+    "Success reporting requires terminal-report v2 and rejects missing, stale or invalid report data instead of falling back.",
+    "Merge commits detect the candidate-specific report by comparing the deployed commit with its first parent."
+  ]
 }
