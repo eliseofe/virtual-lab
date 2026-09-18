@@ -51,7 +51,7 @@ It stores generic panel bindings by stable metric IDs with an independent optimi
 
 Immutable metadata for independent Experiments created from a readable non-owned source. It records the new Experiment, source Experiment identity/owner/title and exact source revision. The source ID is intentionally retained without a foreign key so later source deletion does not erase provenance.
 
-Authenticated users may read provenance for their own copies but cannot insert/update/delete provenance directly. The server-side `copy_experiment_to_workspace` operation creates the new private Experiment and provenance atomically after checking source visibility and exact revision.
+Authenticated users may read provenance for their own copies but cannot insert/update/delete provenance directly. The browser calls the public `copy_experiment_to_workspace` SECURITY INVOKER RPC; privileged atomic copy logic lives in the non-exposed `private.copy_experiment_to_workspace_impl` SECURITY DEFINER function, which performs explicit caller, readability, revision and destination checks before creating the new private Experiment and provenance.
 
 ### `capability_requests`
 
