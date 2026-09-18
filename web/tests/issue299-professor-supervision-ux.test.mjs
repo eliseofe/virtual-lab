@@ -5,6 +5,8 @@ import test from "node:test";
 const registry = readFileSync(new URL("../src/registry-ui-v3.js", import.meta.url), "utf8");
 const runtimeSpeed = readFileSync(new URL("../src/runtime-speed.js", import.meta.url), "utf8");
 const professorInbox = readFileSync(new URL("../src/professor-inbox.js", import.meta.url), "utf8");
+const workspaceShell = readFileSync(new URL("../src/workspace-shell.js", import.meta.url), "utf8");
+const reactChrome = readFileSync(new URL("../src/react-migration-root.tsx", import.meta.url), "utf8");
 const status = readFileSync(new URL("../../CURRENT_STATUS.md", import.meta.url), "utf8");
 const roadmap = readFileSync(new URL("../../ROADMAP.md", import.meta.url), "utf8");
 const report = JSON.parse(readFileSync(new URL("../../.github/terminal-report.json", import.meta.url), "utf8"));
@@ -33,11 +35,17 @@ test("#299 preserves supervised Experiment continuity across reload and refresh"
   assert.match(registry, /loadSupervisedExperimentList\(\)/);
 });
 
-test("#299 removes the duplicate supervision modal while keeping Professor administration separate", () => {
+test("#299 removes the duplicate supervision modal and separates Account from Professor administration", () => {
   assert.doesNotMatch(runtimeSpeed, /professor-supervision/);
   assert.match(runtimeSpeed, /professor-inbox/);
   assert.match(professorInbox, /Capability requests/);
   assert.doesNotMatch(professorInbox, /Student experiments/);
+  assert.match(workspaceShell, /utilityTarget === "professor" \? "Professor tools" : "Account"/);
+  assert.match(workspaceShell, /accountPanel\.style\.display = utilityTarget === "account"/);
+  assert.match(workspaceShell, /professorPanel\.style\.display = utilityTarget === "professor"/);
+  assert.match(reactChrome, /proxyClick\('#professor-menu'\)/);
+  assert.match(reactChrome, /data-vlab-nav="professor"/);
+  assert.match(reactChrome, /data-vlab-nav="account"/);
 });
 
 test("#299 leaves authorization semantics outside the UI restructuring", () => {
