@@ -27,7 +27,7 @@ test("#287 keeps supervised student Experiments outside My Experiments and read-
   assert.match(registry, /Professor supervision · Read-only/);
   assert.match(registry, /ui\.saveAsNew\.hidden = !user \|\| Boolean\(currentRemote && !owned\)/);
   assert.match(registry, /vlab:open-supervised-experiment/);
-  assert.match(registry, /Experiment not found or not available to this account/);
+  assert.match(registry, /Experiment not found in your library or not available to this account/);
   assert.doesNotMatch(registry, /\.eq\("id", id\)\s*\.eq\("owner_id", user\.id\)/);
 });
 
