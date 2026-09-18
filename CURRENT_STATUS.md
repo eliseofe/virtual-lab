@@ -14,14 +14,14 @@ The student self-registration and Getting started work is complete and productio
 
 OAuth authorization for AI clients is hosted inside the production Virtual Lab artifact at `/oauth/consent/` and shares the normal Lab browser session. The former standalone mock-sim site is historical infrastructure and is not part of the active product path once Supabase Auth points at the production Lab authorization route.
 
-The owner has now activated **#45 — Access, sharing, curation and Showcase** as the next substantial product epic for research supervision. The active design is deliberately small: Professor read-only visibility into student/researcher Experiments, copy-to-own-workspace, explicit read-only sharing with revocation, and separate Showcase curation.
+The owner has activated **#45 — Access, sharing, curation and Showcase** as the current product epic for research supervision. **#287 — Professor read-only supervision view** is complete and production-verified: Professor accounts can inspect/run student/researcher Experiments without mutating them, while student-to-student privacy remains enforced. The remaining active design is copy-to-own-workspace, explicit read-only sharing with revocation, and separate Showcase curation.
 
 Ongoing presentation refinement is tracked through **#273 — UI/UX refinement and visual polish from real use** and should remain evidence-driven rather than become a generic redesign lane.
 
 ## Immediate frontier
 
-1. Execute #45 in bounded slices, beginning with a separate Professor read-only view of student/researcher Experiments.
-2. Follow with copy-to-own-workspace and explicit read-only sharing/revocation as separate bounded work.
+1. Execute **#288 — Copy a readable Experiment into my workspace** as the next bounded #45 slice.
+2. Follow with explicit read-only sharing (#289) and revocation/boundary completion (#290) as separate bounded work.
 3. Continue real student/owner scientific use and turn concrete evidence into focused fixes.
 4. Use #273 only for observed UI/UX evidence rather than generic polishing.
 
