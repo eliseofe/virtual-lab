@@ -1,6 +1,6 @@
 # Experiment Registry Contract
 
-Status: **current production contract, 16 September 2026**.
+Status: **current production contract, 18 September 2026**.
 
 This document defines the Experiment-domain storage/synchronization boundary. Current project status is in `CURRENT_STATUS.md`; longer-term direction is in `ROADMAP.md`.
 
@@ -87,6 +87,14 @@ Current organization is deliberately shallow:
 An Experiment has exactly one owner and may belong to zero or one owner collection. Collections are organizational metadata, not filesystem paths.
 
 Study filesystem organization is a separate local-result concern and does not turn registry collections into nested directories.
+
+## Independent copies and provenance
+
+A readable non-owned Experiment may be copied into the authenticated user's own workspace. Copying creates a new private Experiment with a new Experiment identity and revision sequence; it never changes ownership or content of the source Experiment.
+
+The copy is created from one exact saved source revision. Its canonical artifacts plus compatible Experiment metadata are copied atomically, and immutable registry provenance records the source Experiment ID, source owner ID, source revision and source title at copy time. That provenance is metadata outside the scientific Experiment payload, so the current `vlab.registry-experiment/3` and `vlab.experiment-artifacts/3` contracts do not change.
+
+The copied Experiment is thereafter independent: source edits, loss of source visibility, or deletion of the source working Experiment do not mutate or remove the copy. Provenance deliberately retains the source identity even if that source record later disappears.
 
 ## Experiment lifecycle
 
