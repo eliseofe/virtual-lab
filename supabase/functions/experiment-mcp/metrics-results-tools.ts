@@ -15,8 +15,8 @@ import {
   pruneMetricFromPanels,
 } from './results-authoring.js'
 
-export const MCP_SERVER_VERSION = '3.0.1'
-export const MCP_INTERFACE_VERSION = '8'
+export const MCP_SERVER_VERSION = '3.1.0'
+export const MCP_INTERFACE_VERSION = '9'
 export const MCP_AUTHORING_CONTRACT = Object.freeze({
   ...BASE_AUTHORING_CONTRACT,
   contract_version: 'vlab.authoring/0.6',
@@ -62,9 +62,15 @@ function validationForRole(validation: any, role: 'student' | 'professor') {
   if (!unsupported) return validation
   return {
     ...validation,
-    unsupported_capability_behavior: role === 'professor'
-      ? { requestable: true, action: 'request_capability', capability_request_interface: 'vlab.capability-request/1', preserve_draft: true }
-      : { requestable: false, action: null, reason: 'student-role' },
+    unsupported_capability_behavior: {
+      requestable: true,
+      action: 'request_capability',
+      capability_request_interface: 'vlab.capability-request/2',
+      preserve_draft: true,
+      comprehensive_analysis_required: true,
+      submitter_role: role,
+      triage_authority: 'professor',
+    },
   }
 }
 
