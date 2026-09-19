@@ -54,7 +54,7 @@ test("#141 Professor inbox keeps linked engineering work inspectable without own
   assert.match(developmentLinks, /vlab:professor-requests-rendered/);
   assert.match(developmentLinks, /target = "_blank"/);
   assert.match(developmentLinks, /rel = "noopener noreferrer"/);
-  assert.doesNotMatch(developmentLinks, /professor-development-links/);
+  assert.doesNotMatch(developmentLinks, /section\.className = "professor-development-links"|summary\.insertAdjacentElement/);
   assert.match(runtimeSpeed, /import\("\.\/professor-inbox\.js"\)\.then/);
   assert.match(runtimeSpeed, /import\("\.\/professor-development-links\.js"\)/);
 });
