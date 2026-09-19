@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Professors can now generalize an existing unavailable candidate when later scientific evidence shows it is too narrow",
-  "owner_impact": "A candidate flagged by later overlapping science can now be broadened or refined directly in the Professor inbox without creating a second request. The stable request/candidate identity and all linked evidence remain attached, every Professor revision is audited, and fresh research-AI sessions immediately see the revised candidate. Generalization does not implement the capability and does not soften the authoring/compiler wall.",
+  "outcome": "The authoring wall now canonicalizes executable source into the Rust-accepted IR boundary before an Experiment can be treated as valid",
+  "owner_impact": "Ordinary Controller and Metrics aliases such as a local name for obs.neighbours or snapshot.agents remain natural to write, but they are lowered away before execution. The exact Controller pattern that previously passed MCP validation and then failed in Rust now compiles to Rust-valid canonical IR. Controller validation also requires an unconditional action return, preventing a zero-neighbour runtime crash from being certified as valid. No scientific capability was added and candidate capabilities remain unavailable.",
   "next": {
     "kind": "epic_continues",
     "issue": 371,
-    "text": "Next is #371, the fresh two-paper black-box acceptance. It will test from clean chats that supported science authors normally, unsupported science stays blocked, overlapping papers reuse/generalize one candidate, and genuinely absent needs create only the necessary new candidates. It has not started yet."
+    "text": "Next is #371, the fresh black-box blocking and two-paper acceptance rerun. It will retest the hard wall first, then candidate reuse/generalization across fresh paper sessions. It has not restarted yet."
   },
   "technical_evidence": [
-    "Professor generalization uses one explicit Professor-only RPC and keeps the original candidate/request key unchanged.",
-    "Each candidate revision records previous/generalized snapshots, Professor identity/time, and revision number in an append-only audit trail.",
-    "Evidence originally marked generalization_needed is preserved and may record the exact Professor revision that resolved it.",
-    "Fresh read_workspace discovery exposes generalization_revision/generalized_at for candidate capabilities and candidate contract deltas.",
-    "MCP server/interface are 3.13.0 / 17; capability-request interface remains vlab.capability-request/7; the exact nine-tool surface and authoring contract vlab.authoring/0.9 are unchanged.",
-    "No scientific capability, canonical implemented capability, parser/compiler/runtime behavior, CI/CD, retry/timeout, or development-workflow rule is changed."
+    "Browser and MCP Controller compilers are mirrored and lower neighbour-list aliases to canonical obs.neighbours IR.",
+    "Browser and MCP Metrics compilers are mirrored and lower snapshot.agents plus loop-agent aliases to Rust-executable canonical bindings.",
+    "Controller validation in both JavaScript and Rust now requires an unconditional top-level action return.",
+    "Regression coverage includes the exact production Controller pattern that exposed #380 and a basic syntax/mathematics matrix for Controller and Metrics.",
+    "All persisted source-changing MCP paths continue to use the shared authoring validator.",
+    "No scientific capability, candidate availability, MCP tool count, CI/CD rule, retry/timeout behavior, or development workflow changed."
   ],
-  "close_issue": 373
+  "close_issue": 380
 }

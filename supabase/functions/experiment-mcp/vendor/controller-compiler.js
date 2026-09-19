@@ -342,11 +342,10 @@ function checkStatements(body, scope) {
         locals: new Map(scope.locals),
         loopVariables: new Map([[statement.variable, "neighbour"]]),
       };
-      const nestedReturns = checkStatements(statement.body, nested);
+      checkStatements(statement.body, nested);
       for (const [name, type] of scope.locals) {
         if (nested.locals.has(name) && nested.locals.get(name) !== type) throw new ControllerCompileError("type", `loop changes '${name}' type`, statement.line);
       }
-      returnsAction ||= nestedReturns;
     } else if (statement.kind === "return") {
       const type = inferExpression(statement.value, scope);
       if (type !== "action") throw new ControllerCompileError("type", "step method must return a Motion/action");
@@ -354,6 +353,45 @@ function checkStatements(body, scope) {
     }
   }
   return returnsAction;
+}
+
+function lowerNeighbourIterableAliases(body, aliases = new Set()) {
+  const lowered = [];
+  for (const statement of body) {
+    if (statement.kind === "assign") {
+      const source = statement.value?.kind === "load" ? statement.value.path : null;
+      if (!statement.target.startsWith("self.") && (source === "obs.neighbours" || aliases.has(source))) {
+        aliases.add(statement.target);
+        continue;
+      }
+      aliases.delete(statement.target);
+      lowered.push(statement);
+      continue;
+    }
+
+    if (statement.kind === "aug_assign") {
+      aliases.delete(statement.target);
+      lowered.push(statement);
+      continue;
+    }
+
+    if (statement.kind === "for_each") {
+      const source = statement.iterable?.kind === "load" ? statement.iterable.path : null;
+      const nestedAliases = new Set(aliases);
+      nestedAliases.delete(statement.variable);
+      lowered.push({
+        ...statement,
+        iterable: source === "obs.neighbours" || aliases.has(source)
+          ? { kind: "load", path: "obs.neighbours", line: statement.iterable.line ?? statement.line }
+          : statement.iterable,
+        body: lowerNeighbourIterableAliases(statement.body, nestedAliases),
+      });
+      continue;
+    }
+
+    lowered.push(statement);
+  }
+  return lowered;
 }
 
 function parseClassState(lines, start, classIndent) {
@@ -411,6 +449,6 @@ export function compileController(source, options = {}) {
     entry: "step",
     parameters: Object.fromEntries(parameters),
     state: parsedState.state.map(({ name, type, initial }) => ({ name, type, initial })),
-    body: parsed.body,
+    body: lowerNeighbourIterableAliases(parsed.body),
   };
 }

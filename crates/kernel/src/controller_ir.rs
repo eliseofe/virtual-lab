@@ -158,7 +158,7 @@ fn validate_statements(
                 }
                 if loop_variable.is_some() { return Err(at_line(*line, "nested neighbour loops are not supported")); }
                 let mut nested = locals.clone();
-                returns |= validate_statements(body, parameters, state, &mut nested, Some(variable))?;
+                validate_statements(body, parameters, state, &mut nested, Some(variable))?;
             }
             Statement::Return { value, .. } => {
                 validate_expression(value, parameters, state, locals, loop_variable)?;
@@ -779,6 +779,22 @@ mod tests {
           "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Bad","entry":"step",
           "parameters":{},"state":[],
           "body":[{"kind":"return","value":{"kind":"load","path":"world.position"}}]
+        }"#;
+        assert!(IrControllerRuntime::from_json(invalid, "{}").is_err());
+    }
+
+    #[test]
+    fn loop_only_return_is_rejected_before_execution() {
+        let invalid = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"LoopOnly","entry":"step",
+          "parameters":{},"state":[],
+          "body":[
+            {"kind":"for_each","variable":"n","iterable":{"kind":"load","path":"obs.neighbours"},"body":[
+              {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+                {"kind":"const","value":1.0},{"kind":"const","value":0.0}
+              ]}}
+            ]}
+          ]
         }"#;
         assert!(IrControllerRuntime::from_json(invalid, "{}").is_err());
     }
