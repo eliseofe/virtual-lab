@@ -1160,4 +1160,42 @@ mod tests {
         assert!(IrControllerRuntime::from_json(invalid, r#"{"X":1.0}"#).is_err());
     }
 
+    #[test]
+    fn standard_scalar_math_intrinsics_use_native_f64_operations() {
+        fn unary(intrinsic: Intrinsic, input: f64) -> f64 {
+            let mut stack = vec![Value::Scalar(input)];
+            execute_intrinsic(intrinsic, &mut stack);
+            stack.pop().unwrap().scalar()
+        }
+        fn binary(intrinsic: Intrinsic, left: f64, right: f64) -> f64 {
+            let mut stack = vec![Value::Scalar(left), Value::Scalar(right)];
+            execute_intrinsic(intrinsic, &mut stack);
+            stack.pop().unwrap().scalar()
+        }
+
+        assert_eq!(unary(Intrinsic::Abs, -2.0), 2.0);
+        assert_eq!(unary(Intrinsic::Sqrt, 4.0), 2.0);
+        assert_eq!(unary(Intrinsic::Exp, 0.0), 1.0);
+        assert_eq!(unary(Intrinsic::Log, 1.0), 0.0);
+        assert_eq!(unary(Intrinsic::Sin, 0.0), 0.0);
+        assert_eq!(unary(Intrinsic::Cos, 0.0), 1.0);
+        assert_eq!(unary(Intrinsic::Tan, 0.0), 0.0);
+        assert_eq!(unary(Intrinsic::Asin, 0.0), 0.0);
+        assert_eq!(unary(Intrinsic::Acos, 1.0), 0.0);
+        assert_eq!(unary(Intrinsic::Atan, 0.0), 0.0);
+        assert!((binary(Intrinsic::Atan2, 1.0, 1.0) - std::f64::consts::FRAC_PI_4).abs() < 1e-12);
+        assert_eq!(unary(Intrinsic::Floor, 1.9), 1.0);
+        assert_eq!(unary(Intrinsic::Ceil, 1.1), 2.0);
+        assert_eq!(binary(Intrinsic::Pow, 2.0, 3.0), 8.0);
+        assert_eq!(binary(Intrinsic::Min, 2.0, 3.0), 2.0);
+        assert_eq!(binary(Intrinsic::Max, 2.0, 3.0), 3.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "controller Motion requires finite scalar arguments")]
+    fn non_finite_controller_action_fails_loudly() {
+        let mut stack = vec![Value::Scalar(f64::NAN), Value::Scalar(0.0)];
+        execute_intrinsic(Intrinsic::Motion, &mut stack);
+    }
+
 }
