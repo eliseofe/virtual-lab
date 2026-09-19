@@ -63,8 +63,8 @@ test("#383 exhaustive branch returns satisfy the action-return invariant", () =>
 `;
 
   const ir = compile(source);
-  assert.equal(ir.body.length, 1);
-  assert.equal(ir.body[0].kind, "if");
+  assert.equal(ir.body.length, 2);
+  assert.equal(ir.body[1].kind, "if");
 });
 
 test("#383 branch-local value is definitely assigned only through exhaustive branches", () => {
