@@ -33,9 +33,9 @@ For each substantial user-facing/deployable ticket:
 
 1. implement and test;
 2. deploy the exact candidate;
-3. follow only that exact candidate;
-4. while external work is pending, keep the chat visibly alive with meaningful updates roughly every 30 seconds; never deliberately stay silent for more than about 50 seconds while control is available;
-5. if the exact candidate is green, stop; one green is enough;
+3. follow only that exact candidate using bounded exact-run status checks;
+4. while it is pending, keep the chat visibly alive; pending checks must not inspect jobs/logs repeatedly;
+5. if the exact candidate is green, stop immediately; one green is terminal and no further Actions query is made;
 6. if it is red, diagnose, repair, and repeat with the repaired candidate;
 7. continue until green unless there is a real blocker or the owner tells you to stop.
 
@@ -55,6 +55,8 @@ If a failed candidate has materially degraded production and the last verified g
 ## Visible liveness rule
 
 Verification follows only the exact current candidate SHA/run needed for the active ticket. Never wait for repository-wide Actions state or unrelated activity.
+
+Pending verification is bounded. Repeated job/step/log polling is not a liveness mechanism; job/log inspection is used only after a terminal red result for diagnosis.
 
 While external work is pending and control is available, provide meaningful owner-visible progress roughly every 30 seconds and never deliberately remain silent for more than about 50 seconds.
 
