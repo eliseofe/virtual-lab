@@ -210,7 +210,8 @@ begin
         generalized_at = now(),
         updated_at = now()
     where request_id = p_request_id
-    returning to_jsonb(candidate_capabilities.*) into v_generalized;
+    returning * into v_capability;
+    v_generalized := to_jsonb(v_capability);
 
     update public.capability_requests
     set extension_domain = v_domain,
@@ -265,7 +266,8 @@ begin
         generalized_at = now(),
         updated_at = now()
     where request_id = p_request_id
-    returning to_jsonb(candidate_contract_deltas.*) into v_generalized;
+    returning * into v_delta;
+    v_generalized := to_jsonb(v_delta);
 
     update public.capability_requests
     set extension_name = v_delta_name,
