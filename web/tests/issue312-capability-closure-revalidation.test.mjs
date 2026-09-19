@@ -22,9 +22,9 @@ const tools = readFileSync(
 test("#312 durable resume/revalidation tools survive later role-symmetry evolution", () => {
   assert.equal((mcp.match(/server\.registerTool\(\s*['"]resume_capability_closure['"]/g) ?? []).length, 1);
   assert.equal((mcp.match(/server\.registerTool\(\s*['"]revalidate_capability_closure['"]/g) ?? []).length, 1);
-  assert.match(mcp, /shared_tool_count: \d+/);
-  assert.match(mcp, /student_tool_count: \d+/);
-  assert.match(mcp, /professor_tool_count: \d+/);
+  assert.match(mcp, /shared_tool_count: MCP_TOOL_COUNT/);
+  assert.match(mcp, /student_tool_count: MCP_TOOL_COUNT/);
+  assert.match(mcp, /professor_tool_count: MCP_TOOL_COUNT/);
   assert.equal((mcp.match(/server\.registerTool\(\s*['"]request_capability['"]/g) ?? []).length, 1);
 });
 
