@@ -67,12 +67,12 @@ Production endpoint:
 
 Current deployed contract:
 
-- MCP server `3.9.0`
-- interface `13`
-- authoring `vlab.authoring/0.7`
+- MCP server `3.10.0`
+- interface `14`
+- authoring `vlab.authoring/0.8`
 - capability requests `vlab.capability-request/6`
 
-Shared experiment-domain tools include:
+The exact shared experiment-domain tool surface contains 9 tools:
 
 - `read_workspace`
 - `manage_collection`
