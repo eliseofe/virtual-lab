@@ -1,18 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Unsupported science now follows one durable closure path for Student and Professor research AI",
-  "owner_impact": "When the intended Experiment requires semantics outside the current Lab contract, research AI preserves the whole blocked Experiment, reuses or creates the appropriate durable extension request, reports the task as blocked, and later resumes the same Experiment through whole-Experiment revalidation. Students can resume and revalidate their own blocked Experiments; Professors retain supervision access.",
+  "outcome": "Professor extension requests are now compact, science-oriented decision cards",
+  "owner_impact": "The Professor inbox foregrounds the scientific request name, six-class classification, lifecycle status, concise scientific requirement, Professor note and Approve/Decline actions. Linked papers and Experiments stay attached to one durable request card and are inspectable under Evidence and details. Engineering links are also moved into that disclosure instead of occupying the main decision surface.",
   "next": {
     "kind": "epic_continues",
-    "issue": 359,
-    "text": "Next is #359, a bounded cleanup of the Professor extension inbox so scientific requests are easier to scan while full evidence remains available. It has not started yet."
+    "issue": 367,
+    "text": "Next is #367, the exact research-AI connector surface cutover: derive the required current tool set, remove obsolete compatibility residue, and verify the actual MCP tools/list and reported counts before fresh-chat acceptance resumes."
   },
   "technical_evidence": [
-    "vlab.capability-request/6 advertises the durable blocked-Experiment continuation in workspace and validation surfaces.",
-    "request_capability returns explicit blocked-state resume/revalidation continuation.",
-    "Student and Professor sessions share request_capability, resume_capability_closure, and revalidate_capability_closure; Student database access remains owner-scoped while Professor supervision remains available.",
-    "Whole-Experiment revalidation is the only transition to unblocked and still requires zero unsupported requirements and zero unresolved scientific ambiguity.",
-    "The six request classes, Professor triage authority, owner implementation authorization, and simulator scientific capabilities are unchanged."
+    "Professor request cards are rendered once per durable capability_requests row; reused capability_request_evidence rows are nested inside the card rather than rendered as additional cards.",
+    "Detailed closure evidence is loaded from capability_request_evidence, capability_closure_analyses and blocked_experiment_drafts and remains collapsed by default.",
+    "Professor note plus Approve/Decline still call the existing triage_extension_request lifecycle RPC.",
+    "The Professor-only profile guard remains unchanged; Student users do not receive the triage surface.",
+    "Historical canonical-capability editor UI and the global Development block were removed from the default decision surface without changing request or implementation semantics."
   ],
-  "close_issue": 360
+  "close_issue": 359
 }
