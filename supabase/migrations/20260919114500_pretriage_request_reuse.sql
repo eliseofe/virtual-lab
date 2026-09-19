@@ -210,6 +210,11 @@ with check (
   linked_by = (select auth.uid())
   and exists (
     select 1
+    from public.active_extension_request_catalog c
+    where c.request_id = capability_request_evidence.request_id
+  )
+  and exists (
+    select 1
     from public.capability_closure_analyses a
     join public.blocked_experiment_drafts d
       on d.id = a.blocked_experiment_id
