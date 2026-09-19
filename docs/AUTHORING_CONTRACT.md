@@ -2,7 +2,7 @@
 
 Status: **current deployed contract, 19 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.9`, exposed by production `experiment-mcp` server `3.11.0`, interface `15`.
+Current machine-readable contract: `vlab.authoring/0.9`, exposed by production `experiment-mcp` server `3.12.0`, interface `16`.
 
 ## Canonical Experiment artifacts
 
@@ -138,13 +138,17 @@ No arbitrary plotting code is accepted through the MCP contract.
 
 ## Classified extension requests
 
-Student and Professor research-AI sessions use `vlab.capability-request/6`. All six owner-approved request classes may be submitted to the durable Professor-visible workflow:
+Student and Professor research-AI sessions use `vlab.capability-request/7`. All six owner-approved request classes may be submitted to the durable Professor-visible workflow:
 
 `semantic_capability | authoring_language | runtime_configuration | artifact_workflow | implementation_optimization | security_boundary`
 
 Professor alone approves/declines. The six-class taxonomy remains the classification layer; semantic canonical identity is resolved later during trusted developer generalization.
 
-No-ID research-AI discovery includes the implemented canonical capability registry plus a sanitized catalog of active `requested | approved | in_progress` extension requests. Research AI reuses an active request whenever its scientific/model meaning can reasonably cover a new requirement. A new request represents a clearly and materially distinct scientific/model ability and is stated primarily in scientific/model language, using source-publication terminology where useful. Multiple papers/blocked Experiments may therefore attach evidence to one request.
+No-ID research-AI discovery keeps four concepts separate: the stable authoring/platform contract; implemented canonical capabilities with their concrete authoring surfaces; unavailable candidate capabilities; and unavailable candidate contract deltas. Implemented support alone drives authoring acceptance.
+
+A new semantic request is born as a complete candidate capability: stable key/domain/name, scientific/model definition, target artifact/runtime domain, and the concrete authoring surfaces needed to express it. A request in any of the other five classes is born as a candidate contract delta against a precise path in the stable authoring/platform contract. Candidate availability is explicitly unavailable; creating or reusing one never changes compiler validation.
+
+Research AI reuses a candidate when it covers a new requirement and attaches the new paper/Experiment evidence to the same durable request. When a candidate is plausibly related but too narrow or ambiguous, research AI attaches `generalization_needed` evidence to that same candidate for Professor action rather than creating a parallel request. Only a requirement genuinely absent from both implemented and candidate surfaces creates one new candidate/request. Candidate identity survives requested, approved, declined and in-progress lifecycle states until explicitly superseded by implementation or owner-governed resolution.
 
 Validation diagnostics can advertise the relevant request class when the failure is genuinely an extension need. Ordinary type/validation errors remain ordinary validation evidence.
 
