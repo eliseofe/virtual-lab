@@ -127,7 +127,12 @@ class ExprParser {
     return { kind: "binary", op: "**", left, right: this.unary(), line: this.line };
   }
   primary() {
-    if (this.peek("number")) return { kind: "literal", value: Number(this.take("number").value), line: this.line };
+    if (this.peek("number")) {
+      const token = this.take("number");
+      const value = Number(token.value);
+      if (!Number.isFinite(value)) throw new InitializerCompileError("numeric constants must be finite", this.line);
+      return { kind: "literal", value, line: this.line };
+    }
     if (this.peek("string")) return { kind: "literal", value: this.take("string").value, line: this.line };
     if (this.peek("(")) { this.take("("); const expr = this.comparison(); this.take(")"); return expr; }
     if (!this.peek("ident")) throw new InitializerCompileError(`expected expression, found '${this.current().value || "end"}'`, this.line);
