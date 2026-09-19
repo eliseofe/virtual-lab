@@ -12,6 +12,10 @@ const mcp = readFileSync(
   new URL("../../supabase/functions/experiment-mcp/index.ts", import.meta.url),
   "utf8",
 );
+const authoring = readFileSync(
+  new URL("../../supabase/functions/experiment-mcp/authoring.js", import.meta.url),
+  "utf8",
+);
 const versions = readFileSync(
   new URL("../../supabase/functions/experiment-mcp/metrics-results-tools.ts", import.meta.url),
   "utf8",
@@ -33,7 +37,7 @@ test("#374 candidates are separately discoverable and unavailable to compiler va
   assert.match(mcp, /candidate_capabilities: candidateCapabilities \?\? \[\]/);
   assert.match(mcp, /candidate_contract_deltas: candidateContractDeltas \?\? \[\]/);
   assert.doesNotMatch(mcp, /active_extension_requests: activeExtensionRequests/);
-  assert.doesNotMatch(mcp, /validateExperimentArtifacts[\s\S]*candidate_capabilities/);
+  assert.doesNotMatch(authoring, /candidate_capabilities|candidate_contract_deltas/);
 
   const fixture = {
     config_source: "N = 1\nARENA_SIZE = 10.0\nCONTROL_DT = 0.1\nSENSOR_NOISE = 0.0\nEXPERIMENT_DURATION = 1.0\nINTERACTION_RADIUS = 2.0\nMAX_FORWARD_SPEED = 1.0\nMAX_ANGULAR_SPEED = 1.0\n",
