@@ -37,6 +37,23 @@ Private controller state belongs to each controller instance and is modified by 
 
 The current approved-but-not-implementation-authorized request for controller stochasticity must, if later authorized, expose simulator-owned deterministic/reproducible random operations; it must not introduce arbitrary host RNG.
 
+## Minimal syntax and mathematics baseline
+
+The controller language intentionally provides a small ordinary programming/mathematical core so research papers do not need new language requests for routine expression mechanics.
+
+The current baseline includes:
+- scalar and 2-D vector locals;
+- assignment and `+=`;
+- unary negation and parenthesized `+ - * /` arithmetic;
+- `Vec2`, `dot`, `perpendicular`, `norm` and `pow` (including ordinary exponentiation through `pow(base, exponent)`);
+- neighbour iteration, including a normal local alias such as `neighbours = obs.neighbours; for n in neighbours:`;
+- declared private scalar controller state;
+- `Motion(forward, turning)`.
+
+Source convenience does not widen runtime semantics. Collection aliases are lowered to the canonical Rust-executable IR vocabulary before persistence/execution, and the emitted IR is regression-tested against the Rust runtime boundary.
+
+A Controller must also contain an unconditional top-level action return. A return that exists only inside a neighbour loop is not sufficient because the loop may be empty.
+
 ## Compilation model
 
 ```text
