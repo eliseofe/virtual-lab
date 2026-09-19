@@ -18,77 +18,79 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.8",
-  experiment_interface_version: "8",
+  contract_version: "vlab.authoring/0.9",
+  experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
   invalid_write_policy: "reject",
   content_policy: {
     includes_scientific_models: false,
     includes_reference_experiments: false,
-    purpose: "Expose only simulator-owned syntax, types, capabilities, runtime requirements, diagnostics, and metric measurement interfaces. Experiment science is authored outside the contract."
+    purpose: "Expose the stable authoring/compiler skeleton, runtime invariants, diagnostics, and security boundary. Extensible scientific/product abilities and their concrete authoring surfaces live in the capability registry."
   },
-  runtime_contract: RUNTIME_CONTRACT,
+  runtime_contract: {
+    version: RUNTIME_CONTRACT.version,
+    simulator_constants: RUNTIME_CONTRACT.simulator_constants,
+    required_configuration: Object.freeze({
+      N: RUNTIME_CONTRACT.required_configuration.N,
+      CONTROL_DT: RUNTIME_CONTRACT.required_configuration.CONTROL_DT,
+      EXPERIMENT_DURATION: RUNTIME_CONTRACT.required_configuration.EXPERIMENT_DURATION,
+    }),
+    capability_parameter_policy: "Additional required runtime/configuration symbols are advertised by implemented capability authoring surfaces rather than frozen into the stable language contract.",
+  },
   artifacts: {
     configuration: {
       compiled_version: "vlab.config/0.2",
       syntax: "Restricted Python-like top-level NAME = value assignments. Values may be numeric/string/True/False/None literals or aliases to earlier parameters.",
-      runtime_requirements: RUNTIME_CONTRACT.required_configuration,
-      parameter_policy: "Configuration names beyond the simulator-owned runtime requirements are experiment-defined. Finite numeric values are exposed to controller and metric compilers as scalar parameters; the contract does not prescribe model-specific scientific parameter names or values."
+      core_runtime_requirements: ["N", "CONTROL_DT", "EXPERIMENT_DURATION"],
+      parameter_policy: "Configuration names beyond the stable runtime requirements are experiment-defined or capability-owned. Implemented capability bindings advertise any additional simulator-owned configuration symbols."
     },
     initialization: {
       compiled_version: "vlab.initializer-state/0.2",
-      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and approved intrinsics. It may additionally define the optional static Environment function environmental_scalar(x, y, config).",
+      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Additional callable/member surfaces and optional entries are capability-owned.",
       entry: "initialize(config, rng, place)",
       simulator_owned_inputs: ["config", "rng", "place", "SEED"],
-      intrinsics: ["sqrt", "ceil", "floor", "abs", "max", "min", "range", "rng.uniform", "place"],
+      language_intrinsics: ["sqrt", "ceil", "floor", "abs", "max", "min", "range"],
       constants: ["TAU", "SQRT3_OVER_2"],
-      environment: {
-        capability: "environment.static_scalar_field",
-        optional_entry: "environmental_scalar(x, y, config)",
-        syntax: "A single pure `return <scalar expression>` body. The expression may use x, y, finite numeric config parameters, TAU, SQRT3_OVER_2, and the approved pure scalar intrinsics.",
-        intrinsics: ["sqrt", "abs", "sin", "cos", "exp", "pow", "min", "max"],
-        semantics: "Defines a deterministic static scalar field over world position. The simulator samples this field locally; it does not derive or expose a spatial gradient.",
-        artifact_policy: "This is a capability of the required Initialization artifact."
-      }
+      capability_resolution: "Capability-backed initializer calls, member access and optional entries are authorable only when an implemented capability advertises the corresponding Initialization surface."
     },
     controller: {
       language: "python-vlab/0.1",
       ir_schema: "vlab.controller-ir/0.1",
-      syntax: "Restricted Python-compatible class syntax: class Name(Agent), optional scalar class-state declarations, and def step(self, obs). Supports assignments, +=, arithmetic, iteration over obs.neighbours and return Motion(...).",
+      syntax: "Restricted Python-compatible class syntax: class Name(Agent), optional capability-backed class state declarations, and def step(self, obs). Supports assignments, +=, arithmetic, iteration over capability-backed iterables, and return of capability-backed actions.",
       entry: "step(self, obs)",
-      observations: {
-        "obs.heading": "vec2",
-        "obs.neighbours": "sequence<neighbour>",
-        "neighbour.relative_position": "vec2",
-        "obs.environmental_scalar": "scalar when Initialization defines environmental_scalar(x, y, config)"
+      language_intrinsics: {
+        Vec2: ["scalar", "scalar"],
+        dot: ["vec2", "vec2"],
+        perpendicular: ["vec2"],
+        norm: ["vec2"],
+        pow: ["scalar", "scalar"]
       },
-      actions: { Motion: { arguments: ["forward: scalar", "turning: scalar"], result: "action" } },
-      intrinsics: { Vec2: ["scalar", "scalar"], dot: ["vec2", "vec2"], perpendicular: ["vec2"], norm: ["vec2"], pow: ["scalar", "scalar"] },
-      forbidden_roots: ["random", "rng", "seed", "world", "simulator", "environment", "agents", "filesystem", "network"]
+      capability_resolution: "Observation fields, neighbour fields, private state and action constructors are resolved from implemented capability authoring surfaces. A surface absent from the implemented registry is rejected.",
+      security_boundary: {
+        forbidden_host_roots: ["filesystem", "network"]
+      }
     },
     metrics: {
       language: METRICS_LANGUAGE,
       ir_schema: METRICS_IR_SCHEMA,
       required: true,
       empty_content_valid: true,
-      syntax: "Zero or more @metric(...) declarations, each immediately followed by def name(snapshot): and a constrained read-only scalar computation. Multiple metric definitions live in this single compulsory Metrics artifact.",
-      declaration: "@metric(id=\"stable.id\", name=\"Display name\", unit=None|\"unit\", sampling=every(<seconds>)|final())",
-      sampling: {
-        periodic: "every(seconds) where seconds is finite and positive; runtime integration in #195.2 will require exact schedulability against simulator time steps",
-        final: "final() evaluates only at run completion/finalization"
-      },
+      syntax: "Zero or more @metric(...) declarations, each immediately followed by def name(snapshot): and a constrained read-only scalar computation. Snapshot fields and sampling constructors are capability-owned.",
+      declaration: "@metric(id=\"stable.id\", name=\"Display name\", unit=None|\"unit\", sampling=<implemented sampling constructor>)",
       measurement_phase: {
         id: METRIC_MEASUREMENT_PHASE,
         semantics: "Observe the canonical physical state after one physics integration update and periodic wrapping, at the resulting scientific_time. This freezes the already-existing kernel MetricRuntime hook rather than introducing a new timing convention."
       },
       observation: {
         mode: "read-only-global-snapshot",
-        fields: ["snapshot.scientific_time", "snapshot.agent_count", "snapshot.agents[].position", "snapshot.agents[].heading", "snapshot.agents[].heading_angle"],
+        fields_from_capability_registry: true,
         mutation: false
       },
-      intrinsics: ["Vec2", "dot", "norm", "abs", "sqrt", "pow", "min", "max"],
-      forbidden_roots: ["random", "rng", "seed", "controller", "world", "simulator", "environment", "filesystem", "network", "actions", "actuators"]
+      language_intrinsics: ["Vec2", "dot", "norm", "abs", "sqrt", "pow", "min", "max"],
+      security_boundary: {
+        forbidden_host_roots: ["filesystem", "network"]
+      }
     }
   },
   artifact_collection: {
@@ -97,7 +99,20 @@ export const AUTHORING_CONTRACT = Object.freeze({
     required_fields: ["id", "type", "label", "format", "order", "content"],
     canonical_input: "The ordered typed artifacts[] array is the only Experiment-authoring input. All four compulsory core artifact IDs must be supplied explicitly; an empty Metrics artifact is valid."
   },
-  canonical_capability_bindings: CANONICAL_CAPABILITY_BINDINGS,
+  capability_resolution: {
+    authority: "capability_registry",
+    authoring_surface_field: "authoring_surfaces",
+    implemented_only: true,
+    unregistered_surface_policy: "reject",
+    candidate_surface_policy: "not_authorable",
+    principle: "The authoring contract defines how programs are written. The capability registry defines which extensible abilities and concrete authoring surfaces currently exist."
+  },
+  artifact_execution: {
+    lifecycle_hooks: ["setup", "initialize", "control", "measure", "finalize"],
+    optional_passive_allowed: true,
+    optional_executable_registered_types: [],
+    unsupported_optional_executable_request_class: "artifact_workflow"
+  },
   diagnostic_model: {
     classes: [
       "semantic_capability",
