@@ -101,8 +101,15 @@ export const AUTHORING_CONTRACT = Object.freeze({
       ir_schema: METRICS_IR_SCHEMA,
       required: true,
       empty_content_valid: true,
-      syntax: "Zero or more @metric(...) declarations, each immediately followed by def name(snapshot): and a constrained read-only scalar computation. Snapshot fields and sampling constructors are capability-owned.",
+      syntax: "Zero or more @metric(...) declarations, each immediately followed by def name(snapshot): and a constrained read-only typed computation. Supports scalar/vector/boolean expressions, assignments, +=, arithmetic, scalar comparisons, boolean composition, if/elif/else, bounded iteration over capability-backed snapshot collections, and scalar returns. Snapshot fields and sampling constructors are capability-owned.",
       declaration: "@metric(id=\"stable.id\", name=\"Display name\", unit=None|\"unit\", sampling=<implemented sampling constructor>)",
+      control_flow: {
+        boolean_literals: ["True", "False"],
+        comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
+        boolean_operators: ["and", "or", "not"],
+        conditionals: ["if", "elif", "else"],
+        iteration: "for ... in capability-backed snapshot collection"
+      },
       measurement_phase: {
         id: METRIC_MEASUREMENT_PHASE,
         semantics: "Observe the canonical physical state after one physics integration update and periodic wrapping, at the resulting scientific_time. This freezes the already-existing kernel MetricRuntime hook rather than introducing a new timing convention."
