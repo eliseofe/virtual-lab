@@ -378,7 +378,7 @@ async function loadRequestEvidence(requestRows) {
   if (blockedExperimentIds.length > 0) {
     const { data, error } = await supabase
       .from("blocked_experiment_drafts")
-      .select("id, title, description, source_context, publication_identifier, publication_title, origin_experiment_revision, created_at")
+      .select("id, title, description, source_context, publication_identifier, publication_title, created_at")
       .in("id", blockedExperimentIds);
     if (error) throw error;
     sources = data ?? [];
@@ -409,7 +409,7 @@ async function loadRequests() {
 
   const requestResult = await supabase
     .from("capability_requests")
-    .select("id, requester_id, origin_experiment_id, origin_experiment_revision, draft_title, draft_description, draft_artifacts, capability_domain, capability_name, context, requested_artifact_type, requested_lifecycle_hook, status, professor_notes, reviewed_by, reviewed_at, created_at, updated_at, request_class, extension_key, extension_domain, extension_name, extension_definition, publication_identifier, publication_title")
+    .select("id, draft_title, draft_description, draft_artifacts, capability_domain, capability_name, context, requested_artifact_type, requested_lifecycle_hook, status, professor_notes, reviewed_at, created_at, request_class, extension_domain, extension_name, extension_definition, publication_identifier, publication_title")
     .order("created_at", { ascending: false });
 
   ui.refresh.disabled = false;
