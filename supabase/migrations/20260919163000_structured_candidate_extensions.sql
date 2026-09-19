@@ -397,7 +397,8 @@ begin
         'novelty_statement', btrim(v_request ->> 'novelty_statement'),
         'requirement_keys', v_request -> 'requirement_keys',
         'context', coalesce(v_request ->> 'context', ''),
-        'requested_artifact_type', btrim(v_spec ->> 'target_artifact')
+        'requested_artifact_type', btrim(v_spec ->> 'target_artifact'),
+        'requested_lifecycle_hook', nullif(btrim(v_request ->> 'requested_lifecycle_hook'), '')
       ));
     elsif v_class in (
       'authoring_language',
@@ -427,7 +428,8 @@ begin
         'extension_definition', btrim(v_spec ->> 'requested_change'),
         'novelty_statement', btrim(v_request ->> 'novelty_statement'),
         'requirement_keys', v_request -> 'requirement_keys',
-        'context', coalesce(v_request ->> 'context', '')
+        'context', coalesce(v_request ->> 'context', ''),
+        'requested_lifecycle_hook', nullif(btrim(v_request ->> 'requested_lifecycle_hook'), '')
       ));
     else
       raise exception 'A new request needs one valid request_class.';
