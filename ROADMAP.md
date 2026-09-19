@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. Finish #58's capability-request closed loop before implementing scientific capabilities. The two-paper acceptance exposed duplicate request creation despite #361; #376 restored a clean baseline and #375 completed the behavior-preserving authoring/capability separation. #374 is the current structured-candidate repair. After it, #373 lets the Professor generalize an existing candidate when later evidence shows it is too narrow, then #371 repeats the fresh two-paper black-box acceptance. #325/#326 remain paused until that chain finishes.
+1. Finish #58's capability-request closed loop before implementing scientific capabilities. The two-paper acceptance exposed duplicate request creation despite #361; #376 restored a clean baseline and #375 completed the behavior-preserving authoring/capability separation. #374 is complete. #373 is the current Professor-generalization repair: later evidence can broaden/refine the same unavailable candidate without creating another request. Then #371 repeats the fresh two-paper black-box acceptance. #325/#326 remain paused until that chain finishes.
 2. Treat the #348 request baseline as intentionally empty. RNG/controller stochasticity and heterogeneous initialization/state are still missing capabilities, not implemented features or active approved requests; if fresh acceptance rediscovers them, they must re-enter through the normal typed request/Professor-triage path.
 3. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
 4. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.

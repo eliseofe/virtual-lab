@@ -10,8 +10,8 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.12.0`
-- interface: `16`
+- MCP server: `3.13.0`
+- interface: `17`
 - authoring contract: `vlab.authoring/0.9`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
 - registry schema: `vlab.registry-experiment/3`
@@ -127,6 +127,8 @@ Each clear request is classified as exactly one of:
 
 All six classes may reach Professor triage; none is automatically rejected. Minimal publication identity is stored separately from research reasoning. Semantic requests are born as complete candidate capabilities, including the concrete authoring surfaces needed to express them. The other five classes are born as candidate contract deltas against precise stable-contract paths. A covering candidate collects new evidence without another request row; a related but too-narrow candidate collects `generalization_needed` evidence for Professor action; only a genuinely absent need creates one new candidate/request. Declined candidates remain discoverable historical candidate identity until explicitly superseded.
 
+When later evidence shows a candidate is related but too narrow, the Professor can generalize that same unavailable candidate in the Lab inbox. The stable request/candidate key and all linked papers/blocked Experiments stay attached. The revision is audit-recorded, and evidence originally marked `generalization_needed` remains historically marked while recording the Professor revision that resolved it. Generalization does not change request lifecycle, canonical implemented capability truth, compiler acceptance, or implementation authorization. Fresh `read_workspace` discovery exposes the revised candidate plus its `generalization_revision` and `generalized_at` metadata.
+
 Professor approval accepts the request into developer design/queue. It does not implement the capability and does not itself create canonical semantic truth. Canonical semantic reconciliation happens later in the trusted developer-generalization step.
 
 Lifecycle-hook vocabulary remains:
@@ -165,4 +167,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 versions the connector to server `3.12.0`, interface `16`, request interface `vlab.capability-request/7`, adding structured unavailable candidate capabilities and contract deltas without changing `vlab.authoring/0.9` or the nine-tool surface.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 versions the connector to server `3.13.0`, interface `17`, request interface `vlab.capability-request/7`, adding Professor-controlled candidate generalization metadata without changing `vlab.authoring/0.9` or the nine-tool surface.

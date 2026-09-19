@@ -5,10 +5,10 @@ import test from "node:test";
 const inbox = readFileSync(new URL("../src/professor-inbox.js", import.meta.url), "utf8");
 
 test("#359 keeps the default Professor card compact and science-oriented", () => {
-  assert.match(inbox, /title\.textContent = request\.extension_name \|\| request\.capability_name/);
+  assert.match(inbox, /title\.textContent = candidateName\(request\)/);
   assert.match(inbox, /REQUEST_CLASS_LABELS\[request\.request_class\]/);
   assert.match(inbox, /status\.textContent = request\.status\.replaceAll/);
-  assert.match(inbox, /definition\.textContent = request\.extension_definition/);
+  assert.match(inbox, /definition\.textContent = candidateDefinition\(request\)/);
   assert.match(inbox, /Professor note/);
   assert.match(inbox, /approve\.textContent = "Approve"/);
   assert.match(inbox, /decline\.textContent = "Decline"/);

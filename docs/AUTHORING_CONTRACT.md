@@ -2,7 +2,7 @@
 
 Status: **current deployed contract, 19 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.9`, exposed by production `experiment-mcp` server `3.12.0`, interface `16`.
+Current machine-readable contract: `vlab.authoring/0.9`, exposed by production `experiment-mcp` server `3.13.0`, interface `17`.
 
 ## Canonical Experiment artifacts
 

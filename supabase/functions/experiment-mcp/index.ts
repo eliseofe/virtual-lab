@@ -331,7 +331,7 @@ function registerExperimentTools(
 
       const { data: candidateCapabilities, error: candidateCapabilitiesError } = await supabase
         .from('candidate_capabilities')
-        .select('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, request_created_at, request_updated_at')
+        .select('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at')
         .eq('availability', 'candidate_unavailable')
         .order('request_updated_at', { ascending: false })
       if (candidateCapabilitiesError) {
@@ -340,7 +340,7 @@ function registerExperimentTools(
 
       const { data: candidateContractDeltas, error: candidateContractDeltasError } = await supabase
         .from('candidate_contract_deltas')
-        .select('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, request_created_at, request_updated_at')
+        .select('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at')
         .eq('availability', 'candidate_unavailable')
         .order('request_updated_at', { ascending: false })
       if (candidateContractDeltasError) {

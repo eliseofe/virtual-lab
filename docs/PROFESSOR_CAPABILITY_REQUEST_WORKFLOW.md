@@ -127,6 +127,14 @@ Before submission, research AI compares each clear unsupported requirement again
 
 Candidate identity persists through `requested`, `approved`, `declined` and `in_progress` states while remaining unavailable to validation. Implementation or an explicit owner-governed resolution may supersede the candidate. The blocked Experiment, closure analysis, requirement keys and publication remain linked as evidence beneath the durable candidate/request identity.
 
+## Professor candidate generalization
+
+When linked evidence is marked `generalization_needed`, the Professor inbox exposes an explicit **Generalize candidate** action. The Professor may broaden or refine the candidate scientific/model definition and structured authoring surfaces, or the structured contract-delta target/change, while keeping the stable candidate/request key unchanged.
+
+Each Professor revision is append-only audited with the previous and generalized candidate snapshots. The Professor may explicitly state that the revision covers the currently flagged generalization evidence; those evidence rows keep their original `generalization_needed` relationship and record the resolving revision rather than being rewritten. Fresh research-AI discovery immediately sees the generalized candidate.
+
+Candidate generalization is separate from Approve/Decline review, developer software generalization, owner implementation authorization, and implementation. The generalized candidate remains `candidate_unavailable` and does not alter compiler/runtime behavior.
+
 Current lifecycle-hook vocabulary exposed by the request path includes:
 
 `setup | initialize | control | measure | finalize`
