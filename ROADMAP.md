@@ -33,9 +33,9 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **Complete active epic #382 — Bare-bones scientific authoring language completeness.** Sequence: #383 Controller control flow/comparisons/booleans → #384 standard scientific mathematics/exponentiation → #385 Metrics control flow/comparisons → #386 minimal language acceptance plus Constant Bearing closure revalidation.
-2. Resume #371 fresh blocking/two-paper acceptance only after #386 is green. The current Constant Bearing closure should then retain only genuinely scientific capability blockers rather than generic syntax/math gaps.
-3. Treat the #348 request baseline as intentionally empty. RNG/controller stochasticity and heterogeneous initialization/state are still missing capabilities, not implemented features or active approved requests; if fresh acceptance rediscovers them, they must re-enter through the normal typed request/Professor-triage path.
+1. **#382 — Bare-bones scientific authoring language completeness is complete.** #383–#386 establish bounded Controller/Metrics control flow, standard scientific mathematics/exponentiation, compiler/runtime parity, and generic acceptance without widening scientific capabilities.
+2. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn. The previous Constant Bearing closure/request/candidate state has been reset; its live Experiment remains available for a fresh retry in the existing research-AI chat against the completed language substrate.
+3. Treat the capability-request queue as intentionally clean at this point. RNG/controller stochasticity, heterogeneous initialization/state, and any future Constant Bearing scientific gaps are not implemented features or active approved requests; if fresh acceptance rediscovers them, they must re-enter through the normal typed request/Professor-triage path.
 4. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
 5. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
 6. Turn concrete evidence from use into focused fixes; do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
