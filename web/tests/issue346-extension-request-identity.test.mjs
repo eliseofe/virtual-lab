@@ -65,14 +65,13 @@ test("#346 stores publication identity separately and makes canonical provenance
   assert.match(migration, /One request record belongs to one source publication/i);
 });
 
-test("#346 Professor triage creates or binds canonical semantic identity while classes 2-6 remain typed requests", () => {
-  assert.match(inbox, /list_canonical_capability_registry/);
+test("#346 typed request identity remains Professor-triaged after later decision-only UI cleanup", () => {
   assert.match(inbox, /triage_extension_request/);
-  assert.match(inbox, /Create new canonical capability/);
-  assert.match(inbox, /Bind existing:/);
-  assert.match(inbox, /All six request classes remain visible for Professor triage/);
+  assert.match(inbox, /REQUEST_CLASS_LABELS/);
+  assert.match(inbox, /approve\.textContent = "Approve"/);
+  assert.match(inbox, /decline\.textContent = "Decline"/);
+  assert.doesNotMatch(inbox, /Create new canonical capability|Bind existing:|list_canonical_capability_registry/);
   assert.match(migration, /Only a Professor may triage extension requests/i);
-  assert.match(migration, /Only semantic-capability requests may bind or create canonical capability identity/i);
 });
 
 test("#346 preserves Student submission and Professor-only triage", () => {
