@@ -675,7 +675,7 @@ function registerExperimentTools(
     {
       title: 'Resume a durable blocked Experiment capability closure',
       description:
-        'Student/Professor research-AI action. Reopen one visible durable blocked Experiment without relying on chat history. A Student resumes their own blocked Experiment; a Professor may also resume a visible blocked Experiment for supervision. Return the preserved publication identity, scientific draft/context, complete ordered closure-analysis history, and linked classified extension requests with their lifecycle and canonical-capability bindings. Use this before whole-Experiment revalidation.',
+        'Student/Professor research-AI action. Reopen one visible durable blocked Experiment without relying on chat history. A Student resumes their own blocked Experiment; a Professor may also resume a visible blocked Experiment for supervision. Return the preserved publication identity, scientific draft/context, complete ordered closure-analysis history, and linked structured candidate capability/contract-delta requests with lifecycle and evidence. Use this before whole-Experiment revalidation.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid(),
       },
@@ -703,7 +703,7 @@ function registerExperimentTools(
       if (analysisIds.length > 0) {
         const { data: evidence, error: evidenceError } = await supabase
           .from('capability_request_evidence')
-          .select('request_id, closure_analysis_id, requirement_keys, created_at')
+          .select('request_id, closure_analysis_id, requirement_keys, relationship, generalization_note, created_at')
           .in('closure_analysis_id', analysisIds)
           .order('created_at', { ascending: true })
         if (evidenceError) return toolError('Could not read linked capability-request evidence.', evidenceError.message)
@@ -716,8 +716,34 @@ function registerExperimentTools(
             .in('id', requestIds)
             .order('created_at', { ascending: true })
           if (requestsError) return toolError('Could not read linked capability requests.', requestsError.message)
+
+          const { data: candidateCapabilities, error: candidateCapabilitiesError } = await supabase
+            .from('candidate_capabilities')
+            .select('*')
+            .in('request_id', requestIds)
+          if (candidateCapabilitiesError) {
+            return toolError('Could not read linked candidate capabilities.', candidateCapabilitiesError.message)
+          }
+
+          const { data: candidateContractDeltas, error: candidateContractDeltasError } = await supabase
+            .from('candidate_contract_deltas')
+            .select('*')
+            .in('request_id', requestIds)
+          if (candidateContractDeltasError) {
+            return toolError('Could not read linked candidate contract deltas.', candidateContractDeltasError.message)
+          }
+
+          const candidateCapabilityByRequest = new Map(
+            (candidateCapabilities ?? []).map((candidate: { request_id: string }) => [candidate.request_id, candidate]),
+          )
+          const candidateContractDeltaByRequest = new Map(
+            (candidateContractDeltas ?? []).map((candidate: { request_id: string }) => [candidate.request_id, candidate]),
+          )
+
           linkedRequests = (requests ?? []).map((request: { id: string }) => ({
             ...request,
+            candidate_capability: candidateCapabilityByRequest.get(request.id) ?? null,
+            candidate_contract_delta: candidateContractDeltaByRequest.get(request.id) ?? null,
             evidence: (evidence ?? []).filter((link: { request_id: string }) => link.request_id === request.id),
           }))
         }
