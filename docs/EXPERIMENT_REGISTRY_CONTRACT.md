@@ -187,13 +187,13 @@ These are structural absences from the interface.
 
 ## MCP authoring alignment
 
-Production `experiment-mcp` is server `3.12.0`, interface `16`, authoring contract `vlab.authoring/0.9`.
+Production `experiment-mcp` is server `3.13.0`, interface `17`, authoring contract `vlab.authoring/0.9`.
 
 The MCP can author the complete four-artifact Experiment plus fine-grained Metrics definitions and Results bindings. Unsupported capabilities produce diagnostics and, for Professor users, the explicit capability-request path.
 
 ## Current-version rule
 
-New code and documentation treat `vlab.registry-experiment/3` + `vlab.experiment-artifacts/3` as the current Experiment model and `vlab.authoring/0.9` / MCP interface `16` as the current research-AI authoring surface.
+New code and documentation treat `vlab.registry-experiment/3` + `vlab.experiment-artifacts/3` as the current Experiment model and `vlab.authoring/0.9` / MCP interface `17` as the current research-AI authoring surface.
 
 A future structural change requires an explicit new version and an explicit transition decision; historical connector inputs are not retained automatically.
 
