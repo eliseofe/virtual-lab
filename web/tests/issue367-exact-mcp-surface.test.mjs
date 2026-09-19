@@ -84,6 +84,6 @@ test("#367 Student and Professor receive the same scientific tool set; authority
 
 test("#367 versions the breaking connector cutover explicitly", () => {
   assert.match(metrics, /MCP_SERVER_VERSION = '3\.10\.0'/);
-  assert.match(metrics, /MCP_INTERFACE_VERSION = '14'/);
+  assert.match(metrics, /MCP_INTERFACE_VERSION = '15'/);
   assert.match(metrics, /contract_version: 'vlab\.authoring\/0\.8'/);
 });
