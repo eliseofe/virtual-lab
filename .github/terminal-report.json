@@ -1,19 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The authoring wall now canonicalizes executable source into the Rust-accepted IR boundary before an Experiment can be treated as valid",
-  "owner_impact": "Ordinary Controller and Metrics aliases such as a local name for obs.neighbours or snapshot.agents remain natural to write, but they are lowered away before execution. The exact Controller pattern that previously passed MCP validation and then failed in Rust now compiles to Rust-valid canonical IR. Controller validation also requires an unconditional action return, preventing a zero-neighbour runtime crash from being certified as valid. No scientific capability was added and candidate capabilities remain unavailable.",
+  "outcome": "Controller authoring now has bounded typed control flow: booleans, scalar comparisons, boolean composition and if/elif/else",
+  "owner_impact": "Piecewise controller laws can now be expressed directly instead of becoming authoring-language capability requests. Branch-local values are available only when definitely assigned on every continuing path, exhaustive conditional returns satisfy the action-return invariant, and neighbour iteration remains bounded to the implemented neighbour collection. Unsupported scientific observations and candidate capabilities remain blocked.",
   "next": {
     "kind": "epic_continues",
-    "issue": 371,
-    "text": "Next is #371, the fresh black-box blocking and two-paper acceptance rerun. It will retest the hard wall first, then candidate reuse/generalization across fresh paper sessions. It has not restarted yet."
+    "issue": 384,
+    "text": "Next is #384 — standard scientific mathematics and exponentiation. It has not started yet."
   },
   "technical_evidence": [
-    "Browser and MCP Controller compilers are mirrored and lower neighbour-list aliases to canonical obs.neighbours IR.",
-    "Browser and MCP Metrics compilers are mirrored and lower snapshot.agents plus loop-agent aliases to Rust-executable canonical bindings.",
-    "Controller validation in both JavaScript and Rust now requires an unconditional top-level action return.",
-    "Regression coverage includes the exact production Controller pattern that exposed #380 and a basic syntax/mathematics matrix for Controller and Metrics.",
-    "All persisted source-changing MCP paths continue to use the shared authoring validator.",
-    "No scientific capability, candidate availability, MCP tool count, CI/CD rule, retry/timeout behavior, or development workflow changed."
+    "Browser and MCP Controller compilers remain byte-identical and emit the same conditional/boolean IR.",
+    "Rust Controller IR validation/runtime executes the same comparison, boolean and conditional nodes.",
+    "Regression coverage includes piecewise laws, and/or/not, exhaustive branch returns, definite assignment, bounded neighbour loops and unavailable-observation rejection.",
+    "The machine-readable authoring contract now advertises the generic Controller control-flow substrate.",
+    "No scientific capability, candidate availability, tool count, CI/CD, polling, retry, timeout or workflow rule changed."
   ],
-  "close_issue": 380
+  "close_issue": 383
 }
