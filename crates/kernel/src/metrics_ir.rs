@@ -1015,4 +1015,84 @@ mod tests {
         assert_eq!(batch["samples"][0]["value"], 1.0);
     }
 
+    #[test]
+    fn completed_bare_bones_language_executes_in_rust_runtime() {
+        let controller_ir = r#"{
+          "schema":"vlab.controller-ir/0.1",
+          "language":"python-vlab/0.1",
+          "controller":"AcceptanceAgent",
+          "entry":"step",
+          "parameters":{},
+          "state":[],
+          "body":[
+            {"kind":"assign","target":"x","value":{"kind":"const","value":1.0}},
+            {"kind":"if","branches":[
+              {"condition":{"kind":"bool_op","op":"and",
+                "left":{"kind":"compare","op":">","left":{"kind":"load","path":"x"},"right":{"kind":"const","value":0.0}},
+                "right":{"kind":"unary","op":"not","value":{"kind":"bool_const","value":false}}},
+               "body":[
+                 {"kind":"assign","target":"speed","value":{"kind":"call","name":"min","args":[
+                   {"kind":"call","name":"max","args":[
+                     {"kind":"call","name":"pow","args":[
+                       {"kind":"call","name":"sin","args":[{"kind":"load","path":"x"}]},
+                       {"kind":"const","value":2.0}
+                     ]},
+                     {"kind":"const","value":0.0}
+                   ]},
+                   {"kind":"const","value":1.0}
+                 ]}}
+               ]}
+            ],
+            "else_body":[{"kind":"assign","target":"speed","value":{"kind":"call","name":"abs","args":[
+              {"kind":"call","name":"cos","args":[{"kind":"load","path":"x"}]}
+            ]}}]},
+            {"kind":"assign","target":"turning","value":{"kind":"call","name":"atan2","args":[
+              {"kind":"const","value":0.0},{"kind":"const","value":1.0}
+            ]}},
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"speed"},{"kind":"load","path":"turning"}
+            ]}}
+          ]
+        }"#;
+        let mut controller = IrControllerRuntime::from_json(controller_ir, "{}").unwrap();
+        controller.reset(1);
+        let action = controller.step(
+            0,
+            &crate::Observation {
+                heading: Vec2::new(1.0, 0.0),
+                neighbours: vec![],
+                environmental_scalar: None,
+            },
+        );
+        assert!(action.forward.is_finite());
+        assert!(action.forward >= 0.0 && action.forward <= 1.0);
+        assert_eq!(action.turning, 0.0);
+
+        let metrics_ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "metrics":[{
+            "id":"acceptance.count","name":"Acceptance count","unit":null,
+            "sampling":{"kind":"final"},"function":"acceptance_count",
+            "body":[
+              {"kind":"assign","target":"count","value":{"kind":"const","value":2.0}},
+              {"kind":"if","branches":[{
+                "condition":{"kind":"compare","op":">","left":{"kind":"load","path":"count"},"right":{"kind":"const","value":0.0}},
+                "body":[{"kind":"return","value":{"kind":"call","name":"sqrt","args":[
+                  {"kind":"call","name":"pow","args":[
+                    {"kind":"load","path":"count"},{"kind":"const","value":2.0}
+                  ]}
+                ]}}]
+              }],"else_body":[{"kind":"return","value":{"kind":"const","value":0.0}}]}
+            ]
+          }]
+        }"#;
+        let mut metrics = IrMetricsRuntime::from_json(metrics_ir, "{}", 0.01).unwrap();
+        metrics.finalize(&state(), 1.0).unwrap();
+        let batch: serde_json::Value =
+            serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        assert_eq!(batch["samples"][0]["value"], 2.0);
+    }
+
 }
