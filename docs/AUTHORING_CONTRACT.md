@@ -2,7 +2,7 @@
 
 Status: **current deployed contract, 19 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.7`, exposed by production `experiment-mcp` server `3.9.0`, interface `13`.
+Current machine-readable contract: `vlab.authoring/0.8`, exposed by production `experiment-mcp` server `3.10.0`, interface `14`.
 
 ## Canonical Experiment artifacts
 
@@ -15,7 +15,7 @@ A runnable Experiment has exactly four compulsory core artifacts:
 
 The canonical registry representation is the ordered typed `artifacts[]` array under `vlab.experiment-artifacts/3` / `vlab.registry-experiment/3`.
 
-An empty Metrics artifact is valid. Legacy three-source clients remain supported only as a bounded compatibility input; they normalize mechanically to the four-artifact model by adding/preserving Metrics. They are not a second source of truth.
+An empty Metrics artifact is valid. The complete ordered typed `artifacts[]` array is the only Experiment-authoring input. Configuration, Initialization, Controller and Metrics must all be supplied explicitly when creating or replacing scientific source.
 
 ## Science-free software contract boundary
 
