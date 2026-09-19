@@ -268,6 +268,7 @@ function render() {
     const card = document.createElement("article");
     card.className = "professor-request-card";
     card.dataset.status = request.status;
+    card.dataset.requestId = request.id;
 
     const top = document.createElement("div");
     top.className = "professor-request-top";
@@ -427,6 +428,7 @@ async function loadRequests() {
     throw error;
   }
   render();
+  ui.dialog.dispatchEvent(new CustomEvent("vlab:professor-requests-rendered"));
   setMessage(`${pendingCount()} pending request${pendingCount() === 1 ? "" : "s"}.`);
 }
 
