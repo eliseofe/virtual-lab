@@ -143,8 +143,10 @@ fn validate_expression(
         }
         Expression::Call { name, args, line } => {
             let arity = match name.as_str() {
-                "Vec2" | "dot" | "pow" | "Motion" => 2,
-                "perpendicular" | "norm" => 1,
+                "Vec2" | "dot" | "atan2" | "pow" | "min" | "max" | "Motion" => 2,
+                "perpendicular" | "norm" | "abs" | "sqrt" | "exp" | "log"
+                | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"
+                | "floor" | "ceil" => 1,
                 _ => return Err(at_line(*line, format!("unsupported call '{name}'"))),
             };
             if args.len() != arity { return Err(at_line(*line, format!("{name} expects {arity} arguments"))); }
@@ -263,7 +265,11 @@ enum CompareOp { Less, LessEqual, Greater, GreaterEqual, Equal, NotEqual }
 enum BooleanOp { And, Or }
 
 #[derive(Debug, Clone, Copy)]
-enum Intrinsic { Vec2, Dot, Perpendicular, Norm, Pow, Motion }
+enum Intrinsic {
+    Vec2, Dot, Perpendicular, Norm,
+    Abs, Sqrt, Exp, Log, Sin, Cos, Tan, Asin, Acos, Atan, Atan2, Floor, Ceil,
+    Pow, Min, Max, Motion
+}
 
 #[derive(Debug, Clone, Copy)]
 enum PreparedLoad {
@@ -451,7 +457,22 @@ fn emit_expression(
                 "dot" => Intrinsic::Dot,
                 "perpendicular" => Intrinsic::Perpendicular,
                 "norm" => Intrinsic::Norm,
+                "abs" => Intrinsic::Abs,
+                "sqrt" => Intrinsic::Sqrt,
+                "exp" => Intrinsic::Exp,
+                "log" => Intrinsic::Log,
+                "sin" => Intrinsic::Sin,
+                "cos" => Intrinsic::Cos,
+                "tan" => Intrinsic::Tan,
+                "asin" => Intrinsic::Asin,
+                "acos" => Intrinsic::Acos,
+                "atan" => Intrinsic::Atan,
+                "atan2" => Intrinsic::Atan2,
+                "floor" => Intrinsic::Floor,
+                "ceil" => Intrinsic::Ceil,
                 "pow" => Intrinsic::Pow,
+                "min" => Intrinsic::Min,
+                "max" => Intrinsic::Max,
                 "Motion" => Intrinsic::Motion,
                 _ => unreachable!("validated intrinsic"),
             };
@@ -610,14 +631,78 @@ fn execute_intrinsic(intrinsic: Intrinsic, stack: &mut Vec<Value>) {
             let value = stack.pop().expect("validated norm value").vec2();
             stack.push(Value::Scalar(value.norm_squared().sqrt()));
         }
+        Intrinsic::Abs => {
+            let value = stack.pop().expect("validated abs value").scalar();
+            stack.push(Value::Scalar(value.abs()));
+        }
+        Intrinsic::Sqrt => {
+            let value = stack.pop().expect("validated sqrt value").scalar();
+            stack.push(Value::Scalar(value.sqrt()));
+        }
+        Intrinsic::Exp => {
+            let value = stack.pop().expect("validated exp value").scalar();
+            stack.push(Value::Scalar(value.exp()));
+        }
+        Intrinsic::Log => {
+            let value = stack.pop().expect("validated log value").scalar();
+            stack.push(Value::Scalar(value.ln()));
+        }
+        Intrinsic::Sin => {
+            let value = stack.pop().expect("validated sin value").scalar();
+            stack.push(Value::Scalar(value.sin()));
+        }
+        Intrinsic::Cos => {
+            let value = stack.pop().expect("validated cos value").scalar();
+            stack.push(Value::Scalar(value.cos()));
+        }
+        Intrinsic::Tan => {
+            let value = stack.pop().expect("validated tan value").scalar();
+            stack.push(Value::Scalar(value.tan()));
+        }
+        Intrinsic::Asin => {
+            let value = stack.pop().expect("validated asin value").scalar();
+            stack.push(Value::Scalar(value.asin()));
+        }
+        Intrinsic::Acos => {
+            let value = stack.pop().expect("validated acos value").scalar();
+            stack.push(Value::Scalar(value.acos()));
+        }
+        Intrinsic::Atan => {
+            let value = stack.pop().expect("validated atan value").scalar();
+            stack.push(Value::Scalar(value.atan()));
+        }
+        Intrinsic::Atan2 => {
+            let x = stack.pop().expect("validated atan2 x").scalar();
+            let y = stack.pop().expect("validated atan2 y").scalar();
+            stack.push(Value::Scalar(y.atan2(x)));
+        }
+        Intrinsic::Floor => {
+            let value = stack.pop().expect("validated floor value").scalar();
+            stack.push(Value::Scalar(value.floor()));
+        }
+        Intrinsic::Ceil => {
+            let value = stack.pop().expect("validated ceil value").scalar();
+            stack.push(Value::Scalar(value.ceil()));
+        }
         Intrinsic::Pow => {
             let exponent = stack.pop().expect("validated pow exponent").scalar();
             let base = stack.pop().expect("validated pow base").scalar();
             stack.push(Value::Scalar(base.powf(exponent)));
         }
+        Intrinsic::Min => {
+            let right = stack.pop().expect("validated min right").scalar();
+            let left = stack.pop().expect("validated min left").scalar();
+            stack.push(Value::Scalar(left.min(right)));
+        }
+        Intrinsic::Max => {
+            let right = stack.pop().expect("validated max right").scalar();
+            let left = stack.pop().expect("validated max left").scalar();
+            stack.push(Value::Scalar(left.max(right)));
+        }
         Intrinsic::Motion => {
             let turning = stack.pop().expect("validated Motion turning").scalar();
             let forward = stack.pop().expect("validated Motion forward").scalar();
+            assert!(forward.is_finite() && turning.is_finite(), "controller Motion requires finite scalar arguments");
             stack.push(Value::Action(Action { forward, turning }));
         }
     }
@@ -1073,6 +1158,44 @@ mod tests {
           ]
         }"#;
         assert!(IrControllerRuntime::from_json(invalid, r#"{"X":1.0}"#).is_err());
+    }
+
+    #[test]
+    fn standard_scalar_math_intrinsics_use_native_f64_operations() {
+        fn unary(intrinsic: Intrinsic, input: f64) -> f64 {
+            let mut stack = vec![Value::Scalar(input)];
+            execute_intrinsic(intrinsic, &mut stack);
+            stack.pop().unwrap().scalar()
+        }
+        fn binary(intrinsic: Intrinsic, left: f64, right: f64) -> f64 {
+            let mut stack = vec![Value::Scalar(left), Value::Scalar(right)];
+            execute_intrinsic(intrinsic, &mut stack);
+            stack.pop().unwrap().scalar()
+        }
+
+        assert_eq!(unary(Intrinsic::Abs, -2.0), 2.0);
+        assert_eq!(unary(Intrinsic::Sqrt, 4.0), 2.0);
+        assert_eq!(unary(Intrinsic::Exp, 0.0), 1.0);
+        assert_eq!(unary(Intrinsic::Log, 1.0), 0.0);
+        assert_eq!(unary(Intrinsic::Sin, 0.0), 0.0);
+        assert_eq!(unary(Intrinsic::Cos, 0.0), 1.0);
+        assert_eq!(unary(Intrinsic::Tan, 0.0), 0.0);
+        assert_eq!(unary(Intrinsic::Asin, 0.0), 0.0);
+        assert_eq!(unary(Intrinsic::Acos, 1.0), 0.0);
+        assert_eq!(unary(Intrinsic::Atan, 0.0), 0.0);
+        assert!((binary(Intrinsic::Atan2, 1.0, 1.0) - std::f64::consts::FRAC_PI_4).abs() < 1e-12);
+        assert_eq!(unary(Intrinsic::Floor, 1.9), 1.0);
+        assert_eq!(unary(Intrinsic::Ceil, 1.1), 2.0);
+        assert_eq!(binary(Intrinsic::Pow, 2.0, 3.0), 8.0);
+        assert_eq!(binary(Intrinsic::Min, 2.0, 3.0), 2.0);
+        assert_eq!(binary(Intrinsic::Max, 2.0, 3.0), 3.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "controller Motion requires finite scalar arguments")]
+    fn non_finite_controller_action_fails_loudly() {
+        let mut stack = vec![Value::Scalar(f64::NAN), Value::Scalar(0.0)];
+        execute_intrinsic(Intrinsic::Motion, &mut stack);
     }
 
 }

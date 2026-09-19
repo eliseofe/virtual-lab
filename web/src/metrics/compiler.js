@@ -10,6 +10,17 @@ const CALL_SIGNATURES = {
   norm: { args: ["vec2"], result: "scalar" },
   abs: { args: ["scalar"], result: "scalar" },
   sqrt: { args: ["scalar"], result: "scalar" },
+  exp: { args: ["scalar"], result: "scalar" },
+  log: { args: ["scalar"], result: "scalar" },
+  sin: { args: ["scalar"], result: "scalar" },
+  cos: { args: ["scalar"], result: "scalar" },
+  tan: { args: ["scalar"], result: "scalar" },
+  asin: { args: ["scalar"], result: "scalar" },
+  acos: { args: ["scalar"], result: "scalar" },
+  atan: { args: ["scalar"], result: "scalar" },
+  atan2: { args: ["scalar", "scalar"], result: "scalar" },
+  floor: { args: ["scalar"], result: "scalar" },
+  ceil: { args: ["scalar"], result: "scalar" },
   pow: { args: ["scalar", "scalar"], result: "scalar" },
   min: { args: ["scalar", "scalar"], result: "scalar" },
   max: { args: ["scalar", "scalar"], result: "scalar" },
@@ -158,6 +169,11 @@ class ExprParser {
         i += number[0].length;
         continue;
       }
+      if (text.slice(i, i + 2) === "**") {
+        tokens.push({ type: "**", value: "**", column: i + 1 });
+        i += 2;
+        continue;
+      }
       const ident = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
       if (ident) {
         tokens.push({ type: "ident", value: ident[0], column: i + 1 });
@@ -203,10 +219,21 @@ class ExprParser {
   }
   unary() {
     if (this.peek("-")) { this.take("-"); return { kind: "unary", op: "-", value: this.unary(), line: this.line }; }
-    return this.primary();
+    return this.power();
+  }
+  power() {
+    const left = this.primary();
+    if (!this.peek("**")) return left;
+    this.take("**");
+    return { kind: "call", name: "pow", args: [left, this.unary()], line: this.line };
   }
   primary() {
-    if (this.peek("number")) return { kind: "const", value: Number(this.take("number").value), line: this.line };
+    if (this.peek("number")) {
+      const token = this.take("number");
+      const value = Number(token.value);
+      if (!Number.isFinite(value)) throw new MetricsCompileError("syntax", "metric constants must be finite", this.line, token.column);
+      return { kind: "const", value, line: this.line };
+    }
     if (this.peek("(")) { this.take("("); const node = this.additive(); this.take(")"); return node; }
     if (!this.peek("ident")) {
       const token = this.tokens[this.index];

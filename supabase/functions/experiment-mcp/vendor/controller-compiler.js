@@ -7,7 +7,22 @@ const LANGUAGE_CALL_SIGNATURES = {
   dot: { args: ["vec2", "vec2"], result: "scalar" },
   perpendicular: { args: ["vec2"], result: "vec2" },
   norm: { args: ["vec2"], result: "scalar" },
+  abs: { args: ["scalar"], result: "scalar" },
+  sqrt: { args: ["scalar"], result: "scalar" },
+  exp: { args: ["scalar"], result: "scalar" },
+  log: { args: ["scalar"], result: "scalar" },
+  sin: { args: ["scalar"], result: "scalar" },
+  cos: { args: ["scalar"], result: "scalar" },
+  tan: { args: ["scalar"], result: "scalar" },
+  asin: { args: ["scalar"], result: "scalar" },
+  acos: { args: ["scalar"], result: "scalar" },
+  atan: { args: ["scalar"], result: "scalar" },
+  atan2: { args: ["scalar", "scalar"], result: "scalar" },
+  floor: { args: ["scalar"], result: "scalar" },
+  ceil: { args: ["scalar"], result: "scalar" },
   pow: { args: ["scalar", "scalar"], result: "scalar" },
+  min: { args: ["scalar", "scalar"], result: "scalar" },
+  max: { args: ["scalar", "scalar"], result: "scalar" },
 };
 
 const CONTROLLER_CAPABILITY_SURFACES = IMPLEMENTED_CAPABILITY_BINDINGS.flatMap((binding) =>
@@ -87,6 +102,12 @@ class ExprParser {
       if (number) {
         tokens.push({ type: "number", value: number[0], column: i + 1 });
         i += number[0].length;
+        continue;
+      }
+      const power = text.slice(i).match(/^\*\*/);
+      if (power) {
+        tokens.push({ type: "**", value: "**", column: i + 1 });
+        i += 2;
         continue;
       }
       const comparison = text.slice(i).match(/^(?:<=|>=|==|!=|<|>)/);
@@ -200,11 +221,23 @@ class ExprParser {
       this.take("-");
       return { kind: "unary", op: "-", value: this.unary(), line: this.line };
     }
-    return this.primary();
+    return this.power();
+  }
+
+  power() {
+    const left = this.primary();
+    if (!this.peek("**")) return left;
+    this.take("**");
+    return { kind: "call", name: "pow", args: [left, this.unary()], line: this.line };
   }
 
   primary() {
-    if (this.peek("number")) return { kind: "const", value: Number(this.take("number").value), line: this.line };
+    if (this.peek("number")) {
+      const token = this.take("number");
+      const value = Number(token.value);
+      if (!Number.isFinite(value)) throw new ControllerCompileError("syntax", "numeric constants must be finite", this.line, token.column);
+      return { kind: "const", value, line: this.line };
+    }
     if (this.peek("(")) {
       this.take("(");
       const node = this.booleanOr();

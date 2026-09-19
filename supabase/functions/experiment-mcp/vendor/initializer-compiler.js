@@ -66,7 +66,7 @@ function tokenize(text, line) {
     const c = text[i];
     if (/\s/.test(c)) { i += 1; continue; }
     const two = text.slice(i, i + 2);
-    if (["//", "==", "!=", "<=", ">="].includes(two)) {
+    if (["**", "//", "==", "!=", "<=", ">="].includes(two)) {
       tokens.push({ type: two, value: two, column: i + 1 }); i += 2; continue;
     }
     const number = text.slice(i).match(/^(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?/);
@@ -118,10 +118,21 @@ class ExprParser {
   }
   unary() {
     if (this.peek("+") || this.peek("-")) { const op = this.current().type; this.index += 1; return { kind: "unary", op, value: this.unary(), line: this.line }; }
-    return this.primary();
+    return this.power();
+  }
+  power() {
+    const left = this.primary();
+    if (!this.peek("**")) return left;
+    this.take("**");
+    return { kind: "binary", op: "**", left, right: this.unary(), line: this.line };
   }
   primary() {
-    if (this.peek("number")) return { kind: "literal", value: Number(this.take("number").value), line: this.line };
+    if (this.peek("number")) {
+      const token = this.take("number");
+      const value = Number(token.value);
+      if (!Number.isFinite(value)) throw new InitializerCompileError("numeric constants must be finite", this.line);
+      return { kind: "literal", value, line: this.line };
+    }
     if (this.peek("string")) return { kind: "literal", value: this.take("string").value, line: this.line };
     if (this.peek("(")) { this.take("("); const expr = this.comparison(); this.take(")"); return expr; }
     if (!this.peek("ident")) throw new InitializerCompileError(`expected expression, found '${this.current().value || "end"}'`, this.line);
@@ -223,7 +234,7 @@ function pythonTruthy(value) { return Boolean(value); }
 
 function binary(op, a, b, line) {
   switch (op) {
-    case "+": return a + b; case "-": return a - b; case "*": return a * b; case "/": return a / b;
+    case "+": return a + b; case "-": return a - b; case "*": return a * b; case "/": return a / b; case "**": return Math.pow(a, b);
     case "//": return Math.floor(a / b); case "%": return ((a % b) + b) % b;
     case "==": return a === b; case "!=": return a !== b; case "<": return a < b; case "<=": return a <= b; case ">": return a > b; case ">=": return a >= b;
     default: throw new InitializerCompileError(`unsupported operator '${op}'`, line);
@@ -254,9 +265,19 @@ function evaluate(expr, scope) {
   if (expr.kind === "call") {
     const args = expr.args.map((arg) => evaluate(arg, scope));
     if (expr.path === "sqrt") return Math.sqrt(args[0]);
+    if (expr.path === "exp") return Math.exp(args[0]);
+    if (expr.path === "log") return Math.log(args[0]);
+    if (expr.path === "sin") return Math.sin(args[0]);
+    if (expr.path === "cos") return Math.cos(args[0]);
+    if (expr.path === "tan") return Math.tan(args[0]);
+    if (expr.path === "asin") return Math.asin(args[0]);
+    if (expr.path === "acos") return Math.acos(args[0]);
+    if (expr.path === "atan") return Math.atan(args[0]);
+    if (expr.path === "atan2") return Math.atan2(args[0], args[1]);
     if (expr.path === "ceil") return Math.ceil(args[0]);
     if (expr.path === "floor") return Math.floor(args[0]);
     if (expr.path === "abs") return Math.abs(args[0]);
+    if (expr.path === "pow") return Math.pow(args[0], args[1]);
     if (expr.path === "max") return Math.max(...args);
     if (expr.path === "min") return Math.min(...args);
     if (expr.path === "range") {

@@ -50,7 +50,9 @@ export const AUTHORING_CONTRACT = Object.freeze({
       syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Additional callable/member surfaces and optional entries are capability-owned.",
       entry: "initialize(config, rng, place)",
       simulator_owned_inputs: ["config", "rng", "place"],
-      language_intrinsics: ["sqrt", "ceil", "floor", "abs", "max", "min", "range"],
+      language_intrinsics: ["abs", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "floor", "ceil", "pow", "min", "max", "range"],
+      exponentiation_operator: "**",
+      optional_environment_scalar_math: "The same standard scalar math intrinsics and exponentiation syntax apply inside environmental_scalar(x, y, config).",
       constants: ["TAU", "SQRT3_OVER_2"],
       capability_resolution: "Capability-backed initializer calls, member access and optional entries are authorable only when an implemented capability advertises the corresponding Initialization surface."
     },
@@ -71,8 +73,24 @@ export const AUTHORING_CONTRACT = Object.freeze({
         dot: ["vec2", "vec2"],
         perpendicular: ["vec2"],
         norm: ["vec2"],
-        pow: ["scalar", "scalar"]
+        abs: ["scalar"],
+        sqrt: ["scalar"],
+        exp: ["scalar"],
+        log: ["scalar"],
+        sin: ["scalar"],
+        cos: ["scalar"],
+        tan: ["scalar"],
+        asin: ["scalar"],
+        acos: ["scalar"],
+        atan: ["scalar"],
+        atan2: ["scalar", "scalar"],
+        floor: ["scalar"],
+        ceil: ["scalar"],
+        pow: ["scalar", "scalar"],
+        min: ["scalar", "scalar"],
+        max: ["scalar", "scalar"]
       },
+      exponentiation_operator: "**",
       capability_resolution: "Observation fields, neighbour fields, private state and action constructors are resolved from implemented capability authoring surfaces. A surface absent from the implemented registry is rejected.",
       security_boundary: {
         forbidden_host_roots: ["filesystem", "network"]
@@ -94,7 +112,8 @@ export const AUTHORING_CONTRACT = Object.freeze({
         fields_from_capability_registry: true,
         mutation: false
       },
-      language_intrinsics: ["Vec2", "dot", "norm", "abs", "sqrt", "pow", "min", "max"],
+      language_intrinsics: ["Vec2", "dot", "cross2", "norm", "abs", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "floor", "ceil", "pow", "min", "max"],
+      exponentiation_operator: "**",
       security_boundary: {
         forbidden_host_roots: ["filesystem", "network"]
       }

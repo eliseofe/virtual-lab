@@ -52,6 +52,16 @@ A local introduced inside branches is available afterward only when every contin
 
 The loop domain remains intentionally bounded: this work does not introduce arbitrary iterables, `while`, recursion or host-language execution.
 
+## Standard scalar mathematics
+
+The generic scalar mathematics substrate is paper-independent. Controller source supports ordinary exponentiation with `**` (lowered to the same native power operation as `pow`) and the following scalar functions:
+
+`abs, sqrt, exp, log, sin, cos, tan, asin, acos, atan, atan2, floor, ceil, pow, min, max`.
+
+These functions use the native Rust `f64` operations at execution. Existing vector primitives remain separate: `Vec2`, `dot`, `norm`, and `perpendicular`.
+
+The same scalar vocabulary is aligned across Initialization, Metrics, and the optional scalar Environment expression where their artifact models make scalar mathematics meaningful. Dynamic domain errors that produce non-finite values fail at the relevant execution boundary instead of silently contaminating simulator state.
+
 ## Minimal syntax and mathematics baseline
 
 The controller language intentionally provides a small ordinary programming/mathematical core so research papers do not need new language requests for routine expression mechanics.

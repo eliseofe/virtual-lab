@@ -60,6 +60,14 @@ The simulator/compiler/kernel remain static code and do **not** query Supabase a
 
 In particular, controller-side random sampling remains unavailable because there is no implemented controller-RNG capability. It is not modeled as a permanent generic language prohibition. Host filesystem/network access remains a separate security boundary.
 
+## Generic scientific mathematics substrate
+
+Standard scalar mathematics is language substrate rather than a scientific capability. The bounded authoring languages expose exponentiation `**` plus `abs, sqrt, exp, log, sin, cos, tan, asin, acos, atan, atan2, floor, ceil, pow, min, max` wherever scalar expressions are supported.
+
+`**` is canonicalized to the same power operation as `pow(base, exponent)`; it is not a second numerical implementation. Rust-backed artifacts execute these operations through native `f64` functions.
+
+This vocabulary is intentionally independent of any specific paper. Scientific capabilities continue to describe observations, actions, environment semantics, heterogeneous state, stochastic services, or other model-domain abilities—not generic algebra or trigonometry.
+
 ## Generic Controller control-flow substrate
 
 Controller authoring includes typed booleans, scalar comparisons, `and/or/not`, and `if/elif/else` as generic language substrate. These constructs are not scientific capabilities and do not require capability requests.

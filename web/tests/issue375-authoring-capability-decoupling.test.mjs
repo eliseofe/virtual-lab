@@ -177,8 +177,8 @@ test("#375 missing language syntax remains distinct from missing scientific capa
     ...FIXTURE,
     controller_source: `class Probe(Agent):
     def step(self, obs):
-        x = sin(1.0)
-        return Motion(x, 0.0)
+        while True:
+            return Motion(0.0, 0.0)
 `,
   });
   assert.equal(result.valid, false);
