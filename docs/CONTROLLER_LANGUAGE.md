@@ -37,6 +37,21 @@ Private controller state belongs to each controller instance and is modified by 
 
 The current approved-but-not-implementation-authorized request for controller stochasticity must, if later authorized, expose simulator-owned deterministic/reproducible random operations; it must not introduce arbitrary host RNG.
 
+## Bounded control flow
+
+The Controller language provides ordinary typed control flow without becoming general Python:
+
+- boolean literals `True` and `False`;
+- scalar comparisons `< <= > >= == !=`;
+- boolean composition with `and`, `or` and `not`;
+- `if / elif / else`;
+- branch-aware definite assignment for locals;
+- bounded neighbour iteration over the implemented neighbour collection.
+
+A local introduced inside branches is available afterward only when every continuing branch defines it with the same type. An exhaustive conditional may itself satisfy the action-return requirement when every branch returns a `Motion`.
+
+The loop domain remains intentionally bounded: this work does not introduce arbitrary iterables, `while`, recursion or host-language execution.
+
 ## Minimal syntax and mathematics baseline
 
 The controller language intentionally provides a small ordinary programming/mathematical core so research papers do not need new language requests for routine expression mechanics.
