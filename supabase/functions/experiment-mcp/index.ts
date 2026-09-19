@@ -23,7 +23,7 @@ import { MCP_TOOL_COUNT, MCP_TOOL_NAMES } from './tool-surface.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
-const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/6'
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/7'
 
 type RegistryRole = 'student' | 'professor'
 type RegistryProfile = {
@@ -89,41 +89,82 @@ const EXTENSION_REQUEST_CLASS = z.enum(EXTENSION_REQUEST_CLASSES)
 
 const REQUEST_REQUIREMENT_KEYS = z.array(z.string().min(1).max(120)).min(1).max(50)
 
+const CANDIDATE_AUTHORING_SURFACE = z.object({
+  artifact: z.enum(['configuration', 'initialization', 'controller', 'metrics', 'environment', 'runtime']),
+  kind: z.string().min(1).max(120),
+  symbol: z.string().min(1).max(300),
+  value_type: z.string().min(1).max(200).optional(),
+  signature: z.record(z.string(), z.unknown()).optional(),
+}).passthrough()
+
+const CANDIDATE_CAPABILITY_SPEC = z.object({
+  capability_key: z.string().min(1).max(240),
+  capability_domain: z.string().min(1).max(200),
+  capability_name: z.string().min(1).max(300),
+  scientific_definition: z.string().min(1).max(6000).describe(
+    'Scientific/model definition of the unavailable capability, preferably using source-publication terminology.',
+  ),
+  target_artifact: z.enum(['configuration', 'initialization', 'controller', 'metrics', 'environment', 'runtime']),
+  target_runtime_domain: z.string().min(1).max(300),
+  authoring_surfaces: z.array(CANDIDATE_AUTHORING_SURFACE).min(1).max(50),
+})
+
+const CANDIDATE_CONTRACT_DELTA_SPEC = z.object({
+  delta_key: z.string().min(1).max(240),
+  delta_name: z.string().min(1).max(300),
+  target_contract_path: z.string().min(1).max(500).describe(
+    'Precise path in the stable authoring/platform contract, for example artifacts.controller.language_intrinsics.',
+  ),
+  requested_change: z.string().min(1).max(6000).describe(
+    'Requested rule, addition, or change expressed directly in the stable contract vocabulary.',
+  ),
+})
+
 const REUSED_EXTENSION_REQUEST_INPUT = z.object({
   existing_request_id: z.string().uuid().describe(
-    'Stable ID from active_extension_requests for a scientific/model need already covered by an active request.',
+    'Stable request ID exposed by candidate_capabilities or candidate_contract_deltas.',
+  ),
+  relationship: z.enum(['covered', 'generalization_needed']).default('covered'),
+  generalization_note: z.string().min(1).max(6000).optional().describe(
+    'Required when relationship=generalization_needed: why the prior candidate is related but too narrow or ambiguous.',
   ),
   requirement_keys: REQUEST_REQUIREMENT_KEYS,
 })
 
-const NEW_EXTENSION_REQUEST_INPUT = z.object({
-  request_class: EXTENSION_REQUEST_CLASS,
-  extension_key: z.string().min(1).max(240).describe(
-    'Stable concise key derived from the scientific/model requirement.',
-  ),
-  extension_domain: z.string().min(1).max(200).describe(
-    'Scientific/model domain for the requirement.',
-  ),
-  extension_name: z.string().min(1).max(300).describe(
-    'Short scientific/model name, preferably using terminology from the source publication.',
-  ),
-  extension_definition: z.string().min(1).max(6000).describe(
-    'Concise statement of the scientific/model ability the Experiment requires, preferably using source-publication terminology.',
-  ),
+const NEW_SEMANTIC_EXTENSION_REQUEST_INPUT = z.object({
+  request_class: z.literal('semantic_capability'),
+  candidate_capability: CANDIDATE_CAPABILITY_SPEC,
   novelty_statement: z.string().min(1).max(6000).describe(
-    'Concise comparison stating the materially distinct scientific/model need after reviewing active_extension_requests.',
+    'Why this scientific/model need is genuinely absent from both implemented and candidate capabilities.',
   ),
   requirement_keys: REQUEST_REQUIREMENT_KEYS,
-  context: z.string().max(20000).default('').describe(
-    'Optional scientific evidence or context supporting the requirement.',
+  context: z.string().max(20000).default(''),
+  requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'measure', 'finalize']).optional(),
+})
+
+const NON_SEMANTIC_EXTENSION_REQUEST_CLASS = z.enum([
+  'authoring_language',
+  'runtime_configuration',
+  'artifact_workflow',
+  'implementation_optimization',
+  'security_boundary',
+])
+
+const NEW_CONTRACT_DELTA_REQUEST_INPUT = z.object({
+  request_class: NON_SEMANTIC_EXTENSION_REQUEST_CLASS,
+  candidate_contract_delta: CANDIDATE_CONTRACT_DELTA_SPEC,
+  novelty_statement: z.string().min(1).max(6000).describe(
+    'Why this contract need is genuinely absent from both the stable contract and existing candidate contract deltas.',
   ),
-  requested_artifact_type: z.string().min(1).max(200).optional(),
+  requirement_keys: REQUEST_REQUIREMENT_KEYS,
+  context: z.string().max(20000).default(''),
   requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'measure', 'finalize']).optional(),
 })
 
 const GROUPED_EXTENSION_REQUEST_INPUT = z.union([
   REUSED_EXTENSION_REQUEST_INPUT,
-  NEW_EXTENSION_REQUEST_INPUT,
+  NEW_SEMANTIC_EXTENSION_REQUEST_INPUT,
+  NEW_CONTRACT_DELTA_REQUEST_INPUT,
 ])
 
 function json(value: unknown, status = 200, headers: HeadersInit = {}) {
@@ -158,9 +199,11 @@ function extensionRequestBehavior(role: RegistryRole) {
     capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
     request_classes: EXTENSION_REQUEST_CLASSES,
     canonical_registry_first: true,
-    active_request_catalog_first: true,
-    reuse_when_plausibly_covered: true,
-    new_request_threshold: 'clearly_materially_distinct',
+    candidate_capability_catalog_first: true,
+    candidate_contract_delta_catalog_first: true,
+    reuse_when_candidate_covers: true,
+    generalization_evidence_when_related: true,
+    new_request_threshold: 'genuinely_absent_from_implemented_and_candidates',
     request_language: 'scientific_model',
     durable_closure_required: true,
     task_state_while_unsupported: 'blocked',
@@ -227,7 +270,7 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab knowledge or an explicit experiment workspace',
       description:
-        'Start here for current Lab knowledge. Without experiment_id, return the authenticated identity, the stable Virtual Lab authoring/compiler contract, the global canonical capability registry enriched with each implemented capability\'s concrete authoring surfaces, and active_extension_requests. The contract defines how programs are written; the capability registry defines which extensible abilities and surfaces currently exist. A surface not present on an implemented capability is not authorable. When the Lab already represents the required semantics exactly, author normally. When a required scientific/model semantic is unsupported, preserve the intended Experiment through request_capability and whole-Experiment revalidation. Set include_workspace_index=true when the user wants to discover accessible Experiments; that explicit index remains governed by normal RLS and may be narrowed with owned_only/lifecycle. With experiment_id, return that visible Experiment, its ordered typed artifacts, and its Results presentation at the current revisions. This tool never writes.',
+        'Start here for current Lab knowledge. Without experiment_id, return the authenticated identity, the stable Virtual Lab authoring/compiler contract, implemented canonical capabilities with concrete authoring surfaces, candidate_capabilities, and candidate_contract_deltas. Implemented support alone drives authoring acceptance; every candidate remains unavailable. Compare unsupported requirements with both candidate catalogs before creating a request: covered candidates receive new evidence; related-but-too-narrow candidates receive generalization-needed evidence; only genuinely absent needs create one new structured candidate/request. Set include_workspace_index=true only when Experiment discovery is needed. With experiment_id, return that visible Experiment and Results presentation. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         include_workspace_index: z.boolean().default(false),
@@ -286,19 +329,30 @@ function registerExperimentTools(
         }
       })
 
-      const { data: activeExtensionRequests, error: activeExtensionRequestsError } = await supabase
-        .from('active_extension_request_catalog')
-        .select('request_id, request_class, extension_key, extension_domain, extension_name, extension_definition, status, updated_at')
-        .order('updated_at', { ascending: false })
-      if (activeExtensionRequestsError) {
-        return toolError('Could not read active Virtual Lab extension requests.', activeExtensionRequestsError.message)
+      const { data: candidateCapabilities, error: candidateCapabilitiesError } = await supabase
+        .from('candidate_capabilities')
+        .select('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, request_created_at, request_updated_at')
+        .eq('availability', 'candidate_unavailable')
+        .order('request_updated_at', { ascending: false })
+      if (candidateCapabilitiesError) {
+        return toolError('Could not read candidate Virtual Lab capabilities.', candidateCapabilitiesError.message)
+      }
+
+      const { data: candidateContractDeltas, error: candidateContractDeltasError } = await supabase
+        .from('candidate_contract_deltas')
+        .select('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, request_created_at, request_updated_at')
+        .eq('availability', 'candidate_unavailable')
+        .order('request_updated_at', { ascending: false })
+      if (candidateContractDeltasError) {
+        return toolError('Could not read candidate Virtual Lab contract deltas.', candidateContractDeltasError.message)
       }
 
       const neutralLabKnowledge = {
         identity,
         authoring,
         capability_registry: discoverableCapabilityRegistry,
-        active_extension_requests: activeExtensionRequests ?? [],
+        candidate_capabilities: candidateCapabilities ?? [],
+        candidate_contract_deltas: candidateContractDeltas ?? [],
       }
 
       if (!include_workspace_index) return toolResult(neutralLabKnowledge)
@@ -535,7 +589,7 @@ function registerExperimentTools(
     {
       title: 'Preserve and route unsupported Virtual Lab science through durable closure',
       description:
-        'Student/Professor research-AI continuation when the intended scientific task requires semantics outside the current Lab contract. Preserve the whole intended Experiment and closure analysis, compare each clear unsupported requirement with canonical implemented capability truth and active_extension_requests, reuse an active request whenever its scientific/model meaning can reasonably cover the need, and create a new request only when the need is clearly and materially distinct. New requests use one of the existing six request classes and state the required scientific/model ability in concise source-paper terminology where useful. The publication identity and detailed closure evidence remain attached beneath that durable request state. The task remains blocked on the durable closure/request state until whole-Experiment revalidation later establishes that no unsupported requirement or unresolved scientific ambiguity remains. Submission grants no development authority.',
+        'Student/Professor research-AI continuation when the intended scientific task requires support outside the current Lab contract. When the Lab already represents the required semantics exactly, author normally. Otherwise preserve the whole intended Experiment and closure analysis. Compare each clear unsupported requirement against implemented support plus candidate_capabilities and candidate_contract_deltas. If a candidate covers the need, reuse its request_id and attach evidence. If it is related but too narrow or ambiguous, reuse it with relationship=generalization_needed and explain why; this creates no new Professor-facing request. Only a genuinely absent need creates one new structured candidate: semantic_capability carries a complete candidate capability including its concrete authoring surfaces, while the other five classes carry a candidate contract delta against a precise stable-contract path. Candidates remain unavailable to validation until implementation. The task remains blocked on durable closure state until whole-Experiment revalidation finds no unsupported requirement or unresolved ambiguity. Submission grants no development authority.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid().optional(),
         origin_experiment_id: z.string().uuid().optional(),
@@ -585,7 +639,7 @@ function registerExperimentTools(
         )
       }
 
-      const { data, error } = await supabase.rpc('submit_extension_closure', {
+      const { data, error } = await supabase.rpc('submit_structured_extension_closure', {
         p_blocked_experiment_id: blocked_experiment_id ?? null,
         p_origin_experiment_id: origin_experiment_id ?? null,
         p_origin_experiment_revision: origin_revision ?? null,
@@ -623,7 +677,7 @@ function registerExperimentTools(
     {
       title: 'Resume a durable blocked Experiment capability closure',
       description:
-        'Student/Professor research-AI action. Reopen one visible durable blocked Experiment without relying on chat history. A Student resumes their own blocked Experiment; a Professor may also resume a visible blocked Experiment for supervision. Return the preserved publication identity, scientific draft/context, complete ordered closure-analysis history, and linked classified extension requests with their lifecycle and canonical-capability bindings. Use this before whole-Experiment revalidation.',
+        'Student/Professor research-AI action. Reopen one visible durable blocked Experiment without relying on chat history. A Student resumes their own blocked Experiment; a Professor may also resume a visible blocked Experiment for supervision. Return the preserved publication identity, scientific draft/context, complete ordered closure-analysis history, and linked structured candidate capability/contract-delta requests with lifecycle and evidence. Use this before whole-Experiment revalidation.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid(),
       },
@@ -651,7 +705,7 @@ function registerExperimentTools(
       if (analysisIds.length > 0) {
         const { data: evidence, error: evidenceError } = await supabase
           .from('capability_request_evidence')
-          .select('request_id, closure_analysis_id, requirement_keys, created_at')
+          .select('request_id, closure_analysis_id, requirement_keys, relationship, generalization_note, created_at')
           .in('closure_analysis_id', analysisIds)
           .order('created_at', { ascending: true })
         if (evidenceError) return toolError('Could not read linked capability-request evidence.', evidenceError.message)
@@ -664,8 +718,34 @@ function registerExperimentTools(
             .in('id', requestIds)
             .order('created_at', { ascending: true })
           if (requestsError) return toolError('Could not read linked capability requests.', requestsError.message)
+
+          const { data: candidateCapabilities, error: candidateCapabilitiesError } = await supabase
+            .from('candidate_capabilities')
+            .select('*')
+            .in('request_id', requestIds)
+          if (candidateCapabilitiesError) {
+            return toolError('Could not read linked candidate capabilities.', candidateCapabilitiesError.message)
+          }
+
+          const { data: candidateContractDeltas, error: candidateContractDeltasError } = await supabase
+            .from('candidate_contract_deltas')
+            .select('*')
+            .in('request_id', requestIds)
+          if (candidateContractDeltasError) {
+            return toolError('Could not read linked candidate contract deltas.', candidateContractDeltasError.message)
+          }
+
+          const candidateCapabilityByRequest = new Map(
+            (candidateCapabilities ?? []).map((candidate: { request_id: string }) => [candidate.request_id, candidate]),
+          )
+          const candidateContractDeltaByRequest = new Map(
+            (candidateContractDeltas ?? []).map((candidate: { request_id: string }) => [candidate.request_id, candidate]),
+          )
+
           linkedRequests = (requests ?? []).map((request: { id: string }) => ({
             ...request,
+            candidate_capability: candidateCapabilityByRequest.get(request.id) ?? null,
+            candidate_contract_delta: candidateContractDeltaByRequest.get(request.id) ?? null,
             evidence: (evidence ?? []).filter((link: { request_id: string }) => link.request_id === request.id),
           }))
         }
@@ -689,14 +769,14 @@ function registerExperimentTools(
     {
       title: 'Revalidate a whole blocked Experiment against the current capability contract',
       description:
-        'Student/Professor research-AI action. Re-analyse the entire preserved Experiment against the current canonical capability registry, active_extension_requests, and formal Lab contract. A Student revalidates their own blocked Experiment; a Professor may also revalidate a visible blocked Experiment for supervision. Preserve classified requirements across all six request classes. Link each clear gap to an existing active request whenever that request can reasonably cover the scientific/model need; create a new request when the requirement is clearly and materially distinct. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
+        'Student/Professor research-AI action. Re-analyse the entire preserved Experiment against implemented capabilities, candidate_capabilities, candidate_contract_deltas, and the stable Lab contract. A Student revalidates their own blocked Experiment; a Professor may also supervise a visible blocked Experiment. Reuse a covering candidate, record generalization_needed evidence on a related-but-too-narrow candidate, and create a structured candidate only for a genuinely absent need. Candidate presence never makes validation pass. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid(),
         base_analysis_sequence: z.number().int().positive(),
         analysis_status: z.enum(['best_effort_complete', 'partial_due_to_ambiguity', 'unblocked']),
         identified_requirements: z.array(CLOSURE_REQUIREMENT_INPUT).max(100).default([]),
         unresolved_ambiguities: z.array(CLOSURE_AMBIGUITY_INPUT).max(100).default([]),
-        new_requests: z.array(GROUPED_EXTENSION_REQUEST_INPUT).max(50).default([]),
+        requests: z.array(GROUPED_EXTENSION_REQUEST_INPUT).max(50).default([]),
       },
       annotations: WRITE_ANNOTATIONS,
     },
@@ -706,11 +786,11 @@ function registerExperimentTools(
       analysis_status,
       identified_requirements,
       unresolved_ambiguities,
-      new_requests,
+      requests,
     }) => {
       if (
         analysis_status === 'unblocked'
-        && (identified_requirements.length > 0 || unresolved_ambiguities.length > 0 || new_requests.length > 0)
+        && (identified_requirements.length > 0 || unresolved_ambiguities.length > 0 || requests.length > 0)
       ) {
         return toolError('Unblocked requires zero unsupported requirements, zero ambiguity, and zero new requests.')
       }
@@ -721,14 +801,14 @@ function registerExperimentTools(
         return toolError('partial_due_to_ambiguity requires unresolved scientific ambiguity.')
       }
 
-      const { data, error } = await supabase.rpc('revalidate_extension_closure', {
+      const { data, error } = await supabase.rpc('revalidate_structured_extension_closure', {
         p_blocked_experiment_id: blocked_experiment_id,
         p_base_analysis_sequence: base_analysis_sequence,
         p_contract_version: AUTHORING_CONTRACT.contract_version,
         p_analysis_status: analysis_status,
         p_identified_requirements: identified_requirements,
         p_unresolved_ambiguities: unresolved_ambiguities,
-        p_new_requests: new_requests,
+        p_requests: requests,
       })
 
       if (error) return toolError('Could not revalidate the blocked Experiment extension closure.', error.message)

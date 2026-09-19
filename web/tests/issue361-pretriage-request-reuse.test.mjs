@@ -35,7 +35,7 @@ test("#361 keeps the existing six-class taxonomy and versions the request interf
   assert.match(tools, /capability_request_interface: 'vlab\.capability-request\/\d+'/);
 });
 
-test("#361 exposes only a sanitized global active-request catalog", () => {
+test("#361 historical request catalog remains sanitized while #374 discovery exposes candidates", () => {
   assert.match(migration, /create table public\.active_extension_request_catalog/i);
   assert.match(migration, /request_id uuid primary key/i);
   assert.match(migration, /status in \('requested', 'approved', 'in_progress'\)/i);
@@ -60,8 +60,9 @@ test("#361 exposes only a sanitized global active-request catalog", () => {
   const workspace = mcp.match(
     /server\.registerTool\(\s*'read_workspace',[\s\S]*?server\.registerTool\(\s*'manage_collection'/,
   )?.[0] ?? "";
-  assert.match(workspace, /\.from\('active_extension_request_catalog'\)/);
-  assert.match(workspace, /active_extension_requests: activeExtensionRequests \?\? \[\]/);
+  assert.match(workspace, /\.from\('candidate_capabilities'\)/);
+  assert.match(workspace, /\.from\('candidate_contract_deltas'\)/);
+  assert.doesNotMatch(workspace, /\.from\('active_extension_request_catalog'\)/);
   assert.doesNotMatch(workspace, /\.from\('capability_requests'\)/);
 });
 
@@ -77,15 +78,14 @@ test("#361 makes one request collect evidence from several closure analyses", ()
   );
 });
 
-test("#361 request schema separates reuse from genuinely new science-language requests", () => {
+test("#361 reuse seam survives #374 structured candidate creation", () => {
   assert.match(mcp, /const REUSED_EXTENSION_REQUEST_INPUT = z\.object/);
   assert.match(mcp, /existing_request_id: z\.string\(\)\.uuid\(\)/);
-  assert.match(mcp, /const NEW_EXTENSION_REQUEST_INPUT = z\.object/);
+  assert.match(mcp, /const NEW_SEMANTIC_EXTENSION_REQUEST_INPUT = z\.object/);
+  assert.match(mcp, /const NEW_CONTRACT_DELTA_REQUEST_INPUT = z\.object/);
   assert.match(mcp, /novelty_statement: z\.string\(\)\.min\(1\)/);
-  assert.match(mcp, /scientific\/model name/i);
-  assert.match(mcp, /source publication/i);
-  assert.match(mcp, /new_request_threshold: 'clearly_materially_distinct'/);
-  assert.match(mcp, /reuse_when_plausibly_covered: true/);
+  assert.match(mcp, /new_request_threshold: 'genuinely_absent_from_implemented_and_candidates'/);
+  assert.match(mcp, /reuse_when_candidate_covers: true/);
   assert.match(migration, /add column if not exists novelty_statement text/i);
 });
 
@@ -108,6 +108,6 @@ test("#361 Professor approval enters design without creating canonical truth", (
 test("#361 keeps technical evidence beneath the Professor-facing request identity", () => {
   assert.match(migration, /novelty_statement/i);
   assert.match(migration, /capability_request_evidence/i);
-  assert.match(mcp, /scientific\/model ability/i);
-  assert.match(mcp, /publication identity and detailed closure evidence remain attached/i);
+  assert.match(mcp, /scientific\/model definition/i);
+  assert.match(mcp, /generalization_needed/i);
 });

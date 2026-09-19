@@ -67,10 +67,10 @@ Production endpoint:
 
 Current deployed contract:
 
-- MCP server `3.11.0`
-- interface `15`
+- MCP server `3.12.0`
+- interface `16`
 - authoring `vlab.authoring/0.9`
-- capability requests `vlab.capability-request/6`
+- capability requests `vlab.capability-request/7`
 
 The exact shared experiment-domain tool surface contains 9 tools:
 

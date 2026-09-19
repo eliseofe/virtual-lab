@@ -117,17 +117,15 @@ This UI remains an Experiment/product administration surface. It does not embed 
 
 ## Research-AI request action — deployed
 
-Authenticated Student and Professor MCP sessions expose the durable closure path under `vlab.capability-request/6`: `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure`.
+Authenticated Student and Professor MCP sessions expose the durable closure path under `vlab.capability-request/7`: `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure`.
 
-Normal no-ID `read_workspace` discovery exposes two global, science-neutral product surfaces:
-- the canonical capability registry, which is authoritative for implemented semantic capability truth;
-- a sanitized active-extension catalog containing only stable request identity, the existing six-class classification, concise scientific/model name and definition, lifecycle status and update time.
+Normal no-ID `read_workspace` discovery exposes the stable authoring/platform contract, implemented canonical capabilities, unavailable candidate capabilities, and unavailable candidate contract deltas as distinct product surfaces.
 
-The active-extension catalog covers `requested`, `approved` and `in_progress` requests. It omits requester identity, publication history, raw closure reasoning, Professor notes, developer notes and workspace science.
+A semantic request is created with a complete candidate capability, including the scientific/model identity, target artifact/runtime domain and concrete authoring surfaces required to express it. The other five request classes are created with a candidate contract delta that points directly at a precise stable-contract location and states the requested rule/addition/change in that contract vocabulary. The backend validates this structure and target references; it does not infer or rewrite scientific meaning.
 
-Before submission, the research AI performs a best-effort whole-Experiment analysis and compares each clear unsupported requirement with both global surfaces. An active request is reused whenever its scientific/model meaning can reasonably cover the requirement. A new request is created when the required scientific/model ability is clearly and materially distinct from the active catalog. New-request identity is written primarily in scientific/model language, using source-publication terminology where useful; detailed technical diagnostics remain supporting evidence rather than the Professor-facing request definition.
+Before submission, research AI compares each clear unsupported requirement against implemented support and both candidate catalogs. A covering candidate receives another evidence link and no new request row. A related but too-narrow or ambiguous candidate receives Professor-visible `generalization_needed` evidence and no new request row. Only a genuinely absent requirement creates one new structured candidate/request.
 
-Reusing a request preserves its lifecycle state. The current blocked Experiment, closure analysis, requirement keys and publication remain linked as additional evidence beneath that same request.
+Candidate identity persists through `requested`, `approved`, `declined` and `in_progress` states while remaining unavailable to validation. Implementation or an explicit owner-governed resolution may supersede the candidate. The blocked Experiment, closure analysis, requirement keys and publication remain linked as evidence beneath the durable candidate/request identity.
 
 Current lifecycle-hook vocabulary exposed by the request path includes:
 
@@ -184,8 +182,8 @@ Current intended loop:
 3. Supported Experiment artifacts/Metrics/Results bindings are authored normally.
 4. If a required simulator capability is absent, validation exposes that gap.
 5. The authenticated research AI preserves one durable blocked Experiment/closure analysis and compares each clear gap with the active-extension catalog.
-6. Matching scientific/model needs attach as evidence to an existing active request; clearly and materially distinct needs create a new request.
-7. New requests appear once in the Professor inbox regardless of how many papers attach evidence to them.
+6. A covering candidate receives linked evidence; a related but too-narrow candidate receives `generalization_needed` evidence; neither creates a second request.
+7. A genuinely absent need creates one structured candidate/request, which appears once in the Professor inbox regardless of how many papers later attach evidence.
 8. Professor approves/declines the request; approval accepts the need into developer design.
 9. Developer generalization/reconciliation resolves semantic requests to existing or new canonical capability identity as appropriate, followed by explicit owner implementation authorization.
 10. Trusted developer implements/deploys if authorized.

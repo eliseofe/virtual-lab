@@ -52,8 +52,9 @@ function installStyles() {
     .professor-request-top h3 { margin: 0; font-size: 13.5px; line-height: 1.35; }
     .professor-request-domain { margin: 2px 0 0; color: #6c7c83; font-size: 10.5px; }
     .professor-request-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
-    .professor-request-class, .professor-evidence-count { display: inline-flex; width: fit-content; min-height: 24px; align-items: center; padding: 3px 7px; border-radius: 999px; background: #edf4f6; color: #315a69; font-size: 10px; font-weight: 700; }
+    .professor-request-class, .professor-evidence-count, .professor-generalization-needed { display: inline-flex; width: fit-content; min-height: 24px; align-items: center; padding: 3px 7px; border-radius: 999px; background: #edf4f6; color: #315a69; font-size: 10px; font-weight: 700; }
     .professor-evidence-count { background: #f2f0f7; color: #5a4d73; }
+    .professor-generalization-needed { background: #fff0dd; color: #805018; }
     .professor-status { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 8px; border-radius: 999px; background: #eef3f5; color: #50626a; font-size: 10px; font-weight: 750; text-transform: capitalize; }
     .professor-status[data-status="requested"] { background: #fff4d8; color: #7a5712; }
     .professor-status[data-status="approved"] { background: #e7f3ec; color: #265f43; }
@@ -200,6 +201,9 @@ function buildEvidenceDetails(request) {
       if (Array.isArray(item.requirement_keys) && item.requirement_keys.length > 0) {
         addDetailLine(block, "Requirements", item.requirement_keys.join(", "));
       }
+      if (item.relationship === "generalization_needed") {
+        addDetailLine(block, "Needs generalization", item.generalization_note);
+      }
       addDetailLine(block, "Experiment description", source.description);
       addDetailLine(block, "Source context", source.source_context);
       grid.append(block);
@@ -291,12 +295,19 @@ function render() {
     status.textContent = request.status.replaceAll("_", " ");
     badges.append(requestClass, status);
 
-    const evidenceCount = evidenceForRequest(request.id).length;
+    const requestEvidence = evidenceForRequest(request.id);
+    const evidenceCount = requestEvidence.length;
     if (evidenceCount > 1) {
       const count = document.createElement("span");
       count.className = "professor-evidence-count";
       count.textContent = `${evidenceCount} linked sources`;
       badges.append(count);
+    }
+    if (requestEvidence.some((item) => item.relationship === "generalization_needed")) {
+      const generalization = document.createElement("span");
+      generalization.className = "professor-generalization-needed";
+      generalization.textContent = "Needs generalization";
+      badges.append(generalization);
     }
 
     top.append(nameWrap, badges);
@@ -358,7 +369,7 @@ async function loadRequestEvidence(requestRows) {
 
   const { data: links, error: linksError } = await supabase
     .from("capability_request_evidence")
-    .select("request_id, closure_analysis_id, requirement_keys, created_at")
+    .select("request_id, closure_analysis_id, requirement_keys, relationship, generalization_note, created_at")
     .in("request_id", requestIds)
     .order("created_at", { ascending: true });
   if (linksError) throw linksError;

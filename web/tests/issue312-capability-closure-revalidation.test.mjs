@@ -39,7 +39,7 @@ test("#312 resume returns the durable blocked Experiment, ordered analysis histo
 
 test("#312 revalidation is optimistic, append-only and versioned", () => {
   assert.match(mcp, /base_analysis_sequence: z\.number\(\)\.int\(\)\.positive\(\)/);
-  assert.match(mcp, /supabase\.rpc\('revalidate_extension_closure'/);
+  assert.match(mcp, /supabase\.rpc\('revalidate_structured_extension_closure'/);
   assert.match(migration, /v_previous\.analysis_sequence <> p_base_analysis_sequence/);
   assert.match(migration, /v_next_sequence := v_previous\.analysis_sequence \+ 1/);
   assert.match(migration, /insert into public\.capability_closure_analyses/);

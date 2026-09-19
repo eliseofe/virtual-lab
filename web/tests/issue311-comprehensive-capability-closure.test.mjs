@@ -48,7 +48,7 @@ test("#311 preserves ambiguity on the research side and blocks ambiguous develop
 
 test("#311 groups multiple capability requests under one atomic closure analysis", () => {
   assert.match(mcp, /requests: z\.array\(GROUPED_EXTENSION_REQUEST_INPUT\)/);
-  assert.match(mcp, /supabase\.rpc\('submit_extension_closure'/);
+  assert.match(mcp, /supabase\.rpc\('submit_structured_extension_closure'/);
   assert.match(migration, /create or replace function public\.submit_capability_closure/i);
   assert.match(migration, /closure_analysis_id/i);
   assert.match(migration, /requirement_keys jsonb not null default '\[\]'::jsonb/i);

@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The authoring/compiler contract is now a stable language skeleton while implemented capabilities own their concrete authoring surfaces",
-  "owner_impact": "The Virtual Lab wall is not softened. Programs that were valid before remain valid, unsupported observations remain blocked, host filesystem/network access remains forbidden, and controller RNG remains unavailable because no implemented controller-RNG capability exists. Research AI now sees concrete authoring surfaces on implemented capability entries instead of an exhaustive capability inventory embedded inside the authoring contract.",
+  "outcome": "Unsupported research needs are now born as structured unavailable candidates and later papers reuse that same candidate identity",
+  "owner_impact": "Research AI now sees implemented support separately from candidate capabilities and candidate contract deltas. A covering candidate collects another paper/Experiment as evidence instead of opening another Professor request; a related but too-narrow candidate is flagged for Professor generalization; only a genuinely absent need creates one new request. Candidates remain unavailable to the compiler, so this does not make any missing scientific capability executable.",
   "next": {
     "kind": "epic_continues",
-    "issue": 374,
-    "text": "Next is #374, which makes new requests born as structured candidate capabilities or structured candidate contract deltas and reuses existing candidates rather than translating request prose later."
+    "issue": 373,
+    "text": "Next is #373, which lets the Professor generalize an existing candidate when later scientific evidence shows its current identity is too narrow. It has not started yet."
   },
   "technical_evidence": [
-    "The stable authoring contract is vlab.authoring/0.9; MCP server/interface are 3.11.0 / 15.",
-    "The 11 implemented canonical capabilities are unchanged. Their build-time bindings now carry typed authoring surfaces and are mirrored byte-identically between browser and edge validation.",
-    "Controller observation fields, neighbour fields, private state and Motion are resolved from implemented capability bindings rather than hard-coded into the stable Controller contract.",
-    "Controller rng.uniform remains rejected as semantic_capability because no implemented controller RNG surface exists; filesystem/network remain the explicit controller security roots.",
-    "The authoring contract no longer embeds canonical_capability_bindings or the current observation/action inventory. Neutral MCP discovery joins authoring_surfaces onto canonical capability entries.",
-    "No capability-request lifecycle, Professor workflow, scientific capability implementation, simulator runtime, CI/CD, retry, timeout, scheduling or development-workflow rule is changed."
+    "MCP server/interface are 3.12.0 / 16 with capability-request interface vlab.capability-request/7; the nine-tool connector surface and authoring contract vlab.authoring/0.9 are unchanged.",
+    "Semantic requests persist a candidate capability with scientific identity, target artifact/runtime domain and concrete authoring surfaces; the other five request classes persist candidate contract deltas against precise stable-contract paths.",
+    "Candidate capability keys and candidate contract-delta class/key pairs are unique, and duplicate creation is rejected in favor of evidence reuse.",
+    "Evidence links distinguish covered from generalization_needed and the Professor inbox surfaces generalization-needed evidence.",
+    "Candidate/request lifecycle state does not make a candidate authorable; only implemented capability bindings and stable implemented contract rules drive compiler acceptance.",
+    "No AI matcher, embedding, string-similarity heuristic, capability implementation, simulator runtime change, CI/CD change, retry/timeout change or development-workflow change is introduced."
   ],
-  "close_issue": 375
+  "close_issue": 374
 }
