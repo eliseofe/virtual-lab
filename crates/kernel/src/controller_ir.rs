@@ -1008,4 +1008,71 @@ mod tests {
         }"#;
         assert!(IrControllerRuntime::from_json(invalid, "{}").is_err());
     }
+    #[test]
+    fn piecewise_condition_assigns_branch_local_before_motion() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Piecewise","entry":"step",
+          "parameters":{"X":"scalar"},"state":[],
+          "body":[
+            {"kind":"if","branches":[
+              {"condition":{"kind":"compare","op":"<","left":{"kind":"load","path":"X"},"right":{"kind":"const","value":0.0}},
+               "body":[{"kind":"assign","target":"speed","value":{"kind":"const","value":0.0}}]},
+              {"condition":{"kind":"compare","op":"<=","left":{"kind":"load","path":"X"},"right":{"kind":"const","value":1.0}},
+               "body":[{"kind":"assign","target":"speed","value":{"kind":"const","value":0.5}}]}
+            ],
+            "else_body":[{"kind":"assign","target":"speed","value":{"kind":"const","value":1.0}}]},
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"speed"},{"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, r#"{"X":0.5}"#);
+        runtime.reset(1);
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        assert_eq!(runtime.step(0, &observation).forward, 0.5);
+    }
+
+    #[test]
+    fn boolean_composition_and_exhaustive_branch_returns_execute() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Bool","entry":"step",
+          "parameters":{"X":"scalar"},"state":[],
+          "body":[
+            {"kind":"if","branches":[
+              {"condition":{"kind":"bool_op","op":"and",
+                "left":{"kind":"compare","op":">=","left":{"kind":"load","path":"X"},"right":{"kind":"const","value":0.0}},
+                "right":{"kind":"unary","op":"not","value":{"kind":"bool_const","value":false}}},
+               "body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[
+                 {"kind":"const","value":1.0},{"kind":"const","value":0.0}
+               ]}}]}
+            ],
+            "else_body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"const","value":0.0},{"kind":"const","value":0.0}
+            ]}}]}
+          ]
+        }"#;
+        let mut runtime = compile(ir, r#"{"X":1.0}"#);
+        runtime.reset(1);
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        assert_eq!(runtime.step(0, &observation).forward, 1.0);
+    }
+
+    #[test]
+    fn non_exhaustive_branch_local_is_rejected_before_execution() {
+        let invalid = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Undefined","entry":"step",
+          "parameters":{"X":"scalar"},"state":[],
+          "body":[
+            {"kind":"if","branches":[
+              {"condition":{"kind":"compare","op":">=","left":{"kind":"load","path":"X"},"right":{"kind":"const","value":0.0}},
+               "body":[{"kind":"assign","target":"speed","value":{"kind":"const","value":1.0}}]}
+            ],"else_body":[]},
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"speed"},{"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        assert!(IrControllerRuntime::from_json(invalid, r#"{"X":1.0}"#).is_err());
+    }
+
 }
