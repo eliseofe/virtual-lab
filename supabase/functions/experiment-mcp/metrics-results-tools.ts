@@ -275,7 +275,7 @@ export function registerMetricsResultsTool(
             return toolError('Metric operation is not valid for the current Virtual Lab authoring contract.', validationForRole(metricOperationError(error), profile.role))
           }
 
-          const validation = validateExperimentArtifactsV07(mutated.artifacts)
+          const validation = validateExperimentArtifactsV09(mutated.artifacts)
           if (!validation.valid) {
             return toolError('Experiment artifacts are not valid for the current Virtual Lab authoring contract.', validationForRole(validation, profile.role))
           }
