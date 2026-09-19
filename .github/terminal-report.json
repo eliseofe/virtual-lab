@@ -1,18 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Metrics authoring now has bounded typed control flow aligned with the Rust runtime",
-  "owner_impact": "Metrics can now express ordinary thresholded, counting and piecewise measurements with True/False, scalar comparisons, and/or/not, and if/elif/else. Branch-local scalar/vector values are usable only when definitely assigned on every continuing path; exhaustive branches may return the metric directly. Iteration remains bounded to capability-backed snapshot collections and Metrics remains read-only with unavailable snapshot/controller information blocked.",
+  "outcome": "The bare-bones scientific authoring language scope is complete and regression-checked",
+  "owner_impact": "Virtual Lab now has a generic bounded programming/mathematics substrate for ordinary scientific authoring: typed scalar/vector/boolean expressions, comparisons, boolean composition, if/elif/else, bounded simulator-owned loops, arithmetic and exponentiation, standard scalar math/trigonometry, and read-only Metrics control flow. Unsupported scientific surfaces remain blocked. The preserved Active Elastic Showcase source compiles identically before and after this epic and its unchanged 100-tick Rust regression remains green. The stale Constant Bearing closure/request/candidate state was cleared while its live Experiment was preserved for a fresh retry.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 386,
-    "text": "Next is #386 — the final bare-bones-language acceptance. It will run the minimal syntax/math matrix through the real wall/runtime and revalidate the current Constant Bearing closure so only genuine scientific capability gaps remain. It has not started yet."
+    "kind": "scope_complete",
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The approved #382 bare-bones-language epic is complete and is being closed. No owner action is required for this ticket. The previously paused #371 scientific black-box acceptance may be resumed only in a later owner turn; the Constant Bearing Experiment is clean for a fresh retry in the existing Grok chat."
   },
   "technical_evidence": [
-    "Browser and MCP Metrics compilers remain byte-identical and emit the same boolean/comparison/conditional IR.",
-    "Rust Metrics execution supports the same bool, compare, boolean-composition and if/elif/else nodes.",
-    "Regression coverage includes thresholded counting, exhaustive branch assignment, branch returns, vector/math expressions, branch-aware collection alias lowering and read-only boundary rejection.",
-    "Metric iteration remains restricted to capability-backed snapshot collections; arbitrary iterables were not added.",
-    "No scientific capability, candidate availability, MCP tool count, CI/CD, polling, retry, timeout or development-workflow rule changed."
+    "Generic #386 acceptance covers browser/MCP compiler parity, Rust runtime execution, ordinary control flow/math, hard-wall rejection of unsupported science, and candidate non-authorability.",
+    "Exact preserved Active Elastic artifacts compile identically at pre-#382 commit 17c13a2337cdaed267b20e7680f4487d161038b1 and post-#385 commit c292bad7dc87c07d78cbeee0fd892df0b40dbae3, including all 91 initialized agents, Controller IR and both Metrics IRs.",
+    "The byte-identical pre-existing Active Elastic Rust regression advances 100 physics ticks; exact main runs 35461336832 and 35468871261 both passed.",
+    "Constant Bearing cleanup leaves 0 nonterminal requests, 0 unavailable candidates, 0 blocked drafts and 0 closure analyses while preserving the live Experiment.",
+    "No Showcase snapshot, scientific capability, MCP tool count, CI/CD, polling, retry, timeout, scheduling or development-workflow rule changed."
   ],
-  "close_issue": 385
+  "close_issue": 386
 }
