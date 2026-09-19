@@ -139,6 +139,7 @@ const NEW_SEMANTIC_EXTENSION_REQUEST_INPUT = z.object({
   ),
   requirement_keys: REQUEST_REQUIREMENT_KEYS,
   context: z.string().max(20000).default(''),
+  requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'measure', 'finalize']).optional(),
 })
 
 const NON_SEMANTIC_EXTENSION_REQUEST_CLASS = z.enum([
@@ -157,6 +158,7 @@ const NEW_CONTRACT_DELTA_REQUEST_INPUT = z.object({
   ),
   requirement_keys: REQUEST_REQUIREMENT_KEYS,
   context: z.string().max(20000).default(''),
+  requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'measure', 'finalize']).optional(),
 })
 
 const GROUPED_EXTENSION_REQUEST_INPUT = z.union([
@@ -587,7 +589,7 @@ function registerExperimentTools(
     {
       title: 'Preserve and route unsupported Virtual Lab science through durable closure',
       description:
-        'Student/Professor research-AI continuation when the intended scientific task requires support outside the current Lab contract. Preserve the whole intended Experiment and closure analysis. Compare each clear unsupported requirement against implemented support plus candidate_capabilities and candidate_contract_deltas. If a candidate covers the need, reuse its request_id and attach evidence. If it is related but too narrow or ambiguous, reuse it with relationship=generalization_needed and explain why; this creates no new Professor-facing request. Only a genuinely absent need creates one new structured candidate: semantic_capability carries a complete candidate capability including its concrete authoring surfaces, while the other five classes carry a candidate contract delta against a precise stable-contract path. Candidates remain unavailable to validation until implementation. Submission grants no development authority.',
+        'Student/Professor research-AI continuation when the intended scientific task requires support outside the current Lab contract. When the Lab already represents the required semantics exactly, author normally. Otherwise preserve the whole intended Experiment and closure analysis. Compare each clear unsupported requirement against implemented support plus candidate_capabilities and candidate_contract_deltas. If a candidate covers the need, reuse its request_id and attach evidence. If it is related but too narrow or ambiguous, reuse it with relationship=generalization_needed and explain why; this creates no new Professor-facing request. Only a genuinely absent need creates one new structured candidate: semantic_capability carries a complete candidate capability including its concrete authoring surfaces, while the other five classes carry a candidate contract delta against a precise stable-contract path. Candidates remain unavailable to validation until implementation. The task remains blocked on durable closure state until whole-Experiment revalidation finds no unsupported requirement or unresolved ambiguity. Submission grants no development authority.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid().optional(),
         origin_experiment_id: z.string().uuid().optional(),
