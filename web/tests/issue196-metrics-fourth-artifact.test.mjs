@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url";
 import { compileMetrics } from "../src/metrics/compiler.js";
 import {
   AUTHORING_CONTRACT,
-  artifactsFromLegacySources,
   normalizeExperimentArtifacts,
   validateExperimentArtifacts,
 } from "../../supabase/functions/experiment-mcp/authoring.js";
@@ -22,14 +21,27 @@ const sources = {
   controller_source: `class Probe(Agent):\n    def step(self, obs):\n        return Motion(0.0, 0.0)\n`,
 };
 
+function canonicalArtifacts(metrics = "") {
+  return [
+    { id: "configuration", type: "configuration", label: "Configuration", format: "python-vlab", order: 10, content: sources.config_source },
+    { id: "initialization", type: "initialization", label: "Initialization", format: "python-vlab", order: 20, content: sources.initializer_source },
+    { id: "controller", type: "controller", label: "Controller", format: "python-vlab/0.1", order: 30, content: sources.controller_source },
+    { id: "metrics", type: "metrics", label: "Metrics", format: "python-vlab-metrics/0.1", order: 40, content: metrics },
+  ];
+}
+
 const polarizationLike = `@metric(id="polarization", name="Polarization", unit=None, sampling=every(0.1))\ndef polarization(snapshot):\n    total = Vec2(0.0, 0.0)\n    for agent in snapshot.agents:\n        total += agent.heading\n    return norm(total) / snapshot.agent_count\n`;
 
-test("#196 empty Metrics is valid and legacy three-artifact arrays normalize to four", () => {
-  const legacyThree = artifactsFromLegacySources(sources).filter(({ id }) => id !== "metrics");
-  const normalized = normalizeExperimentArtifacts(legacyThree);
+test("#196 empty Metrics is valid while omitting the compulsory Metrics artifact is rejected", () => {
+  const canonical = canonicalArtifacts("");
+  const normalized = normalizeExperimentArtifacts(canonical);
   assert.deepEqual(normalized.map(({ id }) => id), ["configuration", "initialization", "controller", "metrics"]);
   assert.equal(normalized[3].content, "");
-  assert.equal(validateExperimentArtifacts(legacyThree).valid, true);
+  assert.equal(validateExperimentArtifacts(canonical).valid, true);
+
+  const missingMetrics = canonical.filter(({ id }) => id !== "metrics");
+  assert.throws(() => normalizeExperimentArtifacts(missingMetrics), /missing required artifact 'metrics'/);
+  assert.equal(validateExperimentArtifacts(missingMetrics).valid, false);
 });
 
 test("#196 constrained Metrics compiler supports multiple read-only scalar metrics", () => {
@@ -54,7 +66,7 @@ test("#196 Metrics compiler rejects mutation-adjacent/forbidden simulator capabi
 });
 
 test("#196 complete experiment validation compiles Metrics and reports metric diagnostics", () => {
-  const artifacts = artifactsFromLegacySources(sources).map((artifact) => artifact.id === "metrics" ? { ...artifact, content: polarizationLike } : artifact);
+  const artifacts = canonicalArtifacts(polarizationLike);
   const valid = validateExperimentArtifacts(artifacts);
   assert.equal(valid.valid, true);
   assert.equal(valid.compiled.metric_count, 1);
@@ -69,8 +81,8 @@ test("#196 complete experiment validation compiles Metrics and reports metric di
 });
 
 test("#196 authoring/artifact contracts are versioned for four compulsory artifacts", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.7");
-  assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "7");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.8");
+  assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "8");
   assert.equal(AUTHORING_CONTRACT.experiment_artifact_interface, "vlab.experiment-artifacts/3");
   assert.deepEqual(AUTHORING_CONTRACT.artifact_collection.required_core_ids, ["configuration", "initialization", "controller", "metrics"]);
   assert.equal(AUTHORING_CONTRACT.artifacts.metrics.measurement_phase.id, "post-physics-wrapped-state/1");
