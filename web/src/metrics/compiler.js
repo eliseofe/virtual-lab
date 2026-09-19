@@ -583,7 +583,38 @@ function rewriteMetricAliasExpression(node, collectionAliases, agentAliases) {
   return node;
 }
 
-function lowerMetricIterableAliases(body, collectionAliases = new Set(), agentAliases = new Map()) {
+function statementsGuaranteeMetricReturn(body) {
+  for (const statement of body) {
+    if (statement.kind === "return") return true;
+    if (statement.kind === "if" && statement.else_body.length > 0) {
+      const branchesReturn = statement.branches.every((branch) => statementsGuaranteeMetricReturn(branch.body));
+      if (branchesReturn && statementsGuaranteeMetricReturn(statement.else_body)) return true;
+    }
+  }
+  return false;
+}
+
+function intersectAliasSets(sets) {
+  if (!sets.length) return new Set();
+  const out = new Set(sets[0]);
+  for (const value of [...out]) {
+    if (!sets.every((set) => set.has(value))) out.delete(value);
+  }
+  return out;
+}
+
+function intersectAliasMaps(maps) {
+  if (!maps.length) return new Map();
+  const out = new Map(maps[0]);
+  for (const [key, value] of [...out]) {
+    if (!maps.every((map) => map.get(key) === value)) out.delete(key);
+  }
+  return out;
+}
+
+function lowerMetricIterableAliasesWithState(body, initialCollections = new Set(), initialAgents = new Map()) {
+  let collectionAliases = new Set(initialCollections);
+  let agentAliases = new Map(initialAgents);
   const lowered = [];
 
   for (const statement of body) {
@@ -626,24 +657,67 @@ function lowerMetricIterableAliases(body, collectionAliases = new Set(), agentAl
       const nestedCollections = new Set(collectionAliases);
       const nestedAgents = new Map(agentAliases);
       nestedAgents.set(statement.variable, statement.variable);
+      const nested = lowerMetricIterableAliasesWithState(statement.body, nestedCollections, nestedAgents);
       lowered.push({
         ...statement,
         iterable: rewrittenIterable.kind === "load" && rewrittenIterable.path === "snapshot.agents"
           ? { kind: "load", path: "snapshot.agents", line: rewrittenIterable.line ?? statement.line }
           : rewrittenIterable,
-        body: lowerMetricIterableAliases(statement.body, nestedCollections, nestedAgents),
+        body: nested.body,
       });
       continue;
     }
 
     if (statement.kind === "if") {
-      const branches = statement.branches.map((branch) => ({
-        ...branch,
-        condition: rewriteMetricAliasExpression(branch.condition, collectionAliases, agentAliases),
-        body: lowerMetricIterableAliases(branch.body, new Set(collectionAliases), new Map(agentAliases)),
-      }));
-      const elseBody = lowerMetricIterableAliases(statement.else_body, new Set(collectionAliases), new Map(agentAliases));
-      lowered.push({ ...statement, branches, else_body: elseBody });
+      const branchResults = statement.branches.map((branch) => {
+        const result = lowerMetricIterableAliasesWithState(
+          branch.body,
+          new Set(collectionAliases),
+          new Map(agentAliases),
+        );
+        return {
+          branch: {
+            ...branch,
+            condition: rewriteMetricAliasExpression(branch.condition, collectionAliases, agentAliases),
+            body: result.body,
+          },
+          result,
+        };
+      });
+      const elseResult = statement.else_body.length
+        ? lowerMetricIterableAliasesWithState(
+            statement.else_body,
+            new Set(collectionAliases),
+            new Map(agentAliases),
+          )
+        : null;
+
+      const continuingCollections = [];
+      const continuingAgents = [];
+      if (!statement.else_body.length) {
+        continuingCollections.push(new Set(collectionAliases));
+        continuingAgents.push(new Map(agentAliases));
+      }
+      for (const { branch, result } of branchResults) {
+        if (!statementsGuaranteeMetricReturn(branch.body)) {
+          continuingCollections.push(result.collectionAliases);
+          continuingAgents.push(result.agentAliases);
+        }
+      }
+      if (elseResult && !statementsGuaranteeMetricReturn(statement.else_body)) {
+        continuingCollections.push(elseResult.collectionAliases);
+        continuingAgents.push(elseResult.agentAliases);
+      }
+      if (continuingCollections.length) {
+        collectionAliases = intersectAliasSets(continuingCollections);
+        agentAliases = intersectAliasMaps(continuingAgents);
+      }
+
+      lowered.push({
+        ...statement,
+        branches: branchResults.map(({ branch }) => branch),
+        else_body: elseResult?.body ?? [],
+      });
       continue;
     }
 
@@ -658,7 +732,11 @@ function lowerMetricIterableAliases(body, collectionAliases = new Set(), agentAl
     lowered.push(statement);
   }
 
-  return lowered;
+  return { body: lowered, collectionAliases, agentAliases };
+}
+
+function lowerMetricIterableAliases(body, collectionAliases = new Set(), agentAliases = new Map()) {
+  return lowerMetricIterableAliasesWithState(body, collectionAliases, agentAliases).body;
 }
 
 function parseMetricFunctions(source, parameters) {
