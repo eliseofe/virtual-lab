@@ -1,18 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Professor extension requests are now compact, science-oriented decision cards",
-  "owner_impact": "The Professor inbox foregrounds the scientific request name, six-class classification, lifecycle status, concise scientific requirement, Professor note and Approve/Decline actions. Linked papers and Experiments stay attached to one durable request card and are inspectable under Evidence and details. Engineering links are also moved into that disclosure instead of occupying the main decision surface.",
+  "outcome": "The research-AI connector now has one exact current surface with no retired authoring inputs",
+  "owner_impact": "Student and Professor research-AI sessions receive exactly 9 shared Virtual Lab tools. Experiment creation and whole-source editing accept only the canonical ordered artifacts array with Configuration, Initialization, Controller and Metrics supplied explicitly; the retired three-source connector form and implicit Metrics insertion are removed. Role differences remain authorization/visibility differences rather than duplicate tools.",
   "next": {
     "kind": "epic_continues",
-    "issue": 367,
-    "text": "Next is #367, the exact research-AI connector surface cutover: derive the required current tool set, remove obsolete compatibility residue, and verify the actual MCP tools/list and reported counts before fresh-chat acceptance resumes."
+    "issue": 336,
+    "text": "Next is #336, fresh-chat scientific acceptance from the reset baseline using this exact connector surface."
   },
   "technical_evidence": [
-    "Professor request cards are rendered once per durable capability_requests row; reused capability_request_evidence rows are nested inside the card rather than rendered as additional cards.",
-    "Detailed closure evidence is loaded from capability_request_evidence, capability_closure_analyses and blocked_experiment_drafts and remains collapsed by default.",
-    "Professor note plus Approve/Decline still call the existing triage_extension_request lifecycle RPC.",
-    "The Professor-only profile guard remains unchanged; Student users do not receive the triage surface.",
-    "Historical canonical-capability editor UI and the global Development block were removed from the default decision surface without changing request or implementation semantics."
+    "The exact tool set is read_workspace, manage_collection, create_experiment, edit_experiment, delete_experiment, author_metrics_results, request_capability, resume_capability_closure, and revalidate_capability_closure.",
+    "Health reports the exact tool-name array and derives all Student/Professor/shared counts from the same 9-name contract.",
+    "create_experiment requires artifacts[] with at least the four compulsory core artifacts; edit_experiment accepts only a complete canonical artifacts[] replacement for whole-source changes.",
+    "The MCP connector no longer exposes config_source, initializer_source or controller_source compatibility inputs and no longer contains the legacy merge/conversion branches.",
+    "MCP server 3.10.0, interface 14 and authoring contract vlab.authoring/0.8 version the breaking cutover explicitly; capability-request interface v6 is unchanged.",
+    "No GitHub, repository, shell, deployment, arbitrary filesystem, arbitrary SQL/admin, simulator-control or simulator-development tool is added."
   ],
-  "close_issue": 359
+  "close_issue": 367
 }
