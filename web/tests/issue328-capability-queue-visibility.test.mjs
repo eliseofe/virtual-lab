@@ -31,10 +31,12 @@ test("#348 canonical discovery excludes request/history state by construction", 
   assert.match(cutoverMigration, /drop function if exists public\.list_canonical_capabilities\(\)/i);
 });
 
-test("#348 neutral registry remains global authenticated Lab truth, not caller-owned request discovery", () => {
+test("#361 keeps raw request history private while exposing the sanitized active catalog", () => {
   const workspaceBlock = mcp.match(/server\.registerTool\(\s*'read_workspace',[\s\S]*?server\.registerTool\(\s*'manage_collection'/);
   assert.ok(workspaceBlock, "read_workspace implementation must be found");
   assert.doesNotMatch(workspaceBlock[0], /\.from\('capability_requests'\)/);
   assert.doesNotMatch(workspaceBlock[0], /\.eq\('requester_id'/);
   assert.match(workspaceBlock[0], /\.rpc\('list_canonical_capability_registry'\)/);
+  assert.match(workspaceBlock[0], /\.from\('active_extension_request_catalog'\)/);
+  assert.match(workspaceBlock[0], /active_extension_requests/);
 });
