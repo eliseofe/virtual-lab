@@ -81,8 +81,8 @@ test("#196 complete experiment validation compiles Metrics and reports metric di
 });
 
 test("#196 authoring/artifact contracts are versioned for four compulsory artifacts", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.8");
-  assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "8");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.9");
+  assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "9");
   assert.equal(AUTHORING_CONTRACT.experiment_artifact_interface, "vlab.experiment-artifacts/3");
   assert.deepEqual(AUTHORING_CONTRACT.artifact_collection.required_core_ids, ["configuration", "initialization", "controller", "metrics"]);
   assert.equal(AUTHORING_CONTRACT.artifacts.metrics.measurement_phase.id, "post-physics-wrapped-state/1");

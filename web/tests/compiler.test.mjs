@@ -36,7 +36,7 @@ test("pow is available for the generalized Lennard-Jones proximal law", () => {
   assert.equal(ir.body[1].value.name, "pow");
 });
 
-test("forbidden simulator/randomness access is rejected", () => {
+test("unimplemented randomness capability is rejected", () => {
   const invalid = `class Bad(Agent):
     def step(self, obs):
         x = random.value
@@ -44,7 +44,7 @@ test("forbidden simulator/randomness access is rejected", () => {
 `;
   assert.throws(() => compileController(invalid), (error) => {
     assert.ok(error instanceof ControllerCompileError);
-    assert.equal(error.category, "forbidden-capability");
+    assert.equal(error.category, "unsupported-capability");
     return true;
   });
 });

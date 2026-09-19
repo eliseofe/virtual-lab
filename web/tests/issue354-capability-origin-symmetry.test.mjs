@@ -84,9 +84,9 @@ test("#354 migration normalizes old capabilities without inventing workflow hist
 
 test("#354 neutral discovery enforces live canonical/binding consistency", () => {
   assert.match(mcp, /validateCanonicalCapabilitySurface/);
-  assert.match(mcp, /AUTHORING_CONTRACT\.canonical_capability_bindings/);
+  assert.match(mcp, /CANONICAL_CAPABILITY_BINDINGS/);
   assert.match(mcp, /capabilityConsistency\.valid/);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '\d+'/);
-  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.8'/);
+  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.9'/);
 });

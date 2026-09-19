@@ -15,17 +15,17 @@ import {
   pruneMetricFromPanels,
 } from './results-authoring.js'
 
-export const MCP_SERVER_VERSION = '3.10.0'
-export const MCP_INTERFACE_VERSION = '14'
+export const MCP_SERVER_VERSION = '3.11.0'
+export const MCP_INTERFACE_VERSION = '15'
 export const MCP_AUTHORING_CONTRACT = Object.freeze({
   ...BASE_AUTHORING_CONTRACT,
-  contract_version: 'vlab.authoring/0.8',
+  contract_version: 'vlab.authoring/0.9',
   experiment_interface_version: MCP_INTERFACE_VERSION,
   capability_request_interface: 'vlab.capability-request/6',
   results_presentation: RESULTS_PRESENTATION_CONTRACT,
 })
 
-export function validateExperimentArtifactsV08(artifacts: unknown[]) {
+export function validateExperimentArtifactsV09(artifacts: unknown[]) {
   const validation = validateBaseExperimentArtifacts(artifacts)
   return { ...validation, contract_version: MCP_AUTHORING_CONTRACT.contract_version }
 }
@@ -275,7 +275,7 @@ export function registerMetricsResultsTool(
             return toolError('Metric operation is not valid for the current Virtual Lab authoring contract.', validationForRole(metricOperationError(error), profile.role))
           }
 
-          const validation = validateExperimentArtifactsV07(mutated.artifacts)
+          const validation = validateExperimentArtifactsV09(mutated.artifacts)
           if (!validation.valid) {
             return toolError('Experiment artifacts are not valid for the current Virtual Lab authoring contract.', validationForRole(validation, profile.role))
           }

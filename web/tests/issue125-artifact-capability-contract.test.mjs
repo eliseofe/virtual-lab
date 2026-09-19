@@ -11,8 +11,8 @@ test("#125/#196 authoring contract names the four required core artifacts", () =
     "metrics",
   ]);
 
-  const capabilities = AUTHORING_CONTRACT.runtime_contract.artifact_capabilities;
-  assert.equal(capabilities.version, "vlab.artifact-capabilities/0.3");
+  const capabilities = AUTHORING_CONTRACT.artifact_execution;
+  assert.equal(capabilities.version, "vlab.artifact-execution/1");
   assert.deepEqual(capabilities.lifecycle_hooks, ["setup", "initialize", "control", "measure", "finalize"]);
   assert.deepEqual(capabilities.required_core.map(({ id }) => id), [
     "configuration",
@@ -23,7 +23,7 @@ test("#125/#196 authoring contract names the four required core artifacts", () =
 });
 
 test("#125/#196 core artifact execution semantics are explicit rather than inferred", () => {
-  const byId = new Map(AUTHORING_CONTRACT.runtime_contract.artifact_capabilities.required_core.map((entry) => [entry.id, entry]));
+  const byId = new Map(AUTHORING_CONTRACT.artifact_execution.required_core.map((entry) => [entry.id, entry]));
 
   assert.equal(byId.get("configuration").behavior, "declarative");
   assert.equal(byId.get("configuration").execution_hook, null);
@@ -44,7 +44,7 @@ test("#125/#196 core artifact execution semantics are explicit rather than infer
 });
 
 test("#125/#196 optional artifacts remain passive and Metrics does not consume optional execution", () => {
-  const capabilities = AUTHORING_CONTRACT.runtime_contract.artifact_capabilities;
+  const capabilities = AUTHORING_CONTRACT.artifact_execution;
 
   assert.equal(capabilities.optional_passive.allowed, true);
   assert.ok(capabilities.optional_passive.generic_browser_formats.includes("text/plain"));
@@ -53,7 +53,7 @@ test("#125/#196 optional artifacts remain passive and Metrics does not consume o
   assert.match(capabilities.optional_passive.execution_policy, /passive unless/i);
 
   assert.deepEqual(capabilities.optional_executable.registered_types, []);
-  assert.equal(capabilities.optional_executable.unsupported_request, "artifact_workflow");
+  assert.equal(capabilities.optional_executable.unsupported_request_class, "artifact_workflow");
   assert.match(capabilities.optional_executable.execution_policy, /Metrics is a required core artifact/i);
 
   assert.equal(capabilities.optional_executable.registered_types.includes("world"), false);

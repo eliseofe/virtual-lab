@@ -8,6 +8,7 @@ import { withRequiredClaims } from 'npm:@supabase/server/middleware/required-cla
 import { withSupabaseClient } from 'npm:@supabase/server/middleware/client'
 import { z } from 'npm:zod@4.1.13'
 
+import { CANONICAL_CAPABILITY_BINDINGS } from './canonical-capability-bindings.js'
 import { validateCanonicalCapabilitySurface } from './canonical-capability-consistency.js'
 import {
   MCP_AUTHORING_CONTRACT as AUTHORING_CONTRACT,
@@ -15,7 +16,7 @@ import {
   MCP_SERVER_VERSION,
   readResultsPresentation,
   registerMetricsResultsTool,
-  validateExperimentArtifactsV08 as validateExperimentArtifacts,
+  validateExperimentArtifactsV09 as validateExperimentArtifacts,
 } from './metrics-results-tools.ts'
 import { MCP_TOOL_COUNT, MCP_TOOL_NAMES } from './tool-surface.ts'
 
@@ -226,7 +227,7 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab knowledge or an explicit experiment workspace',
       description:
-        'Start here for current Lab knowledge. Without experiment_id, return the authenticated identity, the complete current Virtual Lab authoring/runtime contract, the global canonical capability registry, and active_extension_requests: a sanitized global catalog of requested/approved/in_progress scientific or product needs. Compare a new scientific requirement with both surfaces first. When the Lab already represents the required semantics exactly, author normally. When a required scientific/model semantic is unsupported, preserve the intended Experiment through request_capability, keep the task blocked on that durable closure/request state, and resume through whole-Experiment revalidation. Reuse an active request whenever it can reasonably cover the requirement; create a new request when the scientific/model need is clearly and materially distinct. Canonical capability entries carry product truth; active request entries carry concise request class, scientific/model identity, definition and lifecycle only. Set include_workspace_index=true when the user wants to discover accessible Experiments; that explicit index remains governed by normal RLS and may be narrowed with owned_only/lifecycle. With experiment_id, return that visible Experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. This tool never writes.',
+        'Start here for current Lab knowledge. Without experiment_id, return the authenticated identity, the stable Virtual Lab authoring/compiler contract, the global canonical capability registry enriched with each implemented capability\'s concrete authoring surfaces, and active_extension_requests. The contract defines how programs are written; the capability registry defines which extensible abilities and surfaces currently exist. A surface not present on an implemented capability is not authorable. When the Lab already represents the required semantics exactly, author normally. When a required scientific/model semantic is unsupported, preserve the intended Experiment through request_capability and whole-Experiment revalidation. Set include_workspace_index=true when the user wants to discover accessible Experiments; that explicit index remains governed by normal RLS and may be narrowed with owned_only/lifecycle. With experiment_id, return that visible Experiment, its ordered typed artifacts, and its Results presentation at the current revisions. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         include_workspace_index: z.boolean().default(false),
@@ -264,7 +265,7 @@ function registerExperimentTools(
 
       const capabilityConsistency = validateCanonicalCapabilitySurface(
         capabilityRegistry ?? [],
-        AUTHORING_CONTRACT.canonical_capability_bindings ?? [],
+        CANONICAL_CAPABILITY_BINDINGS,
       )
       if (!capabilityConsistency.valid) {
         return toolError(
@@ -272,6 +273,18 @@ function registerExperimentTools(
           capabilityConsistency.errors,
         )
       }
+
+      const capabilityBindingsById = new Map(
+        CANONICAL_CAPABILITY_BINDINGS.map((binding) => [binding.canonical_capability_id, binding]),
+      )
+      const discoverableCapabilityRegistry = (capabilityRegistry ?? []).map((capability: any) => {
+        const binding = capabilityBindingsById.get(capability.id)
+        return {
+          ...capability,
+          authoring_surfaces: binding?.surfaces ?? [],
+          authoring_requires: binding?.requires ?? [],
+        }
+      })
 
       const { data: activeExtensionRequests, error: activeExtensionRequestsError } = await supabase
         .from('active_extension_request_catalog')
@@ -284,7 +297,7 @@ function registerExperimentTools(
       const neutralLabKnowledge = {
         identity,
         authoring,
-        capability_registry: capabilityRegistry ?? [],
+        capability_registry: discoverableCapabilityRegistry,
         active_extension_requests: activeExtensionRequests ?? [],
       }
 

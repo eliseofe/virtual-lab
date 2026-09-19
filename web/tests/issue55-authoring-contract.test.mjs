@@ -36,8 +36,8 @@ test("issue #55/#63/#196 edge validator vendors the exact production compilers a
 });
 
 test("issue #55/#196 contract contains software interface only, not a scientific reference experiment", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.8");
-  assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "8");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.9");
+  assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "9");
   assert.equal(AUTHORING_CONTRACT.experiment_artifact_interface, "vlab.experiment-artifacts/3");
   assert.equal(AUTHORING_CONTRACT.runtime_contract.version, "vlab.runtime/0.2");
   assert.equal(AUTHORING_CONTRACT.content_policy.includes_scientific_models, false);
@@ -45,8 +45,11 @@ test("issue #55/#196 contract contains software interface only, not a scientific
   assert.equal(Object.prototype.hasOwnProperty.call(AUTHORING_CONTRACT, "reference_examples"), false);
 
   const serialized = JSON.stringify(AUTHORING_CONTRACT);
-  for (const required of ["INTERACTION_RADIUS", "MAX_FORWARD_SPEED", "MAX_ANGULAR_SPEED", "python-vlab-metrics/0.1"]) {
-    assert.equal(serialized.includes(required), true, `authoring contract omitted generic runtime requirement: ${required}`);
+  for (const required of ["N", "CONTROL_DT", "EXPERIMENT_DURATION", "python-vlab-metrics/0.1"]) {
+    assert.equal(serialized.includes(required), true, `authoring contract omitted stable language/runtime requirement: ${required}`);
+  }
+  for (const capabilityOwned of ["INTERACTION_RADIUS", "MAX_FORWARD_SPEED", "MAX_ANGULAR_SPEED", "obs.heading", "obs.neighbours", "rng.uniform"]) {
+    assert.equal(serialized.includes(capabilityOwned), false, `authoring contract leaked capability-owned surface: ${capabilityOwned}`);
   }
   for (const forbidden of [
     "Active Elastic", "ActiveElastic", "POTENTIAL_ALPHA", "POTENTIAL_EPSILON", "DESIRED_DISTANCE",
@@ -59,7 +62,7 @@ test("issue #55/#196 contract contains software interface only, not a scientific
 test("issue #55/#63/#196 a generic experiment with arbitrary scientific parameter names and empty Metrics validates", () => {
   const result = validateExperimentSources(SOFTWARE_FIXTURE);
   assert.equal(result.valid, true, JSON.stringify(result, null, 2));
-  assert.equal(result.contract_version, "vlab.authoring/0.8");
+  assert.equal(result.contract_version, "vlab.authoring/0.9");
   assert.equal(result.compiled.configuration, "vlab.config/0.2");
   assert.equal(result.compiled.initializer, "vlab.initializer-state/0.2");
   assert.equal(result.compiled.controller_language, "python-vlab/0.1");
@@ -105,10 +108,11 @@ test("issue #55 forbidden controller host access remains forbidden", () => {
   assert.equal(result.diagnostics[0].category, "forbidden-capability");
 });
 
-test("issue #55/#196 contract exposes canonical capability bindings and no AI execution path", () => {
-  assert.equal(AUTHORING_CONTRACT.canonical_capability_bindings.length, 11);
-  assert.equal(Object.prototype.hasOwnProperty.call(AUTHORING_CONTRACT, "capability_model"), false);
-  assert.ok(AUTHORING_CONTRACT.canonical_capability_bindings.every((binding) => binding.canonical_capability_id && binding.capability_key && binding.surfaces.length));
+test("issue #55/#196 contract is capability-inventory free and exposes no AI execution path", () => {
+  assert.equal(Object.prototype.hasOwnProperty.call(AUTHORING_CONTRACT, "canonical_capability_bindings"), false);
+  assert.equal(AUTHORING_CONTRACT.capability_resolution.authority, "capability_registry");
+  assert.equal(AUTHORING_CONTRACT.capability_resolution.unregistered_surface_policy, "reject");
+  assert.equal(AUTHORING_CONTRACT.capability_resolution.candidate_surface_policy, "not_authorable");
   assert.equal(AUTHORING_CONTRACT.execution_boundary.validator_runs_simulation, false);
   assert.equal(AUTHORING_CONTRACT.execution_boundary.ai_can_run_simulation, false);
   assert.equal(AUTHORING_CONTRACT.execution_boundary.ai_can_observe_results, false);

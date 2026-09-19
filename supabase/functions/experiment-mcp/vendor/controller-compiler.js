@@ -1,14 +1,46 @@
-const FORBIDDEN_ROOTS = new Set([
-  "random", "rng", "seed", "world", "simulator", "environment", "agents", "filesystem", "network",
-]);
+import { IMPLEMENTED_CAPABILITY_BINDINGS } from "../capability-bindings.js";
 
-const CALL_SIGNATURES = {
+const SECURITY_FORBIDDEN_ROOTS = new Set(["filesystem", "network"]);
+
+const LANGUAGE_CALL_SIGNATURES = {
   Vec2: { args: ["scalar", "scalar"], result: "vec2" },
   dot: { args: ["vec2", "vec2"], result: "scalar" },
   perpendicular: { args: ["vec2"], result: "vec2" },
   norm: { args: ["vec2"], result: "scalar" },
   pow: { args: ["scalar", "scalar"], result: "scalar" },
-  Motion: { args: ["scalar", "scalar"], result: "action" },
+};
+
+const CONTROLLER_CAPABILITY_SURFACES = IMPLEMENTED_CAPABILITY_BINDINGS.flatMap((binding) =>
+  binding.surfaces
+    .filter((surface) => surface.artifact === "controller")
+    .map((surface) => ({ ...surface, capability_key: binding.capability_key }))
+);
+
+const OBSERVATION_TYPES = new Map(
+  CONTROLLER_CAPABILITY_SURFACES
+    .filter((surface) => surface.kind === "observation" && surface.symbol.startsWith("obs."))
+    .map((surface) => [surface.symbol, surface.value_type]),
+);
+
+const NEIGHBOUR_FIELD_TYPES = new Map(
+  CONTROLLER_CAPABILITY_SURFACES
+    .filter((surface) => surface.kind === "observation" && surface.symbol.startsWith("neighbour."))
+    .map((surface) => [surface.symbol.slice("neighbour.".length), surface.value_type]),
+);
+
+const CAPABILITY_CALL_SIGNATURES = Object.fromEntries(
+  CONTROLLER_CAPABILITY_SURFACES
+    .filter((surface) => surface.kind === "action_constructor" && surface.signature)
+    .map((surface) => [surface.symbol, surface.signature]),
+);
+
+const PRIVATE_SCALAR_STATE_ENABLED = CONTROLLER_CAPABILITY_SURFACES.some(
+  (surface) => surface.kind === "private_state" && surface.value_type === "scalar",
+);
+
+const CALL_SIGNATURES = {
+  ...LANGUAGE_CALL_SIGNATURES,
+  ...CAPABILITY_CALL_SIGNATURES,
 };
 
 export class ControllerCompileError extends Error {
@@ -135,13 +167,14 @@ class ExprParser {
       parts.push(this.take("ident").value);
     }
     const path = parts.join(".");
-    if (FORBIDDEN_ROOTS.has(parts[0])) {
-      throw new ControllerCompileError("forbidden-capability", `'${parts[0]}' is outside the controller information boundary`, this.line);
+    if (SECURITY_FORBIDDEN_ROOTS.has(parts[0])) {
+      throw new ControllerCompileError("forbidden-capability", `'${parts[0]}' is outside the controller security boundary`, this.line);
     }
 
     if (this.peek("(")) {
       if (parts.length !== 1 || !CALL_SIGNATURES[parts[0]]) {
-        throw new ControllerCompileError("unsupported-feature", `call '${path}' is not in python-vlab/0.1`, this.line);
+        const category = parts.length > 1 ? "unsupported-capability" : "unsupported-feature";
+        throw new ControllerCompileError(category, `call '${path}' is not available in python-vlab/0.1`, this.line);
       }
       this.take("(");
       const args = [];
@@ -241,10 +274,10 @@ function inferExpression(expr, scope) {
     return signature.result;
   }
   if (expr.kind === "load") {
-    if (expr.path === "obs.heading") return "vec2";
-    if (expr.path === "obs.neighbours") return "neighbours";
-    if (expr.path === "obs.environmental_scalar") return "scalar";
-    if (expr.path.startsWith("obs.")) throw new ControllerCompileError("invalid-observation-field", `unknown observation field '${expr.path}'`, expr.line);
+    if (OBSERVATION_TYPES.has(expr.path)) return OBSERVATION_TYPES.get(expr.path);
+    if (expr.path.startsWith("obs.")) {
+      throw new ControllerCompileError("invalid-observation-field", `observation capability '${expr.path}' is not implemented`, expr.line);
+    }
     if (expr.path.startsWith("self.")) {
       const name = expr.path.slice(5);
       const type = scope.state.get(name);
@@ -253,13 +286,18 @@ function inferExpression(expr, scope) {
     }
     const pieces = expr.path.split(".");
     if (pieces.length === 2 && scope.loopVariables.get(pieces[0]) === "neighbour") {
-      if (pieces[1] === "relative_position") return "vec2";
-      throw new ControllerCompileError("invalid-observation-field", `unknown neighbour field '${pieces[1]}'`, expr.line);
+      const fieldType = NEIGHBOUR_FIELD_TYPES.get(pieces[1]);
+      if (fieldType) return fieldType;
+      throw new ControllerCompileError("invalid-observation-field", `neighbour observation capability '${pieces[1]}' is not implemented`, expr.line);
     }
-    if (pieces.length > 1) throw new ControllerCompileError("invalid-observation-field", `field path '${expr.path}' is not available`, expr.line);
+    if (pieces.length > 1) {
+      throw new ControllerCompileError("unsupported-capability", `controller capability surface '${expr.path}' is not implemented`, expr.line);
+    }
     if (scope.locals.has(expr.path)) return scope.locals.get(expr.path);
     if (scope.parameters.has(expr.path)) return scope.parameters.get(expr.path);
-    if (FORBIDDEN_ROOTS.has(expr.path)) throw new ControllerCompileError("forbidden-capability", `'${expr.path}' is outside the controller information boundary`, expr.line);
+    if (SECURITY_FORBIDDEN_ROOTS.has(expr.path)) {
+      throw new ControllerCompileError("forbidden-capability", `'${expr.path}' is outside the controller security boundary`, expr.line);
+    }
     throw new ControllerCompileError("type", `unknown identifier '${expr.path}'`, expr.line);
   }
   throw new ControllerCompileError("internal", `unknown expression node '${expr.kind}'`, expr.line);
@@ -358,6 +396,9 @@ export function compileController(source, options = {}) {
   const parsed = parseStatements(lines, parsedState.next + 1, firstStatement.indent);
   if (parsed.next !== lines.length) throw new ControllerCompileError("syntax", "unexpected content after step body", lines[parsed.next].line);
 
+  if (parsedState.state.length > 0 && !PRIVATE_SCALAR_STATE_ENABLED) {
+    throw new ControllerCompileError("unsupported-capability", "controller private scalar state is not implemented");
+  }
   const stateMap = new Map(parsedState.state.map((entry) => [entry.name, entry.type]));
   if (stateMap.size !== parsedState.state.length) throw new ControllerCompileError("type", "private state names must be unique");
   const scope = { parameters, state: stateMap, locals: new Map(), loopVariables: new Map() };
