@@ -78,5 +78,5 @@ test("#373 versions discovery without changing the nine-tool or authoring contra
   assert.match(versions, /MCP_INTERFACE_VERSION = '17'/);
   assert.match(versions, /contract_version: 'vlab\.authoring\/0\.9'/);
   assert.match(versions, /capability_request_interface: 'vlab\.capability-request\/7'/);
-  assert.match(mcp, /const MCP_TOOL_COUNT = 9/);
+  assert.match(mcp, /shared_tool_count: MCP_TOOL_COUNT/);
 });
