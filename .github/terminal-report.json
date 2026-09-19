@@ -12,7 +12,8 @@
     "The capability-request interface is vlab.capability-request/5 with separate reuse and clearly-distinct-new-request inputs.",
     "Active request discovery exposes only sanitized scientific/model identity and lifecycle fields.",
     "Many closure analyses can link to one durable request through capability_request_evidence.",
-    "Professor triage no longer creates or binds canonical semantic capability identity."
+    "Professor triage no longer creates or binds canonical semantic capability identity.",
+    "The production-advisor follow-up adds the covering capability_request_evidence.linked_by index without changing request semantics."
   ],
   "close_issue": 361
 }
