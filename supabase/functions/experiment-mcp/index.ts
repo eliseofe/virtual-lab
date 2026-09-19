@@ -8,10 +8,6 @@ import { withRequiredClaims } from 'npm:@supabase/server/middleware/required-cla
 import { withSupabaseClient } from 'npm:@supabase/server/middleware/client'
 import { z } from 'npm:zod@4.1.13'
 
-import {
-  artifactsFromLegacySources,
-  mergeLegacySourcesIntoArtifacts,
-} from './authoring.js'
 import { validateCanonicalCapabilitySurface } from './canonical-capability-consistency.js'
 import {
   MCP_AUTHORING_CONTRACT as AUTHORING_CONTRACT,
@@ -19,8 +15,9 @@ import {
   MCP_SERVER_VERSION,
   readResultsPresentation,
   registerMetricsResultsTool,
-  validateExperimentArtifactsV07 as validateExperimentArtifacts,
+  validateExperimentArtifactsV08 as validateExperimentArtifacts,
 } from './metrics-results-tools.ts'
+import { MCP_TOOL_COUNT, MCP_TOOL_NAMES, MCP_TOOLS } from './tool-surface.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
@@ -214,16 +211,6 @@ function validationForRole(
     : validation
 }
 
-function legacySourceArgumentsPresent(values: {
-  config_source?: string
-  initializer_source?: string
-  controller_source?: string
-}) {
-  return values.config_source !== undefined
-    || values.initializer_source !== undefined
-    || values.controller_source !== undefined
-}
-
 function registerExperimentTools(
   server: McpServer,
   supabase: any,
@@ -235,7 +222,7 @@ function registerExperimentTools(
   const aiClient = clientId ?? 'mcp-client'
 
   server.registerTool(
-    'read_workspace',
+    MCP_TOOLS.readWorkspace,
     {
       title: 'Read Virtual Lab knowledge or an explicit experiment workspace',
       description:
@@ -333,7 +320,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    'manage_collection',
+    MCP_TOOLS.manageCollection,
     {
       title: 'Manage an experiment collection',
       description:
@@ -385,37 +372,21 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    'create_experiment',
+    MCP_TOOLS.createExperiment,
     {
       title: 'Create a new validated experiment',
       description:
-        'Create a brand-new owned experiment from an ordered typed artifacts array. Read the authoring contract first and preserve each artifact id/type/format. The artifacts array is canonical and validated before writing. During the compatibility transition an older client may instead supply all three legacy source arguments; they are converted to canonical artifacts with an empty compulsory Metrics artifact. Do not supply both forms. Use author_metrics_results afterward to add/amend individual metrics and Results panels without rewriting unrelated artifacts. If validation establishes a genuine unsupported scientific/product requirement, continue through request_capability so the blocked Experiment and closure analysis are preserved instead of changing the requested science.',
+        'Create a brand-new owned experiment from the complete ordered typed artifacts array. Read the current authoring contract first and supply all four compulsory core artifacts explicitly: Configuration, Initialization, Controller, and Metrics. Metrics may be empty. The canonical artifacts array is validated before writing. Use author_metrics_results afterward to add/amend individual metrics and Results panels without rewriting unrelated artifacts. If validation establishes a genuine unsupported scientific/product requirement, continue through request_capability so the blocked Experiment and closure analysis are preserved instead of changing the requested science.',
       inputSchema: {
         title: z.string().min(1).max(300),
         description: z.string().default(''),
         collection_id: z.string().uuid().nullable().optional(),
-        artifacts: z.array(ARTIFACT_INPUT).min(3).optional(),
-        config_source: z.string().optional(),
-        initializer_source: z.string().optional(),
-        controller_source: z.string().optional(),
+        artifacts: z.array(ARTIFACT_INPUT).min(4),
       },
       annotations: WRITE_ANNOTATIONS,
     },
-    async ({ title, description, collection_id, artifacts, config_source, initializer_source, controller_source }) => {
-      const hasLegacy = legacySourceArgumentsPresent({ config_source, initializer_source, controller_source })
-      if (artifacts !== undefined && hasLegacy) {
-        return toolError('Supply canonical artifacts or the legacy three-source compatibility form, not both.')
-      }
-
-      let nextArtifacts = artifacts
-      if (nextArtifacts === undefined) {
-        if (config_source === undefined || initializer_source === undefined || controller_source === undefined) {
-          return toolError('Create requires artifacts. Legacy compatibility requires all three source arguments.')
-        }
-        nextArtifacts = artifactsFromLegacySources({ config_source, initializer_source, controller_source })
-      }
-
-      const validation = validateExperimentArtifacts(nextArtifacts)
+    async ({ title, description, collection_id, artifacts }) => {
+      const validation = validateExperimentArtifacts(artifacts)
       if (!validation.valid) {
         return toolError(
           'Experiment artifacts are not valid for the current Virtual Lab authoring contract.',
@@ -430,7 +401,7 @@ function registerExperimentTools(
           collection_id: collection_id ?? null,
           title: title.trim(),
           description,
-          artifacts: nextArtifacts,
+          artifacts,
           created_by_actor: 'ai',
           created_by_ai_client: aiClient,
           updated_by_actor: 'ai',
@@ -444,20 +415,17 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    'edit_experiment',
+    MCP_TOOLS.editExperiment,
     {
       title: 'Edit, move, archive, or restore an experiment',
       description:
-        'Modify an owned experiment using optimistic concurrency. Always use the latest base_revision from read_workspace. To change scientific source wholesale, pass the complete canonical artifacts array. Prefer author_metrics_results for individual metric and Results-panel changes. During compatibility an older client may instead pass one or more legacy source arguments; they are merged into canonical artifacts. A stale revision is rejected. If validation establishes a genuine unsupported scientific/product requirement, continue through request_capability and preserve the blocked Experiment rather than substituting different semantics.',
+        'Modify an owned experiment using optimistic concurrency. Always use the latest base_revision from read_workspace. To change scientific source wholesale, pass the complete canonical artifacts array with all four compulsory core artifacts. Prefer author_metrics_results for individual metric and Results-panel changes. A stale revision is rejected. If validation establishes a genuine unsupported scientific/product requirement, continue through request_capability and preserve the blocked Experiment rather than substituting different semantics.',
       inputSchema: {
         experiment_id: z.string().uuid(),
         base_revision: z.number().int().positive(),
         title: z.string().min(1).max(300).optional(),
         description: z.string().optional(),
-        artifacts: z.array(ARTIFACT_INPUT).min(3).optional(),
-        config_source: z.string().optional(),
-        initializer_source: z.string().optional(),
-        controller_source: z.string().optional(),
+        artifacts: z.array(ARTIFACT_INPUT).min(4).optional(),
         collection_id: z.string().uuid().nullable().optional(),
         lifecycle: z.enum(['active', 'archived']).optional(),
       },
@@ -469,44 +437,12 @@ function registerExperimentTools(
       title,
       description,
       artifacts,
-      config_source,
-      initializer_source,
-      controller_source,
       collection_id,
       lifecycle,
     }) => {
-      const hasLegacy = legacySourceArgumentsPresent({ config_source, initializer_source, controller_source })
-      if (artifacts !== undefined && hasLegacy) {
-        return toolError('Supply canonical artifacts or legacy source compatibility arguments, not both.')
-      }
-      const artifactChanged = artifacts !== undefined || hasLegacy
-
       let validation: ReturnType<typeof validateExperimentArtifacts> | null = null
-      let nextArtifacts = artifacts
-      if (artifactChanged) {
-        const { data: current, error: currentError } = await supabase
-          .from('experiments')
-          .select('artifacts')
-          .eq('id', experiment_id)
-          .eq('owner_id', userId)
-          .eq('revision', base_revision)
-          .maybeSingle()
-        if (currentError) return toolError('Could not read the current experiment artifacts for validation.', currentError.message)
-        if (!current) {
-          return toolError(
-            'Conflict: the experiment is stale, missing, or not owned by this user. Re-read it with read_workspace before editing.',
-          )
-        }
-
-        if (nextArtifacts === undefined) {
-          nextArtifacts = mergeLegacySourcesIntoArtifacts(current.artifacts, {
-            config_source,
-            initializer_source,
-            controller_source,
-          })
-        }
-
-        validation = validateExperimentArtifacts(nextArtifacts)
+      if (artifacts !== undefined) {
+        validation = validateExperimentArtifacts(artifacts)
         if (!validation.valid) {
           return toolError(
             'Experiment artifacts are not valid for the current Virtual Lab authoring contract.',
@@ -522,7 +458,7 @@ function registerExperimentTools(
 
       if (title !== undefined) patch.title = title.trim()
       if (description !== undefined) patch.description = description
-      if (artifactChanged) patch.artifacts = nextArtifacts
+      if (artifacts !== undefined) patch.artifacts = artifacts
       if (collection_id !== undefined) patch.collection_id = collection_id
       if (lifecycle !== undefined) patch.lifecycle = lifecycle
 
@@ -548,7 +484,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    'delete_experiment',
+    MCP_TOOLS.deleteExperiment,
     {
       title: 'Permanently delete a working experiment',
       description:
@@ -582,7 +518,7 @@ function registerExperimentTools(
   registerMetricsResultsTool(server, supabase, profile, clientId)
 
   server.registerTool(
-    'request_capability',
+    MCP_TOOLS.requestCapability,
     {
       title: 'Preserve and route unsupported Virtual Lab science through durable closure',
       description:
@@ -670,7 +606,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    'resume_capability_closure',
+    MCP_TOOLS.resumeCapabilityClosure,
     {
       title: 'Resume a durable blocked Experiment capability closure',
       description:
@@ -736,7 +672,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    'revalidate_capability_closure',
+    MCP_TOOLS.revalidateCapabilityClosure,
     {
       title: 'Revalidate a whole blocked Experiment against the current capability contract',
       description:
@@ -847,10 +783,11 @@ Deno.serve(async (req: Request) => {
       auth_implementation: 'supabase-jwks-middleware',
       authoring_contract_version: AUTHORING_CONTRACT.contract_version,
       validation_mode: AUTHORING_CONTRACT.validation_mode,
-      tool_count: 9,
-      shared_tool_count: 9,
-      student_tool_count: 9,
-      professor_tool_count: 9,
+      tools: MCP_TOOL_NAMES,
+      tool_count: MCP_TOOL_COUNT,
+      shared_tool_count: MCP_TOOL_COUNT,
+      student_tool_count: MCP_TOOL_COUNT,
+      professor_tool_count: MCP_TOOL_COUNT,
       simulator_access: false,
     })
   }
