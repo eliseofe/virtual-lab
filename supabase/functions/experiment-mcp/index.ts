@@ -17,7 +17,7 @@ import {
   registerMetricsResultsTool,
   validateExperimentArtifactsV08 as validateExperimentArtifacts,
 } from './metrics-results-tools.ts'
-import { MCP_TOOL_COUNT, MCP_TOOL_NAMES, MCP_TOOLS } from './tool-surface.ts'
+import { MCP_TOOL_COUNT, MCP_TOOL_NAMES } from './tool-surface.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
@@ -222,7 +222,7 @@ function registerExperimentTools(
   const aiClient = clientId ?? 'mcp-client'
 
   server.registerTool(
-    MCP_TOOLS.readWorkspace,
+    'read_workspace',
     {
       title: 'Read Virtual Lab knowledge or an explicit experiment workspace',
       description:
@@ -320,7 +320,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    MCP_TOOLS.manageCollection,
+    'manage_collection',
     {
       title: 'Manage an experiment collection',
       description:
@@ -372,7 +372,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    MCP_TOOLS.createExperiment,
+    'create_experiment',
     {
       title: 'Create a new validated experiment',
       description:
@@ -415,7 +415,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    MCP_TOOLS.editExperiment,
+    'edit_experiment',
     {
       title: 'Edit, move, archive, or restore an experiment',
       description:
@@ -484,7 +484,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    MCP_TOOLS.deleteExperiment,
+    'delete_experiment',
     {
       title: 'Permanently delete a working experiment',
       description:
@@ -518,7 +518,7 @@ function registerExperimentTools(
   registerMetricsResultsTool(server, supabase, profile, clientId)
 
   server.registerTool(
-    MCP_TOOLS.requestCapability,
+    'request_capability',
     {
       title: 'Preserve and route unsupported Virtual Lab science through durable closure',
       description:
@@ -606,7 +606,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    MCP_TOOLS.resumeCapabilityClosure,
+    'resume_capability_closure',
     {
       title: 'Resume a durable blocked Experiment capability closure',
       description:
@@ -672,7 +672,7 @@ function registerExperimentTools(
   )
 
   server.registerTool(
-    MCP_TOOLS.revalidateCapabilityClosure,
+    'revalidate_capability_closure',
     {
       title: 'Revalidate a whole blocked Experiment against the current capability contract',
       description:
