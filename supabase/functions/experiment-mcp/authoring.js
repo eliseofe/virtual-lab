@@ -108,10 +108,50 @@ export const AUTHORING_CONTRACT = Object.freeze({
     principle: "The authoring contract defines how programs are written. The capability registry defines which extensible abilities and concrete authoring surfaces currently exist."
   },
   artifact_execution: {
+    version: "vlab.artifact-execution/1",
     lifecycle_hooks: ["setup", "initialize", "control", "measure", "finalize"],
-    optional_passive_allowed: true,
-    optional_executable_registered_types: [],
-    unsupported_optional_executable_request_class: "artifact_workflow"
+    required_core: [
+      {
+        id: "configuration",
+        behavior: "declarative",
+        execution_hook: null,
+        execution_scope: null,
+        cadence: null
+      },
+      {
+        id: "initialization",
+        behavior: "executable",
+        execution_hook: "initialize",
+        execution_scope: "run",
+        cadence: "once-per-fresh-run"
+      },
+      {
+        id: "controller",
+        behavior: "executable",
+        execution_hook: "control",
+        execution_scope: "agent",
+        cadence: "CONTROL_DT"
+      },
+      {
+        id: "metrics",
+        behavior: "read-only-executable-observer",
+        execution_hook: "measure",
+        execution_scope: "run-global-read-only-snapshot",
+        cadence: "per-metric declared sampling policy",
+        empty_content_valid: true,
+        measurement_phase: METRIC_MEASUREMENT_PHASE
+      }
+    ],
+    optional_passive: {
+      allowed: true,
+      generic_browser_formats: ["python-vlab", "python-vlab-metrics/0.1", "text/plain", "text/markdown", "markdown"],
+      execution_policy: "Optional artifacts are passive unless an executable artifact type is explicitly registered by the stable artifact-execution contract."
+    },
+    optional_executable: {
+      registered_types: [],
+      execution_policy: "No optional executable artifact type is registered. Metrics is a required core artifact and therefore does not use optional-artifact dispatch.",
+      unsupported_request_class: "artifact_workflow"
+    }
   },
   diagnostic_model: {
     classes: [
