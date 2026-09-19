@@ -101,7 +101,7 @@ test("#361 Professor approval enters design without creating canonical truth", (
     migration,
     /revoke insert on table public\.capability_publication_provenance from authenticated/i,
   );
-  assert.match(inbox, /Approval accepts the scientific or product need into the design queue/i);
+  assert.match(inbox, /Approval accepts the need into the design queue/i);
   assert.doesNotMatch(inbox, /card\.append\(semanticEditor\.editor\)/);
 });
 
