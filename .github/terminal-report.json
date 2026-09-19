@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The research-AI connector now has one exact current surface with no retired authoring inputs",
-  "owner_impact": "Student and Professor research-AI sessions receive exactly 9 shared Virtual Lab tools. Experiment creation and whole-source editing accept only the canonical ordered artifacts array with Configuration, Initialization, Controller and Metrics supplied explicitly; the retired three-source connector form and implicit Metrics insertion are removed. Role differences remain authorization/visibility differences rather than duplicate tools.",
+  "outcome": "The authoring/compiler contract is now a stable language skeleton while implemented capabilities own their concrete authoring surfaces",
+  "owner_impact": "The Virtual Lab wall is not softened. Programs that were valid before remain valid, unsupported observations remain blocked, host filesystem/network access remains forbidden, and controller RNG remains unavailable because no implemented controller-RNG capability exists. Research AI now sees concrete authoring surfaces on implemented capability entries instead of an exhaustive capability inventory embedded inside the authoring contract.",
   "next": {
     "kind": "epic_continues",
-    "issue": 336,
-    "text": "Next is #336, fresh-chat scientific acceptance from the reset baseline using this exact connector surface."
+    "issue": 374,
+    "text": "Next is #374, which makes new requests born as structured candidate capabilities or structured candidate contract deltas and reuses existing candidates rather than translating request prose later."
   },
   "technical_evidence": [
-    "The exact tool set is read_workspace, manage_collection, create_experiment, edit_experiment, delete_experiment, author_metrics_results, request_capability, resume_capability_closure, and revalidate_capability_closure.",
-    "Health reports the exact tool-name array and derives all Student/Professor/shared counts from the same 9-name contract.",
-    "create_experiment requires artifacts[] with at least the four compulsory core artifacts; edit_experiment accepts only a complete canonical artifacts[] replacement for whole-source changes.",
-    "The MCP connector no longer exposes config_source, initializer_source or controller_source compatibility inputs and no longer contains the legacy merge/conversion branches.",
-    "MCP server 3.10.0, interface 14 and authoring contract vlab.authoring/0.8 version the breaking cutover explicitly; capability-request interface v6 is unchanged.",
-    "No GitHub, repository, shell, deployment, arbitrary filesystem, arbitrary SQL/admin, simulator-control or simulator-development tool is added."
+    "The stable authoring contract is vlab.authoring/0.9; MCP server/interface are 3.11.0 / 15.",
+    "The 11 implemented canonical capabilities are unchanged. Their build-time bindings now carry typed authoring surfaces and are mirrored byte-identically between browser and edge validation.",
+    "Controller observation fields, neighbour fields, private state and Motion are resolved from implemented capability bindings rather than hard-coded into the stable Controller contract.",
+    "Controller rng.uniform remains rejected as semantic_capability because no implemented controller RNG surface exists; filesystem/network remain the explicit controller security roots.",
+    "The authoring contract no longer embeds canonical_capability_bindings or the current observation/action inventory. Neutral MCP discovery joins authoring_surfaces onto canonical capability entries.",
+    "No capability-request lifecycle, Professor workflow, scientific capability implementation, simulator runtime, CI/CD, retry, timeout, scheduling or development-workflow rule is changed."
   ],
-  "close_issue": 367
+  "close_issue": 375
 }
