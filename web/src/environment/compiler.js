@@ -8,11 +8,19 @@ export class EnvironmentCompileError extends Error {
 }
 
 const INTRINSICS = Object.freeze({
-  sqrt: 1,
   abs: 1,
+  sqrt: 1,
+  exp: 1,
+  log: 1,
   sin: 1,
   cos: 1,
-  exp: 1,
+  tan: 1,
+  asin: 1,
+  acos: 1,
+  atan: 1,
+  atan2: 2,
+  floor: 1,
+  ceil: 1,
   pow: 2,
   min: 2,
   max: 2,
@@ -98,6 +106,11 @@ function tokenize(text, line) {
       i += number[0].length;
       continue;
     }
+    if (text.slice(i, i + 2) === "**") {
+      tokens.push({ type: "**", value: "**" });
+      i += 2;
+      continue;
+    }
     const ident = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
     if (ident) {
       tokens.push({ type: "ident", value: ident[0] });
@@ -162,7 +175,13 @@ class Parser {
       const value = this.unary();
       return op === "+" ? value : { kind: "unary", op: "-", value };
     }
-    return this.primary();
+    return this.power();
+  }
+  power() {
+    const left = this.primary();
+    if (!this.peek("**")) return left;
+    this.take("**");
+    return { kind: "call", name: "pow", args: [left, this.unary()] };
   }
   primary() {
     if (this.peek("number")) {
