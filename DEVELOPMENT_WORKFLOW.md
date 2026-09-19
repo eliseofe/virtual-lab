@@ -1,6 +1,6 @@
 # Virtual Lab — Development Workflow
 
-This is the single repository authority for development execution procedure.
+This is the sole repository authority for development execution procedure; no other repository source may add to, modify, or override it.
 
 ## Approval breadth and execution breadth
 
@@ -40,6 +40,8 @@ A conversational/approval chunk may stop only when the active deployable ticket 
 - blocked by a **specific real condition** that prevents continuation with the currently available environment or authority.
 
 A red CI/smoke result, a queued/in-progress exact run, elapsed time, repeated failed attempts, task complexity, or conversation size is not a blocker by itself. Keep that failure inside the same approved ticket and repair it. Do not leave production red merely because the conversation has reached a convenient stopping point.
+
+If a failed candidate has materially degraded production and the last verified green state can be restored safely, restore that state before stopping at a real blocker.
 
 ## Visible liveness rule
 
@@ -89,6 +91,8 @@ Owner-facing reports must answer three human questions directly:
 - What work happens next?
 
 Never use `complete`, `fixed`, `deployed`, or `production-verified` for a deployable task before exact-candidate production verification is green.
+
+Owner-facing deployment notifications are success-only; failures remain inside the repair loop.
 
 Do not expect the owner to remember bare issue numbers; pair identifiers with semantic names when identifiers are useful.
 
