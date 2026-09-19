@@ -1,18 +1,20 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Canonical capability architecture cut over to the independent production registry",
-  "owner_impact": "Neutral research-AI discovery now gets capability identity, generic meaning, implementation state/contracts and publication provenance only from the independent canonical capability registry. The two historical aggregation requests for RNG and heterogeneous state, plus the old implemented scalar request row, are retired as legacy workflow state. No scientific capability was removed or newly implemented; the clean baseline is intended so fresh acceptance can rediscover genuinely missing requirements without inherited paper-specific request context.",
+  "outcome": "Implemented capabilities are origin-neutral across canonical metadata and authoring bindings",
+  "owner_impact": "Capabilities that predate the AI request workflow and capabilities later discovered through research AI now follow the same canonical implementation contract once implemented: complete verified implementation metadata, publication provenance, and a mandatory deployed authoring binding. Neutral discovery refuses inconsistent capability truth instead of silently treating old and new capabilities differently.",
   "next": {
     "kind": "epic_continues",
     "issue": 335,
-    "text": "#335 is the known successor: a read-only fresh-session production audit of the exact deployed MCP/data surface. It has not started in this owner turn."
+    "text": "#335 must now be rerun read-only against the exact #354 production candidate. #336 remains unstarted until that re-audit is green."
   },
   "technical_evidence": [
-    "The #348 migration refuses destructive cleanup unless the canonical registry is exactly the frozen 11 implemented capability keys and every capability has publication provenance.",
-    "Neutral read_workspace discovery calls list_canonical_capability_registry(); the obsolete request-derived list_canonical_capabilities() RPC is retired.",
-    "The three explicitly waived legacy capability-request rows are removed; the typed request workflow/table remains available for fresh requests.",
-    "The obsolete capability_requests canonical_definition/publication_provenance columns from #333 are retired; canonical semantics/provenance remain in canonical_capabilities and capability_publication_provenance.",
-    "MCP server/interface are 3.6.0/13; authoring contract remains vlab.authoring/0.7 and capability-request interface remains vlab.capability-request/4.",
-    "No simulator/kernel/physics, observation/action/runtime, Configuration/Initialization/Controller/Metrics syntax, Experiment artifact interface, or workspace RLS policy is changed by the cutover candidate."
-  ]
+    "The 11 pre-registry implemented capabilities are backfilled to the exact #348 production-verification baseline git:10bdfe63a9af0c3eedc4896682fda7bfddf71d89 at 2026-09-19T05:58:01Z rather than inventing historical request/GitHub lineage.",
+    "A database constraint requires every implemented canonical capability to have non-empty implementation contracts, implementation_version and implemented_at.",
+    "The canonical registry read seam exposes implementation_version and implemented_at alongside identity/state/contracts/provenance.",
+    "Neutral MCP discovery validates the live canonical registry against deployed authoring bindings: implemented rows require bindings and complete metadata/provenance; bindings to missing or non-implemented rows are rejected.",
+    "Non-implemented canonical capabilities remain valid without authoring bindings, preserving the Professor-approved-before-implementation lifecycle.",
+    "MCP server/interface are 3.7.0/13; authoring contract remains vlab.authoring/0.7 and capability-request interface remains vlab.capability-request/4.",
+    "No simulator/kernel/physics, observation/action/runtime, authoring syntax, Experiment artifact/interface, role/triage authority, CI/CD or deployment-workflow behavior is changed."
+  ],
+  "close_issue": 354
 }
