@@ -586,7 +586,7 @@ function registerExperimentTools(
     {
       title: 'Preserve and route unsupported Virtual Lab science through durable closure',
       description:
-        'Student/Professor research-AI continuation when the intended scientific task requires semantics outside the current Lab contract. Preserve the whole intended Experiment and closure analysis, compare each clear unsupported requirement with canonical implemented capability truth and active_extension_requests, reuse an active request whenever its scientific/model meaning can reasonably cover the need, and create a new request only when the need is clearly and materially distinct. New requests use one of the existing six request classes and state the required scientific/model ability in concise source-paper terminology where useful. The task remains blocked on the durable closure/request state until whole-Experiment revalidation later establishes that no unsupported requirement or unresolved scientific ambiguity remains. Submission grants no development authority.',
+        'Student/Professor research-AI continuation when the intended scientific task requires semantics outside the current Lab contract. Preserve the whole intended Experiment and closure analysis, compare each clear unsupported requirement with canonical implemented capability truth and active_extension_requests, reuse an active request whenever its scientific/model meaning can reasonably cover the need, and create a new request only when the need is clearly and materially distinct. New requests use one of the existing six request classes and state the required scientific/model ability in concise source-paper terminology where useful. The publication identity and detailed closure evidence remain attached beneath that durable request state. The task remains blocked on the durable closure/request state until whole-Experiment revalidation later establishes that no unsupported requirement or unresolved scientific ambiguity remains. Submission grants no development authority.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid().optional(),
         origin_experiment_id: z.string().uuid().optional(),
@@ -687,7 +687,7 @@ function registerExperimentTools(
         .eq('id', blocked_experiment_id)
         .maybeSingle()
       if (draftError) return toolError('Could not read the blocked Experiment.', draftError.message)
-      if (!blockedExperiment) return toolError('Blocked Experiment was not found or is not visible to this Professor.')
+      if (!blockedExperiment) return toolError('Blocked Experiment was not found or is not visible to this user.')
 
       const { data: analyses, error: analysisError } = await supabase
         .from('capability_closure_analyses')
