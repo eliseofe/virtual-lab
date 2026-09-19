@@ -37,7 +37,7 @@ test("issue #55/#63/#196 edge validator vendors the exact production compilers a
 
 test("issue #55/#196 contract contains software interface only, not a scientific reference experiment", () => {
   assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.9");
-  assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "8");
+  assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "9");
   assert.equal(AUTHORING_CONTRACT.experiment_artifact_interface, "vlab.experiment-artifacts/3");
   assert.equal(AUTHORING_CONTRACT.runtime_contract.version, "vlab.runtime/0.2");
   assert.equal(AUTHORING_CONTRACT.content_policy.includes_scientific_models, false);
