@@ -72,7 +72,7 @@ function validationForRole(validation: any, role: 'student' | 'professor') {
     extension_request_behavior: {
       requestable: true,
       action: 'request_capability',
-      capability_request_interface: 'vlab.capability-request/6',
+      capability_request_interface: 'vlab.capability-request/7',
       request_classes: [
         'semantic_capability',
         'authoring_language',
