@@ -342,11 +342,10 @@ function checkStatements(body, scope) {
         locals: new Map(scope.locals),
         loopVariables: new Map([[statement.variable, "neighbour"]]),
       };
-      const nestedReturns = checkStatements(statement.body, nested);
+      checkStatements(statement.body, nested);
       for (const [name, type] of scope.locals) {
         if (nested.locals.has(name) && nested.locals.get(name) !== type) throw new ControllerCompileError("type", `loop changes '${name}' type`, statement.line);
       }
-      returnsAction ||= nestedReturns;
     } else if (statement.kind === "return") {
       const type = inferExpression(statement.value, scope);
       if (type !== "action") throw new ControllerCompileError("type", "step method must return a Motion/action");
