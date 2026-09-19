@@ -125,8 +125,8 @@ test("#347 separates semantic capability from authoring-language diagnostics", (
     ...fixture,
     controller_source: `class Probe(Agent):
     def step(self, obs):
-        x = sin(1.0)
-        return Motion(0.0, 0.0)
+        while True:
+            return Motion(0.0, 0.0)
 `,
   });
   assert.equal(language.valid, false);
