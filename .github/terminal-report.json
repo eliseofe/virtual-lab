@@ -1,20 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Implemented capabilities are origin-neutral across canonical metadata and authoring bindings",
-  "owner_impact": "Capabilities that predate the AI request workflow and capabilities later discovered through research AI now follow the same canonical implementation contract once implemented: complete verified implementation metadata, publication provenance, and a mandatory deployed authoring binding. Neutral discovery refuses inconsistent capability truth instead of silently treating old and new capabilities differently.",
+  "outcome": "Production success reports now attach to the exact verified commit",
+  "owner_impact": "Successful Virtual Lab deployments keep the same human-readable success report and GitHub mention, but the report is attached directly to the exact production-verified commit instead of using a permanent policy-like issue as a mailbox.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 335,
-    "text": "#335 must now be rerun read-only against the exact #354 production candidate. #336 remains unstarted until that re-audit is green."
+    "kind": "scope_complete",
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The approved notification/workflow refactor is complete once this exact candidate is production green; no further owner action is required."
   },
   "technical_evidence": [
-    "The 11 pre-registry implemented capabilities are backfilled to the exact #348 production-verification baseline git:10bdfe63a9af0c3eedc4896682fda7bfddf71d89 at 2026-09-19T05:58:01Z rather than inventing historical request/GitHub lineage.",
-    "A database constraint requires every implemented canonical capability to have non-empty implementation contracts, implementation_version and implemented_at.",
-    "The canonical registry read seam exposes implementation_version and implemented_at alongside identity/state/contracts/provenance.",
-    "Neutral MCP discovery validates the live canonical registry against deployed authoring bindings: implemented rows require bindings and complete metadata/provenance; bindings to missing or non-implemented rows are rejected.",
-    "Non-implemented canonical capabilities remain valid without authoring bindings, preserving the Professor-approved-before-implementation lifecycle.",
-    "MCP server/interface are 3.7.0/13; authoring contract remains vlab.authoring/0.7 and capability-request interface remains vlab.capability-request/4.",
-    "No simulator/kernel/physics, observation/action/runtime, authoring syntax, Experiment artifact/interface, role/triage authority, CI/CD or deployment-workflow behavior is changed."
-  ],
-  "close_issue": 354
+    "The smoke job posts the unchanged success-report body to /commits/${GITHUB_SHA}/comments.",
+    "The CI contract test requires the exact-commit comment endpoint and forbids REPORT_ISSUE: '145'.",
+    "DEVELOPMENT_WORKFLOW.md is the sole execution-procedure authority and preserves the safe rollback and success-only notification invariants.",
+    "Exact-SHA deployment verification, production smoke, liveness, red-repair behavior, terminal-report schema, and green stopping semantics are otherwise unchanged."
+  ]
 }
