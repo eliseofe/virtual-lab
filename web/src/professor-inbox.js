@@ -21,7 +21,10 @@ if (!accountPanel) throw new Error("Professor inbox requires the registry accoun
 let profile = null;
 let requests = [];
 let evidenceByRequest = new Map();
+let candidateByRequest = new Map();
 let busyRequestId = null;
+
+const CANDIDATE_ARTIFACTS = ["configuration", "initialization", "controller", "metrics", "environment", "runtime"];
 
 function installStyles() {
   if (document.querySelector("style[data-vlab-professor-inbox]")) return;
@@ -72,6 +75,21 @@ function installStyles() {
     .professor-request-actions { display: flex; flex-wrap: wrap; gap: 7px; }
     .professor-request-actions button { min-height: 32px; padding: 5px 10px; }
     .professor-request-review { margin: 0; color: #65767d; font-size: 10.5px; line-height: 1.4; }
+    .professor-generalization-editor { border-top: 1px solid #edf1f3; padding-top: 7px; }
+    .professor-generalization-editor > summary { cursor: pointer; color: #315a69; font-size: 10.8px; font-weight: 750; }
+    .professor-generalization-form { display: grid; gap: 9px; padding: 9px 0 2px; }
+    .professor-generalization-intro { margin: 0; color: #65767d; font-size: 10.5px; line-height: 1.45; }
+    .professor-generalization-field { display: grid; gap: 4px; color: #52666f; font-size: 10.5px; font-weight: 700; }
+    .professor-generalization-field input, .professor-generalization-field textarea, .professor-generalization-field select { width: 100%; border: 1px solid #cfd8dc; border-radius: 8px; padding: 7px 8px; font: inherit; color: #172127; background: #fff; }
+    .professor-generalization-field textarea { min-height: 72px; resize: vertical; }
+    .professor-generalization-surfaces { display: grid; gap: 6px; }
+    .professor-generalization-surface { display: grid; grid-template-columns: 1.15fr 1fr 1.8fr 1fr auto; gap: 6px; align-items: end; padding: 7px; border: 1px solid #e1e8eb; border-radius: 9px; background: #fafcfc; }
+    .professor-generalization-surface label { display: grid; gap: 3px; color: #65767d; font-size: 9.8px; font-weight: 700; }
+    .professor-generalization-surface input, .professor-generalization-surface select { min-width: 0; border: 1px solid #cfd8dc; border-radius: 7px; padding: 6px 7px; font: inherit; }
+    .professor-generalization-cover { display: flex; align-items: flex-start; gap: 7px; color: #52666f; font-size: 10.5px; line-height: 1.4; }
+    .professor-generalization-cover input { margin-top: 2px; }
+    .professor-generalization-actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    @media (max-width: 760px) { .professor-generalization-surface { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 680px) { .professor-inbox-shell { min-height: min(620px, calc(100vh - 28px)); } }
   `;
   document.head.append(style);
@@ -163,6 +181,222 @@ function evidenceForRequest(requestId) {
   return evidenceByRequest.get(requestId) ?? [];
 }
 
+function candidateForRequest(requestId) {
+  return candidateByRequest.get(requestId) ?? null;
+}
+
+function unresolvedGeneralizationEvidence(requestId) {
+  return evidenceForRequest(requestId).filter(
+    (item) => item.relationship === "generalization_needed" && !item.generalization_resolved_at,
+  );
+}
+
+function candidateName(request) {
+  const candidate = candidateForRequest(request.id);
+  if (candidate?.kind === "semantic_capability") return candidate.data.capability_name;
+  if (candidate?.kind === "contract_delta") return candidate.data.delta_name;
+  return request.extension_name || request.capability_name;
+}
+
+function candidateDomain(request) {
+  const candidate = candidateForRequest(request.id);
+  if (candidate?.kind === "semantic_capability") return candidate.data.capability_domain;
+  if (candidate?.kind === "contract_delta") return candidate.data.target_contract_path;
+  return request.extension_domain || request.capability_domain;
+}
+
+function candidateDefinition(request) {
+  const candidate = candidateForRequest(request.id);
+  if (candidate?.kind === "semantic_capability") return candidate.data.canonical_definition;
+  if (candidate?.kind === "contract_delta") return candidate.data.requested_change;
+  return request.extension_definition || request.capability_name || "Scientific extension request";
+}
+
+function makeField(labelText, control) {
+  const label = document.createElement("label");
+  label.className = "professor-generalization-field";
+  label.append(document.createTextNode(labelText), control);
+  return label;
+}
+
+function textInput(value, ariaLabel) {
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = value || "";
+  input.setAttribute("aria-label", ariaLabel);
+  return input;
+}
+
+function textArea(value, ariaLabel) {
+  const area = document.createElement("textarea");
+  area.value = value || "";
+  area.setAttribute("aria-label", ariaLabel);
+  return area;
+}
+
+function artifactSelect(value, ariaLabel) {
+  const select = document.createElement("select");
+  select.setAttribute("aria-label", ariaLabel);
+  for (const artifact of CANDIDATE_ARTIFACTS) {
+    const option = document.createElement("option");
+    option.value = artifact;
+    option.textContent = artifact;
+    option.selected = artifact === value;
+    select.append(option);
+  }
+  return select;
+}
+
+function makeSurfaceRow(surface = {}, fallbackArtifact = "controller") {
+  const row = document.createElement("div");
+  row.className = "professor-generalization-surface";
+  const { artifact, kind, symbol, value_type: valueType, ...extra } = surface;
+  row._surfaceExtra = extra;
+
+  const artifactControl = artifactSelect(artifact || fallbackArtifact, "Authoring surface artifact");
+  const kindControl = textInput(kind || "", "Authoring surface kind");
+  const symbolControl = textInput(symbol || "", "Authoring surface symbol");
+  const valueTypeControl = textInput(valueType || "", "Authoring surface value type");
+
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.textContent = "Remove";
+  remove.addEventListener("click", () => row.remove());
+
+  row._controls = { artifactControl, kindControl, symbolControl, valueTypeControl };
+  row.append(
+    makeField("Artifact", artifactControl),
+    makeField("Kind", kindControl),
+    makeField("Symbol", symbolControl),
+    makeField("Value type", valueTypeControl),
+    remove,
+  );
+  return row;
+}
+
+function collectSurfaces(container) {
+  const rows = [...container.querySelectorAll(".professor-generalization-surface")];
+  if (rows.length === 0) throw new Error("At least one authoring surface is required.");
+  return rows.map((row) => {
+    const controls = row._controls;
+    const artifact = controls.artifactControl.value.trim();
+    const kind = controls.kindControl.value.trim();
+    const symbol = controls.symbolControl.value.trim();
+    const valueType = controls.valueTypeControl.value.trim();
+    if (!artifact || !kind || !symbol) {
+      throw new Error("Each authoring surface needs artifact, kind and symbol.");
+    }
+    const surface = { ...(row._surfaceExtra || {}), artifact, kind, symbol };
+    if (valueType) surface.value_type = valueType;
+    else delete surface.value_type;
+    return surface;
+  });
+}
+
+function buildGeneralizationEditor(request) {
+  const candidate = candidateForRequest(request.id);
+  const unresolved = unresolvedGeneralizationEvidence(request.id);
+  if (!candidate || candidate.data.availability !== "candidate_unavailable" || unresolved.length === 0) return null;
+
+  const details = document.createElement("details");
+  details.className = "professor-generalization-editor";
+  const summary = document.createElement("summary");
+  summary.textContent = "Generalize candidate";
+  details.append(summary);
+
+  const form = document.createElement("div");
+  form.className = "professor-generalization-form";
+  const intro = document.createElement("p");
+  intro.className = "professor-generalization-intro";
+  intro.textContent = `Broaden or refine this existing candidate for the linked scientific evidence. Its stable identity stays the same and it remains unavailable for authoring. Current revision: ${candidate.data.generalization_revision ?? 0}.`;
+  form.append(intro);
+
+  let collectCandidate;
+  if (candidate.kind === "semantic_capability") {
+    const data = candidate.data;
+    const name = textInput(data.capability_name, "Candidate capability name");
+    const domain = textInput(data.capability_domain, "Candidate scientific domain");
+    const definition = textArea(data.canonical_definition, "Candidate scientific definition");
+    const targetArtifact = artifactSelect(data.target_artifact, "Candidate target artifact");
+    const runtimeDomain = textInput(data.target_runtime_domain, "Candidate runtime domain");
+    const surfaces = document.createElement("div");
+    surfaces.className = "professor-generalization-surfaces";
+    for (const surface of data.authoring_surfaces || []) {
+      surfaces.append(makeSurfaceRow(surface, data.target_artifact));
+    }
+    const addSurface = document.createElement("button");
+    addSurface.type = "button";
+    addSurface.textContent = "Add authoring surface";
+    addSurface.addEventListener("click", () => surfaces.append(makeSurfaceRow({}, targetArtifact.value)));
+
+    form.append(
+      makeField("Candidate name", name),
+      makeField("Scientific / model domain", domain),
+      makeField("Scientific / model definition", definition),
+      makeField("Target artifact", targetArtifact),
+      makeField("Runtime domain", runtimeDomain),
+      makeField("Authoring surfaces", surfaces),
+      addSurface,
+    );
+
+    collectCandidate = () => ({
+      capability_domain: domain.value.trim(),
+      capability_name: name.value.trim(),
+      scientific_definition: definition.value.trim(),
+      target_artifact: targetArtifact.value,
+      target_runtime_domain: runtimeDomain.value.trim(),
+      authoring_surfaces: collectSurfaces(surfaces),
+    });
+  } else {
+    const data = candidate.data;
+    const name = textInput(data.delta_name, "Candidate contract delta name");
+    const target = textInput(data.target_contract_path, "Candidate contract target");
+    const change = textArea(data.requested_change, "Candidate requested contract change");
+    form.append(
+      makeField("Candidate name", name),
+      makeField("Stable contract target", target),
+      makeField("Requested contract change", change),
+    );
+    collectCandidate = () => ({
+      delta_name: name.value.trim(),
+      target_contract_path: target.value.trim(),
+      requested_change: change.value.trim(),
+    });
+  }
+
+  const note = textArea("", "Professor generalization note");
+  note.placeholder = "Optional note explaining the scientific/model broadening";
+  const cover = document.createElement("label");
+  cover.className = "professor-generalization-cover";
+  const resolve = document.createElement("input");
+  resolve.type = "checkbox";
+  resolve.checked = true;
+  const coverText = document.createElement("span");
+  coverText.textContent = `This revision covers the ${unresolved.length} currently flagged generalization evidence source${unresolved.length === 1 ? "" : "s"}.`;
+  cover.append(resolve, coverText);
+
+  const actions = document.createElement("div");
+  actions.className = "professor-generalization-actions";
+  const save = document.createElement("button");
+  save.type = "button";
+  save.className = "primary";
+  save.textContent = "Save generalization";
+  save.disabled = busyRequestId === request.id;
+  save.addEventListener("click", () => {
+    try {
+      const payload = collectCandidate();
+      generalizeCandidate(request, candidate, payload, resolve.checked, note.value);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error), "error");
+    }
+  });
+  actions.append(save);
+
+  form.append(makeField("Professor note", note), cover, actions);
+  details.append(form);
+  return details;
+}
+
 function addDetailLine(container, label, value) {
   if (value === null || value === undefined || String(value).trim() === "") return;
   const line = document.createElement("p");
@@ -203,6 +437,13 @@ function buildEvidenceDetails(request) {
       }
       if (item.relationship === "generalization_needed") {
         addDetailLine(block, "Needs generalization", item.generalization_note);
+        if (item.generalization_resolved_at) {
+          addDetailLine(
+            block,
+            "Generalization resolved",
+            `revision ${item.generalization_resolution_revision} · ${formatDate(item.generalization_resolved_at)}`,
+          );
+        }
       }
       addDetailLine(block, "Experiment description", source.description);
       addDetailLine(block, "Source context", source.source_context);
@@ -278,10 +519,10 @@ function render() {
     top.className = "professor-request-top";
     const nameWrap = document.createElement("div");
     const title = document.createElement("h3");
-    title.textContent = request.extension_name || request.capability_name;
+    title.textContent = candidateName(request);
     const domain = document.createElement("p");
     domain.className = "professor-request-domain";
-    domain.textContent = request.extension_domain || request.capability_domain;
+    domain.textContent = candidateDomain(request);
     nameWrap.append(title, domain);
 
     const badges = document.createElement("div");
@@ -303,7 +544,7 @@ function render() {
       count.textContent = `${evidenceCount} linked sources`;
       badges.append(count);
     }
-    if (requestEvidence.some((item) => item.relationship === "generalization_needed")) {
+    if (unresolvedGeneralizationEvidence(request.id).length > 0) {
       const generalization = document.createElement("span");
       generalization.className = "professor-generalization-needed";
       generalization.textContent = "Needs generalization";
@@ -315,10 +556,13 @@ function render() {
 
     const definition = document.createElement("p");
     definition.className = "professor-request-definition";
-    definition.textContent = request.extension_definition || request.capability_name || "Scientific extension request";
+    definition.textContent = candidateDefinition(request);
     card.append(definition);
 
     card.append(buildEvidenceDetails(request));
+
+    const generalizationEditor = buildGeneralizationEditor(request);
+    if (generalizationEditor) card.append(generalizationEditor);
 
     if (request.status === "requested") {
       const noteLabel = document.createElement("label");
@@ -369,7 +613,7 @@ async function loadRequestEvidence(requestRows) {
 
   const { data: links, error: linksError } = await supabase
     .from("capability_request_evidence")
-    .select("request_id, closure_analysis_id, requirement_keys, relationship, generalization_note, created_at")
+    .select("request_id, closure_analysis_id, requirement_keys, relationship, generalization_note, generalization_resolved_at, generalization_resolution_revision, generalization_resolution_note, created_at")
     .in("request_id", requestIds)
     .order("created_at", { ascending: true });
   if (linksError) throw linksError;
@@ -408,10 +652,37 @@ async function loadRequestEvidence(requestRows) {
   }
 }
 
+async function loadCandidateExtensions(requestRows) {
+  candidateByRequest = new Map();
+  const requestIds = requestRows.map((request) => request.id);
+  if (requestIds.length === 0) return;
+
+  const [capabilityResult, deltaResult] = await Promise.all([
+    supabase
+      .from("candidate_capabilities")
+      .select("request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, generalization_revision, generalized_at")
+      .in("request_id", requestIds),
+    supabase
+      .from("candidate_contract_deltas")
+      .select("request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, generalization_revision, generalized_at")
+      .in("request_id", requestIds),
+  ]);
+  if (capabilityResult.error) throw capabilityResult.error;
+  if (deltaResult.error) throw deltaResult.error;
+
+  for (const candidate of capabilityResult.data ?? []) {
+    candidateByRequest.set(candidate.request_id, { kind: "semantic_capability", data: candidate });
+  }
+  for (const candidate of deltaResult.data ?? []) {
+    candidateByRequest.set(candidate.request_id, { kind: "contract_delta", data: candidate });
+  }
+}
+
 async function loadRequests() {
   if (profile?.role !== "professor") {
     requests = [];
     evidenceByRequest = new Map();
+    candidateByRequest = new Map();
     render();
     return;
   }
@@ -432,15 +703,43 @@ async function loadRequests() {
 
   requests = requestResult.data ?? [];
   try {
-    await loadRequestEvidence(requests);
+    await Promise.all([
+      loadRequestEvidence(requests),
+      loadCandidateExtensions(requests),
+    ]);
   } catch (error) {
     evidenceByRequest = new Map();
+    candidateByRequest = new Map();
     setMessage(error instanceof Error ? error.message : String(error), "error");
     throw error;
   }
   render();
   ui.dialog.dispatchEvent(new CustomEvent("vlab:professor-requests-rendered"));
   setMessage(`${pendingCount()} pending request${pendingCount() === 1 ? "" : "s"}.`);
+}
+
+async function generalizeCandidate(request, candidate, payload, resolveEvidence, note) {
+  if (profile?.role !== "professor") return;
+  busyRequestId = request.id;
+  render();
+  setMessage("Saving candidate generalization…");
+  try {
+    const { data, error } = await supabase.rpc("generalize_candidate_extension", {
+      p_request_id: request.id,
+      p_candidate_capability: candidate.kind === "semantic_capability" ? payload : null,
+      p_candidate_contract_delta: candidate.kind === "contract_delta" ? payload : null,
+      p_resolve_generalization_evidence: resolveEvidence,
+      p_professor_note: note.trim() || null,
+    });
+    if (error) throw error;
+    if (!data) throw new Error("Candidate generalization was not saved.");
+    await loadRequests();
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : String(error), "error");
+  } finally {
+    busyRequestId = null;
+    render();
+  }
 }
 
 async function triage(request, status, note) {
@@ -477,6 +776,7 @@ async function syncSession() {
   profile = null;
   requests = [];
   evidenceByRequest = new Map();
+  candidateByRequest = new Map();
 
   if (!user) {
     ui.panel.hidden = true;
