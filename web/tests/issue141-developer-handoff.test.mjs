@@ -44,13 +44,17 @@ test("#141 developer claim is absent from browser, research MCP and service-role
   assert.match(developmentLinks, /profile\?\.role !== "professor"/);
 });
 
-test("#141 Professor inbox reflects linked engineering work without owning it", () => {
+test("#141 Professor inbox keeps linked engineering work inspectable without owning it", () => {
   assert.match(developmentLinks, /\.from\("capability_requests"\)/);
-  assert.match(developmentLinks, /github_issue_number, github_issue_url, github_pr_url, development_started_at/);
+  assert.match(developmentLinks, /github_issue_number, github_issue_url, github_pr_url/);
   assert.match(developmentLinks, /request\.github_issue_url/);
   assert.match(developmentLinks, /Issue #\$\{request\.github_issue_number\}/);
+  assert.match(developmentLinks, /professor-request-detail-grid/);
+  assert.match(developmentLinks, /professor-request-development/);
+  assert.match(developmentLinks, /vlab:professor-requests-rendered/);
   assert.match(developmentLinks, /target = "_blank"/);
   assert.match(developmentLinks, /rel = "noopener noreferrer"/);
+  assert.doesNotMatch(developmentLinks, /professor-development-links/);
   assert.match(runtimeSpeed, /import\("\.\/professor-inbox\.js"\)\.then/);
   assert.match(runtimeSpeed, /import\("\.\/professor-development-links\.js"\)/);
 });
