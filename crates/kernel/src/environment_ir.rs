@@ -44,8 +44,9 @@ fn validate_expression(expression: &Expression) -> Result<(), String> {
         }
         Expression::Call { name, args } => {
             let arity = match name.as_str() {
-                "sqrt" | "abs" | "sin" | "cos" | "exp" => 1,
-                "pow" | "min" | "max" => 2,
+                "abs" | "sqrt" | "exp" | "log" | "sin" | "cos" | "tan"
+                | "asin" | "acos" | "atan" | "floor" | "ceil" => 1,
+                "atan2" | "pow" | "min" | "max" => 2,
                 _ => return Err(format!("unsupported environment intrinsic '{name}'")),
             };
             if args.len() != arity {
@@ -82,11 +83,19 @@ fn evaluate(expression: &Expression, position: Vec2) -> f64 {
         Expression::Call { name, args } => {
             let first = evaluate(&args[0], position);
             match name.as_str() {
-                "sqrt" => first.sqrt(),
                 "abs" => first.abs(),
+                "sqrt" => first.sqrt(),
+                "exp" => first.exp(),
+                "log" => first.ln(),
                 "sin" => first.sin(),
                 "cos" => first.cos(),
-                "exp" => first.exp(),
+                "tan" => first.tan(),
+                "asin" => first.asin(),
+                "acos" => first.acos(),
+                "atan" => first.atan(),
+                "atan2" => first.atan2(evaluate(&args[1], position)),
+                "floor" => first.floor(),
+                "ceil" => first.ceil(),
                 "pow" => first.powf(evaluate(&args[1], position)),
                 "min" => first.min(evaluate(&args[1], position)),
                 "max" => first.max(evaluate(&args[1], position)),
