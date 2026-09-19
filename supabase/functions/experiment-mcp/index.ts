@@ -25,7 +25,7 @@ import {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
-const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/4'
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/5'
 
 type RegistryRole = 'student' | 'professor'
 type RegistryProfile = {
@@ -89,19 +89,44 @@ const EXTENSION_REQUEST_CLASSES = [
 
 const EXTENSION_REQUEST_CLASS = z.enum(EXTENSION_REQUEST_CLASSES)
 
-const GROUPED_EXTENSION_REQUEST_INPUT = z.object({
+const REQUEST_REQUIREMENT_KEYS = z.array(z.string().min(1).max(120)).min(1).max(50)
+
+const REUSED_EXTENSION_REQUEST_INPUT = z.object({
+  existing_request_id: z.string().uuid().describe(
+    'Stable ID from active_extension_requests for a scientific/model need already covered by an active request.',
+  ),
+  requirement_keys: REQUEST_REQUIREMENT_KEYS,
+})
+
+const NEW_EXTENSION_REQUEST_INPUT = z.object({
   request_class: EXTENSION_REQUEST_CLASS,
-  extension_key: z.string().min(1).max(240),
-  extension_domain: z.string().min(1).max(200),
-  extension_name: z.string().min(1).max(300),
-  extension_definition: z.string().min(1).max(6000),
-  canonical_capability_id: z.string().uuid().optional(),
-  existing_request_id: z.string().uuid().optional(),
-  requirement_keys: z.array(z.string().min(1).max(120)).min(1).max(50),
-  context: z.string().max(20000).default(''),
+  extension_key: z.string().min(1).max(240).describe(
+    'Stable concise key derived from the scientific/model requirement.',
+  ),
+  extension_domain: z.string().min(1).max(200).describe(
+    'Scientific/model domain for the requirement.',
+  ),
+  extension_name: z.string().min(1).max(300).describe(
+    'Short scientific/model name, preferably using terminology from the source publication.',
+  ),
+  extension_definition: z.string().min(1).max(6000).describe(
+    'Concise statement of the scientific/model ability the Experiment requires, preferably using source-publication terminology.',
+  ),
+  novelty_statement: z.string().min(1).max(6000).describe(
+    'Concise comparison stating the materially distinct scientific/model need after reviewing active_extension_requests.',
+  ),
+  requirement_keys: REQUEST_REQUIREMENT_KEYS,
+  context: z.string().max(20000).default('').describe(
+    'Optional scientific evidence or context supporting the requirement.',
+  ),
   requested_artifact_type: z.string().min(1).max(200).optional(),
   requested_lifecycle_hook: z.enum(['setup', 'initialize', 'control', 'measure', 'finalize']).optional(),
 })
+
+const GROUPED_EXTENSION_REQUEST_INPUT = z.union([
+  REUSED_EXTENSION_REQUEST_INPUT,
+  NEW_EXTENSION_REQUEST_INPUT,
+])
 
 function json(value: unknown, status = 200, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(value), {
@@ -135,6 +160,10 @@ function extensionRequestBehavior(role: RegistryRole) {
     capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
     request_classes: EXTENSION_REQUEST_CLASSES,
     canonical_registry_first: true,
+    active_request_catalog_first: true,
+    reuse_when_plausibly_covered: true,
+    new_request_threshold: 'clearly_materially_distinct',
+    request_language: 'scientific_model',
     preserve_draft: true,
     preserve_publication_identity: true,
     comprehensive_analysis_required: true,
@@ -205,7 +234,7 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab knowledge or an explicit experiment workspace',
       description:
-        'Start here for neutral Lab knowledge. Without experiment_id, return the authenticated identity, the complete current Virtual Lab authoring/runtime contract, and the global canonical capability registry. Canonical capabilities contain only generic identity/definition, implementation state/contracts/version/verification time, and minimal publication provenance; historical request reasoning and workspace science are not returned. Set include_workspace_index=true only when the user actually wants to discover accessible Experiments; that explicit index is still governed by normal RLS and may be narrowed with owned_only/lifecycle. With experiment_id, return that visible Experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in explicit Experiment responses for compatibility and must not be treated as a second source of truth. This tool never writes.',
+        'Start here for current Lab knowledge. Without experiment_id, return the authenticated identity, the complete current Virtual Lab authoring/runtime contract, the global canonical capability registry, and active_extension_requests: a sanitized global catalog of requested/approved/in_progress scientific or product needs. Compare a new scientific requirement with both surfaces first. Reuse an active request whenever it can reasonably cover the requirement; create a new request when the scientific/model need is clearly and materially distinct. Canonical capability entries carry product truth; active request entries carry concise request class, scientific/model identity, definition and lifecycle only. Set include_workspace_index=true when the user wants to discover accessible Experiments; that explicit index remains governed by normal RLS and may be narrowed with owned_only/lifecycle. With experiment_id, return that visible Experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         include_workspace_index: z.boolean().default(false),
@@ -252,10 +281,19 @@ function registerExperimentTools(
         )
       }
 
+      const { data: activeExtensionRequests, error: activeExtensionRequestsError } = await supabase
+        .from('active_extension_request_catalog')
+        .select('request_id, request_class, extension_key, extension_domain, extension_name, extension_definition, status, updated_at')
+        .order('updated_at', { ascending: false })
+      if (activeExtensionRequestsError) {
+        return toolError('Could not read active Virtual Lab extension requests.', activeExtensionRequestsError.message)
+      }
+
       const neutralLabKnowledge = {
         identity,
         authoring,
         capability_registry: capabilityRegistry ?? [],
+        active_extension_requests: activeExtensionRequests ?? [],
       }
 
       if (!include_workspace_index) return toolResult(neutralLabKnowledge)
@@ -543,7 +581,7 @@ function registerExperimentTools(
     {
       title: 'Submit unsupported Virtual Lab requirements for a blocked Experiment',
       description:
-        'Student/Professor research-AI action. Analyse the whole intended Experiment against the current canonical capability registry and formal Lab contract before submitting. Classify each clear unsupported requirement as semantic_capability, authoring_language, runtime_configuration, artifact_workflow, implementation_optimization, or security_boundary. All six classes may reach Professor triage; none is automatically rejected. For semantic_capability, reference canonical_capability_id when a matching non-implemented canonical capability already exists; otherwise submit a generic proposed target without pretending it is canonical truth. Preserve minimal publication title+identifier separately from scientific reasoning. Reconcile an already-created request only by its explicit existing_request_id, never by free-text name/domain matching. Submission grants no development authority.',
+        'Student/Professor research-AI action. Analyse the whole intended Experiment against the current canonical capability registry, active_extension_requests, and formal Lab contract. For each clear unsupported requirement, reuse an active request whenever its scientific/model meaning can reasonably cover the need. Create a new request when the scientific/model requirement is clearly and materially distinct from the active catalog. New requests use one of the existing six request classes and state the required scientific/model ability in concise source-paper terminology where useful. The publication identity and detailed closure evidence remain attached to the blocked Experiment. Submission grants no development authority.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid().optional(),
         origin_experiment_id: z.string().uuid().optional(),
@@ -655,13 +693,26 @@ function registerExperimentTools(
         const analysisIds = analysisHistory.map((analysis: { id: string }) => analysis.id)
         let linkedRequests: unknown[] = []
         if (analysisIds.length > 0) {
-          const { data: requests, error: requestsError } = await supabase
-            .from('capability_requests')
-            .select('*')
+          const { data: evidence, error: evidenceError } = await supabase
+            .from('capability_request_evidence')
+            .select('request_id, closure_analysis_id, requirement_keys, created_at')
             .in('closure_analysis_id', analysisIds)
             .order('created_at', { ascending: true })
-          if (requestsError) return toolError('Could not read linked capability requests.', requestsError.message)
-          linkedRequests = requests ?? []
+          if (evidenceError) return toolError('Could not read linked capability-request evidence.', evidenceError.message)
+
+          const requestIds = [...new Set((evidence ?? []).map((link: { request_id: string }) => link.request_id))]
+          if (requestIds.length > 0) {
+            const { data: requests, error: requestsError } = await supabase
+              .from('capability_requests')
+              .select('*')
+              .in('id', requestIds)
+              .order('created_at', { ascending: true })
+            if (requestsError) return toolError('Could not read linked capability requests.', requestsError.message)
+            linkedRequests = (requests ?? []).map((request: { id: string }) => ({
+              ...request,
+              evidence: (evidence ?? []).filter((link: { request_id: string }) => link.request_id === request.id),
+            }))
+          }
         }
 
         return toolResult({
@@ -680,7 +731,7 @@ function registerExperimentTools(
       {
         title: 'Revalidate a whole blocked Experiment against the current capability contract',
         description:
-          'Professor-only research-AI action. Re-analyse the entire preserved Experiment against the current canonical capability registry and formal Lab contract. Preserve classified requirements across all six request classes. Reuse an existing request only by explicit existing_request_id; otherwise create a new request record, allowing multiple papers/requests to converge later on one canonical semantic capability. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
+          'Professor-only research-AI action. Re-analyse the entire preserved Experiment against the current canonical capability registry, active_extension_requests, and formal Lab contract. Preserve classified requirements across all six request classes. Link each clear gap to an existing active request whenever that request can reasonably cover the scientific/model need; create a new request when the requirement is clearly and materially distinct. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
         inputSchema: {
           blocked_experiment_id: z.string().uuid(),
           base_analysis_sequence: z.number().int().positive(),
