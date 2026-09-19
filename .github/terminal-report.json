@@ -1,21 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Authoring contract bound to canonical capabilities with separated diagnostics",
-  "owner_impact": "The formal authoring contract no longer carries an independent semantic capability model. It references the 11 implemented canonical capability UUIDs/keys through static existing-interface bindings, while canonical meaning/status/version/provenance remain registry-owned. Validation now distinguishes semantic capability gaps from authoring-language, runtime/configuration, forbidden/security-boundary and ordinary type/validation failures. All six extension-request classes remain available for Professor triage with no automatic rejection.",
+  "outcome": "Canonical capability architecture cut over to the independent production registry",
+  "owner_impact": "Neutral research-AI discovery now gets capability identity, generic meaning, implementation state/contracts and publication provenance only from the independent canonical capability registry. The two historical aggregation requests for RNG and heterogeneous state, plus the old implemented scalar request row, are retired as legacy workflow state. No scientific capability was removed or newly implemented; the clean baseline is intended so fresh acceptance can rediscover genuinely missing requirements without inherited paper-specific request context.",
   "next": {
     "kind": "epic_continues",
-    "issue": 348,
-    "text": "#348 is the known successor for production cutover and legacy capability-state retirement. #348 has not started in this owner turn."
+    "issue": 335,
+    "text": "#335 is the known successor: a read-only fresh-session production audit of the exact deployed MCP/data surface. It has not started in this owner turn."
   },
   "technical_evidence": [
-    "Authoring contract vlab.authoring/0.7 exposes canonical_capability_bindings for all 11 frozen implemented capabilities and no longer exposes capability_model.",
-    "Bindings contain canonical UUID/key and existing authoring/runtime surfaces only; they do not duplicate canonical definitions, implementation state/version, or publication provenance.",
-    "Static consistency tests require every frozen implemented canonical registry row to have exactly one matching authoring binding and prohibit unbound/duplicate capability identity.",
-    "Compiler/runtime code remains static and does not query Supabase/canonical registry at runtime.",
-    "Diagnostics preserve low-level compiler category and add diagnostic_class plus request_class only when the failure maps to a durable extension class.",
-    "Unsupported authoring-language features are no longer remapped to semantic simulator-capability gaps; forbidden boundaries map to security_boundary and runtime contract failures map to runtime_configuration.",
-    "Existing Configuration/Initialization/Controller/Metrics syntax, observations/actions/runtime semantics, simulator/kernel/physics behavior and Experiment artifact interface are unchanged.",
-    "MCP server/interface are 3.5.0/13; capability-request interface remains vlab.capability-request/4."
-  ],
-  "close_issue": 347
+    "The #348 migration refuses destructive cleanup unless the canonical registry is exactly the frozen 11 implemented capability keys and every capability has publication provenance.",
+    "Neutral read_workspace discovery calls list_canonical_capability_registry(); the obsolete request-derived list_canonical_capabilities() RPC is retired.",
+    "The three explicitly waived legacy capability-request rows are removed; the typed request workflow/table remains available for fresh requests.",
+    "The obsolete capability_requests canonical_definition/publication_provenance columns from #333 are retired; canonical semantics/provenance remain in canonical_capabilities and capability_publication_provenance.",
+    "MCP server/interface are 3.6.0/13; authoring contract remains vlab.authoring/0.7 and capability-request interface remains vlab.capability-request/4.",
+    "No simulator/kernel/physics, observation/action/runtime, Configuration/Initialization/Controller/Metrics syntax, Experiment artifact interface, or workspace RLS policy is changed by the cutover candidate."
+  ]
 }

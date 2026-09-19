@@ -1,6 +1,6 @@
 # Professor capability-request workflow
 
-Status: **deployed baseline and standing development boundary, updated 18 September 2026**.
+Status: **deployed baseline and standing development boundary, updated 19 September 2026**.
 
 This document records the paper-to-Experiment extension loop when a research AI discovers that the current Virtual Lab cannot express a required simulator capability.
 
@@ -49,7 +49,7 @@ Issue #310 adds the durable domain foundation used by the repaired closed loop:
 
 This schema foundation is secure-by-default. #311 adopts it in the authenticated research-AI MCP for both Student and Professor submission. #312 adds Professor-only `resume_capability_closure` and `revalidate_capability_closure`: the first reconstructs the durable draft, analysis history and linked request lifecycle without chat history; the second appends a new whole-Experiment analysis against the current contract, preserves earlier analyses and request rows, records resolved/remaining/new requirement keys, and permits `unblocked` only when no unsupported requirement or scientific ambiguity remains. The original aggregation workflow is live-tested with Grok in #313.
 
-The two already-approved aggregation requests remained unchanged and unlinked through #310–#312. #313's reconciliation repair is the point at which the live aggregation closure may attach them to the durable blocked Experiment while preserving their `approved` state.
+The two historical aggregation requests remained unchanged and unlinked through #310–#312. The later canonical-architecture transition superseded that temporary state: #348 intentionally retires those legacy request rows before fresh scientific acceptance, so no historical request identity is carried into the clean baseline.
 
 ## Six-class request model
 
@@ -119,7 +119,7 @@ This UI remains an Experiment/product administration surface. It does not embed 
 
 Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/4`.
 
-Normal `read_workspace` discovery also exposes the caller-visible nonterminal capability queue (`requested`, `approved`, `in_progress`). Existing RLS remains authoritative: a Professor sees queue rows already visible to Professor; a Student sees only rows already visible to that Student. This protocol state lets a fresh research-AI session distinguish an already-requested or approved capability from a genuinely new gap without relying on chat memory. `approved` remains a pending developer-queue commitment, not evidence that the capability is implemented; the active authoring contract remains authoritative for what can be executed now.
+Normal no-ID `read_workspace` discovery exposes the global authenticated **canonical capability registry**, not capability-request history. Its identity, generic definition, implementation state/contracts and publication provenance come from the independent canonical registry/provenance tables. Request/history state remains available only through the explicit request, closure/resume and Professor-triage paths that need it and remains governed by the existing authorization model. The active authoring contract remains authoritative for how implemented capabilities are used.
 
 The active authoring contract signals requestable unsupported-capability behavior for both roles. Before submission, the research AI performs a best-effort whole-Experiment analysis, groups low-level diagnostics into meaningful capability requests, and preserves explicit ambiguity instead of asking the developer layer to infer scientific meaning. Request reconciliation is now by explicit stable request UUID or canonical capability UUID. Free-text domain/name matching is not an identity mechanism. Reusing a request preserves its lifecycle state; a different paper normally creates a different request record even when both requests later bind to the same canonical capability.
 
@@ -163,16 +163,13 @@ A missing capability is not permission to replace the requested science with a n
 
 Likewise, when a definition has already been owner-authorized and is supported, do not create a duplicate capability request or ask the owner to repeat it.
 
-## Current approved requests
+## Current queue baseline
 
-Two Professor-approved requests remain **not implementation-authorized**:
+#348 intentionally establishes a clean-slate request baseline: the two historical aggregation requests for simulator-owned controller stochasticity/RNG and heterogeneous agent initialization/state are retired rather than migrated, and the old scalar-environment request row is retired as capability authority.
 
-- `7492c39d-fdd0-4f29-9661-63dbc6461bf5` — generic simulator-owned controller stochasticity/RNG distributions;
-- `49368c8e-dff7-4ce0-9072-bc3f4b37ada2` — generic heterogeneous agent initialization/state.
+This retirement does **not** implement RNG or heterogeneous state. If fresh scientific work still requires them, the research AI must rediscover and submit them through the typed request workflow for normal Professor triage. The implemented scalar Environment capabilities remain represented in the canonical registry independently of request history.
 
-Their durable design checkpoint is `docs/CAPABILITY_APPROVALS_2026-09-15.md`.
-
-Do not implement either request merely because its registry status is `approved`.
+`docs/CAPABILITY_APPROVALS_2026-09-15.md` remains historical design evidence, not current queue state.
 
 ## Paper-to-Experiment loop
 
