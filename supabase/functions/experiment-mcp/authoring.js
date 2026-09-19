@@ -57,8 +57,15 @@ export const AUTHORING_CONTRACT = Object.freeze({
     controller: {
       language: "python-vlab/0.1",
       ir_schema: "vlab.controller-ir/0.1",
-      syntax: "Restricted Python-compatible class syntax: class Name(Agent), optional capability-backed class state declarations, and def step(self, obs). Supports assignments, +=, arithmetic, iteration over capability-backed iterables, and return of capability-backed actions.",
+      syntax: "Restricted Python-compatible class syntax: class Name(Agent), optional capability-backed class state declarations, and def step(self, obs). Supports typed scalar/vector/boolean expressions, assignments, +=, arithmetic, scalar comparisons, boolean composition, if/elif/else, bounded iteration over capability-backed iterables, and return of capability-backed actions.",
       entry: "step(self, obs)",
+      control_flow: {
+        boolean_literals: ["True", "False"],
+        comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
+        boolean_operators: ["and", "or", "not"],
+        conditionals: ["if", "elif", "else"],
+        iteration: "for ... in capability-backed iterable"
+      },
       language_intrinsics: {
         Vec2: ["scalar", "scalar"],
         dot: ["vec2", "vec2"],

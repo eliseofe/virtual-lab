@@ -8,6 +8,7 @@ use crate::{Action, ControllerRuntime, NeighbourObservation, Observation, Vec2};
 enum Value {
     Scalar(f64),
     Vec2(Vec2),
+    Bool(bool),
     Action(Action),
 }
 
@@ -17,6 +18,9 @@ impl Value {
     }
     fn vec2(self) -> Vec2 {
         match self { Value::Vec2(value) => value, _ => unreachable!("validated controller vector") }
+    }
+    fn boolean(self) -> bool {
+        match self { Value::Bool(value) => value, _ => unreachable!("validated controller boolean") }
     }
     fn action(self) -> Action {
         match self { Value::Action(value) => value, _ => unreachable!("validated controller action") }
@@ -46,11 +50,20 @@ struct StateDeclaration {
 }
 
 #[derive(Debug, Deserialize)]
+struct ConditionalBranch {
+    condition: Expression,
+    body: Vec<Statement>,
+    #[serde(default)]
+    line: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum Statement {
     Assign { target: String, value: Expression, #[serde(default)] line: Option<usize> },
     AugAssign { target: String, op: String, value: Expression, #[serde(default)] line: Option<usize> },
     ForEach { variable: String, iterable: Expression, body: Vec<Statement>, #[serde(default)] line: Option<usize> },
+    If { branches: Vec<ConditionalBranch>, #[serde(default)] else_body: Vec<Statement>, #[serde(default)] line: Option<usize> },
     Return { value: Expression, #[serde(default)] line: Option<usize> },
 }
 
@@ -58,8 +71,11 @@ enum Statement {
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum Expression {
     Const { value: f64, #[serde(default)] line: Option<usize> },
+    BoolConst { value: bool, #[serde(default)] line: Option<usize> },
     Load { path: String, #[serde(default)] line: Option<usize> },
     Unary { op: String, value: Box<Expression>, #[serde(default)] line: Option<usize> },
+    Compare { op: String, left: Box<Expression>, right: Box<Expression>, #[serde(default)] line: Option<usize> },
+    BoolOp { op: String, left: Box<Expression>, right: Box<Expression>, #[serde(default)] line: Option<usize> },
     Binary { op: String, left: Box<Expression>, right: Box<Expression>, #[serde(default)] line: Option<usize> },
     Call { name: String, args: Vec<Expression>, #[serde(default)] line: Option<usize> },
 }
@@ -82,6 +98,7 @@ fn validate_expression(
         Expression::Const { value, line } => {
             if !value.is_finite() { return Err(at_line(*line, "numeric constants must be finite")); }
         }
+        Expression::BoolConst { .. } => {}
         Expression::Load { path, line } => {
             if path == "obs.heading" || path == "obs.neighbours" || path == "obs.environmental_scalar" { return Ok(()); }
             if let Some(name) = path.strip_prefix("self.") {
@@ -98,8 +115,24 @@ fn validate_expression(
             return Err(at_line(*line, format!("unknown identifier '{path}'")));
         }
         Expression::Unary { op, value, line } => {
-            if op != "-" { return Err(at_line(*line, format!("unsupported unary operator '{op}'"))); }
+            if !matches!(op.as_str(), "-" | "not") {
+                return Err(at_line(*line, format!("unsupported unary operator '{op}'")));
+            }
             validate_expression(value, parameters, state, locals, loop_variable)?;
+        }
+        Expression::Compare { op, left, right, line } => {
+            if !matches!(op.as_str(), "<" | "<=" | ">" | ">=" | "==" | "!=") {
+                return Err(at_line(*line, format!("unsupported comparison operator '{op}'")));
+            }
+            validate_expression(left, parameters, state, locals, loop_variable)?;
+            validate_expression(right, parameters, state, locals, loop_variable)?;
+        }
+        Expression::BoolOp { op, left, right, line } => {
+            if !matches!(op.as_str(), "and" | "or") {
+                return Err(at_line(*line, format!("unsupported boolean operator '{op}'")));
+            }
+            validate_expression(left, parameters, state, locals, loop_variable)?;
+            validate_expression(right, parameters, state, locals, loop_variable)?;
         }
         Expression::Binary { op, left, right, line } => {
             if !matches!(op.as_str(), "+" | "-" | "*" | "/") {
@@ -119,6 +152,13 @@ fn validate_expression(
         }
     }
     Ok(())
+}
+
+fn intersect_local_sets(sets: &[HashSet<String>]) -> HashSet<String> {
+    let Some(first) = sets.first() else { return HashSet::new(); };
+    let mut out = first.clone();
+    out.retain(|name| sets.iter().all(|set| set.contains(name)));
+    out
 }
 
 fn validate_statements(
@@ -160,6 +200,34 @@ fn validate_statements(
                 let mut nested = locals.clone();
                 validate_statements(body, parameters, state, &mut nested, Some(variable))?;
             }
+            Statement::If { branches, else_body, .. } => {
+                let before = locals.clone();
+                let mut continuing = Vec::new();
+                let mut all_return = !else_body.is_empty();
+
+                for branch in branches {
+                    validate_expression(&branch.condition, parameters, state, &before, loop_variable)?;
+                    let mut nested = before.clone();
+                    let branch_returns = validate_statements(&branch.body, parameters, state, &mut nested, loop_variable)?;
+                    if !branch_returns { continuing.push(nested); }
+                    all_return &= branch_returns;
+                }
+
+                if else_body.is_empty() {
+                    continuing.push(before.clone());
+                    all_return = false;
+                } else {
+                    let mut nested = before.clone();
+                    let else_returns = validate_statements(else_body, parameters, state, &mut nested, loop_variable)?;
+                    if !else_returns { continuing.push(nested); }
+                    all_return &= else_returns;
+                }
+
+                if !continuing.is_empty() {
+                    *locals = intersect_local_sets(&continuing);
+                }
+                returns |= all_return;
+            }
             Statement::Return { value, .. } => {
                 validate_expression(value, parameters, state, locals, loop_variable)?;
                 returns = true;
@@ -176,6 +244,10 @@ fn collect_local_names(body: &[Statement], out: &mut BTreeSet<String>) {
                 if !target.starts_with("self.") { out.insert(target.clone()); }
             }
             Statement::ForEach { body, .. } => collect_local_names(body, out),
+            Statement::If { branches, else_body, .. } => {
+                for branch in branches { collect_local_names(&branch.body, out); }
+                collect_local_names(else_body, out);
+            }
             Statement::Return { .. } => {}
         }
     }
@@ -183,6 +255,12 @@ fn collect_local_names(body: &[Statement], out: &mut BTreeSet<String>) {
 
 #[derive(Debug, Clone, Copy)]
 enum BinaryOp { Add, Subtract, Multiply, Divide }
+
+#[derive(Debug, Clone, Copy)]
+enum CompareOp { Less, LessEqual, Greater, GreaterEqual, Equal, NotEqual }
+
+#[derive(Debug, Clone, Copy)]
+enum BooleanOp { And, Or }
 
 #[derive(Debug, Clone, Copy)]
 enum Intrinsic { Vec2, Dot, Perpendicular, Norm, Pow, Motion }
@@ -200,8 +278,12 @@ enum PreparedLoad {
 #[derive(Debug, Clone, Copy)]
 enum EvalOp {
     Const(f64),
+    BoolConst(bool),
     Load(PreparedLoad),
     Negate,
+    Not,
+    Compare(CompareOp),
+    Boolean(BooleanOp),
     Binary(BinaryOp),
     Intrinsic(Intrinsic),
 }
@@ -216,10 +298,17 @@ struct PreparedExpression {
 enum PreparedTarget { PrivateState(usize), Local(usize) }
 
 #[derive(Debug)]
+struct PreparedConditionalBranch {
+    condition: PreparedExpression,
+    body: Vec<PreparedStatement>,
+}
+
+#[derive(Debug)]
 enum PreparedStatement {
     Assign { target: PreparedTarget, value: PreparedExpression },
     AugAssign { target: PreparedTarget, value: PreparedExpression },
     ForEachNeighbour { body: Vec<PreparedStatement> },
+    If { branches: Vec<PreparedConditionalBranch>, else_body: Vec<PreparedStatement> },
     Return { value: PreparedExpression },
 }
 
@@ -271,6 +360,11 @@ fn emit_expression(
             *depth += 1;
             *max_depth = (*max_depth).max(*depth);
         }
+        Expression::BoolConst { value, .. } => {
+            ops.push(EvalOp::BoolConst(*value));
+            *depth += 1;
+            *max_depth = (*max_depth).max(*depth);
+        }
         Expression::Load { path, line } => {
             ops.push(EvalOp::Load(resolve_load(
                 path, *line, parameter_slots, state_slots, local_slots, loop_variable,
@@ -278,12 +372,53 @@ fn emit_expression(
             *depth += 1;
             *max_depth = (*max_depth).max(*depth);
         }
-        Expression::Unary { value, .. } => {
+        Expression::Unary { op, value, .. } => {
             emit_expression(
                 value, parameter_slots, state_slots, local_slots, loop_variable,
                 ops, depth, max_depth,
             )?;
-            ops.push(EvalOp::Negate);
+            ops.push(match op.as_str() {
+                "-" => EvalOp::Negate,
+                "not" => EvalOp::Not,
+                _ => unreachable!("validated unary operator"),
+            });
+        }
+        Expression::Compare { op, left, right, .. } => {
+            emit_expression(
+                left, parameter_slots, state_slots, local_slots, loop_variable,
+                ops, depth, max_depth,
+            )?;
+            emit_expression(
+                right, parameter_slots, state_slots, local_slots, loop_variable,
+                ops, depth, max_depth,
+            )?;
+            let op = match op.as_str() {
+                "<" => CompareOp::Less,
+                "<=" => CompareOp::LessEqual,
+                ">" => CompareOp::Greater,
+                ">=" => CompareOp::GreaterEqual,
+                "==" => CompareOp::Equal,
+                "!=" => CompareOp::NotEqual,
+                _ => unreachable!("validated comparison operator"),
+            };
+            ops.push(EvalOp::Compare(op));
+            *depth -= 1;
+        }
+        Expression::BoolOp { op, left, right, .. } => {
+            emit_expression(
+                left, parameter_slots, state_slots, local_slots, loop_variable,
+                ops, depth, max_depth,
+            )?;
+            emit_expression(
+                right, parameter_slots, state_slots, local_slots, loop_variable,
+                ops, depth, max_depth,
+            )?;
+            ops.push(EvalOp::Boolean(match op.as_str() {
+                "and" => BooleanOp::And,
+                "or" => BooleanOp::Or,
+                _ => unreachable!("validated boolean operator"),
+            }));
+            *depth -= 1;
         }
         Expression::Binary { op, left, right, .. } => {
             emit_expression(
@@ -376,10 +511,45 @@ fn prepare_statements(
         Statement::ForEach { variable, body, .. } => PreparedStatement::ForEachNeighbour {
             body: prepare_statements(body, parameter_slots, state_slots, local_slots, Some(variable))?,
         },
+        Statement::If { branches, else_body, .. } => PreparedStatement::If {
+            branches: branches.iter().map(|branch| Ok(PreparedConditionalBranch {
+                condition: prepare_expression(
+                    &branch.condition, parameter_slots, state_slots, local_slots, loop_variable,
+                )?,
+                body: prepare_statements(
+                    &branch.body, parameter_slots, state_slots, local_slots, loop_variable,
+                )?,
+            })).collect::<Result<Vec<_>, String>>()?,
+            else_body: prepare_statements(
+                else_body, parameter_slots, state_slots, local_slots, loop_variable,
+            )?,
+        },
         Statement::Return { value, .. } => PreparedStatement::Return {
             value: prepare_expression(value, parameter_slots, state_slots, local_slots, loop_variable)?,
         },
     })).collect()
+}
+
+fn compare(op: CompareOp, left: Value, right: Value) -> Value {
+    let left = left.scalar();
+    let right = right.scalar();
+    Value::Bool(match op {
+        CompareOp::Less => left < right,
+        CompareOp::LessEqual => left <= right,
+        CompareOp::Greater => left > right,
+        CompareOp::GreaterEqual => left >= right,
+        CompareOp::Equal => left == right,
+        CompareOp::NotEqual => left != right,
+    })
+}
+
+fn boolean(op: BooleanOp, left: Value, right: Value) -> Value {
+    let left = left.boolean();
+    let right = right.boolean();
+    Value::Bool(match op {
+        BooleanOp::And => left && right,
+        BooleanOp::Or => left || right,
+    })
 }
 
 fn binary(op: BinaryOp, left: Value, right: Value) -> Value {
@@ -467,6 +637,7 @@ fn evaluate(
     for op in &expression.ops {
         match *op {
             EvalOp::Const(value) => stack.push(Value::Scalar(value)),
+            EvalOp::BoolConst(value) => stack.push(Value::Bool(value)),
             EvalOp::Load(load) => {
                 push_load(load, parameters, private_state, locals, observation, neighbour, stack);
             }
@@ -475,8 +646,22 @@ fn evaluate(
                 stack.push(match value {
                     Value::Scalar(value) => Value::Scalar(-value),
                     Value::Vec2(value) => Value::Vec2(value * -1.0),
-                    Value::Action(_) => unreachable!("cannot negate action"),
+                    Value::Bool(_) | Value::Action(_) => unreachable!("cannot negate non-numeric value"),
                 });
+            }
+            EvalOp::Not => {
+                let value = stack.pop().expect("validated boolean operand").boolean();
+                stack.push(Value::Bool(!value));
+            }
+            EvalOp::Compare(op) => {
+                let right = stack.pop().expect("validated comparison right");
+                let left = stack.pop().expect("validated comparison left");
+                stack.push(compare(op, left, right));
+            }
+            EvalOp::Boolean(op) => {
+                let right = stack.pop().expect("validated boolean right");
+                let left = stack.pop().expect("validated boolean left");
+                stack.push(boolean(op, left, right));
             }
             EvalOp::Binary(op) => {
                 let right = stack.pop().expect("validated binary right");
@@ -496,6 +681,12 @@ fn max_stack_in_statements(body: &[PreparedStatement]) -> usize {
         | PreparedStatement::AugAssign { value, .. }
         | PreparedStatement::Return { value } => value.stack_capacity,
         PreparedStatement::ForEachNeighbour { body } => max_stack_in_statements(body),
+        PreparedStatement::If { branches, else_body } => {
+            let branch_max = branches.iter().map(|branch| {
+                branch.condition.stack_capacity.max(max_stack_in_statements(&branch.body))
+            }).max().unwrap_or(0);
+            branch_max.max(max_stack_in_statements(else_body))
+        }
     }).max().unwrap_or(0)
 }
 
@@ -536,6 +727,25 @@ fn execute_statements(
                 for current in &observation.neighbours {
                     if let Some(action) = execute_statements(
                         body, parameters, private_state, locals, observation, Some(current), eval_stack,
+                    ) { return Some(action); }
+                }
+            }
+            PreparedStatement::If { branches, else_body } => {
+                let mut matched = false;
+                for branch in branches {
+                    if evaluate(
+                        &branch.condition, parameters, private_state, locals, observation, neighbour, eval_stack,
+                    ).boolean() {
+                        matched = true;
+                        if let Some(action) = execute_statements(
+                            &branch.body, parameters, private_state, locals, observation, neighbour, eval_stack,
+                        ) { return Some(action); }
+                        break;
+                    }
+                }
+                if !matched {
+                    if let Some(action) = execute_statements(
+                        else_body, parameters, private_state, locals, observation, neighbour, eval_stack,
                     ) { return Some(action); }
                 }
             }
@@ -798,4 +1008,71 @@ mod tests {
         }"#;
         assert!(IrControllerRuntime::from_json(invalid, "{}").is_err());
     }
+    #[test]
+    fn piecewise_condition_assigns_branch_local_before_motion() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Piecewise","entry":"step",
+          "parameters":{"X":"scalar"},"state":[],
+          "body":[
+            {"kind":"if","branches":[
+              {"condition":{"kind":"compare","op":"<","left":{"kind":"load","path":"X"},"right":{"kind":"const","value":0.0}},
+               "body":[{"kind":"assign","target":"speed","value":{"kind":"const","value":0.0}}]},
+              {"condition":{"kind":"compare","op":"<=","left":{"kind":"load","path":"X"},"right":{"kind":"const","value":1.0}},
+               "body":[{"kind":"assign","target":"speed","value":{"kind":"const","value":0.5}}]}
+            ],
+            "else_body":[{"kind":"assign","target":"speed","value":{"kind":"const","value":1.0}}]},
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"speed"},{"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, r#"{"X":0.5}"#);
+        runtime.reset(1);
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        assert_eq!(runtime.step(0, &observation).forward, 0.5);
+    }
+
+    #[test]
+    fn boolean_composition_and_exhaustive_branch_returns_execute() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Bool","entry":"step",
+          "parameters":{"X":"scalar"},"state":[],
+          "body":[
+            {"kind":"if","branches":[
+              {"condition":{"kind":"bool_op","op":"and",
+                "left":{"kind":"compare","op":">=","left":{"kind":"load","path":"X"},"right":{"kind":"const","value":0.0}},
+                "right":{"kind":"unary","op":"not","value":{"kind":"bool_const","value":false}}},
+               "body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[
+                 {"kind":"const","value":1.0},{"kind":"const","value":0.0}
+               ]}}]}
+            ],
+            "else_body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"const","value":0.0},{"kind":"const","value":0.0}
+            ]}}]}
+          ]
+        }"#;
+        let mut runtime = compile(ir, r#"{"X":1.0}"#);
+        runtime.reset(1);
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        assert_eq!(runtime.step(0, &observation).forward, 1.0);
+    }
+
+    #[test]
+    fn non_exhaustive_branch_local_is_rejected_before_execution() {
+        let invalid = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Undefined","entry":"step",
+          "parameters":{"X":"scalar"},"state":[],
+          "body":[
+            {"kind":"if","branches":[
+              {"condition":{"kind":"compare","op":">=","left":{"kind":"load","path":"X"},"right":{"kind":"const","value":0.0}},
+               "body":[{"kind":"assign","target":"speed","value":{"kind":"const","value":1.0}}]}
+            ],"else_body":[]},
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"speed"},{"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        assert!(IrControllerRuntime::from_json(invalid, r#"{"X":1.0}"#).is_err());
+    }
+
 }

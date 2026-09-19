@@ -89,6 +89,12 @@ class ExprParser {
         i += number[0].length;
         continue;
       }
+      const comparison = text.slice(i).match(/^(?:<=|>=|==|!=|<|>)/);
+      if (comparison) {
+        tokens.push({ type: comparison[0], value: comparison[0], column: i + 1 });
+        i += comparison[0].length;
+        continue;
+      }
       const ident = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
       if (ident) {
         tokens.push({ type: "ident", value: ident[0], column: i + 1 });
@@ -107,6 +113,18 @@ class ExprParser {
   }
 
   peek(type) { return this.tokens[this.index].type === type; }
+  peekKeyword(value) {
+    const token = this.tokens[this.index];
+    return token.type === "ident" && token.value === value;
+  }
+  takeKeyword(value) {
+    const token = this.tokens[this.index];
+    if (token.type !== "ident" || token.value !== value) {
+      throw new ControllerCompileError("syntax", `expected '${value}', found '${token.value || "end of expression"}'`, this.line, token.column);
+    }
+    this.index += 1;
+    return token;
+  }
   take(type) {
     const token = this.tokens[this.index];
     if (token.type !== type) {
@@ -117,9 +135,46 @@ class ExprParser {
   }
 
   parse() {
-    const node = this.additive();
+    const node = this.booleanOr();
     this.take("eof");
     return node;
+  }
+
+  booleanOr() {
+    let left = this.booleanAnd();
+    while (this.peekKeyword("or")) {
+      this.takeKeyword("or");
+      left = { kind: "bool_op", op: "or", left, right: this.booleanAnd(), line: this.line };
+    }
+    return left;
+  }
+
+  booleanAnd() {
+    let left = this.booleanNot();
+    while (this.peekKeyword("and")) {
+      this.takeKeyword("and");
+      left = { kind: "bool_op", op: "and", left, right: this.booleanNot(), line: this.line };
+    }
+    return left;
+  }
+
+  booleanNot() {
+    if (this.peekKeyword("not")) {
+      this.takeKeyword("not");
+      return { kind: "unary", op: "not", value: this.booleanNot(), line: this.line };
+    }
+    return this.comparison();
+  }
+
+  comparison() {
+    let left = this.additive();
+    const operators = ["<", "<=", ">", ">=", "==", "!="];
+    const token = this.tokens[this.index];
+    if (operators.includes(token.type)) {
+      this.index += 1;
+      left = { kind: "compare", op: token.type, left, right: this.additive(), line: this.line };
+    }
+    return left;
   }
 
   additive() {
@@ -152,7 +207,7 @@ class ExprParser {
     if (this.peek("number")) return { kind: "const", value: Number(this.take("number").value), line: this.line };
     if (this.peek("(")) {
       this.take("(");
-      const node = this.additive();
+      const node = this.booleanOr();
       this.take(")");
       return node;
     }
@@ -161,7 +216,11 @@ class ExprParser {
       throw new ControllerCompileError("syntax", `expected expression, found '${token.value || "end of expression"}'`, this.line, token.column);
     }
 
-    const parts = [this.take("ident").value];
+    const first = this.take("ident").value;
+    if (first === "True" || first === "False") {
+      return { kind: "bool_const", value: first === "True", line: this.line };
+    }
+    const parts = [first];
     while (this.peek(".")) {
       this.take(".");
       parts.push(this.take("ident").value);
@@ -180,7 +239,7 @@ class ExprParser {
       const args = [];
       if (!this.peek(")")) {
         do {
-          args.push(this.additive());
+          args.push(this.booleanOr());
           if (!this.peek(",")) break;
           this.take(",");
         } while (!this.peek(")"));
@@ -207,6 +266,55 @@ function parseStatements(lines, start, blockIndent) {
     const entry = lines[i];
     if (entry.indent < blockIndent) break;
     if (entry.indent > blockIndent) throw new ControllerCompileError("syntax", "unexpected indentation", entry.line);
+
+    const ifMatch = entry.text.match(/^if\s+(.+):$/);
+    if (ifMatch) {
+      const branches = [];
+      let elseBody = [];
+      let headerIndex = i;
+      let conditionText = ifMatch[1];
+      const statementLine = entry.line;
+
+      for (;;) {
+        const header = lines[headerIndex];
+        const next = lines[headerIndex + 1];
+        if (!next || next.indent <= blockIndent) {
+          throw new ControllerCompileError("syntax", "if/elif requires an indented body", header.line);
+        }
+        const nested = parseStatements(lines, headerIndex + 1, next.indent);
+        branches.push({
+          condition: parseExpr(conditionText, header.line),
+          body: nested.body,
+          line: header.line,
+        });
+
+        let cursor = nested.next;
+        const continuation = lines[cursor];
+        const elifMatch = continuation?.indent === blockIndent
+          ? continuation.text.match(/^elif\s+(.+):$/)
+          : null;
+        if (elifMatch) {
+          headerIndex = cursor;
+          conditionText = elifMatch[1];
+          continue;
+        }
+
+        if (continuation?.indent === blockIndent && continuation.text === "else:") {
+          const elseFirst = lines[cursor + 1];
+          if (!elseFirst || elseFirst.indent <= blockIndent) {
+            throw new ControllerCompileError("syntax", "else requires an indented body", continuation.line);
+          }
+          const parsedElse = parseStatements(lines, cursor + 1, elseFirst.indent);
+          elseBody = parsedElse.body;
+          cursor = parsedElse.next;
+        }
+
+        body.push({ kind: "if", branches, else_body: elseBody, line: statementLine });
+        i = cursor;
+        break;
+      }
+      continue;
+    }
 
     const forMatch = entry.text.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+):$/);
     if (forMatch) {
@@ -255,10 +363,32 @@ function binaryType(op, left, right, line) {
 
 function inferExpression(expr, scope) {
   if (expr.kind === "const") return "scalar";
+  if (expr.kind === "bool_const") return "bool";
   if (expr.kind === "unary") {
     const type = inferExpression(expr.value, scope);
+    if (expr.op === "not") {
+      if (type !== "bool") throw new ControllerCompileError("type", `'not' requires bool, got ${type}`, expr.line);
+      return "bool";
+    }
+    if (expr.op !== "-") throw new ControllerCompileError("type", `unsupported unary operator '${expr.op}'`, expr.line);
     if (type !== "scalar" && type !== "vec2") throw new ControllerCompileError("type", `unary '-' does not accept ${type}`, expr.line);
     return type;
+  }
+  if (expr.kind === "compare") {
+    const left = inferExpression(expr.left, scope);
+    const right = inferExpression(expr.right, scope);
+    if (left !== "scalar" || right !== "scalar") {
+      throw new ControllerCompileError("type", `comparison '${expr.op}' requires scalar operands, got ${left} and ${right}`, expr.line);
+    }
+    return "bool";
+  }
+  if (expr.kind === "bool_op") {
+    const left = inferExpression(expr.left, scope);
+    const right = inferExpression(expr.right, scope);
+    if (left !== "bool" || right !== "bool") {
+      throw new ControllerCompileError("type", `boolean '${expr.op}' requires bool operands, got ${left} and ${right}`, expr.line);
+    }
+    return "bool";
   }
   if (expr.kind === "binary") return binaryType(expr.op, inferExpression(expr.left, scope), inferExpression(expr.right, scope), expr.line);
   if (expr.kind === "call") {
@@ -316,6 +446,15 @@ function targetType(target, scope, line, forAssignment = false) {
   return scope.locals.get(target) ?? (forAssignment ? null : undefined);
 }
 
+function intersectLocalTypes(scopes) {
+  if (!scopes.length) return new Map();
+  const merged = new Map(scopes[0].locals);
+  for (const [name, type] of [...merged]) {
+    if (!scopes.every((scope) => scope.locals.get(name) === type)) merged.delete(name);
+  }
+  return merged;
+}
+
 function checkStatements(body, scope) {
   let returnsAction = false;
   for (const statement of body) {
@@ -346,6 +485,45 @@ function checkStatements(body, scope) {
       for (const [name, type] of scope.locals) {
         if (nested.locals.has(name) && nested.locals.get(name) !== type) throw new ControllerCompileError("type", `loop changes '${name}' type`, statement.line);
       }
+    } else if (statement.kind === "if") {
+      const continuingScopes = [];
+      let allBranchesReturn = statement.else_body.length > 0;
+
+      for (const branch of statement.branches) {
+        const conditionType = inferExpression(branch.condition, scope);
+        if (conditionType !== "bool") throw new ControllerCompileError("type", `if/elif condition must be bool, got ${conditionType}`, branch.line ?? statement.line);
+        const nested = {
+          parameters: scope.parameters,
+          state: scope.state,
+          locals: new Map(scope.locals),
+          loopVariables: new Map(scope.loopVariables),
+        };
+        const branchReturns = checkStatements(branch.body, nested);
+        if (!branchReturns) continuingScopes.push(nested);
+        allBranchesReturn &&= branchReturns;
+      }
+
+      if (statement.else_body.length) {
+        const nested = {
+          parameters: scope.parameters,
+          state: scope.state,
+          locals: new Map(scope.locals),
+          loopVariables: new Map(scope.loopVariables),
+        };
+        const elseReturns = checkStatements(statement.else_body, nested);
+        if (!elseReturns) continuingScopes.push(nested);
+        allBranchesReturn &&= elseReturns;
+      } else {
+        continuingScopes.push({
+          parameters: scope.parameters,
+          state: scope.state,
+          locals: new Map(scope.locals),
+          loopVariables: new Map(scope.loopVariables),
+        });
+      }
+
+      if (continuingScopes.length) scope.locals = intersectLocalTypes(continuingScopes);
+      returnsAction ||= allBranchesReturn;
     } else if (statement.kind === "return") {
       const type = inferExpression(statement.value, scope);
       if (type !== "action") throw new ControllerCompileError("type", "step method must return a Motion/action");
@@ -355,8 +533,30 @@ function checkStatements(body, scope) {
   return returnsAction;
 }
 
-function lowerNeighbourIterableAliases(body, aliases = new Set()) {
+function statementsGuaranteeReturn(body) {
+  for (const statement of body) {
+    if (statement.kind === "return") return true;
+    if (statement.kind === "if" && statement.else_body.length > 0) {
+      const allBranches = statement.branches.every((branch) => statementsGuaranteeReturn(branch.body));
+      if (allBranches && statementsGuaranteeReturn(statement.else_body)) return true;
+    }
+  }
+  return false;
+}
+
+function intersectAliasSets(sets) {
+  if (!sets.length) return new Set();
+  const out = new Set(sets[0]);
+  for (const value of [...out]) {
+    if (!sets.every((set) => set.has(value))) out.delete(value);
+  }
+  return out;
+}
+
+function lowerNeighbourIterableAliasesWithState(body, initialAliases = new Set()) {
+  let aliases = new Set(initialAliases);
   const lowered = [];
+
   for (const statement of body) {
     if (statement.kind === "assign") {
       const source = statement.value?.kind === "load" ? statement.value.path : null;
@@ -379,19 +579,50 @@ function lowerNeighbourIterableAliases(body, aliases = new Set()) {
       const source = statement.iterable?.kind === "load" ? statement.iterable.path : null;
       const nestedAliases = new Set(aliases);
       nestedAliases.delete(statement.variable);
+      const nested = lowerNeighbourIterableAliasesWithState(statement.body, nestedAliases);
       lowered.push({
         ...statement,
         iterable: source === "obs.neighbours" || aliases.has(source)
           ? { kind: "load", path: "obs.neighbours", line: statement.iterable.line ?? statement.line }
           : statement.iterable,
-        body: lowerNeighbourIterableAliases(statement.body, nestedAliases),
+        body: nested.body,
+      });
+      continue;
+    }
+
+    if (statement.kind === "if") {
+      const branchResults = statement.branches.map((branch) => ({
+        ...branch,
+        lowered: lowerNeighbourIterableAliasesWithState(branch.body, aliases),
+      }));
+      const elseResult = statement.else_body.length
+        ? lowerNeighbourIterableAliasesWithState(statement.else_body, aliases)
+        : null;
+
+      const continuing = [];
+      if (!statement.else_body.length) continuing.push(new Set(aliases));
+      for (const branch of branchResults) {
+        if (!statementsGuaranteeReturn(branch.body)) continuing.push(branch.lowered.aliases);
+      }
+      if (elseResult && !statementsGuaranteeReturn(statement.else_body)) continuing.push(elseResult.aliases);
+      if (continuing.length) aliases = intersectAliasSets(continuing);
+
+      lowered.push({
+        ...statement,
+        branches: branchResults.map(({ lowered: result, ...branch }) => ({ ...branch, body: result.body })),
+        else_body: elseResult?.body ?? [],
       });
       continue;
     }
 
     lowered.push(statement);
   }
-  return lowered;
+
+  return { body: lowered, aliases };
+}
+
+function lowerNeighbourIterableAliases(body, aliases = new Set()) {
+  return lowerNeighbourIterableAliasesWithState(body, aliases).body;
 }
 
 function parseClassState(lines, start, classIndent) {

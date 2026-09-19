@@ -33,11 +33,12 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. Finish #58's capability-request closed loop before implementing scientific capabilities. The two-paper acceptance exposed duplicate request creation despite #361; #376 restored a clean baseline and #375 completed the behavior-preserving authoring/capability separation. #374 is complete. #373 is the current Professor-generalization repair: later evidence can broaden/refine the same unavailable candidate without creating another request. Then #371 repeats the fresh two-paper black-box acceptance. #325/#326 remain paused until that chain finishes.
-2. Treat the #348 request baseline as intentionally empty. RNG/controller stochasticity and heterogeneous initialization/state are still missing capabilities, not implemented features or active approved requests; if fresh acceptance rediscovers them, they must re-enter through the normal typed request/Professor-triage path.
-3. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
-4. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
-5. Turn concrete evidence from use into focused fixes; do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
+1. **Complete active epic #382 — Bare-bones scientific authoring language completeness.** Sequence: #383 Controller control flow/comparisons/booleans → #384 standard scientific mathematics/exponentiation → #385 Metrics control flow/comparisons → #386 minimal language acceptance plus Constant Bearing closure revalidation.
+2. Resume #371 fresh blocking/two-paper acceptance only after #386 is green. The current Constant Bearing closure should then retain only genuinely scientific capability blockers rather than generic syntax/math gaps.
+3. Treat the #348 request baseline as intentionally empty. RNG/controller stochasticity and heterogeneous initialization/state are still missing capabilities, not implemented features or active approved requests; if fresh acceptance rediscovers them, they must re-enter through the normal typed request/Professor-triage path.
+4. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
+5. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
+6. Turn concrete evidence from use into focused fixes; do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
 
 ## Owner-gated major lane: Studies
 

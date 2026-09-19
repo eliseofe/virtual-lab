@@ -60,6 +60,14 @@ The simulator/compiler/kernel remain static code and do **not** query Supabase a
 
 In particular, controller-side random sampling remains unavailable because there is no implemented controller-RNG capability. It is not modeled as a permanent generic language prohibition. Host filesystem/network access remains a separate security boundary.
 
+## Generic Controller control-flow substrate
+
+Controller authoring includes typed booleans, scalar comparisons, `and/or/not`, and `if/elif/else` as generic language substrate. These constructs are not scientific capabilities and do not require capability requests.
+
+Definite-assignment analysis follows control flow: branch-local values may escape an `if` only when every continuing path defines them consistently. The action-return invariant also understands exhaustive conditional returns.
+
+Iteration remains capability-backed and bounded; the current Controller loop domain is the implemented neighbour collection.
+
 ## Canonical IR parity
 
 For executable artifacts, successful source compilation is not by itself the execution boundary. The compiler must emit the canonical IR vocabulary accepted by the Rust/WASM runtime.
