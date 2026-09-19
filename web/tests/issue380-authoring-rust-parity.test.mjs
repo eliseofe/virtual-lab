@@ -157,3 +157,19 @@ test("#380 browser and MCP compiler sources remain mirrored", async () => {
   assert.equal(edgeController, browserController);
   assert.equal(edgeMetrics, browserMetrics);
 });
+
+test("#380 controller validation requires an unconditional top-level action return", () => {
+  const loopOnlyReturn = `class LoopOnly(Agent):
+    def step(self, obs):
+        for n in obs.neighbours:
+            return Motion(1.0, 0.0)
+`;
+  assert.throws(
+    () => compileBrowserController(loopOnlyReturn),
+    /step method must return a Motion\/action/,
+  );
+  assert.throws(
+    () => compileEdgeController(loopOnlyReturn),
+    /step method must return a Motion\/action/,
+  );
+});
