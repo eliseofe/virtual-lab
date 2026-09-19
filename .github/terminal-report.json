@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Unsupported research needs are now born as structured unavailable candidates and later papers reuse that same candidate identity",
-  "owner_impact": "Research AI now sees implemented support separately from candidate capabilities and candidate contract deltas. A covering candidate collects another paper/Experiment as evidence instead of opening another Professor request; a related but too-narrow candidate is flagged for Professor generalization; only a genuinely absent need creates one new request. Candidates remain unavailable to the compiler, so this does not make any missing scientific capability executable.",
+  "outcome": "Professors can now generalize an existing unavailable candidate when later scientific evidence shows it is too narrow",
+  "owner_impact": "A candidate flagged by later overlapping science can now be broadened or refined directly in the Professor inbox without creating a second request. The stable request/candidate identity and all linked evidence remain attached, every Professor revision is audited, and fresh research-AI sessions immediately see the revised candidate. Generalization does not implement the capability and does not soften the authoring/compiler wall.",
   "next": {
     "kind": "epic_continues",
-    "issue": 373,
-    "text": "Next is #373, which lets the Professor generalize an existing candidate when later scientific evidence shows its current identity is too narrow. It has not started yet."
+    "issue": 371,
+    "text": "Next is #371, the fresh two-paper black-box acceptance. It will test from clean chats that supported science authors normally, unsupported science stays blocked, overlapping papers reuse/generalize one candidate, and genuinely absent needs create only the necessary new candidates. It has not started yet."
   },
   "technical_evidence": [
-    "MCP server/interface are 3.12.0 / 16 with capability-request interface vlab.capability-request/7; the nine-tool connector surface and authoring contract vlab.authoring/0.9 are unchanged.",
-    "Semantic requests persist a candidate capability with scientific identity, target artifact/runtime domain and concrete authoring surfaces; the other five request classes persist candidate contract deltas against precise stable-contract paths.",
-    "Candidate capability keys and candidate contract-delta class/key pairs are unique, and duplicate creation is rejected in favor of evidence reuse.",
-    "Evidence links distinguish covered from generalization_needed and the Professor inbox surfaces generalization-needed evidence.",
-    "Candidate/request lifecycle state does not make a candidate authorable; only implemented capability bindings and stable implemented contract rules drive compiler acceptance.",
-    "No AI matcher, embedding, string-similarity heuristic, capability implementation, simulator runtime change, CI/CD change, retry/timeout change or development-workflow change is introduced."
+    "Professor generalization uses one explicit Professor-only RPC and keeps the original candidate/request key unchanged.",
+    "Each candidate revision records previous/generalized snapshots, Professor identity/time, and revision number in an append-only audit trail.",
+    "Evidence originally marked generalization_needed is preserved and may record the exact Professor revision that resolved it.",
+    "Fresh read_workspace discovery exposes generalization_revision/generalized_at for candidate capabilities and candidate contract deltas.",
+    "MCP server/interface are 3.13.0 / 17; capability-request interface remains vlab.capability-request/7; the exact nine-tool surface and authoring contract vlab.authoring/0.9 are unchanged.",
+    "No scientific capability, canonical implemented capability, parser/compiler/runtime behavior, CI/CD, retry/timeout, or development-workflow rule is changed."
   ],
-  "close_issue": 374
+  "close_issue": 373
 }
