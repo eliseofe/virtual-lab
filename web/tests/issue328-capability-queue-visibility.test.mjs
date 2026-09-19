@@ -31,12 +31,15 @@ test("#348 canonical discovery excludes request/history state by construction", 
   assert.match(cutoverMigration, /drop function if exists public\.list_canonical_capabilities\(\)/i);
 });
 
-test("#361 keeps raw request history private while exposing the sanitized active catalog", () => {
+test("#361/#374 keeps raw request history private while exposing structured candidate discovery", () => {
   const workspaceBlock = mcp.match(/server\.registerTool\(\s*'read_workspace',[\s\S]*?server\.registerTool\(\s*'manage_collection'/);
   assert.ok(workspaceBlock, "read_workspace implementation must be found");
   assert.doesNotMatch(workspaceBlock[0], /\.from\('capability_requests'\)/);
   assert.doesNotMatch(workspaceBlock[0], /\.eq\('requester_id'/);
   assert.match(workspaceBlock[0], /\.rpc\('list_canonical_capability_registry'\)/);
-  assert.match(workspaceBlock[0], /\.from\('active_extension_request_catalog'\)/);
-  assert.match(workspaceBlock[0], /active_extension_requests/);
+  assert.match(workspaceBlock[0], /\.from\('candidate_capabilities'\)/);
+  assert.match(workspaceBlock[0], /\.from\('candidate_contract_deltas'\)/);
+  assert.match(workspaceBlock[0], /candidate_capabilities: candidateCapabilities \?\? \[\]/);
+  assert.match(workspaceBlock[0], /candidate_contract_deltas: candidateContractDeltas \?\? \[\]/);
+  assert.doesNotMatch(workspaceBlock[0], /active_extension_requests/);
 });
