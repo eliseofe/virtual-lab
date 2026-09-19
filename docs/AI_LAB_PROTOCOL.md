@@ -1,6 +1,6 @@
 # AI ↔ Lab Protocol
 
-Status: **current deployed architecture, 16 September 2026**.
+Status: **current deployed architecture, 19 September 2026**.
 
 ## Goal
 
@@ -67,10 +67,10 @@ Production endpoint:
 
 Current deployed contract:
 
-- MCP server `3.0.0`
-- interface `8`
-- authoring `vlab.authoring/0.6`
-- capability requests `vlab.capability-request/1`
+- MCP server `3.9.0`
+- interface `13`
+- authoring `vlab.authoring/0.7`
+- capability requests `vlab.capability-request/6`
 
 Shared experiment-domain tools include:
 
@@ -80,10 +80,13 @@ Shared experiment-domain tools include:
 - `edit_experiment`
 - `delete_experiment`
 - `author_metrics_results`
+- `request_capability`
+- `resume_capability_closure`
+- `revalidate_capability_closure`
 
-Professor role additionally receives `request_capability`.
+These are shared research-AI tools for Student and Professor sessions. Professor-specific authority remains queue-wide request triage/supervision, not a different scientific representability rule.
 
-The tool names are transport details; the durable semantics are Experiment discovery/organization/versioned authoring, fine-grained Metrics authoring, Results binding authoring and explicit unsupported-capability requests.
+The tool names are transport details; the durable semantics are Experiment discovery/organization/versioned authoring, fine-grained Metrics authoring, Results binding authoring and durable unsupported-science closure/revalidation.
 
 ## Fine-grained Metrics and Results authoring
 
@@ -114,13 +117,13 @@ Manual package download/upload is not part of normal Experiment source synchroni
 
 ## Capability-request boundary
 
-When a requested Experiment cannot be represented by the current simulator contract, the AI must not fabricate a workaround that changes the science.
+When a requested Experiment cannot be represented by the current Lab contract, the research AI preserves the requested science as a durable blocked Experiment rather than substituting a nearby model.
 
-Professor path:
+Student/Professor path:
 
-`unsupported requirement → durable capability request → Professor review → developer design discussion → explicit owner implementation approval → trusted implementation/deploy → contract advertises capability → AI resumes`
+`unsupported requirement → durable blocked Experiment + whole-Experiment analysis → reuse/new extension request → task remains blocked → Professor review → developer design/generalization → explicit owner implementation approval → trusted implementation/deploy → whole-Experiment revalidation → unblocked only if the current contract now represents the intended science`
 
-Professor approval alone is not permission to implement.
+Student and Professor sessions use the same scientific blocking semantics. Students resume/revalidate their own blocked Experiments. Professors may additionally supervise visible blocked Experiments and alone perform queue-wide approve/decline triage. Professor approval alone is not permission to implement.
 
 The current lifecycle-hook vocabulary is:
 
