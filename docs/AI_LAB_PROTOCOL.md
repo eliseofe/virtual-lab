@@ -35,7 +35,7 @@ A runnable Experiment has four compulsory authored artifacts:
 
 Metrics may contain zero definitions and still be valid. The canonical representation is the ordered typed `artifacts[]` array (`vlab.experiment-artifacts/3`, registry `vlab.registry-experiment/3`).
 
-Legacy three-source fields remain bounded compatibility mirrors/input only. They do not define the current Experiment model.
+The research-AI connector accepts only the canonical ordered artifacts[] representation for Experiment source authoring; all four compulsory core artifacts are explicit.
 
 Results plot-panel layout is stored separately as `vlab.results-presentation/1` because presentation changes must not create a new scientific Experiment revision.
 
