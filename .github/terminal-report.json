@@ -1,18 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The bounded authoring languages now share a generic standard scientific mathematics substrate with ordinary exponentiation syntax",
-  "owner_impact": "Controller, Initialization, Metrics and scalar Environment expressions can use ** plus abs, sqrt, exp, log, trigonometric/inverse-trigonometric functions, atan2, floor/ceil, pow and min/max without filing language capability requests. Existing source remains valid; ** lowers to the same native power operation as pow. Non-finite literals are rejected before persistence and non-finite Controller actions fail loudly instead of silently corrupting simulation state. No scientific capability became authorable.",
+  "outcome": "Metrics authoring now has bounded typed control flow aligned with the Rust runtime",
+  "owner_impact": "Metrics can now express ordinary thresholded, counting and piecewise measurements with True/False, scalar comparisons, and/or/not, and if/elif/else. Branch-local scalar/vector values are usable only when definitely assigned on every continuing path; exhaustive branches may return the metric directly. Iteration remains bounded to capability-backed snapshot collections and Metrics remains read-only with unavailable snapshot/controller information blocked.",
   "next": {
     "kind": "epic_continues",
-    "issue": 385,
-    "text": "Next is #385 — Metrics control flow and comparisons, bringing the bounded boolean/comparison/if substrate already available in Controller to Metrics. It has not started yet."
+    "issue": 386,
+    "text": "Next is #386 — the final bare-bones-language acceptance. It will run the minimal syntax/math matrix through the real wall/runtime and revalidate the current Constant Bearing closure so only genuine scientific capability gaps remain. It has not started yet."
   },
   "technical_evidence": [
-    "Browser and MCP compiler copies remain mirrored for Controller, Initialization, Metrics and Environment.",
-    "Rust Controller, Metrics and Environment runtimes implement the advertised scalar functions with native f64 operations.",
-    "Exponentiation ** is parsed with Python-style unary precedence and lowered to pow rather than introducing another numerical path.",
-    "Regression coverage spans all four artifact languages, runtime math, right-associative exponentiation and non-finite literal rejection.",
+    "Browser and MCP Metrics compilers remain byte-identical and emit the same boolean/comparison/conditional IR.",
+    "Rust Metrics execution supports the same bool, compare, boolean-composition and if/elif/else nodes.",
+    "Regression coverage includes thresholded counting, exhaustive branch assignment, branch returns, vector/math expressions, branch-aware collection alias lowering and read-only boundary rejection.",
+    "Metric iteration remains restricted to capability-backed snapshot collections; arbitrary iterables were not added.",
     "No scientific capability, candidate availability, MCP tool count, CI/CD, polling, retry, timeout or development-workflow rule changed."
   ],
-  "close_issue": 384
+  "close_issue": 385
 }
