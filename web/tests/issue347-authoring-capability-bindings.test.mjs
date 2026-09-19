@@ -173,7 +173,7 @@ test("#347 extension routing uses typed diagnostic request classes and never aut
 });
 
 test("#347 changes contract metadata only; existing scientific authoring interface remains intact", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.7");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.8");
   assert.equal(AUTHORING_CONTRACT.artifacts.initialization.entry, "initialize(config, rng, place)");
   assert.equal(AUTHORING_CONTRACT.artifacts.controller.entry, "step(self, obs)");
   assert.deepEqual(AUTHORING_CONTRACT.artifacts.controller.actions.Motion.arguments, ["forward: scalar", "turning: scalar"]);
