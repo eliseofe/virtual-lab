@@ -228,7 +228,12 @@ class ExprParser {
     return { kind: "call", name: "pow", args: [left, this.unary()], line: this.line };
   }
   primary() {
-    if (this.peek("number")) return { kind: "const", value: Number(this.take("number").value), line: this.line };
+    if (this.peek("number")) {
+      const token = this.take("number");
+      const value = Number(token.value);
+      if (!Number.isFinite(value)) throw new MetricsCompileError("syntax", "metric constants must be finite", this.line, token.column);
+      return { kind: "const", value, line: this.line };
+    }
     if (this.peek("(")) { this.take("("); const node = this.additive(); this.take(")"); return node; }
     if (!this.peek("ident")) {
       const token = this.tokens[this.index];
