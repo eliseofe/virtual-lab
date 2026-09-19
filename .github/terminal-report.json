@@ -1,17 +1,15 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Production success reports now attach to the exact verified commit",
-  "owner_impact": "Successful Virtual Lab deployments keep the same human-readable success report and GitHub mention, but the report is attached directly to the exact production-verified commit instead of using a permanent policy-like issue as a mailbox.",
+  "outcome": "Development granularity is now an unconditional execution invariant",
+  "owner_impact": "All Virtual Lab development work must obey the one-substantial-ticket granularity contract regardless of how scope, intent, urgency, discovered work, or continuation are interpreted.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved notification/workflow refactor is complete once this exact candidate is production green; no further owner action is required."
+    "text": "The approved granularity safeguard is complete once this exact candidate is production green; no further owner action is required."
   },
   "technical_evidence": [
-    "The smoke job posts the unchanged success-report body to /commits/${GITHUB_SHA}/comments.",
-    "The CI contract test requires the exact-commit comment endpoint and forbids REPORT_ISSUE: '145'.",
-    "DEVELOPMENT_WORKFLOW.md is the sole execution-procedure authority and preserves the safe rollback and success-only notification invariants.",
-    "Exact-SHA deployment verification, production smoke, liveness, red-repair behavior, terminal-report schema, and green stopping semantics are otherwise unchanged."
+    "DEVELOPMENT_WORKFLOW.md adds exactly one universal granularity invariant under Default unit of execution.",
+    "No other development, liveness, deployment, verification, retry, notification, or stopping rule is changed."
   ]
 }
