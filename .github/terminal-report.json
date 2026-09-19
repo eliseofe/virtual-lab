@@ -1,15 +1,15 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Development granularity is now an unconditional execution invariant",
-  "owner_impact": "All Virtual Lab development work must obey the one-substantial-ticket granularity contract regardless of how scope, intent, urgency, discovered work, or continuation are interpreted.",
+  "outcome": "Execution ownership is now explicit project state",
+  "owner_impact": "Every issue must record whether ChatGPT, Eliseo Ferrante, or Work owns execution, with ChatGPT as the default and owner testing used only when it is a completion blocker.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved granularity safeguard is complete once this exact candidate is production green; no further owner action is required."
+    "text": "The approved execution-ownership workflow safeguard is complete once this exact candidate is production green; no further owner action is required."
   },
   "technical_evidence": [
-    "DEVELOPMENT_WORKFLOW.md adds exactly one universal granularity invariant under Default unit of execution.",
-    "No other development, liveness, deployment, verification, retry, notification, or stopping rule is changed."
+    "DEVELOPMENT_WORKFLOW.md records the three allowed execution owners and the approved assignment order.",
+    "No sequencing, granularity, deployment, liveness, retry, or completion rule is otherwise changed."
   ]
 }
