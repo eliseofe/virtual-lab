@@ -173,7 +173,7 @@ test("#347 extension routing uses typed diagnostic request classes and never aut
   assert.match(mcpSource, /diagnostic_request_classes: requestClasses/);
   assert.match(mcpSource, /automatic_rejection_classes: \[\]/);
   assert.doesNotMatch(mcpSource, /unsupported_capability_behavior/);
-  assert.equal(AUTHORING_CONTRACT.artifact_execution.unsupported_optional_executable_request_class, "artifact_workflow");
+  assert.equal(AUTHORING_CONTRACT.artifact_execution.optional_executable.unsupported_request_class, "artifact_workflow");
 });
 
 test("#347 current authoring syntax remains intact while concrete robot surfaces live on capabilities", () => {
