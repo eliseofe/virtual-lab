@@ -4,6 +4,7 @@ import {
   AUTHORING_CONTRACT as BASE_AUTHORING_CONTRACT,
   validateExperimentArtifacts as validateBaseExperimentArtifacts,
 } from './authoring.js'
+import { MCP_TOOLS } from './tool-surface.ts'
 import {
   RESULTS_PRESENTATION_CONTRACT,
   RESULTS_PRESENTATION_SCHEMA,
@@ -15,17 +16,17 @@ import {
   pruneMetricFromPanels,
 } from './results-authoring.js'
 
-export const MCP_SERVER_VERSION = '3.9.0'
-export const MCP_INTERFACE_VERSION = '13'
+export const MCP_SERVER_VERSION = '3.10.0'
+export const MCP_INTERFACE_VERSION = '14'
 export const MCP_AUTHORING_CONTRACT = Object.freeze({
   ...BASE_AUTHORING_CONTRACT,
-  contract_version: 'vlab.authoring/0.7',
+  contract_version: 'vlab.authoring/0.8',
   experiment_interface_version: MCP_INTERFACE_VERSION,
   capability_request_interface: 'vlab.capability-request/6',
   results_presentation: RESULTS_PRESENTATION_CONTRACT,
 })
 
-export function validateExperimentArtifactsV07(artifacts: unknown[]) {
+export function validateExperimentArtifactsV08(artifacts: unknown[]) {
   const validation = validateBaseExperimentArtifacts(artifacts)
   return { ...validation, contract_version: MCP_AUTHORING_CONTRACT.contract_version }
 }
@@ -206,7 +207,7 @@ export function registerMetricsResultsTool(
   const aiClient = clientId ?? 'mcp-client'
 
   server.registerTool(
-    'author_metrics_results',
+    MCP_TOOLS.authorMetricsResults,
     {
       title: 'Author Experiment Metrics and Results presentation',
       description:
