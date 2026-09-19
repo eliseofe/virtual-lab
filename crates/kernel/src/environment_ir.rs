@@ -183,4 +183,32 @@ mod tests {
         }"#;
         assert!(EnvironmentRuntime::from_json(json).is_err());
     }
+    #[test]
+    fn standard_scalar_math_intrinsics_match_native_f64_operations() {
+        fn scalar_call(name: &str, args: &[f64]) -> f64 {
+            let expression = Expression::Call {
+                name: name.to_owned(),
+                args: args.iter().map(|value| Expression::Const { value: *value }).collect(),
+            };
+            evaluate(&expression, Vec2::ZERO)
+        }
+
+        assert_eq!(scalar_call("abs", &[-2.0]), 2.0);
+        assert_eq!(scalar_call("sqrt", &[4.0]), 2.0);
+        assert_eq!(scalar_call("exp", &[0.0]), 1.0);
+        assert_eq!(scalar_call("log", &[1.0]), 0.0);
+        assert_eq!(scalar_call("sin", &[0.0]), 0.0);
+        assert_eq!(scalar_call("cos", &[0.0]), 1.0);
+        assert_eq!(scalar_call("tan", &[0.0]), 0.0);
+        assert_eq!(scalar_call("asin", &[0.0]), 0.0);
+        assert_eq!(scalar_call("acos", &[1.0]), 0.0);
+        assert_eq!(scalar_call("atan", &[0.0]), 0.0);
+        assert!((scalar_call("atan2", &[1.0, 1.0]) - std::f64::consts::FRAC_PI_4).abs() < 1e-12);
+        assert_eq!(scalar_call("floor", &[1.9]), 1.0);
+        assert_eq!(scalar_call("ceil", &[1.1]), 2.0);
+        assert_eq!(scalar_call("pow", &[2.0, 3.0]), 8.0);
+        assert_eq!(scalar_call("min", &[2.0, 3.0]), 2.0);
+        assert_eq!(scalar_call("max", &[2.0, 3.0]), 3.0);
+    }
+
 }
