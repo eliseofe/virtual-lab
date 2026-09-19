@@ -16,7 +16,7 @@ const cutoverMigration = readFileSync(
 );
 
 test("#328/#334 discovery is preserved through the #348 independent canonical registry cutover", () => {
-  assert.match(mcp, /capability_registry: capabilityRegistry \?\? \[\]/);
+  assert.match(mcp, /capability_registry: discoverableCapabilityRegistry/);
   assert.match(mcp, /\.rpc\('list_canonical_capability_registry'\)/);
   assert.doesNotMatch(mcp, /\.rpc\('list_canonical_capabilities'\)/);
   assert.match(registryMigration, /from public\.canonical_capabilities c/i);
