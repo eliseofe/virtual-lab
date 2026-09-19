@@ -10,9 +10,9 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.9.0`
-- interface: `13`
-- authoring contract: `vlab.authoring/0.7`
+- MCP server: `3.10.0`
+- interface: `14`
+- authoring contract: `vlab.authoring/0.8`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
 - registry schema: `vlab.registry-experiment/3`
 - Metrics language: `python-vlab-metrics/0.1`
@@ -20,7 +20,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 - Results presentation: `vlab.results-presentation/1`
 - capability requests: `vlab.capability-request/6`
 
-A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is canonical. Legacy three-source arguments remain a bounded compatibility input and mechanically preserve/add the compulsory Metrics artifact rather than creating a second source of truth.
+A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is the only Experiment-authoring input. All four core artifacts are supplied explicitly; Metrics may be empty.
 
 ## Security model
 
@@ -42,6 +42,12 @@ Supabase Auth is the authorization server. Authentication and RLS are the enforc
 
 ## Shared tool surface
 
+The research-AI connector exposes exactly **9** shared tools to Student and Professor sessions:
+
+`read_workspace | manage_collection | create_experiment | edit_experiment | delete_experiment | author_metrics_results | request_capability | resume_capability_closure | revalidate_capability_closure`
+
+Role differences are enforced by data visibility and authority rules, not by duplicate or provider-specific tool variants.
+
 ### `read_workspace`
 
 Read/discovery entry point.
@@ -56,7 +62,7 @@ Collection create/rename/delete for owned collections. Deleting a collection doe
 
 ### `create_experiment`
 
-Creates a new owned Experiment from the complete canonical artifact array after validation. A legacy three-source compatibility form remains accepted for older clients and normalizes to the four compulsory artifacts with an empty Metrics artifact.
+Creates a new owned Experiment from the complete canonical artifact array after validation. Configuration, Initialization, Controller and Metrics are all required in the input; Metrics content may be empty.
 
 ### `edit_experiment`
 
