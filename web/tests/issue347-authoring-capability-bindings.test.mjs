@@ -20,6 +20,10 @@ const bindingSource = readFileSync(
   new URL("../../supabase/functions/experiment-mcp/canonical-capability-bindings.js", import.meta.url),
   "utf8",
 );
+const capabilityBindingSource = readFileSync(
+  new URL("../../supabase/functions/experiment-mcp/capability-bindings.js", import.meta.url),
+  "utf8",
+);
 const mcpSource = readFileSync(
   new URL("../../supabase/functions/experiment-mcp/index.ts", import.meta.url),
   "utf8",
@@ -77,9 +81,9 @@ test("#347 authoring bindings are exact references to the frozen implemented can
   }
 });
 
-test("#347 authoring contract carries bindings, not canonical meaning/status/provenance", () => {
-  assert.equal(AUTHORING_CONTRACT.canonical_capability_bindings, CANONICAL_CAPABILITY_BINDINGS);
-  assert.equal(Object.prototype.hasOwnProperty.call(AUTHORING_CONTRACT, "capability_model"), false);
+test("#347 capability bindings stay separate from canonical meaning/status/provenance and from the language contract", () => {
+  assert.equal(Object.prototype.hasOwnProperty.call(AUTHORING_CONTRACT, "canonical_capability_bindings"), false);
+  assert.equal(AUTHORING_CONTRACT.capability_resolution.authority, "capability_registry");
 
   const serializedBindings = JSON.stringify(CANONICAL_CAPABILITY_BINDINGS);
   for (const forbidden of [
@@ -97,10 +101,10 @@ test("#347 authoring contract carries bindings, not canonical meaning/status/pro
 });
 
 test("#347 runtime/compiler authoring remains static and has no Supabase capability lookup", () => {
-  assert.doesNotMatch(bindingSource, /^\s*import\s/m);
-  assert.doesNotMatch(bindingSource, /\.from\(|\.rpc\(|fetch\(/);
+  assert.match(bindingSource, /IMPLEMENTED_CAPABILITY_BINDINGS as CANONICAL_CAPABILITY_BINDINGS/);
+  assert.doesNotMatch(capabilityBindingSource, /\.from\(|\.rpc\(|fetch\(/);
   assert.doesNotMatch(authoringSource, /\.from\(['"]canonical_capabilities['"]\)|list_canonical_capability_registry/);
-  assert.match(authoringSource, /canonical_capability_bindings: CANONICAL_CAPABILITY_BINDINGS/);
+  assert.doesNotMatch(authoringSource, /canonical_capability_bindings/);
 });
 
 test("#347 separates semantic capability from authoring-language diagnostics", () => {
@@ -169,17 +173,19 @@ test("#347 extension routing uses typed diagnostic request classes and never aut
   assert.match(mcpSource, /diagnostic_request_classes: requestClasses/);
   assert.match(mcpSource, /automatic_rejection_classes: \[\]/);
   assert.doesNotMatch(mcpSource, /unsupported_capability_behavior/);
-  assert.equal(AUTHORING_CONTRACT.runtime_contract.artifact_capabilities.optional_executable.unsupported_request, "artifact_workflow");
+  assert.equal(AUTHORING_CONTRACT.artifact_execution.unsupported_optional_executable_request_class, "artifact_workflow");
 });
 
-test("#347 changes contract metadata only; existing scientific authoring interface remains intact", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.8");
+test("#347 current authoring syntax remains intact while concrete robot surfaces live on capabilities", () => {
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.9");
   assert.equal(AUTHORING_CONTRACT.artifacts.initialization.entry, "initialize(config, rng, place)");
   assert.equal(AUTHORING_CONTRACT.artifacts.controller.entry, "step(self, obs)");
-  assert.deepEqual(AUTHORING_CONTRACT.artifacts.controller.actions.Motion.arguments, ["forward: scalar", "turning: scalar"]);
-  assert.equal(AUTHORING_CONTRACT.artifacts.controller.observations["obs.heading"], "vec2");
-  assert.equal(AUTHORING_CONTRACT.artifacts.controller.observations["obs.neighbours"], "sequence<neighbour>");
-  assert.equal(AUTHORING_CONTRACT.artifacts.controller.observations["neighbour.relative_position"], "vec2");
-  assert.match(AUTHORING_CONTRACT.artifacts.controller.observations["obs.environmental_scalar"], /scalar/);
   assert.equal(AUTHORING_CONTRACT.artifacts.metrics.language, "python-vlab-metrics/0.1");
+
+  const surfaces = CANONICAL_CAPABILITY_BINDINGS.flatMap((binding) => binding.surfaces);
+  assert.ok(surfaces.some((surface) => surface.symbol === "Motion" && surface.kind === "action_constructor"));
+  assert.ok(surfaces.some((surface) => surface.symbol === "obs.heading" && surface.value_type === "vec2"));
+  assert.ok(surfaces.some((surface) => surface.symbol === "obs.neighbours" && surface.value_type === "neighbours"));
+  assert.ok(surfaces.some((surface) => surface.symbol === "neighbour.relative_position" && surface.value_type === "vec2"));
+  assert.ok(surfaces.some((surface) => surface.symbol === "obs.environmental_scalar" && surface.value_type === "scalar"));
 });
