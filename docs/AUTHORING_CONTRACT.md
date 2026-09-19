@@ -60,6 +60,20 @@ The simulator/compiler/kernel remain static code and do **not** query Supabase a
 
 In particular, controller-side random sampling remains unavailable because there is no implemented controller-RNG capability. It is not modeled as a permanent generic language prohibition. Host filesystem/network access remains a separate security boundary.
 
+## Canonical IR parity
+
+For executable artifacts, successful source compilation is not by itself the execution boundary. The compiler must emit the canonical IR vocabulary accepted by the Rust/WASM runtime.
+
+Routine source aliases remain authorable, but collection/iteration aliases are normalized before IR crosses the runtime boundary. In particular:
+- Controller neighbour-list aliases lower to canonical `obs.neighbours` iteration;
+- Metrics agent-list aliases lower to canonical `snapshot.agents` iteration, and loop-agent aliases lower to the canonical loop binding.
+
+The basic mathematical surface remains deliberately ordinary: scalar/vector assignment, `+ - * /`, unary negation, vector primitives and the registered mathematical intrinsics such as `pow`, `sqrt`, `min` and `max` where the artifact language advertises them.
+
+Controller validation also requires an unconditional top-level `Motion` return so a syntactically accepted controller cannot fail merely because a neighbour loop executes zero times.
+
+Browser and MCP compilers are mirrored and covered by parity regressions together with the Rust runtime tests. This is a hard authoring invariant: source-changing writes may be persisted only through that validated compiler path.
+
 ## Validation path
 
 AI-authored Experiment writes use server-side **compile-without-simulation** validation aligned with the production browser/compiler contracts.
