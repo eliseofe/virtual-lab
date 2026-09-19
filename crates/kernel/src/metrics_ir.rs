@@ -18,20 +18,28 @@ const DEFAULT_BUFFER_CAPACITY: usize = 262_144;
 enum Value {
     Scalar(f64),
     Vec2(Vec2),
+    Bool(bool),
 }
 
 impl Value {
     fn scalar(self, context: &str) -> Result<f64, String> {
         match self {
             Value::Scalar(value) => Ok(value),
-            Value::Vec2(_) => Err(format!("{context} expected a scalar")),
+            Value::Vec2(_) | Value::Bool(_) => Err(format!("{context} expected a scalar")),
         }
     }
 
     fn vec2(self, context: &str) -> Result<Vec2, String> {
         match self {
             Value::Vec2(value) => Ok(value),
-            Value::Scalar(_) => Err(format!("{context} expected a vector")),
+            Value::Scalar(_) | Value::Bool(_) => Err(format!("{context} expected a vector")),
+        }
+    }
+
+    fn boolean(self, context: &str) -> Result<bool, String> {
+        match self {
+            Value::Bool(value) => Ok(value),
+            Value::Scalar(_) | Value::Vec2(_) => Err(format!("{context} expected a boolean")),
         }
     }
 }
@@ -66,6 +74,14 @@ enum SamplingPolicy {
 }
 
 #[derive(Debug, Deserialize)]
+struct ConditionalBranch {
+    condition: Expression,
+    body: Vec<Statement>,
+    #[serde(default)]
+    line: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum Statement {
     Assign {
@@ -88,6 +104,13 @@ enum Statement {
         #[serde(default)]
         line: Option<usize>,
     },
+    If {
+        branches: Vec<ConditionalBranch>,
+        #[serde(default)]
+        else_body: Vec<Statement>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
     Return {
         value: Expression,
         #[serde(default)]
@@ -103,6 +126,11 @@ enum Expression {
         #[serde(default)]
         line: Option<usize>,
     },
+    BoolConst {
+        value: bool,
+        #[serde(default)]
+        line: Option<usize>,
+    },
     Load {
         path: String,
         #[serde(default)]
@@ -111,6 +139,20 @@ enum Expression {
     Unary {
         op: String,
         value: Box<Expression>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    Compare {
+        op: String,
+        left: Box<Expression>,
+        right: Box<Expression>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    BoolOp {
+        op: String,
+        left: Box<Expression>,
+        right: Box<Expression>,
         #[serde(default)]
         line: Option<usize>,
     },
@@ -184,6 +226,7 @@ fn eval_expression(
             }
             Ok(Value::Scalar(*value))
         }
+        Expression::BoolConst { value, .. } => Ok(Value::Bool(*value)),
         Expression::Load { path, line } => {
             if path == "snapshot.scientific_time" {
                 return Ok(Value::Scalar(context.scientific_time));
@@ -215,12 +258,38 @@ fn eval_expression(
             Err(at_line(*line, format!("unknown metric value '{path}'")))
         }
         Expression::Unary { op, value, line } => {
-            if op != "-" {
-                return Err(at_line(*line, format!("unsupported metric unary operator '{op}'")));
+            let value = eval_expression(value, context, locals, loop_agents)?;
+            match op.as_str() {
+                "-" => match value {
+                    Value::Scalar(value) => Ok(Value::Scalar(-value)),
+                    Value::Vec2(value) => Ok(Value::Vec2(value * -1.0)),
+                    Value::Bool(_) => Err(at_line(*line, "unary '-' cannot apply to bool")),
+                },
+                "not" => Ok(Value::Bool(!value.boolean("metric 'not' operand")?)),
+                _ => Err(at_line(*line, format!("unsupported metric unary operator '{op}'"))),
             }
-            match eval_expression(value, context, locals, loop_agents)? {
-                Value::Scalar(value) => Ok(Value::Scalar(-value)),
-                Value::Vec2(value) => Ok(Value::Vec2(value * -1.0)),
+        }
+        Expression::Compare { op, left, right, line } => {
+            let left = eval_expression(left, context, locals, loop_agents)?.scalar("metric comparison left")?;
+            let right = eval_expression(right, context, locals, loop_agents)?.scalar("metric comparison right")?;
+            let value = match op.as_str() {
+                "<" => left < right,
+                "<=" => left <= right,
+                ">" => left > right,
+                ">=" => left >= right,
+                "==" => left == right,
+                "!=" => left != right,
+                _ => return Err(at_line(*line, format!("unsupported metric comparison operator '{op}'"))),
+            };
+            Ok(Value::Bool(value))
+        }
+        Expression::BoolOp { op, left, right, line } => {
+            let left = eval_expression(left, context, locals, loop_agents)?.boolean("metric boolean left")?;
+            let right = eval_expression(right, context, locals, loop_agents)?.boolean("metric boolean right")?;
+            match op.as_str() {
+                "and" => Ok(Value::Bool(left && right)),
+                "or" => Ok(Value::Bool(left || right)),
+                _ => Err(at_line(*line, format!("unsupported metric boolean operator '{op}'"))),
             }
         }
         Expression::Binary { op, left, right, line } => binary(
@@ -314,6 +383,25 @@ fn execute_statements(
                     }
                     if returned.is_some() {
                         return Ok(returned);
+                    }
+                }
+            }
+            Statement::If { branches, else_body, .. } => {
+                let mut matched = false;
+                for branch in branches {
+                    let condition = eval_expression(&branch.condition, context, locals, loop_agents)?
+                        .boolean("metric if/elif condition")?;
+                    if condition {
+                        matched = true;
+                        if let Some(value) = execute_statements(&branch.body, context, locals, loop_agents)? {
+                            return Ok(Some(value));
+                        }
+                        break;
+                    }
+                }
+                if !matched {
+                    if let Some(value) = execute_statements(else_body, context, locals, loop_agents)? {
+                        return Ok(Some(value));
                     }
                 }
             }
