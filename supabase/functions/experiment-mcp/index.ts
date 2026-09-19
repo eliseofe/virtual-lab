@@ -16,7 +16,7 @@ import {
   MCP_SERVER_VERSION,
   readResultsPresentation,
   registerMetricsResultsTool,
-  validateExperimentArtifactsV08 as validateExperimentArtifacts,
+  validateExperimentArtifactsV09 as validateExperimentArtifacts,
 } from './metrics-results-tools.ts'
 import { MCP_TOOL_COUNT, MCP_TOOL_NAMES } from './tool-surface.ts'
 
