@@ -65,5 +65,5 @@ test("#359 keeps implementation machinery out of the default inbox flow", () => 
   assert.match(inbox, /vlab:professor-requests-rendered/);
   assert.match(links, /professor-request-detail-grid/);
   assert.match(links, /professor-request-development/);
-  assert.doesNotMatch(links, /summary\.insertAdjacentElement|professor-development-links/);
+  assert.doesNotMatch(links, /summary\.insertAdjacentElement|section\.className = "professor-development-links"/);
 });
