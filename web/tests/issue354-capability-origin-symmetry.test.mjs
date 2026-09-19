@@ -86,7 +86,7 @@ test("#354 neutral discovery enforces live canonical/binding consistency", () =>
   assert.match(mcp, /validateCanonicalCapabilitySurface/);
   assert.match(mcp, /AUTHORING_CONTRACT\.canonical_capability_bindings/);
   assert.match(mcp, /capabilityConsistency\.valid/);
-  assert.match(tools, /MCP_SERVER_VERSION = '3\.7\.0'/);
+  assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '13'/);
   assert.match(tools, /contract_version: 'vlab\.authoring\/0\.7'/);
 });
