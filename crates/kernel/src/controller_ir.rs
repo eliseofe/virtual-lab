@@ -158,7 +158,7 @@ fn validate_statements(
                 }
                 if loop_variable.is_some() { return Err(at_line(*line, "nested neighbour loops are not supported")); }
                 let mut nested = locals.clone();
-                returns |= validate_statements(body, parameters, state, &mut nested, Some(variable))?;
+                validate_statements(body, parameters, state, &mut nested, Some(variable))?;
             }
             Statement::Return { value, .. } => {
                 validate_expression(value, parameters, state, locals, loop_variable)?;
