@@ -954,4 +954,65 @@ mod tests {
         assert_eq!(scalar_call("max", &[2.0, 3.0]), 3.0);
     }
 
+    #[test]
+    fn conditional_metric_counts_agents_and_returns_scalar() {
+        let ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "metrics":[{
+            "id":"probe.conditional","name":"Conditional","unit":null,
+            "sampling":{"kind":"final"},
+            "function":"conditional",
+            "body":[
+              {"kind":"assign","target":"count","value":{"kind":"const","value":0.0}},
+              {"kind":"for_each","variable":"agent","iterable":{"kind":"load","path":"snapshot.agents"},"body":[
+                {"kind":"if","branches":[{
+                  "condition":{"kind":"compare","op":">=",
+                    "left":{"kind":"load","path":"agent.heading_angle"},
+                    "right":{"kind":"const","value":0.0}},
+                  "body":[{"kind":"aug_assign","target":"count","op":"+","value":{"kind":"const","value":1.0}}]
+                }],"else_body":[]}
+              ]},
+              {"kind":"return","value":{"kind":"load","path":"count"}}
+            ]
+          }]
+        }"#;
+        let state = vec![
+            AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.0 },
+            AgentPhysicalState { position: Vec2::ZERO, heading_angle: -0.5 },
+            AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.5 },
+        ];
+        let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
+        metrics.finalize(&state, 1.0).unwrap();
+        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        assert_eq!(batch["samples"][0]["value"], 2.0);
+    }
+
+    #[test]
+    fn exhaustive_metric_branch_returns_execute_boolean_composition() {
+        let ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "metrics":[{
+            "id":"probe.branch","name":"Branch","unit":null,
+            "sampling":{"kind":"final"},
+            "function":"branch",
+            "body":[
+              {"kind":"if","branches":[{
+                "condition":{"kind":"bool_op","op":"and",
+                  "left":{"kind":"compare","op":">","left":{"kind":"load","path":"snapshot.agent_count"},"right":{"kind":"const","value":0.0}},
+                  "right":{"kind":"unary","op":"not","value":{"kind":"bool_const","value":false}}},
+                "body":[{"kind":"return","value":{"kind":"const","value":1.0}}]
+              }],"else_body":[{"kind":"return","value":{"kind":"const","value":0.0}}]}
+            ]
+          }]
+        }"#;
+        let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
+        metrics.finalize(&state(), 1.0).unwrap();
+        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        assert_eq!(batch["samples"][0]["value"], 1.0);
+    }
+
 }
