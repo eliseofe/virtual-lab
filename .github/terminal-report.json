@@ -1,15 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Execution ownership is now explicit project state",
-  "owner_impact": "Every issue must record whether ChatGPT, Eliseo Ferrante, or Work owns execution, with ChatGPT as the default and owner testing used only when it is a completion blocker.",
+  "outcome": "Extension requests now converge before Professor review",
+  "owner_impact": "Research AI sees a concise active-request catalog, reuses one request across papers when the scientific/model need is covered, records each blocked Experiment as evidence underneath that request, and Professor approval accepts the need into design without creating canonical capability truth.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved execution-ownership workflow safeguard is complete once this exact candidate is production green; no further owner action is required."
+    "kind": "epic_continues",
+    "issue": 360,
+    "text": "Next is #360, which will make unsupported scientific tasks follow the durable blocked-Experiment closure path consistently for Student and Professor research AI. It has not started yet."
   },
   "technical_evidence": [
-    "DEVELOPMENT_WORKFLOW.md records the three allowed execution owners and the approved assignment order.",
-    "No sequencing, granularity, deployment, liveness, retry, or completion rule is otherwise changed."
-  ]
+    "The existing six request classes remain unchanged.",
+    "The capability-request interface is vlab.capability-request/5 with separate reuse and clearly-distinct-new-request inputs.",
+    "Active request discovery exposes only sanitized scientific/model identity and lifecycle fields.",
+    "Many closure analyses can link to one durable request through capability_request_evidence.",
+    "Professor triage no longer creates or binds canonical semantic capability identity."
+  ],
+  "close_issue": 361
 }

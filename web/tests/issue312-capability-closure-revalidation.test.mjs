@@ -31,7 +31,8 @@ test("#312 adds Professor-only resume and revalidation tools without changing St
 test("#312 resume returns the durable blocked Experiment, ordered analysis history and linked requests", () => {
   assert.match(mcp, /from\('blocked_experiment_drafts'\)[\s\S]*maybeSingle\(\)/);
   assert.match(mcp, /from\('capability_closure_analyses'\)[\s\S]*order\('analysis_sequence'/);
-  assert.match(mcp, /from\('capability_requests'\)[\s\S]*\.in\('closure_analysis_id', analysisIds\)/);
+  assert.match(mcp, /from\('capability_request_evidence'\)[\s\S]*\.in\('closure_analysis_id', analysisIds\)/);
+  assert.match(mcp, /from\('capability_requests'\)[\s\S]*\.in\('id', requestIds\)/);
   assert.match(mcp, /latest_analysis/);
   assert.match(mcp, /analysis_history/);
 });
@@ -79,6 +80,6 @@ test("#312 capability-request contract may version forward while preserving Prof
   const interfaceVersion = Number(tools.match(/MCP_INTERFACE_VERSION = '([0-9]+)'/)?.[1] ?? 0);
   assert.ok(interfaceVersion >= 10);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/4'/);
-  assert.ok((tools.match(/capability_request_interface: 'vlab\.capability-request\/4'/g) ?? []).length >= 2);
+  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/5'/);
+  assert.ok((tools.match(/capability_request_interface: 'vlab\.capability-request\/5'/g) ?? []).length >= 2);
 });

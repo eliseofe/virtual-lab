@@ -121,7 +121,7 @@ function buildUi() {
 
   const summary = document.createElement("p");
   summary.className = "professor-inbox-summary";
-  summary.textContent = "All six request classes remain visible for Professor triage. Semantic requests are bound to canonical capability identity on approval; classes 2–6 remain typed extension requests.";
+  summary.textContent = "All six request classes remain visible for Professor triage. Approval accepts the scientific or product need into the design queue; canonical semantic identity is resolved later during developer generalization.";
   const message = document.createElement("p");
   message.className = "professor-inbox-message";
   message.setAttribute("role", "status");
@@ -348,11 +348,6 @@ function render() {
       note.setAttribute("aria-label", `Professor note for ${request.extension_name || request.capability_name}`);
       note.value = request.professor_notes || "";
 
-      const semanticEditor = request.request_class === "semantic_capability"
-        ? semanticApprovalEditor(request)
-        : null;
-      if (semanticEditor) card.append(semanticEditor.editor);
-
       const actions = document.createElement("div");
       actions.className = "professor-request-actions";
       const approve = document.createElement("button");
@@ -364,13 +359,12 @@ function render() {
       approve.disabled = busy;
       decline.disabled = busy;
       note.disabled = busy;
-      semanticEditor?.setDisabled(busy);
 
       approve.addEventListener("click", () => triage(
         request,
         "approved",
         note.value,
-        semanticEditor?.payload() || {},
+        {},
       ));
       decline.addEventListener("click", () => triage(request, "declined", note.value, {}));
       actions.append(approve, decline);

@@ -2,7 +2,7 @@
 
 Status: **current deployed contract, 18 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.7`, exposed by production `experiment-mcp` server `3.5.0`, interface `13`.
+Current machine-readable contract: `vlab.authoring/0.7`, exposed by production `experiment-mcp` server `3.8.0`, interface `13`.
 
 ## Canonical Experiment artifacts
 
@@ -130,17 +130,19 @@ No arbitrary plotting code is accepted through the MCP contract.
 
 ## Classified extension requests
 
-Student and Professor research-AI sessions use `vlab.capability-request/4`. All six owner-approved request classes may be submitted to the durable Professor-visible workflow:
+Student and Professor research-AI sessions use `vlab.capability-request/5`. All six owner-approved request classes may be submitted to the durable Professor-visible workflow:
 
 `semantic_capability | authoring_language | runtime_configuration | artifact_workflow | implementation_optimization | security_boundary`
 
-None is automatically accepted or rejected. Professor alone approves/declines. Only semantic-capability requests may bind or create canonical semantic capability identity; classes 2–6 remain typed extension requests.
+Professor alone approves/declines. The six-class taxonomy remains the classification layer; semantic canonical identity is resolved later during trusted developer generalization.
 
-Validation diagnostics can advertise the relevant request class when the failure is genuinely an extension need. Ordinary type/validation errors do not become extension requests automatically.
+No-ID research-AI discovery includes the implemented canonical capability registry plus a sanitized catalog of active `requested | approved | in_progress` extension requests. Research AI reuses an active request whenever its scientific/model meaning can reasonably cover a new requirement. A new request represents a clearly and materially distinct scientific/model ability and is stated primarily in scientific/model language, using source-publication terminology where useful. Multiple papers/blocked Experiments may therefore attach evidence to one request.
 
-Professor approval is still queue/design approval, not implementation authorization. The standing handoff remains:
+Validation diagnostics can advertise the relevant request class when the failure is genuinely an extension need. Ordinary type/validation errors remain ordinary validation evidence.
 
-`research AI request → Professor review → developer design discussion → explicit owner implementation approval → trusted implementation/deploy → research AI resumes`
+Professor approval is queue/design approval, not implementation authorization or canonicalization. The standing handoff is:
+
+`research AI request/reuse → Professor review → developer generalization + canonical reconciliation → explicit owner implementation approval → trusted implementation/deploy → research AI resumes`
 
 ## Security boundary
 

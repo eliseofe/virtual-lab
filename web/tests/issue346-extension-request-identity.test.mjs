@@ -44,9 +44,9 @@ test("#346 keeps requests separate from canonical capability identity", () => {
   assert.match(migration, /Approved semantic-capability requests must be bound to canonical capability identity/i);
 });
 
-test("#346 resolves/reconciles by stable identity and removes free-text request deduplication", () => {
-  assert.match(mcp, /existing_request_id: z\.string\(\)\.uuid\(\)\.optional\(\)/);
-  assert.match(mcp, /canonical_capability_id: z\.string\(\)\.uuid\(\)\.optional\(\)/);
+test("#346 stable request identity remains the reconciliation seam after #361", () => {
+  assert.match(mcp, /const REUSED_EXTENSION_REQUEST_INPUT = z\.object/);
+  assert.match(mcp, /existing_request_id: z\.string\(\)\.uuid\(\)/);
   assert.match(migration, /v_existing_request_id/);
   assert.match(migration, /r\.id = v_existing_request_id/);
   assert.match(migration, /canonical_capability_id is distinct from v_canonical_id/i);
@@ -110,8 +110,8 @@ test("#346 preserves whole-Experiment ambiguity and revalidation invariants", ()
 });
 
 test("#346 bumps the request/MCP interface without changing authoring language version", () => {
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/4'/);
-  assert.match(tools, /MCP_SERVER_VERSION = '3\.7\.0'/);
+  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/5'/);
+  assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '13'/);
   assert.match(tools, /contract_version: 'vlab\.authoring\/0\.7'/);
 });
