@@ -75,7 +75,7 @@ test("controller accepts only the published local scalar observation field", () 
   const controller = compileController(controllerWithField);
   assert.doesNotThrow(() => validateEnvironmentControllerPair({ schema: "vlab.environment-scalar-ir/0.1" }, controller));
   assert.throws(() => validateEnvironmentControllerPair(null, controller), /controller reads obs\.environmental_scalar but Initialization does not define environmental_scalar/);
-  assert.throws(() => compileController(`class Bad(Agent):\n    def step(self, obs):\n        return Motion(obs.position, 0.0)\n`), /unknown observation field 'obs.position'/);
+  assert.throws(() => compileController(`class Bad(Agent):\n    def step(self, obs):\n        return Motion(obs.position, 0.0)\n`), /observation capability 'obs.position' is not implemented/);
 });
 
 test("registry validation accepts a scalar field experiment and rejects the missing-field pair", () => {
