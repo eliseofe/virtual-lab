@@ -49,7 +49,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
       compiled_version: "vlab.initializer-state/0.2",
       syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Additional callable/member surfaces and optional entries are capability-owned.",
       entry: "initialize(config, rng, place)",
-      simulator_owned_inputs: ["config", "rng", "place", "SEED"],
+      simulator_owned_inputs: ["config", "rng", "place"],
       language_intrinsics: ["sqrt", "ceil", "floor", "abs", "max", "min", "range"],
       constants: ["TAU", "SQRT3_OVER_2"],
       capability_resolution: "Capability-backed initializer calls, member access and optional entries are authorable only when an implemented capability advertises the corresponding Initialization surface."
