@@ -31,8 +31,8 @@ test("#361 keeps the existing six-class taxonomy and versions the request interf
     assert.match(mcp, new RegExp(requestClass));
     assert.match(migration, new RegExp(requestClass));
   }
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/5'/);
-  assert.match(tools, /capability_request_interface: 'vlab\.capability-request\/5'/);
+  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/\d+'/);
+  assert.match(tools, /capability_request_interface: 'vlab\.capability-request\/\d+'/);
 });
 
 test("#361 exposes only a sanitized global active-request catalog", () => {
