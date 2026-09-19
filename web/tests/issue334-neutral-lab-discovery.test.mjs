@@ -10,7 +10,7 @@ const workspace = mcp.match(/server\.registerTool\(\s*'read_workspace',[\s\S]*?s
 
 test("#334 neutral discovery returns full formal Lab contract and canonical capability registry", () => {
   assert.match(workspace, /authoringInfo\(experiment_id \? include_authoring_contract : true, profile\.role\)/);
-  assert.match(workspace, /capability_registry: capabilityRegistry \?\? \[\]/);
+  assert.match(workspace, /capability_registry: discoverableCapabilityRegistry/);
   assert.match(workspace, /if \(!include_workspace_index\) return toolResult\(neutralLabKnowledge\)/);
 });
 
