@@ -2,7 +2,7 @@
 
 Status: **current deployed contract, 19 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.8`, exposed by production `experiment-mcp` server `3.10.0`, interface `14`.
+Current machine-readable contract: `vlab.authoring/0.9`, exposed by production `experiment-mcp` server `3.11.0`, interface `15`.
 
 ## Canonical Experiment artifacts
 
@@ -36,21 +36,29 @@ The contract may describe:
 
 Scientific content comes from the researcher/research-AI workflow. Developer-side tooling validates support; it must not invent a substitute scientific model when requested semantics are unsupported.
 
-## Canonical capability ownership and authoring bindings
+## Authoring skeleton and capability ownership
 
-Canonical semantic capability truth lives in the Supabase canonical capability registry. The registry owns stable capability UUID/key, generic meaning, implementation state/version and minimal publication provenance.
+The authoring contract defines the stable **language/compiler skeleton**: artifact structure, parser/entry-point rules, generic language intrinsics, runtime/measurement invariants, diagnostics and security boundaries.
 
-The authoring contract does **not** duplicate that truth. It carries only static references from implemented canonical capability IDs to the existing authoring/runtime surfaces that expose them. The current bindings cover the frozen 11 implemented semantic capabilities and point to existing constructs such as:
+It does **not** contain the exhaustive list of currently available robot/scientific capabilities.
 
-- `ARENA_SIZE` for the periodic 2-D world;
-- `Motion(forward, turning)` and speed/turn limits for forward/turning kinematics;
-- `place(i, x, y, heading)` and `rng.uniform(a, b)` for Initialization;
-- controller scalar private state;
+Canonical semantic capability truth lives in the Supabase capability registry. Each implemented capability is joined at discovery time with its static build-time **authoring surfaces**: the concrete configuration symbol, observation field, action constructor, initializer intrinsic, environment entry, Metrics snapshot field or sampling constructor through which that capability is authored.
+
+Examples of current capability-owned surfaces include:
+
+- `ARENA_SIZE` for the periodic 2-D world capability;
+- `Motion(forward, turning)` and its speed/turn limits for forward/turning kinematics;
+- `place(...)` and `rng.uniform(...)` for Initialization capabilities;
+- controller private scalar state;
 - `obs.heading`, `obs.neighbours`, `neighbour.relative_position` and `obs.environmental_scalar`;
 - `environmental_scalar(x, y, config)`;
-- the current Metrics snapshot fields and `every(...)` / `final()` sampling surfaces.
+- the currently implemented Metrics snapshot fields and sampling constructors.
 
-The simulator/compiler/kernel remain static code and do **not** query Supabase at runtime. Build/static consistency tests tie these bindings to the frozen canonical registry identities so the two layers cannot silently drift.
+The stable Controller language therefore describes forms such as `step(self, obs)`, arithmetic, assignments, loops and capability-backed references/actions. It does not freeze today's observation/action inventory into the language contract.
+
+The simulator/compiler/kernel remain static code and do **not** query Supabase at runtime. Browser and edge validation consume byte-identical static implemented-capability bindings, while production discovery checks those bindings against the canonical registry. A surface absent from the implemented capability set is rejected.
+
+In particular, controller-side random sampling remains unavailable because there is no implemented controller-RNG capability. It is not modeled as a permanent generic language prohibition. Host filesystem/network access remains a separate security boundary.
 
 ## Validation path
 
@@ -97,7 +105,7 @@ def metric(snapshot):
 
 Supported sampling forms are periodic `every(seconds)` and `final()`, subject to runtime exact-schedulability rules.
 
-Metrics observe a versioned read-only global snapshot. Current snapshot fields include scientific time, agent count and agent position/heading information required by the Metrics contract. This global measurement access does **not** become controller perception. Metrics cannot mutate simulation state, use arbitrary RNG, access controller-private state, filesystem, network or unrestricted simulator internals.
+Metrics observe a versioned read-only global snapshot. The currently implemented Metrics capability advertises scientific time, agent count and agent position/heading fields through its capability-owned authoring surfaces. This global measurement access does **not** become controller perception. Metrics cannot mutate simulation state, use unavailable capabilities, access controller-private state, filesystem, network or unrestricted simulator internals.
 
 ## Fine-grained MCP authoring
 
@@ -152,4 +160,4 @@ Experiment-domain AI clients have no GitHub/repository, shell, deployment, arbit
 
 ## Accepted scientific fixture
 
-The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.8`.
+The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.9`.
