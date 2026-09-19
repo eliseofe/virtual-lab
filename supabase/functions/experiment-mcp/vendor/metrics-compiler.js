@@ -347,6 +347,107 @@ function checkStatements(body, locals, parameters) {
   return returned;
 }
 
+function rewriteMetricAliasExpression(node, collectionAliases, agentAliases) {
+  if (!node || typeof node !== "object") return node;
+
+  if (node.kind === "load") {
+    if (collectionAliases.has(node.path)) {
+      return { ...node, path: "snapshot.agents" };
+    }
+    const pieces = node.path.split(".");
+    const canonicalAgent = agentAliases.get(pieces[0]);
+    if (canonicalAgent) {
+      return { ...node, path: [canonicalAgent, ...pieces.slice(1)].join(".") };
+    }
+    return node;
+  }
+
+  if (node.kind === "unary") {
+    return { ...node, value: rewriteMetricAliasExpression(node.value, collectionAliases, agentAliases) };
+  }
+  if (node.kind === "binary") {
+    return {
+      ...node,
+      left: rewriteMetricAliasExpression(node.left, collectionAliases, agentAliases),
+      right: rewriteMetricAliasExpression(node.right, collectionAliases, agentAliases),
+    };
+  }
+  if (node.kind === "call") {
+    return {
+      ...node,
+      args: node.args.map((arg) => rewriteMetricAliasExpression(arg, collectionAliases, agentAliases)),
+    };
+  }
+  return node;
+}
+
+function lowerMetricIterableAliases(body, collectionAliases = new Set(), agentAliases = new Map()) {
+  const lowered = [];
+
+  for (const statement of body) {
+    if (statement.kind === "assign") {
+      const source = statement.value?.kind === "load" ? statement.value.path : null;
+      if (source === "snapshot.agents" || collectionAliases.has(source)) {
+        collectionAliases.add(statement.target);
+        agentAliases.delete(statement.target);
+        continue;
+      }
+
+      const canonicalAgent = source ? agentAliases.get(source) : null;
+      if (canonicalAgent) {
+        agentAliases.set(statement.target, canonicalAgent);
+        collectionAliases.delete(statement.target);
+        continue;
+      }
+
+      collectionAliases.delete(statement.target);
+      agentAliases.delete(statement.target);
+      lowered.push({
+        ...statement,
+        value: rewriteMetricAliasExpression(statement.value, collectionAliases, agentAliases),
+      });
+      continue;
+    }
+
+    if (statement.kind === "aug_assign") {
+      collectionAliases.delete(statement.target);
+      agentAliases.delete(statement.target);
+      lowered.push({
+        ...statement,
+        value: rewriteMetricAliasExpression(statement.value, collectionAliases, agentAliases),
+      });
+      continue;
+    }
+
+    if (statement.kind === "for_each") {
+      const rewrittenIterable = rewriteMetricAliasExpression(statement.iterable, collectionAliases, agentAliases);
+      const nestedCollections = new Set(collectionAliases);
+      const nestedAgents = new Map(agentAliases);
+      nestedAgents.set(statement.variable, statement.variable);
+      lowered.push({
+        ...statement,
+        iterable: rewrittenIterable.kind === "load" && rewrittenIterable.path === "snapshot.agents"
+          ? { kind: "load", path: "snapshot.agents", line: rewrittenIterable.line ?? statement.line }
+          : rewrittenIterable,
+        body: lowerMetricIterableAliases(statement.body, nestedCollections, nestedAgents),
+      });
+      continue;
+    }
+
+    if (statement.kind === "return") {
+      lowered.push({
+        ...statement,
+        value: rewriteMetricAliasExpression(statement.value, collectionAliases, agentAliases),
+      });
+      continue;
+    }
+
+    lowered.push(statement);
+  }
+
+  return lowered;
+}
+
 function parseMetricFunctions(source, parameters) {
   const lines = sourceLines(source);
   const metrics = [];
@@ -377,7 +478,7 @@ function parseMetricFunctions(source, parameters) {
       unit: metadata.unit,
       sampling: metadata.sampling,
       function: defMatch[1],
-      body: parsed.body,
+      body: lowerMetricIterableAliases(parsed.body),
       source_line: entry.line,
     });
     i = parsed.next;
