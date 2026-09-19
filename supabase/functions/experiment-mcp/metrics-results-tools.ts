@@ -4,7 +4,6 @@ import {
   AUTHORING_CONTRACT as BASE_AUTHORING_CONTRACT,
   validateExperimentArtifacts as validateBaseExperimentArtifacts,
 } from './authoring.js'
-import { MCP_TOOLS } from './tool-surface.ts'
 import {
   RESULTS_PRESENTATION_CONTRACT,
   RESULTS_PRESENTATION_SCHEMA,
@@ -207,7 +206,7 @@ export function registerMetricsResultsTool(
   const aiClient = clientId ?? 'mcp-client'
 
   server.registerTool(
-    MCP_TOOLS.authorMetricsResults,
+    'author_metrics_results',
     {
       title: 'Author Experiment Metrics and Results presentation',
       description:
