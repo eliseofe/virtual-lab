@@ -76,6 +76,21 @@ Definite-assignment analysis follows control flow: branch-local values may escap
 
 Iteration remains capability-backed and bounded; the current Controller loop domain is the implemented neighbour collection.
 
+## Generic Metrics control-flow substrate
+
+Metrics uses the same bounded boolean/control-flow vocabulary as Controller for read-only scientific measurement definitions:
+
+- boolean literals `True` and `False`;
+- scalar comparisons `< <= > >= == !=`;
+- boolean composition with `and`, `or` and `not`;
+- `if / elif / else`;
+- branch-aware definite assignment for scalar/vector locals;
+- bounded iteration over capability-backed snapshot collections, currently `snapshot.agents`.
+
+A local introduced by conditional branches is available afterward only when every continuing path defines it with the same type. An exhaustive conditional may satisfy the metric scalar-return requirement when every branch returns a scalar.
+
+This does not widen the Metrics information boundary: Metrics remains read-only and cannot access controller-private state, unavailable snapshot fields, filesystem/network, simulator internals or arbitrary iterables.
+
 ## Canonical IR parity
 
 For executable artifacts, successful source compilation is not by itself the execution boundary. The compiler must emit the canonical IR vocabulary accepted by the Rust/WASM runtime.

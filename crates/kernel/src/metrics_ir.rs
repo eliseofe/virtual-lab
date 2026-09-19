@@ -18,20 +18,28 @@ const DEFAULT_BUFFER_CAPACITY: usize = 262_144;
 enum Value {
     Scalar(f64),
     Vec2(Vec2),
+    Bool(bool),
 }
 
 impl Value {
     fn scalar(self, context: &str) -> Result<f64, String> {
         match self {
             Value::Scalar(value) => Ok(value),
-            Value::Vec2(_) => Err(format!("{context} expected a scalar")),
+            Value::Vec2(_) | Value::Bool(_) => Err(format!("{context} expected a scalar")),
         }
     }
 
     fn vec2(self, context: &str) -> Result<Vec2, String> {
         match self {
             Value::Vec2(value) => Ok(value),
-            Value::Scalar(_) => Err(format!("{context} expected a vector")),
+            Value::Scalar(_) | Value::Bool(_) => Err(format!("{context} expected a vector")),
+        }
+    }
+
+    fn boolean(self, context: &str) -> Result<bool, String> {
+        match self {
+            Value::Bool(value) => Ok(value),
+            Value::Scalar(_) | Value::Vec2(_) => Err(format!("{context} expected a boolean")),
         }
     }
 }
@@ -66,6 +74,14 @@ enum SamplingPolicy {
 }
 
 #[derive(Debug, Deserialize)]
+struct ConditionalBranch {
+    condition: Expression,
+    body: Vec<Statement>,
+    #[serde(default)]
+    line: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum Statement {
     Assign {
@@ -88,6 +104,13 @@ enum Statement {
         #[serde(default)]
         line: Option<usize>,
     },
+    If {
+        branches: Vec<ConditionalBranch>,
+        #[serde(default)]
+        else_body: Vec<Statement>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
     Return {
         value: Expression,
         #[serde(default)]
@@ -103,6 +126,11 @@ enum Expression {
         #[serde(default)]
         line: Option<usize>,
     },
+    BoolConst {
+        value: bool,
+        #[serde(default)]
+        line: Option<usize>,
+    },
     Load {
         path: String,
         #[serde(default)]
@@ -111,6 +139,20 @@ enum Expression {
     Unary {
         op: String,
         value: Box<Expression>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    Compare {
+        op: String,
+        left: Box<Expression>,
+        right: Box<Expression>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    BoolOp {
+        op: String,
+        left: Box<Expression>,
+        right: Box<Expression>,
         #[serde(default)]
         line: Option<usize>,
     },
@@ -184,6 +226,7 @@ fn eval_expression(
             }
             Ok(Value::Scalar(*value))
         }
+        Expression::BoolConst { value, .. } => Ok(Value::Bool(*value)),
         Expression::Load { path, line } => {
             if path == "snapshot.scientific_time" {
                 return Ok(Value::Scalar(context.scientific_time));
@@ -215,12 +258,38 @@ fn eval_expression(
             Err(at_line(*line, format!("unknown metric value '{path}'")))
         }
         Expression::Unary { op, value, line } => {
-            if op != "-" {
-                return Err(at_line(*line, format!("unsupported metric unary operator '{op}'")));
+            let value = eval_expression(value, context, locals, loop_agents)?;
+            match op.as_str() {
+                "-" => match value {
+                    Value::Scalar(value) => Ok(Value::Scalar(-value)),
+                    Value::Vec2(value) => Ok(Value::Vec2(value * -1.0)),
+                    Value::Bool(_) => Err(at_line(*line, "unary '-' cannot apply to bool")),
+                },
+                "not" => Ok(Value::Bool(!value.boolean("metric 'not' operand")?)),
+                _ => Err(at_line(*line, format!("unsupported metric unary operator '{op}'"))),
             }
-            match eval_expression(value, context, locals, loop_agents)? {
-                Value::Scalar(value) => Ok(Value::Scalar(-value)),
-                Value::Vec2(value) => Ok(Value::Vec2(value * -1.0)),
+        }
+        Expression::Compare { op, left, right, line } => {
+            let left = eval_expression(left, context, locals, loop_agents)?.scalar("metric comparison left")?;
+            let right = eval_expression(right, context, locals, loop_agents)?.scalar("metric comparison right")?;
+            let value = match op.as_str() {
+                "<" => left < right,
+                "<=" => left <= right,
+                ">" => left > right,
+                ">=" => left >= right,
+                "==" => left == right,
+                "!=" => left != right,
+                _ => return Err(at_line(*line, format!("unsupported metric comparison operator '{op}'"))),
+            };
+            Ok(Value::Bool(value))
+        }
+        Expression::BoolOp { op, left, right, line } => {
+            let left = eval_expression(left, context, locals, loop_agents)?.boolean("metric boolean left")?;
+            let right = eval_expression(right, context, locals, loop_agents)?.boolean("metric boolean right")?;
+            match op.as_str() {
+                "and" => Ok(Value::Bool(left && right)),
+                "or" => Ok(Value::Bool(left || right)),
+                _ => Err(at_line(*line, format!("unsupported metric boolean operator '{op}'"))),
             }
         }
         Expression::Binary { op, left, right, line } => binary(
@@ -314,6 +383,25 @@ fn execute_statements(
                     }
                     if returned.is_some() {
                         return Ok(returned);
+                    }
+                }
+            }
+            Statement::If { branches, else_body, .. } => {
+                let mut matched = false;
+                for branch in branches {
+                    let condition = eval_expression(&branch.condition, context, locals, loop_agents)?
+                        .boolean("metric if/elif condition")?;
+                    if condition {
+                        matched = true;
+                        if let Some(value) = execute_statements(&branch.body, context, locals, loop_agents)? {
+                            return Ok(Some(value));
+                        }
+                        break;
+                    }
+                }
+                if !matched {
+                    if let Some(value) = execute_statements(else_body, context, locals, loop_agents)? {
+                        return Ok(Some(value));
                     }
                 }
             }
@@ -864,6 +952,67 @@ mod tests {
         assert_eq!(scalar_call("pow", &[2.0, 3.0]), 8.0);
         assert_eq!(scalar_call("min", &[2.0, 3.0]), 2.0);
         assert_eq!(scalar_call("max", &[2.0, 3.0]), 3.0);
+    }
+
+    #[test]
+    fn conditional_metric_counts_agents_and_returns_scalar() {
+        let ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "metrics":[{
+            "id":"probe.conditional","name":"Conditional","unit":null,
+            "sampling":{"kind":"final"},
+            "function":"conditional",
+            "body":[
+              {"kind":"assign","target":"count","value":{"kind":"const","value":0.0}},
+              {"kind":"for_each","variable":"agent","iterable":{"kind":"load","path":"snapshot.agents"},"body":[
+                {"kind":"if","branches":[{
+                  "condition":{"kind":"compare","op":">=",
+                    "left":{"kind":"load","path":"agent.heading_angle"},
+                    "right":{"kind":"const","value":0.0}},
+                  "body":[{"kind":"aug_assign","target":"count","op":"+","value":{"kind":"const","value":1.0}}]
+                }],"else_body":[]}
+              ]},
+              {"kind":"return","value":{"kind":"load","path":"count"}}
+            ]
+          }]
+        }"#;
+        let state = vec![
+            AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.0 },
+            AgentPhysicalState { position: Vec2::ZERO, heading_angle: -0.5 },
+            AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.5 },
+        ];
+        let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
+        metrics.finalize(&state, 1.0).unwrap();
+        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        assert_eq!(batch["samples"][0]["value"], 2.0);
+    }
+
+    #[test]
+    fn exhaustive_metric_branch_returns_execute_boolean_composition() {
+        let ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "metrics":[{
+            "id":"probe.branch","name":"Branch","unit":null,
+            "sampling":{"kind":"final"},
+            "function":"branch",
+            "body":[
+              {"kind":"if","branches":[{
+                "condition":{"kind":"bool_op","op":"and",
+                  "left":{"kind":"compare","op":">","left":{"kind":"load","path":"snapshot.agent_count"},"right":{"kind":"const","value":0.0}},
+                  "right":{"kind":"unary","op":"not","value":{"kind":"bool_const","value":false}}},
+                "body":[{"kind":"return","value":{"kind":"const","value":1.0}}]
+              }],"else_body":[{"kind":"return","value":{"kind":"const","value":0.0}}]}
+            ]
+          }]
+        }"#;
+        let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
+        metrics.finalize(&state(), 1.0).unwrap();
+        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        assert_eq!(batch["samples"][0]["value"], 1.0);
     }
 
 }
