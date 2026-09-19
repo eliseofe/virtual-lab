@@ -10,15 +10,15 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.11.0`
-- interface: `15`
+- MCP server: `3.12.0`
+- interface: `16`
 - authoring contract: `vlab.authoring/0.9`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
 - registry schema: `vlab.registry-experiment/3`
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
 - Results presentation: `vlab.results-presentation/1`
-- capability requests: `vlab.capability-request/6`
+- capability requests: `vlab.capability-request/7`
 
 A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is the only Experiment-authoring input. All four core artifacts are supplied explicitly; Metrics may be empty.
 
@@ -52,7 +52,7 @@ Role differences are enforced by data visibility and authority rules, not by dup
 
 Read/discovery entry point.
 
-Without `experiment_id`, this is a **neutral Lab-knowledge read**: it returns authenticated identity, the stable machine-readable authoring/compiler contract, and the global canonical capability registry enriched with concrete authoring surfaces for implemented capabilities. The contract describes how programs are written; capability entries describe which extensible abilities currently exist and how each is referenced. The registry still excludes historical request context, drafts, Professor/developer notes, requirement keys, origin Experiments and prior scientific discourse.
+Without `experiment_id`, this is a **neutral Lab-knowledge read** with four separate surfaces: authenticated identity plus the stable machine-readable authoring/compiler contract; the implemented canonical capability registry enriched with concrete authoring surfaces; unavailable `candidate_capabilities`; and unavailable `candidate_contract_deltas`. Implemented support alone drives authoring acceptance. Candidate identity and structure are discoverable for request reuse/generalization but never make validation pass.
 
 Experiment discovery is explicit. Set `include_workspace_index=true` only when the user wants to list accessible workspace objects. That returns an RLS-governed metadata index (collections plus Experiment identity/title/lifecycle metadata, without Experiment descriptions); `owned_only=true` may narrow it to owned Experiments. With `experiment_id`, the tool returns that explicitly selected visible Experiment at its current scientific revision, canonical ordered artifacts and separate Results presentation. This tool never writes.
 
@@ -95,7 +95,7 @@ The browser loads a saved `vlab.results-presentation/1` layout for registry Expe
 
 ## Durable extension closure and request submission
 
-Student and Professor profiles share `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure` under `vlab.capability-request/6`.
+Student and Professor profiles share `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure` under `vlab.capability-request/7`.
 
 The authoring continuation is deterministic:
 
@@ -105,7 +105,7 @@ required semantics exactly represented
 
 required scientific/model semantics unsupported
     -> preserve one durable blocked Experiment + whole-Experiment analysis
-    -> compare against canonical implemented capability truth + active_extension_requests
+    -> compare against implemented capability truth + candidate_capabilities + candidate_contract_deltas
     -> reuse a covering active request or create one clearly materially distinct request
     -> report the scientific task as blocked on that durable state
 
@@ -125,7 +125,7 @@ Each clear request is classified as exactly one of:
 - `implementation_optimization`;
 - `security_boundary`.
 
-All six classes may reach Professor triage; none is automatically rejected. Minimal publication identity is stored separately from research reasoning. The research AI first compares the requirement with the canonical capability registry and the sanitized active-extension catalog. It reuses an active request whenever that request can reasonably cover the scientific/model need, and creates a new request only for a clearly and materially distinct need stated primarily in scientific/model language.
+All six classes may reach Professor triage; none is automatically rejected. Minimal publication identity is stored separately from research reasoning. Semantic requests are born as complete candidate capabilities, including the concrete authoring surfaces needed to express them. The other five classes are born as candidate contract deltas against precise stable-contract paths. A covering candidate collects new evidence without another request row; a related but too-narrow candidate collects `generalization_needed` evidence for Professor action; only a genuinely absent need creates one new candidate/request. Declined candidates remain discoverable historical candidate identity until explicitly superseded.
 
 Professor approval accepts the request into developer design/queue. It does not implement the capability and does not itself create canonical semantic truth. Canonical semantic reconciliation happens later in the trusted developer-generalization step.
 
@@ -165,4 +165,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage active-request reuse and scientific-language request identity. #360 established shared durable closure semantics. #367 cuts the connector over to MCP server `3.11.0`, interface `15`, authoring contract `vlab.authoring/0.9`, with capability-request interface `vlab.capability-request/6` unchanged. Student and Professor sessions now share the durable closure resume/revalidation tools, while RLS keeps Student access scoped to their own blocked Experiments and preserves Professor supervision. Experiment/workspace reads remain governed by existing RLS.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 versions the connector to server `3.12.0`, interface `16`, request interface `vlab.capability-request/7`, adding structured unavailable candidate capabilities and contract deltas without changing `vlab.authoring/0.9` or the nine-tool surface.
