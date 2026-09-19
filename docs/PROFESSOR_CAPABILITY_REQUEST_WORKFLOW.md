@@ -64,9 +64,9 @@ The request queue is broader than the canonical semantic-capability registry. Ev
 
 All six are valid Professor-visible requests. None is automatically approved or rejected. In particular, classes 5 and 6 remain visible so the owner can observe whether real research tasks ever elicit them and decide manually.
 
-Only class 1 can reference or create canonical semantic-capability identity. Classes 2–6 remain typed extension requests.
+Only class 1 may later bind to canonical semantic-capability identity. Classes 2–6 remain typed extension requests.
 
-Each new research task carries minimal publication identity (title + persistent identifier) separately from scientific reasoning. Multiple request records/papers may converge on one canonical capability; publication links are duplicate-safe.
+Each research task carries minimal publication identity (title + persistent identifier) separately from scientific reasoning. One active request is the Professor decision unit: several papers and blocked Experiments may attach evidence to the same request when its scientific/model meaning covers their need.
 
 ## Durable capability request
 
@@ -111,17 +111,23 @@ The developer-side standing boundary is:
 
 The production Lab includes the Professor-only request inbox/triage path implemented under #139 / #58.3.
 
-Professor can review pending requests and transition only `requested → approved` or `requested → declined` through the user-facing triage flow, with durable reviewer/time/note data. Student users cannot read the Professor queue or triage requests.
+Professor can review pending requests and transition only `requested → approved` or `requested → declined` through the user-facing triage flow, with durable reviewer/time/note data. Approval accepts the scientific/product need into the design queue. Student users receive the sanitized active-request catalog for research-AI reconciliation while the Professor triage queue and its review data remain Professor-only.
 
 This UI remains an Experiment/product administration surface. It does not embed GitHub credentials or turn the browser into a simulator-development client.
 
 ## Research-AI request action — deployed
 
-Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/4`.
+Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/5`.
 
-Normal no-ID `read_workspace` discovery exposes the global authenticated **canonical capability registry**, not capability-request history. Its identity, generic definition, implementation state/contracts and publication provenance come from the independent canonical registry/provenance tables. Request/history state remains available only through the explicit request, closure/resume and Professor-triage paths that need it and remains governed by the existing authorization model. The active authoring contract remains authoritative for how implemented capabilities are used.
+Normal no-ID `read_workspace` discovery exposes two global, science-neutral product surfaces:
+- the canonical capability registry, which is authoritative for implemented semantic capability truth;
+- a sanitized active-extension catalog containing only stable request identity, the existing six-class classification, concise scientific/model name and definition, lifecycle status and update time.
 
-The active authoring contract signals requestable unsupported-capability behavior for both roles. Before submission, the research AI performs a best-effort whole-Experiment analysis, groups low-level diagnostics into meaningful capability requests, and preserves explicit ambiguity instead of asking the developer layer to infer scientific meaning. Request reconciliation is now by explicit stable request UUID or canonical capability UUID. Free-text domain/name matching is not an identity mechanism. Reusing a request preserves its lifecycle state; a different paper normally creates a different request record even when both requests later bind to the same canonical capability.
+The active-extension catalog covers `requested`, `approved` and `in_progress` requests. It omits requester identity, publication history, raw closure reasoning, Professor notes, developer notes and workspace science.
+
+Before submission, the research AI performs a best-effort whole-Experiment analysis and compares each clear unsupported requirement with both global surfaces. An active request is reused whenever its scientific/model meaning can reasonably cover the requirement. A new request is created when the required scientific/model ability is clearly and materially distinct from the active catalog. New-request identity is written primarily in scientific/model language, using source-publication terminology where useful; detailed technical diagnostics remain supporting evidence rather than the Professor-facing request definition.
+
+Reusing a request preserves its lifecycle state. The current blocked Experiment, closure analysis, requirement keys and publication remain linked as additional evidence beneath that same request.
 
 Current lifecycle-hook vocabulary exposed by the request path includes:
 
@@ -157,11 +163,9 @@ Potential capability domains include, for example:
 
 The research AI can describe the missing requirement. It cannot implement the simulator capability.
 
-## Scientific guardrail
+## Scientific request identity
 
-A missing capability is not permission to replace the requested science with a nearby model or convenient approximation. The Professor/research AI preserves scientific intent; the developer designs the generic software capability; the owner explicitly approves implementation.
-
-Likewise, when a definition has already been owner-authorized and is supported, do not create a duplicate capability request or ask the owner to repeat it.
+The research AI preserves the scientific/model requirement from the task and source publication. Existing active requests are reused when they cover that requirement. The developer later generalizes the software design, and the owner explicitly approves implementation.
 
 ## Current queue baseline
 
@@ -179,12 +183,13 @@ Current intended loop:
 2. AI reads the current authoring/capability contract through MCP.
 3. Supported Experiment artifacts/Metrics/Results bindings are authored normally.
 4. If a required simulator capability is absent, validation exposes that gap.
-5. The authenticated research AI preserves one durable blocked Experiment/closure analysis and submits grouped capability request(s).
-6. Request appears in the Professor inbox.
-7. Professor approves/declines.
-8. Approved request waits for developer design + explicit owner implementation authorization.
-9. Trusted developer implements/deploys if authorized.
-10. Deployed versioned contract advertises the capability; request is marked implemented.
-11. Professor-connected research AI resumes the same durable blocked Experiment and revalidates the whole Experiment against the current deployed contract; existing request lifecycle state is retained, newly discovered clear gaps may create new requests, and the Experiment becomes unblocked only when no gaps or unresolved ambiguity remain.
+5. The authenticated research AI preserves one durable blocked Experiment/closure analysis and compares each clear gap with the active-extension catalog.
+6. Matching scientific/model needs attach as evidence to an existing active request; clearly and materially distinct needs create a new request.
+7. New requests appear once in the Professor inbox regardless of how many papers attach evidence to them.
+8. Professor approves/declines the request; approval accepts the need into developer design.
+9. Developer generalization/reconciliation resolves semantic requests to existing or new canonical capability identity as appropriate, followed by explicit owner implementation authorization.
+10. Trusted developer implements/deploys if authorized.
+11. Deployed versioned contract advertises implemented semantic capability truth; fulfilled request state is recorded.
+12. Professor-connected research AI resumes the durable blocked Experiment and revalidates the whole Experiment against the current deployed contract.
 
 This lets real papers expose simulator gaps without giving research AI development privileges, blocking Student requests, or encouraging paper-specific hacks.
