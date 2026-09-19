@@ -10,6 +10,13 @@ When the owner approves a sequence with language such as `go ahead`, `proceed`, 
 
 All development work is governed by the execution-granularity rules in this section. No interpretation of scope, intent, urgency, discovered work, or continuation may bypass those rules.
 
+Every issue must state exactly one `Execution owner`: **ChatGPT**, **Eliseo Ferrante**, or **Work**. No issue may be left without an owner.
+
+Ownership is assigned in this order:
+1. **ChatGPT by default.**
+2. **Eliseo Ferrante** only when strictly necessary owner testing is a blocker to completing the ticket. Before handing over, ChatGPT must prepare everything and tell Eliseo exactly what to do, including any exact prompts, copy-paste text, URLs, or steps required.
+3. **Work** only when neither of the above applies and the required work can only be performed in Work.
+
 Default to **one substantial, independently testable ticket at a time**.
 
 A single owner turn may authorize planning or creation of multiple tickets, but execution may proceed through only **one substantial ticket**. Complete that ticket through the full closed loop and then stop. Do not begin the next substantial ticket until a later owner turn explicitly continues the work.
