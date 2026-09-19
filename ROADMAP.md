@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. Repair #58's capability-request closed loop through #313 before implementing scientific capabilities. #310–#312 and #323/#324/#327/#328 are complete. Cleanup epic #330 remains the active gate. Canonical-capability transition #343 is complete through #348. #335's first production audit found a remaining implemented-capability origin-symmetry gap; bounded repair #354 normalizes implementation metadata and generically enforces live canonical-registry ↔ authoring-binding consistency. Rerun #335 after #354; #336 follows only after a green re-audit. #325/#326 remain paused until this chain finishes.
+1. Finish #58's capability-request closed loop before implementing scientific capabilities. #362 restored the clean acceptance baseline; #361 established pre-triage request reuse and scientific-language request identity; #360 established one durable blocked-Experiment closure/revalidation path for Student and Professor research AI. #359 Professor inbox clarity is next, followed by #336 fresh-chat scientific acceptance. #325/#326 remain paused until that chain finishes.
 2. Treat the #348 request baseline as intentionally empty. RNG/controller stochasticity and heterogeneous initialization/state are still missing capabilities, not implemented features or active approved requests; if fresh acceptance rediscovers them, they must re-enter through the normal typed request/Professor-triage path.
 3. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
 4. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
