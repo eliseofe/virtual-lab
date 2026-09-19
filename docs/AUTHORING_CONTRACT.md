@@ -1,8 +1,8 @@
 # Experiment Authoring Contract
 
-Status: **current deployed contract, 18 September 2026**.
+Status: **current deployed contract, 19 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.7`, exposed by production `experiment-mcp` server `3.8.0`, interface `13`.
+Current machine-readable contract: `vlab.authoring/0.7`, exposed by production `experiment-mcp` server `3.9.0`, interface `13`.
 
 ## Canonical Experiment artifacts
 
@@ -130,7 +130,7 @@ No arbitrary plotting code is accepted through the MCP contract.
 
 ## Classified extension requests
 
-Student and Professor research-AI sessions use `vlab.capability-request/5`. All six owner-approved request classes may be submitted to the durable Professor-visible workflow:
+Student and Professor research-AI sessions use `vlab.capability-request/6`. All six owner-approved request classes may be submitted to the durable Professor-visible workflow:
 
 `semantic_capability | authoring_language | runtime_configuration | artifact_workflow | implementation_optimization | security_boundary`
 
@@ -140,9 +140,11 @@ No-ID research-AI discovery includes the implemented canonical capability regist
 
 Validation diagnostics can advertise the relevant request class when the failure is genuinely an extension need. Ordinary type/validation errors remain ordinary validation evidence.
 
+The continuation rule is part of the authoring contract: when the Lab already represents the intended semantics exactly, author normally. When a required scientific/model semantic is outside the current contract, preserve the intended Experiment and whole-Experiment closure analysis through `request_capability`, keep that work blocked on its durable request state, and resume through `resume_capability_closure` + whole-Experiment `revalidate_capability_closure`. Student and Professor research-AI sessions use the same scientific blocking semantics; a Student resumes/revalidates their own blocked Experiment, while a Professor may also supervise visible blocked Experiments. A closure becomes unblocked only when revalidation finds no unsupported requirement and no unresolved scientific ambiguity.
+
 Professor approval is queue/design approval, not implementation authorization or canonicalization. The standing handoff is:
 
-`research AI request/reuse → Professor review → developer generalization + canonical reconciliation → explicit owner implementation approval → trusted implementation/deploy → research AI resumes`
+`research AI durable closure/request/reuse → Professor review → developer generalization + canonical reconciliation → explicit owner implementation approval → trusted implementation/deploy → research AI revalidates the blocked Experiment`
 
 ## Security boundary
 

@@ -60,5 +60,5 @@ test("#348 preserves the authoring/interface contract while versioning the MCP d
   assert.match(metrics, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(metrics, /MCP_INTERFACE_VERSION = '13'/);
   assert.match(metrics, /contract_version: 'vlab\.authoring\/0\.7'/);
-  assert.match(metrics, /capability_request_interface: 'vlab\.capability-request\/5'/);
+  assert.match(metrics, /capability_request_interface: 'vlab\.capability-request\/\d+'/);
 });

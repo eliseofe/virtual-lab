@@ -58,7 +58,7 @@ test("#313 historical reconciliation remains recorded while the current protocol
   const interfaceVersion = Number(tools.match(/MCP_INTERFACE_VERSION = '([0-9]+)'/)?.[1] ?? 0);
   assert.ok(interfaceVersion >= 10);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/5'/);
+  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/\d+'/);
   assert.match(mcp, /existing_request_id/);
   assert.match(mcp, /active_extension_requests/);
   assert.match(mcp, /new_request_threshold: 'clearly_materially_distinct'/);

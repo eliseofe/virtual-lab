@@ -15,13 +15,13 @@ import {
   pruneMetricFromPanels,
 } from './results-authoring.js'
 
-export const MCP_SERVER_VERSION = '3.8.0'
+export const MCP_SERVER_VERSION = '3.9.0'
 export const MCP_INTERFACE_VERSION = '13'
 export const MCP_AUTHORING_CONTRACT = Object.freeze({
   ...BASE_AUTHORING_CONTRACT,
   contract_version: 'vlab.authoring/0.7',
   experiment_interface_version: MCP_INTERFACE_VERSION,
-  capability_request_interface: 'vlab.capability-request/5',
+  capability_request_interface: 'vlab.capability-request/6',
   results_presentation: RESULTS_PRESENTATION_CONTRACT,
 })
 
@@ -72,7 +72,7 @@ function validationForRole(validation: any, role: 'student' | 'professor') {
     extension_request_behavior: {
       requestable: true,
       action: 'request_capability',
-      capability_request_interface: 'vlab.capability-request/5',
+      capability_request_interface: 'vlab.capability-request/6',
       request_classes: [
         'semantic_capability',
         'authoring_language',
@@ -83,6 +83,15 @@ function validationForRole(validation: any, role: 'student' | 'professor') {
       ],
       diagnostic_request_classes: requestClasses,
       canonical_registry_first: true,
+      active_request_catalog_first: true,
+      reuse_when_plausibly_covered: true,
+      new_request_threshold: 'clearly_materially_distinct',
+      request_language: 'scientific_model',
+      durable_closure_required: true,
+      task_state_while_unsupported: 'blocked',
+      resume_action: 'resume_capability_closure',
+      revalidate_action: 'revalidate_capability_closure',
+      unblocked_only_after_revalidation: true,
       preserve_draft: true,
       preserve_publication_identity: true,
       comprehensive_analysis_required: true,
@@ -201,7 +210,7 @@ export function registerMetricsResultsTool(
     {
       title: 'Author Experiment Metrics and Results presentation',
       description:
-        'Fine-grained authoring for the compulsory Metrics artifact and non-scientific Results presentation. Start with action=read. Metric actions create/update/remove one metric definition without rewriting unrelated artifacts. Panel actions create/update/remove one time-series panel using stable metric IDs. Updating a panel does not increment the scientific Experiment revision. update_metric must preserve the stable metric id; changing identity requires remove/create. Unsupported metric syntax/capabilities return validation diagnostics rather than workarounds.',
+        'Fine-grained authoring for the compulsory Metrics artifact and non-scientific Results presentation. Start with action=read. Metric actions create/update/remove one metric definition without rewriting unrelated artifacts. Panel actions create/update/remove one time-series panel using stable metric IDs. Updating a panel does not increment the scientific Experiment revision. update_metric must preserve the stable metric id; changing identity requires remove/create. Unsupported metric syntax/capabilities return validation diagnostics with the same durable request_capability continuation used by whole-Experiment authoring, preserving the blocked scientific intent rather than substituting a workaround.',
       inputSchema: {
         action: z.enum(['read', 'create_metric', 'update_metric', 'remove_metric', 'upsert_panel', 'remove_panel']),
         experiment_id: z.string().uuid(),

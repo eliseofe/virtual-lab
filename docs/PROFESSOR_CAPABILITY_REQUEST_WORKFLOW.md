@@ -17,7 +17,7 @@ Current registry roles include:
 - `student`
 - `professor`
 
-Student and Professor share ordinary Experiment-domain behavior and capability-request submission. Professor additionally owns the queue-wide inbox/triage surface. Professor role never implies simulator-development authority.
+Student and Professor share ordinary Experiment-domain behavior, durable capability-request submission, and closure resume/revalidation semantics. A Student acts on their own blocked Experiments; Professor additionally owns cross-requester supervision and the queue-wide inbox/triage surface. Professor role never implies simulator-development authority.
 
 ## Unsupported Experiment capabilities
 
@@ -47,7 +47,7 @@ Issue #310 adds the durable domain foundation used by the repaired closed loop:
 - `capability_closure_analyses` stores append-only analyses against a specific capability-contract version, including identified requirements and unresolved scientific ambiguity;
 - individual capability requests may link to the closure analysis that identified them.
 
-This schema foundation is secure-by-default. #311 adopts it in the authenticated research-AI MCP for both Student and Professor submission. #312 adds Professor-only `resume_capability_closure` and `revalidate_capability_closure`: the first reconstructs the durable draft, analysis history and linked request lifecycle without chat history; the second appends a new whole-Experiment analysis against the current contract, preserves earlier analyses and request rows, records resolved/remaining/new requirement keys, and permits `unblocked` only when no unsupported requirement or scientific ambiguity remains. The original aggregation workflow is live-tested with Grok in #313.
+This schema foundation is secure-by-default. #311 adopts it in the authenticated research-AI MCP for both Student and Professor submission. #312 established durable `resume_capability_closure` and `revalidate_capability_closure`; #360 makes those scientific continuation semantics shared: a Student can resume/revalidate their own blocked Experiment, while a Professor may also supervise visible blocked Experiments. Resume reconstructs the durable draft, analysis history and linked request lifecycle without chat history; revalidation appends a new whole-Experiment analysis against the current contract, preserves earlier analyses and request rows, records resolved/remaining/new requirement keys, and permits `unblocked` only when no unsupported requirement or scientific ambiguity remains.
 
 The two historical aggregation requests remained unchanged and unlinked through #310–#312. The later canonical-architecture transition superseded that temporary state: #348 intentionally retires those legacy request rows before fresh scientific acceptance, so no historical request identity is carried into the clean baseline.
 
@@ -117,7 +117,7 @@ This UI remains an Experiment/product administration surface. It does not embed 
 
 ## Research-AI request action — deployed
 
-Authenticated Student and Professor MCP sessions expose `request_capability` under `vlab.capability-request/5`.
+Authenticated Student and Professor MCP sessions expose the durable closure path under `vlab.capability-request/6`: `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure`.
 
 Normal no-ID `read_workspace` discovery exposes two global, science-neutral product surfaces:
 - the canonical capability registry, which is authoritative for implemented semantic capability truth;
@@ -190,6 +190,6 @@ Current intended loop:
 9. Developer generalization/reconciliation resolves semantic requests to existing or new canonical capability identity as appropriate, followed by explicit owner implementation authorization.
 10. Trusted developer implements/deploys if authorized.
 11. Deployed versioned contract advertises implemented semantic capability truth; fulfilled request state is recorded.
-12. Professor-connected research AI resumes the durable blocked Experiment and revalidates the whole Experiment against the current deployed contract.
+12. The owning Student research AI, or a supervising Professor research AI, resumes the durable blocked Experiment and revalidates the whole Experiment against the current deployed contract; it becomes unblocked only when the intended semantics are fully representable with no unresolved ambiguity.
 
 This lets real papers expose simulator gaps without giving research AI development privileges, blocking Student requests, or encouraging paper-specific hacks.

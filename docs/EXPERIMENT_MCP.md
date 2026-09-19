@@ -1,6 +1,6 @@
 # Virtual Lab Experiment MCP
 
-Status: **production deployed and integrated, 18 September 2026**.
+Status: **production deployed and integrated, 19 September 2026**.
 
 Endpoint:
 
@@ -10,7 +10,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.5.0`
+- MCP server: `3.9.0`
 - interface: `13`
 - authoring contract: `vlab.authoring/0.7`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -18,7 +18,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
 - Results presentation: `vlab.results-presentation/1`
-- capability requests: `vlab.capability-request/4`
+- capability requests: `vlab.capability-request/6`
 
 A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is canonical. Legacy three-source arguments remain a bounded compatibility input and mechanically preserve/add the compulsory Metrics artifact rather than creating a second source of truth.
 
@@ -87,9 +87,29 @@ Results presentation has its own optimistic revision. Panel edits therefore do *
 
 The browser loads a saved `vlab.results-presentation/1` layout for registry Experiments. No saved presentation means the normal Lab default layout remains in effect; a saved presentation with `panels=[]` is an explicit empty layout.
 
-## Classified extension-request submission
+## Durable extension closure and request submission
 
-Student and Professor profiles both receive `request_capability` under `vlab.capability-request/4`. The action now represents the broader unsupported-requirement workflow while retaining its established tool name.
+Student and Professor profiles share `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure` under `vlab.capability-request/6`.
+
+The authoring continuation is deterministic:
+
+```text
+required semantics exactly represented
+    -> author/validate normally
+
+required scientific/model semantics unsupported
+    -> preserve one durable blocked Experiment + whole-Experiment analysis
+    -> compare against canonical implemented capability truth + active_extension_requests
+    -> reuse a covering active request or create one clearly materially distinct request
+    -> report the scientific task as blocked on that durable state
+
+relevant extension later becomes available
+    -> resume the same blocked Experiment
+    -> revalidate the entire intended Experiment against the current contract
+    -> become unblocked only when no unsupported requirement or unresolved scientific ambiguity remains
+```
+
+A Student can resume/revalidate their own blocked Experiment. A Professor has the same scientific blocking semantics and may additionally resume/revalidate visible blocked Experiments for supervision. Professor alone owns queue-wide approve/decline triage; that role distinction does not change what counts as supported or unsupported science.
 
 Each clear request is classified as exactly one of:
 - `semantic_capability`;
@@ -99,13 +119,9 @@ Each clear request is classified as exactly one of:
 - `implementation_optimization`;
 - `security_boundary`.
 
-All six classes may reach Professor triage; none is automatically rejected. A minimal publication title + persistent identifier is stored separately from research reasoning.
+All six classes may reach Professor triage; none is automatically rejected. Minimal publication identity is stored separately from research reasoning. The research AI first compares the requirement with the canonical capability registry and the sanitized active-extension catalog. It reuses an active request whenever that request can reasonably cover the scientific/model need, and creates a new request only for a clearly and materially distinct need stated primarily in scientific/model language.
 
-Semantic requests resolve against canonical capability identity first. If a matching non-implemented canonical capability exists, the request references its UUID. Otherwise the request contains a proposed generic target which is not canonical truth until Professor approval. Professor approval may explicitly bind an existing canonical capability or create the reviewed canonical identity. Classes 2–6 remain typed extension requests and never enter the canonical semantic-capability registry merely because they are approved.
-
-Repeated request reconciliation uses explicit stable request identity (`existing_request_id`) or canonical capability identity, never free-text domain/name matching. Multiple request records and publications may converge on the same canonical semantic capability.
-
-Student submission remains allowed. Professor alone approves/declines. Approval still means accepted into design/queue, not implementation authorization.
+Professor approval accepts the request into developer design/queue. It does not implement the capability and does not itself create canonical semantic truth. Canonical semantic reconciliation happens later in the trusted developer-generalization step.
 
 Lifecycle-hook vocabulary remains:
 
@@ -143,4 +159,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 uses MCP server `3.7.0`, interface `13`, authoring contract `vlab.authoring/0.7`, and capability-request interface `vlab.capability-request/4`. Neutral `read_workspace` capability discovery reads `list_canonical_capability_registry()`, including origin-neutral implementation version/verification time, then verifies the live registry against the deployed static authoring bindings before returning capability truth. Implemented canonical capabilities without complete metadata/bindings, and bindings to missing or non-implemented capabilities, are rejected rather than silently advertised. Experiment/workspace reads remain governed by existing RLS.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage active-request reuse and scientific-language request identity. #360 uses MCP server `3.9.0`, interface `13`, authoring contract `vlab.authoring/0.7`, and capability-request interface `vlab.capability-request/6`. Student and Professor sessions now share the durable closure resume/revalidation tools, while RLS keeps Student access scoped to their own blocked Experiments and preserves Professor supervision. Experiment/workspace reads remain governed by existing RLS.

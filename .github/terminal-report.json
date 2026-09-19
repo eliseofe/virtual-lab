@@ -1,19 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Extension requests now converge before Professor review",
-  "owner_impact": "Research AI sees a concise active-request catalog, reuses one request across papers when the scientific/model need is covered, records each blocked Experiment as evidence underneath that request, and Professor approval accepts the need into design without creating canonical capability truth.",
+  "outcome": "Unsupported science now follows one durable closure path for Student and Professor research AI",
+  "owner_impact": "When the intended Experiment requires semantics outside the current Lab contract, research AI preserves the whole blocked Experiment, reuses or creates the appropriate durable extension request, reports the task as blocked, and later resumes the same Experiment through whole-Experiment revalidation. Students can resume and revalidate their own blocked Experiments; Professors retain supervision access.",
   "next": {
     "kind": "epic_continues",
-    "issue": 360,
-    "text": "Next is #360, which will make unsupported scientific tasks follow the durable blocked-Experiment closure path consistently for Student and Professor research AI. It has not started yet."
+    "issue": 359,
+    "text": "Next is #359, a bounded cleanup of the Professor extension inbox so scientific requests are easier to scan while full evidence remains available. It has not started yet."
   },
   "technical_evidence": [
-    "The existing six request classes remain unchanged.",
-    "The capability-request interface is vlab.capability-request/5 with separate reuse and clearly-distinct-new-request inputs.",
-    "Active request discovery exposes only sanitized scientific/model identity and lifecycle fields.",
-    "Many closure analyses can link to one durable request through capability_request_evidence.",
-    "Professor triage no longer creates or binds canonical semantic capability identity.",
-    "The production-advisor follow-up adds the covering capability_request_evidence.linked_by index without changing request semantics."
+    "vlab.capability-request/6 advertises the durable blocked-Experiment continuation in workspace and validation surfaces.",
+    "request_capability returns explicit blocked-state resume/revalidation continuation.",
+    "Student and Professor sessions share request_capability, resume_capability_closure, and revalidate_capability_closure; Student database access remains owner-scoped while Professor supervision remains available.",
+    "Whole-Experiment revalidation is the only transition to unblocked and still requires zero unsupported requirements and zero unresolved scientific ambiguity.",
+    "The six request classes, Professor triage authority, owner implementation authorization, and simulator scientific capabilities are unchanged."
   ],
-  "close_issue": 361
+  "close_issue": 360
 }
