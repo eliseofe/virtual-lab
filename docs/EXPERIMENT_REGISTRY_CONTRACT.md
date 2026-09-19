@@ -18,7 +18,7 @@ May create, read, edit, organize, archive, restore and, where eligible, permanen
 
 ### Professor / curator
 
-Has Student capabilities plus explicitly implemented Professor/curation capabilities. In the current contract a Professor can submit durable missing-capability requests through MCP. Professor role does not grant simulator-development access.
+Has Student capabilities plus explicitly implemented Professor/curation capabilities. In the current contract Student and Professor research-AI sessions can submit durable missing-capability requests through MCP; Professor alone owns queue-wide approve/decline triage. Professor role does not grant simulator-development access.
 
 ### Simulator developer
 
@@ -51,7 +51,7 @@ Canonical scientific/editable payload is the ordered typed `artifacts[]` array w
 
 The Metrics artifact is compulsory but may contain zero metric definitions.
 
-Compatibility fields for the old three-source representation may still be mirrored/accepted where explicitly supported, but they are not the canonical model and must never cause Metrics to be dropped.
+The ordered typed `artifacts[]` representation is the current authoring model. Connector writes do not accept the retired three-source representation; all four compulsory core artifacts are explicit.
 
 Additional typed/passive artifacts may be preserved when supported by the generic artifact representation. Execution semantics are granted only by the active simulator capability contract; an arbitrary artifact string cannot create executable behavior.
 
@@ -164,7 +164,7 @@ The registry must not silently become the bulk trajectory/Monte-Carlo warehouse.
 | Organize/archive/restore own Experiment | yes | yes | only if separately a registry user |
 | Permanent-delete eligible own working Experiment | yes | yes | only if separately a registry user |
 | Fine-grained Metrics/Results authoring | yes on owned Experiments | yes on owned Experiments | no special access |
-| Request missing simulator capability | no in current first version | yes | developer workflow is separate |
+| Request missing simulator capability | yes | yes | developer workflow is separate |
 | Run simulator through MCP/registry channel | no | no | no |
 | Automatic unrestricted raw-result access | no | no | no |
 | Modify simulator source | no | no | no |
@@ -187,15 +187,15 @@ These are structural absences from the interface.
 
 ## MCP authoring alignment
 
-Production `experiment-mcp` is server `3.0.0`, interface `8`, authoring contract `vlab.authoring/0.6`.
+Production `experiment-mcp` is server `3.10.0`, interface `14`, authoring contract `vlab.authoring/0.8`.
 
 The MCP can author the complete four-artifact Experiment plus fine-grained Metrics definitions and Results bindings. Unsupported capabilities produce diagnostics and, for Professor users, the explicit capability-request path.
 
-## Compatibility
+## Current-version rule
 
-Legacy registry/schema/interface versions remain historical compatibility concerns only. New code and documentation must treat `vlab.registry-experiment/3` + `vlab.experiment-artifacts/3` as current.
+New code and documentation treat `vlab.registry-experiment/3` + `vlab.experiment-artifacts/3` as the current Experiment model and `vlab.authoring/0.8` / MCP interface `14` as the current research-AI authoring surface.
 
-A future structural change requires an explicit new version and migration/compatibility behavior; it must not be introduced as an undocumented AI convention.
+A future structural change requires an explicit new version and an explicit transition decision; historical connector inputs are not retained automatically.
 
 ## Zero-cost invariant
 

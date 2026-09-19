@@ -111,6 +111,6 @@ test("#346 preserves whole-Experiment ambiguity and revalidation invariants", ()
 test("#346 bumps the request/MCP interface without changing authoring language version", () => {
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/\d+'/);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
-  assert.match(tools, /MCP_INTERFACE_VERSION = '13'/);
-  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.7'/);
+  assert.match(tools, /MCP_INTERFACE_VERSION = '\d+'/);
+  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.8'/);
 });

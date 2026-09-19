@@ -18,8 +18,8 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.7",
-  experiment_interface_version: "7",
+  contract_version: "vlab.authoring/0.8",
+  experiment_interface_version: "8",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
   invalid_write_policy: "reject",
@@ -95,7 +95,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
     representation: "ordered typed artifact array",
     required_core_ids: CORE_EXPERIMENT_ARTIFACTS.map(({ id }) => id),
     required_fields: ["id", "type", "label", "format", "order", "content"],
-    compatibility_note: "Legacy three-source experiments and clients normalize mechanically to the four-artifact model by adding an empty Metrics artifact. Legacy source mirrors remain bounded compatibility fields for Configuration/Initialization/Controller only."
+    canonical_input: "The ordered typed artifacts[] array is the only Experiment-authoring input. All four compulsory core artifact IDs must be supplied explicitly; an empty Metrics artifact is valid."
   },
   canonical_capability_bindings: CANONICAL_CAPABILITY_BINDINGS,
   diagnostic_model: {
@@ -149,20 +149,20 @@ export function normalizeExperimentArtifacts(artifacts) {
     byId.set(artifact.id, artifact);
   }
   for (const descriptor of CORE_EXPERIMENT_ARTIFACTS) {
-    let artifact = byId.get(descriptor.id);
-    if (!artifact && descriptor.id === "metrics") {
-      artifact = { ...descriptor, content: "" };
-      normalized.push(artifact);
-      byId.set(descriptor.id, artifact);
-    }
+    const artifact = byId.get(descriptor.id);
     if (!artifact) throw new Error(`Experiment is missing required artifact '${descriptor.id}'.`);
     if (artifact.type !== descriptor.type) throw new Error(`Artifact '${descriptor.id}' must have type '${descriptor.type}'.`);
   }
   return normalized.sort((left, right) => left.order - right.order || left.id.localeCompare(right.id));
 }
 
-export function artifactsFromLegacySources({ config_source = "", initializer_source = "", controller_source = "" }) {
-  const contents = { configuration: config_source, initialization: initializer_source, controller: controller_source, metrics: "" };
+function artifactsFromSourceComponents({ config_source = "", initializer_source = "", controller_source = "", metrics_source = "" }) {
+  const contents = {
+    configuration: config_source,
+    initialization: initializer_source,
+    controller: controller_source,
+    metrics: metrics_source,
+  };
   return CORE_EXPERIMENT_ARTIFACTS.map((descriptor) => ({ ...descriptor, content: contents[descriptor.id] ?? "" }));
 }
 
@@ -174,12 +174,6 @@ export function sourcesFromArtifacts(artifacts) {
     initializer_source: byId.get("initialization").content,
     controller_source: byId.get("controller").content,
   };
-}
-
-export function mergeLegacySourcesIntoArtifacts(artifacts, changes = {}) {
-  const current = normalizeExperimentArtifacts(Array.isArray(artifacts) ? artifacts : artifactsFromLegacySources(changes));
-  const replacements = { configuration: changes.config_source, initialization: changes.initializer_source, controller: changes.controller_source };
-  return current.map((artifact) => replacements[artifact.id] === undefined ? { ...artifact } : { ...artifact, content: replacements[artifact.id] });
 }
 
 export function classifyAuthoringDiagnostic(artifact, compilerCategory, message) {
@@ -269,7 +263,7 @@ export function validateExperimentSources({ config_source, initializer_source, c
     valid: true,
     contract_version: AUTHORING_CONTRACT.contract_version,
     diagnostics: [],
-    artifacts: normalizedArtifacts ?? artifactsFromLegacySources({ config_source, initializer_source, controller_source }),
+    artifacts: normalizedArtifacts ?? artifactsFromSourceComponents({ config_source, initializer_source, controller_source, metrics_source }),
     compiled: {
       configuration: config.version,
       initializer: initializer.version,

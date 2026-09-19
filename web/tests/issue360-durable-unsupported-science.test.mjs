@@ -29,9 +29,9 @@ test("#360 exposes one durable closure lifecycle to Student and Professor resear
     mcp,
     /if \(profile\.role === 'professor'\) \{[\s\S]*?(resume_capability_closure|revalidate_capability_closure)/,
   );
-  assert.match(mcp, /shared_tool_count: 9/);
-  assert.match(mcp, /student_tool_count: 9/);
-  assert.match(mcp, /professor_tool_count: 9/);
+  assert.match(mcp, /shared_tool_count: MCP_TOOL_COUNT/);
+  assert.match(mcp, /student_tool_count: MCP_TOOL_COUNT/);
+  assert.match(mcp, /professor_tool_count: MCP_TOOL_COUNT/);
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/6'/);
   assert.match(tools, /capability_request_interface: 'vlab\.capability-request\/6'/);
 });
@@ -72,7 +72,7 @@ test("#360 whole-Experiment revalidation is the only unblocking transition", () 
 
 test("#360 supported semantics keep the ordinary authoring path", () => {
   assert.match(mcp, /When the Lab already represents the required semantics exactly, author normally/i);
-  assert.match(mcp, /validateExperimentArtifacts\(nextArtifacts\)/);
+  assert.match(mcp, /validateExperimentArtifacts\(artifacts\)/);
   assert.match(mcp, /\.from\('experiments'\)[\s\S]*\.insert\(/);
   assert.match(mcp, /\.from\('experiments'\)[\s\S]*\.update\(patch\)/);
 });

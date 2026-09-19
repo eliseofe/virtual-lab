@@ -109,12 +109,12 @@ test("#200 deployed-contract source increments versions and keeps Results outsid
 
   assert.equal(RESULTS_PRESENTATION_SCHEMA, "vlab.results-presentation/1");
   assert.match(tools, /MCP_SERVER_VERSION = '\d+\.\d+\.\d+'/);
-  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.7'/);
+  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.8'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '\d+'/);
   assert.match(index, /author_metrics_results/);
   assert.match(index, /requested_lifecycle_hook: z\.enum\(\['setup', 'initialize', 'control', 'measure', 'finalize'\]\)/);
-  assert.match(index, /shared_tool_count: \d+/);
-  assert.match(index, /professor_tool_count: \d+/);
+  assert.match(index, /shared_tool_count: MCP_TOOL_COUNT/);
+  assert.match(index, /professor_tool_count: MCP_TOOL_COUNT/);
   assert.match(migration, /create table if not exists public\.experiment_results_presentations/);
   assert.match(migration, /before update on public\.experiment_results_presentations/);
   assert.doesNotMatch(migration, /before update on public\.experiments/);

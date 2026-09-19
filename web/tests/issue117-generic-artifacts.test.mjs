@@ -5,8 +5,6 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
-  artifactsFromLegacySources,
-  mergeLegacySourcesIntoArtifacts,
   sourcesFromArtifacts,
   validateExperimentArtifacts,
 } from "../../supabase/functions/experiment-mcp/authoring.js";
@@ -21,8 +19,17 @@ const runnableSources = {
   controller_source: `class Probe(Agent):\n    def step(self, obs):\n        return Motion(0.0, 0.0)\n`,
 };
 
-test("#117/#196 legacy three-source experiments normalize mechanically to four typed core artifacts", () => {
-  const artifacts = artifactsFromLegacySources(runnableSources);
+function canonicalArtifacts(metrics = "") {
+  return [
+    { id: "configuration", type: "configuration", label: "Configuration", format: "python-vlab", order: 10, content: runnableSources.config_source },
+    { id: "initialization", type: "initialization", label: "Initialization", format: "python-vlab", order: 20, content: runnableSources.initializer_source },
+    { id: "controller", type: "controller", label: "Controller", format: "python-vlab/0.1", order: 30, content: runnableSources.controller_source },
+    { id: "metrics", type: "metrics", label: "Metrics", format: "python-vlab-metrics/0.1", order: 40, content: metrics },
+  ];
+}
+
+test("#117/#196 canonical authoring uses four explicit typed core artifacts", () => {
+  const artifacts = canonicalArtifacts();
   assert.deepEqual(artifacts.map(({ id, type, order }) => [id, type, order]), [
     ["configuration", "configuration", 10],
     ["initialization", "initialization", 20],
@@ -36,7 +43,7 @@ test("#117/#196 legacy three-source experiments normalize mechanically to four t
 
 test("#117 generic optional artifacts still survive beside the four required core artifacts", () => {
   const artifacts = [
-    ...artifactsFromLegacySources(runnableSources),
+    ...canonicalArtifacts(),
     { id: "future-note", type: "future-note", label: "Future note", format: "text/plain", order: 50, content: "kept verbatim" },
   ];
   assert.equal(artifacts.length, 5);
@@ -45,18 +52,23 @@ test("#117 generic optional artifacts still survive beside the four required cor
   assert.equal(validateExperimentArtifacts(artifacts).valid, true);
 });
 
-test("#117 legacy compatibility edits preserve Metrics and unknown future artifacts", () => {
+test("#117 canonical whole-artifact edits preserve Metrics and unknown future artifacts", () => {
   const original = [
-    ...artifactsFromLegacySources(runnableSources),
+    ...canonicalArtifacts(),
     { id: "future-note", type: "future-note", label: "Future note", format: "text/plain", order: 50, content: "do not lose me" },
   ];
-  const merged = mergeLegacySourcesIntoArtifacts(original, { controller_source: runnableSources.controller_source + "# changed\n" });
-  assert.equal(merged.find(({ id }) => id === "metrics").content, "");
-  assert.equal(merged.find(({ id }) => id === "future-note").content, "do not lose me");
-  assert.equal(merged.find(({ id }) => id === "controller").content.endsWith("# changed\n"), true);
+  const edited = original.map((artifact) =>
+    artifact.id === "controller"
+      ? { ...artifact, content: artifact.content + "# changed\n" }
+      : { ...artifact }
+  );
+  assert.equal(edited.find(({ id }) => id === "metrics").content, "");
+  assert.equal(edited.find(({ id }) => id === "future-note").content, "do not lose me");
+  assert.equal(edited.find(({ id }) => id === "controller").content.endsWith("# changed\n"), true);
+  assert.equal(validateExperimentArtifacts(edited).valid, true);
 });
 
-test("#117 original migration keeps artifacts on experiment row and compatibility mirrors", async () => {
+test("#117 historical migration keeps artifacts on the experiment row", async () => {
   const migration = await text("supabase/migrations/20260914100000_generic_experiment_artifacts.sql");
   assert.match(migration, /add column if not exists artifacts jsonb/);
   assert.match(migration, /disable trigger bump_experiment_revision/);
@@ -76,11 +88,11 @@ test("#196 registry schema v3 requires four core artifacts while v1/v2 remain ar
   assert.equal(v1.properties.schema_version.const, "vlab.registry-experiment/1");
 });
 
-test("#117 MCP keeps tool names and bounded three-source compatibility", async () => {
+test("#117 MCP keeps tool names with canonical artifacts-only authoring", async () => {
   const mcp = await text("supabase/functions/experiment-mcp/index.ts");
   assert.match(mcp, /experiment_artifact_interface/);
-  assert.match(mcp, /artifacts: z\.array\(ARTIFACT_INPUT\)/);
-  assert.match(mcp, /Legacy compatibility requires all three source arguments/);
+  assert.match(mcp, /artifacts: z\.array\(ARTIFACT_INPUT\)\.min\(4\)/);
+  assert.doesNotMatch(mcp, /config_source|initializer_source|controller_source|legacySourceArgumentsPresent/);
   assert.match(mcp, /'create_experiment'/);
   assert.match(mcp, /'edit_experiment'/);
 });
