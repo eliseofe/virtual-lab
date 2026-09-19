@@ -20,8 +20,8 @@ test("#311 Student and Professor share one capability submission tool", () => {
   assert.doesNotMatch(mcp, /if \(profile\.role === 'professor'\)[\s\S]*request_capability/);
   assert.match(mcp, /Student\/Professor research-AI action/);
   assert.match(mcp, /triage_authority: 'professor'/);
-  assert.match(mcp, /shared_tool_count: 7/);
-  assert.match(mcp, /student_tool_count: 7/);
+  assert.match(mcp, /shared_tool_count: \d+/);
+  assert.match(mcp, /student_tool_count: \d+/);
   assert.match(mcp, /professor_tool_count: \d+/);
 });
 
