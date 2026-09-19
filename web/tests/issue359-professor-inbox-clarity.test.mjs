@@ -58,3 +58,12 @@ test("#359 keeps Professor-only authorization and existing triage lifecycle", ()
   assert.match(inbox, /p_professor_notes: note\.trim\(\) \|\| null/);
   assert.match(inbox, /p_bind_canonical_capability_id: null/);
 });
+
+test("#359 keeps implementation machinery out of the default inbox flow", () => {
+  const links = readFileSync(new URL("../src/professor-development-links.js", import.meta.url), "utf8");
+  assert.match(inbox, /card\.dataset\.requestId = request\.id/);
+  assert.match(inbox, /vlab:professor-requests-rendered/);
+  assert.match(links, /professor-request-detail-grid/);
+  assert.match(links, /professor-request-development/);
+  assert.doesNotMatch(links, /summary\.insertAdjacentElement|professor-development-links/);
+});
