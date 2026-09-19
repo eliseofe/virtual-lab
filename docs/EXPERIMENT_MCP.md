@@ -11,7 +11,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 ## Current deployed contract
 
 - MCP server: `3.11.0`
-- interface: `14`
+- interface: `15`
 - authoring contract: `vlab.authoring/0.9`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
 - registry schema: `vlab.registry-experiment/3`
