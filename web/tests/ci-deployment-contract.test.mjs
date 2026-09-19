@@ -24,12 +24,15 @@ test("retired Round-1 workflow artifacts stay retired", () => {
   assert.equal(existsSync(legacyRound1Acceptance), false);
 });
 
-test("owner notification is success-only and occurs after deployed smoke", () => {
+test("owner notification is success-only, attaches to the exact candidate commit, and occurs after deployed smoke", () => {
   const smokeJob = workflow.indexOf("smoke:");
   const verification = workflow.indexOf("Verify deployed current Lab surface");
   const successReport = workflow.indexOf("Send owner success report");
   assert.ok(smokeJob >= 0 && verification > smokeJob && successReport > verification);
   assert.match(workflow, /Virtual Lab production deployment succeeded/);
+  assert.match(workflow, /@eliseofe/);
+  assert.match(workflow, /commits\/\$\{GITHUB_SHA\}\/comments/);
+  assert.doesNotMatch(workflow, new RegExp("REPORT_ISSUE:\\s*\\'145\\'"));
   assert.doesNotMatch(workflow, /terminal-failure-report:/);
   assert.doesNotMatch(workflow, /Virtual Lab production run failed/);
   assert.equal(existsSync(legacyNotifier), false);
