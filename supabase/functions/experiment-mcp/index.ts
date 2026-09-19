@@ -12,6 +12,7 @@ import {
   artifactsFromLegacySources,
   mergeLegacySourcesIntoArtifacts,
 } from './authoring.js'
+import { validateCanonicalCapabilitySurface } from './canonical-capability-consistency.js'
 import {
   MCP_AUTHORING_CONTRACT as AUTHORING_CONTRACT,
   MCP_INTERFACE_VERSION,
@@ -204,7 +205,7 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab knowledge or an explicit experiment workspace',
       description:
-        'Start here for neutral Lab knowledge. Without experiment_id, return the authenticated identity, the complete current Virtual Lab authoring/runtime contract, and the global canonical capability registry. Canonical capabilities contain only generic identity/definition, lifecycle/implementation state, and minimal publication provenance; historical request reasoning and workspace science are not returned. Set include_workspace_index=true only when the user actually wants to discover accessible Experiments; that explicit index is still governed by normal RLS and may be narrowed with owned_only/lifecycle. With experiment_id, return that visible Experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in explicit Experiment responses for compatibility and must not be treated as a second source of truth. This tool never writes.',
+        'Start here for neutral Lab knowledge. Without experiment_id, return the authenticated identity, the complete current Virtual Lab authoring/runtime contract, and the global canonical capability registry. Canonical capabilities contain only generic identity/definition, implementation state/contracts/version/verification time, and minimal publication provenance; historical request reasoning and workspace science are not returned. Set include_workspace_index=true only when the user actually wants to discover accessible Experiments; that explicit index is still governed by normal RLS and may be narrowed with owned_only/lifecycle. With experiment_id, return that visible Experiment, its ordered typed artifacts, and its Results presentation at the current revisions. The artifacts array is canonical. Results presentation is separate workspace state and does not change the scientific Experiment revision. Legacy config_source/initializer_source/controller_source mirrors may remain temporarily in explicit Experiment responses for compatibility and must not be treated as a second source of truth. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         include_workspace_index: z.boolean().default(false),
@@ -238,6 +239,17 @@ function registerExperimentTools(
         .rpc('list_canonical_capability_registry')
       if (capabilityRegistryError) {
         return toolError('Could not read canonical Virtual Lab capabilities.', capabilityRegistryError.message)
+      }
+
+      const capabilityConsistency = validateCanonicalCapabilitySurface(
+        capabilityRegistry ?? [],
+        AUTHORING_CONTRACT.canonical_capability_bindings ?? [],
+      )
+      if (!capabilityConsistency.valid) {
+        return toolError(
+          'Canonical Virtual Lab capability truth is inconsistent with the deployed authoring bindings.',
+          capabilityConsistency.errors,
+        )
       }
 
       const neutralLabKnowledge = {
