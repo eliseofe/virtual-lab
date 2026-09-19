@@ -174,6 +174,12 @@ class ExprParser {
         i += 2;
         continue;
       }
+      const comparison = text.slice(i).match(/^(?:<=|>=|==|!=|<|>)/);
+      if (comparison) {
+        tokens.push({ type: comparison[0], value: comparison[0], column: i + 1 });
+        i += comparison[0].length;
+        continue;
+      }
       const ident = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
       if (ident) {
         tokens.push({ type: "ident", value: ident[0], column: i + 1 });
@@ -192,6 +198,18 @@ class ExprParser {
   }
 
   peek(type) { return this.tokens[this.index].type === type; }
+  peekKeyword(value) {
+    const token = this.tokens[this.index];
+    return token.type === "ident" && token.value === value;
+  }
+  takeKeyword(value) {
+    const token = this.tokens[this.index];
+    if (token.type !== "ident" || token.value !== value) {
+      throw new MetricsCompileError("syntax", `expected '${value}', found '${token.value || "end of expression"}'`, this.line, token.column);
+    }
+    this.index += 1;
+    return token;
+  }
   take(type) {
     const token = this.tokens[this.index];
     if (token.type !== type) {
@@ -200,7 +218,40 @@ class ExprParser {
     this.index += 1;
     return token;
   }
-  parse() { const node = this.additive(); this.take("eof"); return node; }
+  parse() { const node = this.booleanOr(); this.take("eof"); return node; }
+  booleanOr() {
+    let left = this.booleanAnd();
+    while (this.peekKeyword("or")) {
+      this.takeKeyword("or");
+      left = { kind: "bool_op", op: "or", left, right: this.booleanAnd(), line: this.line };
+    }
+    return left;
+  }
+  booleanAnd() {
+    let left = this.booleanNot();
+    while (this.peekKeyword("and")) {
+      this.takeKeyword("and");
+      left = { kind: "bool_op", op: "and", left, right: this.booleanNot(), line: this.line };
+    }
+    return left;
+  }
+  booleanNot() {
+    if (this.peekKeyword("not")) {
+      this.takeKeyword("not");
+      return { kind: "unary", op: "not", value: this.booleanNot(), line: this.line };
+    }
+    return this.comparison();
+  }
+  comparison() {
+    let left = this.additive();
+    const operators = ["<", "<=", ">", ">=", "==", "!="];
+    const token = this.tokens[this.index];
+    if (operators.includes(token.type)) {
+      this.index += 1;
+      left = { kind: "compare", op: token.type, left, right: this.additive(), line: this.line };
+    }
+    return left;
+  }
   additive() {
     let left = this.multiplicative();
     while (this.peek("+") || this.peek("-")) {
@@ -234,12 +285,16 @@ class ExprParser {
       if (!Number.isFinite(value)) throw new MetricsCompileError("syntax", "metric constants must be finite", this.line, token.column);
       return { kind: "const", value, line: this.line };
     }
-    if (this.peek("(")) { this.take("("); const node = this.additive(); this.take(")"); return node; }
+    if (this.peek("(")) { this.take("("); const node = this.booleanOr(); this.take(")"); return node; }
     if (!this.peek("ident")) {
       const token = this.tokens[this.index];
       throw new MetricsCompileError("syntax", `expected expression, found '${token.value || "end of expression"}'`, this.line, token.column);
     }
-    const parts = [this.take("ident").value];
+    const first = this.take("ident").value;
+    if (first === "True" || first === "False") {
+      return { kind: "bool_const", value: first === "True", line: this.line };
+    }
+    const parts = [first];
     while (this.peek(".")) { this.take("."); parts.push(this.take("ident").value); }
     const path = parts.join(".");
     if (FORBIDDEN_ROOTS.has(parts[0])) {
@@ -253,7 +308,7 @@ class ExprParser {
       const args = [];
       if (!this.peek(")")) {
         do {
-          args.push(this.additive());
+          args.push(this.booleanOr());
           if (!this.peek(",")) break;
           this.take(",");
         } while (!this.peek(")"));
@@ -280,6 +335,60 @@ function parseStatements(lines, start, blockIndent) {
     if (!entry.text || entry.text.startsWith("#")) { i += 1; continue; }
     if (entry.indent < blockIndent) break;
     if (entry.indent > blockIndent) throw new MetricsCompileError("syntax", "unexpected indentation", entry.line);
+
+    const ifMatch = entry.text.match(/^if\s+(.+):$/);
+    if (ifMatch) {
+      const branches = [];
+      let elseBody = [];
+      let headerIndex = i;
+      let conditionText = ifMatch[1];
+      const statementLine = entry.line;
+
+      for (;;) {
+        const header = lines[headerIndex];
+        let nextIndex = headerIndex + 1;
+        while (nextIndex < lines.length && (!lines[nextIndex].text || lines[nextIndex].text.startsWith("#"))) nextIndex += 1;
+        const next = lines[nextIndex];
+        if (!next || next.indent <= blockIndent) {
+          throw new MetricsCompileError("syntax", "if/elif requires an indented body", header.line);
+        }
+        const nested = parseStatements(lines, nextIndex, next.indent);
+        branches.push({
+          condition: parseExpr(conditionText, header.line),
+          body: nested.body,
+          line: header.line,
+        });
+
+        let cursor = nested.next;
+        while (cursor < lines.length && (!lines[cursor].text || lines[cursor].text.startsWith("#"))) cursor += 1;
+        const continuation = lines[cursor];
+        const elifMatch = continuation?.indent === blockIndent
+          ? continuation.text.match(/^elif\s+(.+):$/)
+          : null;
+        if (elifMatch) {
+          headerIndex = cursor;
+          conditionText = elifMatch[1];
+          continue;
+        }
+
+        if (continuation?.indent === blockIndent && continuation.text === "else:") {
+          let elseIndex = cursor + 1;
+          while (elseIndex < lines.length && (!lines[elseIndex].text || lines[elseIndex].text.startsWith("#"))) elseIndex += 1;
+          const elseFirst = lines[elseIndex];
+          if (!elseFirst || elseFirst.indent <= blockIndent) {
+            throw new MetricsCompileError("syntax", "else requires an indented body", continuation.line);
+          }
+          const parsedElse = parseStatements(lines, elseIndex, elseFirst.indent);
+          elseBody = parsedElse.body;
+          cursor = parsedElse.next;
+        }
+
+        body.push({ kind: "if", branches, else_body: elseBody, line: statementLine });
+        i = cursor;
+        break;
+      }
+      continue;
+    }
 
     const forMatch = entry.text.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+):$/);
     if (forMatch) {
@@ -332,11 +441,33 @@ function loadType(path, locals, parameters, line) {
 
 function expressionType(node, locals, parameters) {
   if (node.kind === "const") return "scalar";
+  if (node.kind === "bool_const") return "bool";
   if (node.kind === "load") return loadType(node.path, locals, parameters, node.line);
   if (node.kind === "unary") {
     const type = expressionType(node.value, locals, parameters);
+    if (node.op === "not") {
+      if (type !== "bool") throw new MetricsCompileError("type", `'not' requires bool, got ${type}`, node.line);
+      return "bool";
+    }
+    if (node.op !== "-") throw new MetricsCompileError("type", `unsupported unary operator '${node.op}'`, node.line);
     if (type !== "scalar" && type !== "vec2") throw new MetricsCompileError("type", `unary '-' cannot apply to ${type}`, node.line);
     return type;
+  }
+  if (node.kind === "compare") {
+    const left = expressionType(node.left, locals, parameters);
+    const right = expressionType(node.right, locals, parameters);
+    if (left !== "scalar" || right !== "scalar") {
+      throw new MetricsCompileError("type", `comparison '${node.op}' requires scalar operands, got ${left} and ${right}`, node.line);
+    }
+    return "bool";
+  }
+  if (node.kind === "bool_op") {
+    const left = expressionType(node.left, locals, parameters);
+    const right = expressionType(node.right, locals, parameters);
+    if (left !== "bool" || right !== "bool") {
+      throw new MetricsCompileError("type", `boolean '${node.op}' requires bool operands, got ${left} and ${right}`, node.line);
+    }
+    return "bool";
   }
   if (node.kind === "binary") return binaryType(node.op, expressionType(node.left, locals, parameters), expressionType(node.right, locals, parameters), node.line);
   if (node.kind === "call") {
@@ -349,6 +480,15 @@ function expressionType(node, locals, parameters) {
     return signature.result;
   }
   throw new MetricsCompileError("type", `unknown expression node '${node.kind}'`, node.line);
+}
+
+function sameTypeLocals(scopes) {
+  if (!scopes.length) return {};
+  const merged = { ...scopes[0] };
+  for (const name of Object.keys(merged)) {
+    if (!scopes.every((scope) => scope[name] === merged[name])) delete merged[name];
+  }
+  return merged;
 }
 
 function checkStatements(body, locals, parameters) {
@@ -365,6 +505,34 @@ function checkStatements(body, locals, parameters) {
       if (iterable !== "sequence<agent>") throw new MetricsCompileError("type", "metric loops currently require 'snapshot.agents'", statement.line);
       const nested = { ...locals, [statement.variable]: "agent" };
       checkStatements(statement.body, nested, parameters);
+    } else if (statement.kind === "if") {
+      const continuing = [];
+      let allReturn = statement.else_body.length > 0;
+
+      for (const branch of statement.branches) {
+        const conditionType = expressionType(branch.condition, locals, parameters);
+        if (conditionType !== "bool") throw new MetricsCompileError("type", `if/elif condition must be bool, got ${conditionType}`, branch.line ?? statement.line);
+        const nested = { ...locals };
+        const branchReturns = checkStatements(branch.body, nested, parameters);
+        if (!branchReturns) continuing.push(nested);
+        allReturn &&= branchReturns;
+      }
+
+      if (statement.else_body.length) {
+        const nested = { ...locals };
+        const elseReturns = checkStatements(statement.else_body, nested, parameters);
+        if (!elseReturns) continuing.push(nested);
+        allReturn &&= elseReturns;
+      } else {
+        continuing.push({ ...locals });
+      }
+
+      if (continuing.length) {
+        const merged = sameTypeLocals(continuing);
+        for (const name of Object.keys(locals)) delete locals[name];
+        Object.assign(locals, merged);
+      }
+      returned ||= allReturn;
     } else if (statement.kind === "return") {
       const result = expressionType(statement.value, locals, parameters);
       if (result !== "scalar") throw new MetricsCompileError("type", `metric return value must be scalar, got ${result}`, statement.line);
@@ -393,6 +561,13 @@ function rewriteMetricAliasExpression(node, collectionAliases, agentAliases) {
     return { ...node, value: rewriteMetricAliasExpression(node.value, collectionAliases, agentAliases) };
   }
   if (node.kind === "binary") {
+    return {
+      ...node,
+      left: rewriteMetricAliasExpression(node.left, collectionAliases, agentAliases),
+      right: rewriteMetricAliasExpression(node.right, collectionAliases, agentAliases),
+    };
+  }
+  if (node.kind === "compare" || node.kind === "bool_op") {
     return {
       ...node,
       left: rewriteMetricAliasExpression(node.left, collectionAliases, agentAliases),
@@ -458,6 +633,17 @@ function lowerMetricIterableAliases(body, collectionAliases = new Set(), agentAl
           : rewrittenIterable,
         body: lowerMetricIterableAliases(statement.body, nestedCollections, nestedAgents),
       });
+      continue;
+    }
+
+    if (statement.kind === "if") {
+      const branches = statement.branches.map((branch) => ({
+        ...branch,
+        condition: rewriteMetricAliasExpression(branch.condition, collectionAliases, agentAliases),
+        body: lowerMetricIterableAliases(branch.body, new Set(collectionAliases), new Map(agentAliases)),
+      }));
+      const elseBody = lowerMetricIterableAliases(statement.else_body, new Set(collectionAliases), new Map(agentAliases));
+      lowered.push({ ...statement, branches, else_body: elseBody });
       continue;
     }
 
