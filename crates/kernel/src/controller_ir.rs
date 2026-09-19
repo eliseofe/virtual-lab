@@ -702,6 +702,7 @@ fn execute_intrinsic(intrinsic: Intrinsic, stack: &mut Vec<Value>) {
         Intrinsic::Motion => {
             let turning = stack.pop().expect("validated Motion turning").scalar();
             let forward = stack.pop().expect("validated Motion forward").scalar();
+            assert!(forward.is_finite() && turning.is_finite(), "controller Motion requires finite scalar arguments");
             stack.push(Value::Action(Action { forward, turning }));
         }
     }
