@@ -235,7 +235,7 @@ function registerExperimentTools(
       }
 
       const { data: capabilityRegistry, error: capabilityRegistryError } = await supabase
-        .rpc('list_canonical_capabilities')
+        .rpc('list_canonical_capability_registry')
       if (capabilityRegistryError) {
         return toolError('Could not read canonical Virtual Lab capabilities.', capabilityRegistryError.message)
       }
