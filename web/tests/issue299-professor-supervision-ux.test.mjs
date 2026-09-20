@@ -39,11 +39,14 @@ test("#299 removes the duplicate supervision modal and separates Account from Pr
   assert.match(runtimeSpeed, /professor-inbox/);
   assert.match(professorInbox, /Extension requests/);
   assert.doesNotMatch(professorInbox, /Student experiments/);
-  assert.match(workspaceShell, /utilityTarget === "professor" \? "Professor tools" : "Account"/);
-  assert.match(workspaceShell, /accountPanel\.style\.display = utilityTarget === "account"/);
-  assert.match(workspaceShell, /professorPanel\.style\.display = utilityTarget === "professor"/);
+  assert.match(workspaceShell, /function openProfessorInbox\(\)/);
+  assert.match(workspaceShell, /professorButton\.addEventListener\("click", openProfessorInbox\)/);
+  assert.match(workspaceShell, /accountPanel\.style\.display = ""/);
+  assert.match(workspaceShell, /professorPanel\.style\.display = "none"/);
+  assert.doesNotMatch(workspaceShell, /openUtilities\("professor"\)|Professor tools/);
   assert.match(reactChrome, /proxyClick\('#professor-menu'\)/);
   assert.match(reactChrome, /data-vlab-nav="professor"/);
+  assert.match(reactChrome, /'aria-controls': 'professor-extension-inbox'/);
   assert.match(reactChrome, /data-vlab-nav="account"/);
 });
 
