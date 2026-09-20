@@ -110,8 +110,8 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
   if (!state.experimentManagement.visible || state.experimentManagement.selectVisible || state.experimentManagement.legacyPersistenceVisible) {
     throw new Error(`${label}: Experiment identity/persistence is not unified: ${JSON.stringify(state.experimentManagement)}`);
   }
-  if (state.experimentManagement.redundantLocationVisible || state.experimentManagement.browseLabel !== "Switch experiment") {
-    throw new Error(`${label}: redundant Experiment identity remains visible: ${JSON.stringify(state.experimentManagement)}`);
+  if (state.experimentManagement.redundantLocationVisible || state.experimentManagement.browseLabel !== "Experiments") {
+    throw new Error(`${label}: Experiment library entry or identity hierarchy regressed: ${JSON.stringify(state.experimentManagement)}`);
   }
   if (!state.experimentManagement.signInSaveVisible) {
     throw new Error(`${label}: signed-out Experiment surface lacks direct sign-in-to-save action: ${JSON.stringify(state.experimentManagement)}`);

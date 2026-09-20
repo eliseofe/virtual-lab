@@ -15,7 +15,8 @@
     "Professor Showcase publication reuses the existing publication RPCs and save-before-publish semantics, but the action is mounted beside the current Experiment with Promote to Showcase, Publish current revision, In Showcase and conflict states.",
     "The Showcase browser retains curated-entry browsing, opening, removal and private-copy behavior; no publication or authorization contract changed.",
     "Arena, simulation controls, Experiment Source, revision/autosave semantics, sharing, collections, capability-request data, scientific runtime, connectors, CI/CD and project workflow are unchanged.",
-    "Focused #413 regression coverage locks the simplified Experiment entry, one-step Professor navigation and direct Showcase curation path."
+    "Focused #413 regression coverage locks the simplified Experiment entry, one-step Professor navigation and direct Showcase curation path.",
+    "The responsive production smoke now locks the approved visible Experiment-library label as Experiments while retaining all existing identity, hidden-select, persistence, hierarchy and touch-target assertions."
   ],
   "close_issue": 413
 }
