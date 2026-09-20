@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **Keep UI/UX evidence-driven under living #273.** The #396/#409 revision workflow baseline is complete. The current bounded #413 pass simplifies the upper Experiment/Professor/Showcase management surface while leaving Arena and Experiment Source unchanged. No automatic successor is defined.
+1. **Execute the owner-authorized #273 information-architecture activation.** #417 rebuilds the sticky ribbon and product identity; its known successor #418 builds the shared Experiment **Control Panel**; #419 then integrates Professor-only Showcase/Capability requests and performs integrated acceptance. Only one substantial child executes per owner turn. Arena and Experiment Source remain outside the redesign except for precise navigation anchors.
 2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
 3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
 4. Continue real student and owner use and feed concrete UX evidence into #273 rather than reopening a broad redesign.
