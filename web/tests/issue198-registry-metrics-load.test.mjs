@@ -15,8 +15,8 @@ test("#198 production workspace executes the active registry UI", () => {
 });
 
 test("#198 active registry loads canonical artifacts instead of reconstructing Metrics as empty", () => {
-  const listSelection = "id,owner_id,collection_id,title,revision,updated_at,artifacts,config_source,initializer_source,controller_source";
-  const fullSelection = "id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at";
+  const listSelection = "id,owner_id,collection_id,title,revision,updated_at,updated_by_actor,updated_by_ai_client,artifacts,config_source,initializer_source,controller_source";
+  const fullSelection = "id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client";
 
   assert.match(registry, new RegExp(`\\.select\\(\\"${listSelection}\\"\\)`));
   const fullRowMatches = registry.match(new RegExp(`\\.select\\(\\"${fullSelection}\\"\\)`, "g")) ?? [];

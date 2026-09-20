@@ -1,20 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Agents can start with different values of Controller-declared private scalar state",
-  "owner_impact": "Initialization can now assign a finite scalar initial value to a named Controller private-state field for an individual agent with set_agent_state(i, \"state_name\", value). Unspecified agents keep the Controller class default. The authoring wall validates the field against the Controller schema, and the Rust runtime independently reapplies the same heterogeneous profile on reset. This is generic heterogeneous state for roles, leaders or informed agents; it contains no Constant-Bearing-specific logic.",
+  "outcome": "Experiment browsing shows the exact current-revision timestamp and actor provenance",
+  "owner_impact": "Each owned, shared or supervised Experiment in the library now identifies its current saved revision with exact local date/time including seconds and timezone plus the actor that produced that revision. Existing Claude and Grok OAuth client identifiers render as readable names; human revisions render as Human; unknown AI clients remain explicit instead of being hidden.",
   "next": {
     "kind": "scope_complete",
     "disposition": "dormant",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The owner-approved #304 heterogeneous-state implementation scope is complete and #58 returns to its normal living queue state. No owner action is required for this ticket. The separate target-observation request remains requested and unavailable; it has not been approved for implementation, and #371 has not restarted."
+    "text": "The bounded #392 UI pass is complete and #273 returns dormant. No Experiment storage or revision model changed. The displayed provenance applies to the currently stored revision; superseded revision history is not reconstructed by this ticket."
   },
   "technical_evidence": [
-    "Browser and MCP Initializer compilers remain mirrored and emit vlab.initializer-state/0.3 with optional per-agent private_state profiles.",
-    "Cross-artifact validation rejects undeclared, duplicate, invalid-index and non-finite per-agent private-state assignments before persistence.",
-    "Rust Controller runtime validates named profile fields independently, applies per-agent overrides over class defaults, and reproduces them exactly on reset.",
-    "Setup plus Controller replacement is atomic so schema/profile changes cannot be transiently misapplied.",
-    "The implemented surface is exactly set_agent_state(i, \"state_name\", value); no assign alias, RHO parameter, global role table or paper-specific informed flag was added.",
-    "The separate target-observation capability request remains untouched and unavailable."
+    "Experiment rows already carried revision, updated_at, updated_by_actor and updated_by_ai_client; #392 only exposes those existing fields.",
+    "The revision timestamp is rendered with date, hour, minute, second and timezone in the browser's local timezone.",
+    "Known historical/current Claude and Grok OAuth client IDs map to readable labels with an explicit fallback for unknown AI-client identifiers.",
+    "Owned, shared, supervised and direct Experiment reads retain current-revision provenance fields.",
+    "No database schema, trigger, revision semantics, connector or development-workflow rule changed."
   ],
-  "close_issue": 304
+  "close_issue": 392
 }

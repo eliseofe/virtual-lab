@@ -22,7 +22,7 @@ test("#299 makes the Experiment library the Professor supervision discovery surf
 
 test("#299 supervised cards show researcher identity and remain read-only", () => {
   assert.match(registry, /supervisedResearcherName\(experiment\.owner_id\)/);
-  assert.match(registry, /Supervised · Read-only · Revision/);
+  assert.match(registry, /Supervised · Read-only · \${revisionMeta}/);
   assert.match(registry, /ui\.save\.hidden = !owned/);
   assert.match(registry, /Copy to my Experiments/);
   assert.match(registry, /loadRemoteExperiment\(experiment\.id, \{ access \}\)/);
