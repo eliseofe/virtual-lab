@@ -14,7 +14,8 @@
     "The experiments table is enabled in the Supabase Realtime publication; existing SELECT RLS remains the visibility authority and Realtime events are treated only as re-fetch signals.",
     "A preserved Working copy locks inspected numbered revisions against accidental overwrite until the user explicitly chooses Edit from this revision.",
     "Responsive and keyboard-accessible dialog/button semantics are covered by the #398 browser contract tests.",
-    "No CI/CD, deployment, retry, timeout, scheduling, connector-tool surface, or project-development workflow rule changed."
+    "No CI/CD, deployment, retry, timeout, scheduling, connector-tool surface, or project-development workflow rule changed.",
+    "The responsive production smoke readiness probe is null-safe during Chrome's transient pre-documentElement navigation state; its retry count, cadence, readiness predicate, and completion gate are unchanged."
   ],
   "close_issue": 398
 }

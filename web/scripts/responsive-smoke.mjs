@@ -15,7 +15,7 @@ async function waitReady(send) {
     latest = await evaluate(send, `JSON.stringify({
       state: document.querySelector('#worker-status')?.dataset.state ?? null,
       text: document.querySelector('#worker-status')?.textContent ?? null,
-      hardened: document.documentElement.dataset.vlabUxHardened ?? null
+      hardened: document.documentElement?.dataset.vlabUxHardened ?? null
     })`);
     const parsed = latest ? JSON.parse(latest) : null;
     if (parsed?.state === "ready" && parsed?.hardened === "true") return parsed;
