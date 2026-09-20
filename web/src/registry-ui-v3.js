@@ -55,6 +55,10 @@ let collections = [];
 let currentRemote = null;
 let currentRemoteAccess = null;
 let currentWorkingCopy = null;
+let currentRevisions = [];
+let currentRevisionView = { kind: "builtin", revision: null };
+let revisionFilter = "all";
+let currentExperimentChannel = null;
 let workingCopyAutosave = Promise.resolve();
 let hiddenNonRunnableCount = 0;
 let browserSource = "builtin";
@@ -110,6 +114,35 @@ function installStyles() {
     .experiment-location { background: #edf4f6; color: #315a69; }
     .experiment-browse { min-height: 32px; padding: 5px 10px; white-space: nowrap; }
     .experiment-quick-hint { margin: 6px 0 0; color: #78888e; font-size: 10.5px; line-height: 1.35; }
+    .experiment-revision-workflow { display: grid; gap: 8px; padding: 9px 10px; border: 1px solid #dfe7ea; border-radius: 11px; background: #f8fafb; }
+    .experiment-revision-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .experiment-revision-trigger { display: grid; grid-template-columns: auto 1fr auto; gap: 7px; align-items: center; min-width: 0; min-height: 38px; padding: 6px 9px; text-align: left; flex: 1; background: #fff; }
+    .experiment-revision-trigger strong { font-size: 12px; white-space: nowrap; }
+    .experiment-revision-trigger span { min-width: 0; color: #64757c; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .experiment-revision-trigger b { color: #718087; font-size: 12px; }
+    .experiment-revision-actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .experiment-revision-actions button { min-height: 36px; padding: 6px 10px; }
+    .experiment-revision-notice { margin: 0; color: #315a69; font-size: 10.5px; font-weight: 700; }
+    .experiment-revision-details { display: grid; gap: 3px; }
+    .experiment-revision-details .registry-save-state, .experiment-revision-details .registry-note { margin: 0; }
+    .experiment-history { width: min(620px, calc(100vw - 24px)); max-height: min(760px, calc(100vh - 24px)); border: 0; border-radius: 16px; padding: 0; box-shadow: 0 18px 70px rgba(16,35,44,.28); color: #172127; }
+    .experiment-history::backdrop { background: rgba(16,27,33,.42); }
+    .experiment-history-shell { display: grid; grid-template-rows: auto auto auto 1fr; max-height: inherit; min-height: min(560px, calc(100vh - 24px)); background: #fff; }
+    .experiment-history-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 16px 17px 11px; border-bottom: 1px solid #e6ecef; }
+    .experiment-history-head h2 { margin: 0; font-size: 17px; }
+    .experiment-history-filter { display: flex; gap: 5px; padding: 11px 17px 0; }
+    .experiment-history-filter button { min-height: 32px; padding: 5px 10px; }
+    .experiment-history-filter button[aria-pressed="true"] { background: #1d5166; border-color: #1d5166; color: #fff; }
+    .experiment-history-help { margin: 0; padding: 9px 17px 6px; color: #687980; font-size: 10.5px; line-height: 1.4; }
+    .experiment-history-list { display: grid; align-content: start; gap: 7px; overflow: auto; padding: 7px 17px 17px; }
+    .experiment-history-item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; width: 100%; min-height: 54px; padding: 8px 10px; text-align: left; background: #fff; border-radius: 10px; }
+    .experiment-history-item[aria-current="true"] { border-color: #6f97a6; box-shadow: 0 0 0 1px rgba(29,81,102,.12); background: #f4f8f9; }
+    .experiment-history-revision { font-size: 12px; font-weight: 800; min-width: 70px; }
+    .experiment-history-copy { display: grid; gap: 2px; min-width: 0; }
+    .experiment-history-copy strong { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .experiment-history-copy span { color: #718087; font-size: 10px; line-height: 1.35; }
+    .experiment-history-kind { min-width: 44px; text-align: right; color: #607178; font-size: 10px; font-weight: 750; }
+    .experiment-history-empty { margin: 16px 2px; color: #718087; font-size: 12px; }
 
     .experiment-browser { width: min(920px, calc(100vw - 32px)); max-height: min(740px, calc(100vh - 32px)); border: 0; border-radius: 16px; padding: 0; box-shadow: 0 18px 70px rgba(16,35,44,.28); color: #172127; }
     .experiment-browser::backdrop { background: rgba(16,27,33,.42); }
@@ -148,6 +181,13 @@ function installStyles() {
       .experiment-browser-shell { min-height: min(640px, calc(100vh - 32px)); }
       .registry-share-form { grid-template-columns: 1fr; }
       .registry-share-row button { min-height: 44px; }
+      .experiment-revision-top { align-items: stretch; flex-direction: column; }
+      .experiment-revision-actions { display: grid; grid-template-columns: 1fr 1fr; }
+      .experiment-revision-actions button { min-height: 44px; }
+      .experiment-history-item { grid-template-columns: 1fr auto; }
+      .experiment-history-revision { grid-column: 1; }
+      .experiment-history-copy { grid-column: 1; }
+      .experiment-history-kind { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
     }
   `;
   document.head.append(style);
@@ -261,14 +301,48 @@ function buildCurrentExperimentUi() {
   location.textContent = "Built-in";
   meta.append(origin, location);
 
-  current.append(main, meta);
+  const revisionWorkflow = document.createElement("div");
+  revisionWorkflow.className = "experiment-revision-workflow";
+  revisionWorkflow.hidden = true;
+  const revisionTop = document.createElement("div");
+  revisionTop.className = "experiment-revision-top";
+  const revisionTrigger = document.createElement("button");
+  revisionTrigger.className = "experiment-revision-trigger";
+  revisionTrigger.setAttribute("aria-label", "Open revision history");
+  const revisionPrimary = document.createElement("strong");
+  revisionPrimary.textContent = "Built-in";
+  const revisionSecondary = document.createElement("span");
+  revisionSecondary.textContent = "No saved revision history";
+  const revisionChevron = document.createElement("b");
+  revisionChevron.setAttribute("aria-hidden", "true");
+  revisionChevron.textContent = "▾";
+  revisionTrigger.append(revisionPrimary, revisionSecondary, revisionChevron);
+  const revisionActions = document.createElement("div");
+  revisionActions.className = "experiment-revision-actions";
+  const editFromRevision = document.createElement("button");
+  editFromRevision.textContent = "Edit from this revision";
+  editFromRevision.hidden = true;
+  revisionActions.append(editFromRevision);
+  revisionTop.append(revisionTrigger, revisionActions);
+  const revisionNotice = document.createElement("p");
+  revisionNotice.className = "experiment-revision-notice";
+  revisionNotice.hidden = true;
+  const revisionDetails = document.createElement("div");
+  revisionDetails.className = "experiment-revision-details";
+  revisionWorkflow.append(revisionTop, revisionNotice, revisionDetails);
+
+  current.append(main, meta, revisionWorkflow);
   experimentPanel.insertBefore(current, experimentLabel);
 
   const quickHint = document.createElement("p");
   quickHint.className = "experiment-quick-hint";
   experimentSelect.insertAdjacentElement("afterend", quickHint);
 
-  return { current, title, browse, origin, location, quickHint };
+  return {
+    current, title, browse, origin, location, quickHint,
+    revisionWorkflow, revisionTrigger, revisionPrimary, revisionSecondary,
+    revisionActions, revisionNotice, revisionDetails, editFromRevision,
+  };
 }
 
 function buildAccountPanel() {
@@ -436,6 +510,47 @@ function buildAccountPanel() {
   };
 }
 
+function buildRevisionHistory() {
+  const dialog = document.createElement("dialog");
+  dialog.className = "experiment-history";
+  dialog.setAttribute("aria-label", "Revision history");
+
+  const shell = document.createElement("div");
+  shell.className = "experiment-history-shell";
+  const head = document.createElement("div");
+  head.className = "experiment-history-head";
+  const heading = document.createElement("h2");
+  heading.textContent = "Revision history";
+  const close = document.createElement("button");
+  close.textContent = "Close";
+  head.append(heading, close);
+
+  const filters = document.createElement("div");
+  filters.className = "experiment-history-filter";
+  filters.setAttribute("aria-label", "Filter revisions");
+  const all = document.createElement("button");
+  all.textContent = "All";
+  all.dataset.revisionFilter = "all";
+  const mine = document.createElement("button");
+  mine.textContent = "Mine";
+  mine.dataset.revisionFilter = "mine";
+  const ai = document.createElement("button");
+  ai.textContent = "AI";
+  ai.dataset.revisionFilter = "ai";
+  filters.append(all, mine, ai);
+
+  const help = document.createElement("p");
+  help.className = "experiment-history-help";
+  help.textContent = "Choose any saved revision to inspect or continue from it. Numbered history is never rewritten.";
+  const list = document.createElement("div");
+  list.className = "experiment-history-list";
+
+  shell.append(head, filters, help, list);
+  dialog.append(shell);
+  document.body.append(dialog);
+  return { dialog, close, filters, all, mine, ai, help, list };
+}
+
 function buildBrowser() {
   const dialog = document.createElement("dialog");
   dialog.className = "experiment-browser";
@@ -522,7 +637,12 @@ function buildBrowser() {
 installStyles();
 const currentUi = buildCurrentExperimentUi();
 const ui = buildAccountPanel();
+const revisionHistory = buildRevisionHistory();
 const browser = buildBrowser();
+
+// Revision state belongs to the Experiment itself, not to Account settings.
+currentUi.revisionActions.append(ui.save);
+currentUi.revisionDetails.append(ui.saveState, ui.note);
 
 function setMessage(text, state = "idle") {
   ui.message.textContent = text;
@@ -533,8 +653,36 @@ function artifactsEqual(left, right) {
   return experimentArtifactsEqual(left, right);
 }
 
+function currentRevisionSnapshot() {
+  if (currentRevisionView.kind !== "revision") return null;
+  return currentRevisions.find((revision) => revision.revision === currentRevisionView.revision)
+    ?? (currentRemote?.revision === currentRevisionView.revision ? currentRemote : null);
+}
+
 function currentEditingBaseline() {
-  return currentWorkingCopy ?? currentRemote;
+  if (currentRevisionView.kind === "working") return currentWorkingCopy;
+  if (currentRevisionView.kind === "revision") return currentRevisionSnapshot();
+  return currentRemote;
+}
+
+function artifactEditors() {
+  const editors = [];
+  for (const descriptor of EXPERIMENT_ARTIFACTS) {
+    if (!descriptor.editorSelector) continue;
+    const editor = document.querySelector(descriptor.editorSelector);
+    if (editor) editors.push(editor);
+  }
+  for (const editor of document.querySelectorAll('[data-experiment-artifact-editor="true"]')) {
+    if (!editors.includes(editor)) editors.push(editor);
+  }
+  return editors;
+}
+
+function setArtifactEditorsLocked(locked) {
+  for (const editor of artifactEditors()) {
+    if ("readOnly" in editor) editor.readOnly = locked;
+    editor.setAttribute("aria-readonly", String(locked));
+  }
 }
 
 function hasUnpersistedRemoteEdits() {
@@ -555,7 +703,8 @@ async function persistWorkingCopy() {
   // Working copy persistence is deliberately tolerant of temporarily invalid
   // scientific code. It must preserve text while the human is still editing.
   const artifacts = captureExperimentArtifacts();
-  const baseRevision = currentWorkingCopy?.base_revision ?? currentRemote.revision;
+  const selectedRevision = currentRevisionView.kind === "revision" ? currentRevisionView.revision : null;
+  const baseRevision = currentWorkingCopy?.base_revision ?? selectedRevision ?? currentRemote.revision;
   setMessage("Autosaving Working copy…");
   const { data, error } = await supabase
     .from("experiment_working_copies")
@@ -572,7 +721,9 @@ async function persistWorkingCopy() {
   if (error) throw error;
 
   currentWorkingCopy = data;
+  currentRevisionView = { kind: "working", revision: null };
   updateCurrentUi();
+  renderRevisionHistory();
   setMessage(`Working copy autosaved · based on revision ${data.base_revision}.`, "success");
   return data;
 }
@@ -582,6 +733,227 @@ function queueWorkingCopyAutosave() {
     .catch(() => undefined)
     .then(() => persistWorkingCopy());
   return workingCopyAutosave;
+}
+
+
+async function loadRevisionHistory() {
+  if (!user || !currentRemote) {
+    currentRevisions = [];
+    renderRevisionHistory();
+    return;
+  }
+  const { data, error } = await supabase
+    .from("experiment_revisions")
+    .select("experiment_id,revision,base_revision,owner_id,title,description,artifacts,config_source,initializer_source,controller_source,created_at,created_by_actor,created_by_user,created_by_ai_client")
+    .eq("experiment_id", currentRemote.id)
+    .order("revision", { ascending: false });
+  if (error) throw error;
+  currentRevisions = data ?? [];
+  renderRevisionHistory();
+}
+
+function revisionBelongsToMine(revision) {
+  return Boolean(user && revision.created_by_actor === "human" && revision.created_by_user === user.id);
+}
+
+function revisionKindLabel(revision) {
+  if (revision.created_by_actor === "ai") return "AI";
+  return revisionBelongsToMine(revision) ? "Mine" : "Human";
+}
+
+function isCurrentRevisionEntry(revision) {
+  return currentRevisionView.kind === "revision" && currentRevisionView.revision === revision.revision;
+}
+
+function revisionHistoryItem(revision) {
+  const button = document.createElement("button");
+  button.className = "experiment-history-item";
+  button.setAttribute("aria-current", String(isCurrentRevisionEntry(revision)));
+
+  const number = document.createElement("span");
+  number.className = "experiment-history-revision";
+  number.textContent = "R" + revision.revision;
+  const copy = document.createElement("span");
+  copy.className = "experiment-history-copy";
+  const actor = document.createElement("strong");
+  actor.textContent = revisionActor(revision);
+  const meta = document.createElement("span");
+  const time = formatRevisionTime(revision.created_at);
+  const base = revision.base_revision ? "Based on R" + revision.base_revision : "Initial retained snapshot";
+  meta.textContent = base + (time ? " · " + time : "");
+  copy.append(actor, meta);
+  const kind = document.createElement("span");
+  kind.className = "experiment-history-kind";
+  kind.textContent = revisionKindLabel(revision);
+  button.append(number, copy, kind);
+  button.addEventListener("click", () => run(() => selectNumberedRevision(revision)));
+  return button;
+}
+
+function workingCopyHistoryItem() {
+  if (!currentWorkingCopy) return null;
+  const button = document.createElement("button");
+  button.className = "experiment-history-item";
+  button.setAttribute("aria-current", String(currentRevisionView.kind === "working"));
+  const number = document.createElement("span");
+  number.className = "experiment-history-revision";
+  number.textContent = "Working";
+  const copy = document.createElement("span");
+  copy.className = "experiment-history-copy";
+  const actor = document.createElement("strong");
+  actor.textContent = profile?.display_name
+    ? profile.display_name + (profile.role ? " (" + roleLabel(profile.role) + ")" : "")
+    : "Mine";
+  const meta = document.createElement("span");
+  const time = formatRevisionTime(currentWorkingCopy.updated_at);
+  meta.textContent = "Based on R" + currentWorkingCopy.base_revision + (time ? " · autosaved " + time : "");
+  copy.append(actor, meta);
+  const kind = document.createElement("span");
+  kind.className = "experiment-history-kind";
+  kind.textContent = "Mine";
+  button.append(number, copy, kind);
+  button.addEventListener("click", () => run(selectWorkingCopy));
+  return button;
+}
+
+function renderRevisionHistory() {
+  revisionHistory.all.setAttribute("aria-pressed", String(revisionFilter === "all"));
+  revisionHistory.mine.setAttribute("aria-pressed", String(revisionFilter === "mine"));
+  revisionHistory.ai.setAttribute("aria-pressed", String(revisionFilter === "ai"));
+  revisionHistory.list.replaceChildren();
+
+  if (!currentRemote) {
+    const empty = document.createElement("p");
+    empty.className = "experiment-history-empty";
+    empty.textContent = "The built-in experiment has no saved revision history.";
+    revisionHistory.list.append(empty);
+    return;
+  }
+
+  if (currentWorkingCopy && revisionFilter !== "ai") {
+    revisionHistory.list.append(workingCopyHistoryItem());
+  }
+
+  const revisions = currentRevisions.filter((revision) => {
+    if (revisionFilter === "mine") return revisionBelongsToMine(revision);
+    if (revisionFilter === "ai") return revision.created_by_actor === "ai";
+    return true;
+  });
+  for (const revision of revisions) revisionHistory.list.append(revisionHistoryItem(revision));
+
+  if (!revisionHistory.list.children.length) {
+    const empty = document.createElement("p");
+    empty.className = "experiment-history-empty";
+    empty.textContent = revisionFilter === "mine"
+      ? "No numbered revisions from this account yet."
+      : revisionFilter === "ai"
+        ? "No AI revisions yet."
+        : "No retained revisions are available.";
+    revisionHistory.list.append(empty);
+  }
+}
+
+async function selectWorkingCopy() {
+  if (!currentWorkingCopy) return;
+  if (hasUnpersistedRemoteEdits() && !(await confirmDiscardIfNeeded())) return;
+  applyExperimentArtifacts(currentWorkingCopy);
+  currentRevisionView = { kind: "working", revision: null };
+  updateCurrentUi();
+  renderRevisionHistory();
+  await applyLoadedSources();
+  revisionHistory.dialog.close();
+  setMessage("Working copy based on revision " + currentWorkingCopy.base_revision + " loaded.", "success");
+}
+
+async function selectNumberedRevision(revision) {
+  if (hasUnpersistedRemoteEdits() && !(await confirmDiscardIfNeeded())) return;
+  applyExperimentArtifacts(revision);
+  currentRevisionView = { kind: "revision", revision: revision.revision };
+  updateCurrentUi();
+  renderRevisionHistory();
+  await applyLoadedSources();
+  revisionHistory.dialog.close();
+  const preserved = currentWorkingCopy
+    ? " Working copy based on R" + currentWorkingCopy.base_revision + " remains preserved."
+    : "";
+  setMessage("Revision " + revision.revision + " loaded." + preserved, "success");
+}
+
+async function editFromViewedRevision() {
+  if (!user || !currentRemote || currentRemote.owner_id !== user.id) return;
+  const revision = currentRevisionSnapshot();
+  if (!revision) return;
+
+  if (currentWorkingCopy) {
+    const ok = window.confirm(
+      "Replace the existing Working copy based on R" + currentWorkingCopy.base_revision
+      + " with a new Working copy from R" + revision.revision + "?",
+    );
+    if (!ok) return;
+    const { error } = await supabase
+      .from("experiment_working_copies")
+      .delete()
+      .eq("experiment_id", currentRemote.id)
+      .eq("owner_id", user.id);
+    if (error) throw error;
+    currentWorkingCopy = null;
+  }
+
+  applyExperimentArtifacts(revision);
+  currentRevisionView = { kind: "revision", revision: revision.revision };
+  updateCurrentUi();
+  renderRevisionHistory();
+  setMessage("Revision " + revision.revision + " is ready to edit. Your first edit will create a Working copy based on it.", "success");
+}
+
+async function openRevisionHistory() {
+  if (!currentRemote) return;
+  await queueWorkingCopyAutosave();
+  await loadRevisionHistory();
+  renderRevisionHistory();
+  revisionHistory.dialog.showModal();
+  const current = revisionHistory.list.querySelector('[aria-current="true"]');
+  current?.focus({ preventScroll: true });
+}
+
+function clearCurrentExperimentSubscription() {
+  if (!currentExperimentChannel) return;
+  supabase.removeChannel(currentExperimentChannel);
+  currentExperimentChannel = null;
+}
+
+function subscribeCurrentExperiment(id) {
+  clearCurrentExperimentSubscription();
+  if (!user || !id) return;
+  currentExperimentChannel = supabase
+    .channel("experiment-head:" + id)
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "experiments", filter: "id=eq." + id },
+      () => run(() => refreshCurrentExperimentHead(id)),
+    )
+    .subscribe();
+}
+
+async function refreshCurrentExperimentHead(id) {
+  if (!currentRemote || currentRemote.id !== id) return;
+  const previousHead = currentRemote.revision;
+  const fresh = await readExperiment(id);
+  if (fresh.revision <= previousHead) return;
+
+  currentRemote = fresh;
+  await Promise.all([loadExperimentList(), loadRevisionHistory()]);
+  updateCurrentUi();
+  renderBrowser();
+  renderRevisionHistory();
+
+  const newest = currentRevisions.find((revision) => revision.revision === fresh.revision);
+  const actor = newest ? revisionActor(newest) : revisionActor(fresh);
+  setMessage(
+    "New revision R" + fresh.revision + (actor ? " from " + actor : "")
+    + " is available. Your current view was not changed.",
+    "success",
+  );
 }
 
 function experimentsInCollection(collectionId) {
@@ -681,24 +1053,65 @@ function updateCurrentUi() {
   const dirty = hasUnsavedRemoteEdits();
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
   const copyingReadable = Boolean(user && currentRemote && !owned);
+  const viewedRevision = currentRevisionSnapshot();
+  const viewingWorking = currentRevisionView.kind === "working" && Boolean(currentWorkingCopy);
+  const viewingNumbered = currentRevisionView.kind === "revision" && Boolean(viewedRevision);
+  const protectedWorkingCopy = Boolean(owned && currentWorkingCopy && viewingNumbered);
 
   if (currentRemote) {
     currentUi.title.textContent = currentRemote.title;
     currentUi.origin.dataset.kind = owned ? "owned" : "readonly";
     currentUi.origin.textContent = owned ? "Your experiment · Editable" : "Read-only";
     currentUi.location.textContent = currentLocationLabel();
-    metadataRevision.textContent = `registry r${currentRemote.revision}`;
+    currentUi.revisionWorkflow.hidden = false;
+
+    if (viewingWorking) {
+      currentUi.revisionPrimary.textContent = "Working copy";
+      currentUi.revisionSecondary.textContent =
+        "Based on R" + currentWorkingCopy.base_revision + (dirty ? " · autosave pending" : " · autosaved");
+      metadataRevision.textContent = "registry working · base r" + currentWorkingCopy.base_revision;
+    } else {
+      const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
+      const revision = viewedRevision ?? currentRemote;
+      const actor = revisionActor(revision);
+      const time = formatRevisionTime(revision.created_at ?? revision.updated_at);
+      currentUi.revisionPrimary.textContent = "R" + revisionNumber;
+      currentUi.revisionSecondary.textContent = [actor, time].filter(Boolean).join(" · ") || "Saved revision";
+      metadataRevision.textContent = "registry r" + revisionNumber;
+    }
+
+    const referenceRevision = viewingWorking
+      ? currentWorkingCopy.base_revision
+      : (viewedRevision?.revision ?? currentRemote.revision);
+    if (currentRemote.revision > referenceRevision) {
+      const newest = currentRevisions.find((revision) => revision.revision === currentRemote.revision) ?? currentRemote;
+      const actor = revisionActor(newest);
+      currentUi.revisionNotice.hidden = false;
+      currentUi.revisionNotice.textContent =
+        "New R" + currentRemote.revision + " available" + (actor ? " · " + actor : "");
+    } else {
+      currentUi.revisionNotice.hidden = true;
+      currentUi.revisionNotice.textContent = "";
+    }
   } else {
     currentUi.title.textContent = BUILTIN_TITLE;
     currentUi.origin.dataset.kind = "readonly";
     currentUi.origin.textContent = "Built-in · Read-only";
     currentUi.location.textContent = "Built-in";
+    currentUi.revisionWorkflow.hidden = true;
+    currentUi.revisionNotice.hidden = true;
     metadataRevision.textContent = BUILTIN_REVISION;
   }
 
+  currentUi.editFromRevision.hidden = !protectedWorkingCopy;
+  if (protectedWorkingCopy) {
+    currentUi.editFromRevision.textContent = "Edit from R" + viewedRevision.revision;
+  }
+  setArtifactEditorsLocked(protectedWorkingCopy);
+
   ui.saveRow.hidden = !user;
   ui.saveAsNew.hidden = !user;
-  ui.save.hidden = !owned;
+  ui.save.hidden = !owned || protectedWorkingCopy;
   ui.createNew.textContent = copyingReadable ? "Copy to my Experiments" : "Create private copy";
   const availableRecipients = availableShareRecipients();
   const hasOutgoingShares = currentOutgoingShares().length > 0;
@@ -708,7 +1121,7 @@ function updateCurrentUi() {
   if (!owned || availableRecipients.length === 0) ui.shareForm.hidden = true;
   populateShareRecipientSelect();
   renderOutgoingShares();
-  ui.save.disabled = !owned || (!dirty && !currentWorkingCopy);
+  ui.save.disabled = !owned || protectedWorkingCopy || (!dirty && !currentWorkingCopy);
   ui.moveRow.hidden = !owned;
   if (owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
   updateMoveButton();
@@ -721,34 +1134,39 @@ function updateCurrentUi() {
     ui.note.textContent = "The built-in experiment cannot be overwritten. Save as new lets you choose where its private copy is stored.";
   } else if (!owned) {
     ui.saveState.dataset.state = "readonly";
-    if (currentRemoteAccess === "shared") {
-      ui.saveState.textContent = "Shared with you · Read-only";
-      ui.note.textContent = "The owner's Experiment stays read-only. Copy to my Experiments creates an independent private Experiment from this exact saved revision.";
-    } else {
-      ui.saveState.textContent = "Professor supervision · Read-only";
-      ui.note.textContent = "This student Experiment stays read-only. Copy to my Experiments creates an independent private Experiment from this exact saved revision.";
-    }
-  } else if (dirty) {
-    ui.saveState.dataset.state = "dirty";
-    ui.saveState.textContent = currentWorkingCopy
-      ? `Working copy · autosave pending · based on r${currentWorkingCopy.base_revision}`
-      : `Working copy · autosave pending · based on r${currentRemote.revision}`;
-    ui.note.textContent = "Leaving the editor or taking another action autosaves the Working copy. Save Revision creates a numbered revision.";
-  } else if (currentWorkingCopy) {
+    const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
+    ui.saveState.textContent = "Viewing R" + revisionNumber + " · Read-only source";
+    ui.note.textContent = currentRemoteAccess === "shared"
+      ? "This shared revision stays read-only. Copy to my Experiments creates an independent private Experiment from the exact state you are viewing."
+      : "This supervised revision stays read-only. Copy to my Experiments creates an independent private Experiment from the exact state you are viewing.";
+  } else if (protectedWorkingCopy) {
     ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = `Working copy · autosaved · based on r${currentWorkingCopy.base_revision}`;
+    ui.saveState.textContent =
+      "Viewing R" + viewedRevision.revision + " · Working copy from R" + currentWorkingCopy.base_revision + " preserved";
+    ui.note.textContent = "Select Working copy to resume it, or choose Edit from this revision to replace it explicitly.";
+  } else if (dirty) {
+    const baseRevision = currentWorkingCopy?.base_revision ?? viewedRevision?.revision ?? currentRemote.revision;
+    ui.saveState.dataset.state = "dirty";
+    ui.saveState.textContent = "Working copy · autosave pending · based on r" + baseRevision;
+    ui.note.textContent = "Leaving the editor or taking another action autosaves the Working copy. Save Revision creates a numbered revision.";
+  } else if (viewingWorking) {
+    ui.saveState.dataset.state = "saved";
+    ui.saveState.textContent = "Working copy · autosaved · based on r" + currentWorkingCopy.base_revision;
     ui.note.textContent = currentRemote.revision > currentWorkingCopy.base_revision
-      ? `Revision r${currentRemote.revision} is newer. Your Working copy remains preserved from r${currentWorkingCopy.base_revision}; Save Revision will create the next chronological revision.`
+      ? "A newer numbered revision is available. Your Working copy remains preserved; Save Revision will create the next chronological revision."
       : "Working copy is durable. Save Revision crystallizes it as the next numbered revision.";
+  } else if (viewingNumbered && viewedRevision.revision < currentRemote.revision) {
+    ui.saveState.dataset.state = "saved";
+    ui.saveState.textContent = "Viewing historical R" + viewedRevision.revision;
+    ui.note.textContent = "Edit normally to start a Working copy from this revision. Numbered history remains unchanged.";
   } else {
     ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = `Saved · r${currentRemote.revision}`;
-    ui.note.textContent = currentRemote.collection_id
-      ? `This experiment belongs to your account. ${currentLocationLabel()}.`
-      : "This experiment belongs to your account. It does not need a collection.";
+    ui.saveState.textContent = "Saved · r" + currentRemote.revision;
+    ui.note.textContent = "Edit normally to create a Working copy; Save Revision crystallizes it as the next numbered revision.";
   }
 
   setQuickSwitchOptions();
+  renderRevisionHistory();
 }
 
 function formatRevisionTime(value) {
@@ -779,17 +1197,19 @@ function profileForHumanOwner(ownerId) {
     ?? null;
 }
 
-function revisionActor(experiment) {
-  if (experiment.updated_by_actor === "human") {
-    const owner = profileForHumanOwner(experiment.owner_id);
-    if (!owner?.display_name) return "Human";
+function revisionActor(revision) {
+  const actor = revision.created_by_actor ?? revision.updated_by_actor;
+  if (actor === "human") {
+    const humanId = revision.created_by_user ?? revision.owner_id;
+    const owner = profileForHumanOwner(humanId);
+    if (!owner?.display_name) return humanId === user?.id ? "Mine" : "Human";
     const role = roleLabel(owner.role);
-    return role ? `${owner.display_name} (${role})` : owner.display_name;
+    return role ? owner.display_name + " (" + role + ")" : owner.display_name;
   }
-  if (experiment.updated_by_actor !== "ai") return experiment.updated_by_actor || "";
-  const client = experiment.updated_by_ai_client;
+  if (actor !== "ai") return actor || "";
+  const client = revision.created_by_ai_client ?? revision.updated_by_ai_client;
   if (!client) return "AI";
-  return AI_CLIENT_LABELS[client] ?? `AI · ${client}`;
+  return AI_CLIENT_LABELS[client] ?? "AI · " + client;
 }
 
 function filterButton(label, value) {
@@ -1175,10 +1595,13 @@ async function confirmDiscardIfNeeded() {
 }
 
 async function restoreBuiltIn({ apply = true } = {}) {
+  clearCurrentExperimentSubscription();
   applyExperimentArtifacts(builtinArtifacts);
   currentRemote = null;
   currentRemoteAccess = null;
   currentWorkingCopy = null;
+  currentRevisions = [];
+  currentRevisionView = { kind: "builtin", revision: null };
   ui.newForm.hidden = true;
   updateCurrentUi();
   rememberCurrentWorkspace();
@@ -1193,18 +1616,28 @@ async function loadRemoteExperiment(id, { access = "owned" } = {}) {
   const workingCopy = access === "owned" && experiment.owner_id === user.id
     ? await readWorkingCopy(id)
     : null;
-  applyExperimentArtifacts(workingCopy ?? experiment);
+
   currentRemote = experiment;
   currentRemoteAccess = access;
   currentWorkingCopy = workingCopy;
+  await loadRevisionHistory();
+  currentRevisionView = workingCopy
+    ? { kind: "working", revision: null }
+    : { kind: "revision", revision: experiment.revision };
+
+  const initial = workingCopy
+    ?? currentRevisions.find((revision) => revision.revision === experiment.revision)
+    ?? experiment;
+  applyExperimentArtifacts(initial);
   ui.newForm.hidden = true;
+  subscribeCurrentExperiment(id);
   updateCurrentUi();
   rememberCurrentWorkspace();
   await applyLoadedSources();
   setMessage(
     workingCopy
-      ? `${experiment.title} · Working copy based on revision ${workingCopy.base_revision} loaded.`
-      : `${experiment.title} · revision ${experiment.revision} loaded.`,
+      ? experiment.title + " · Working copy based on revision " + workingCopy.base_revision + " loaded."
+      : experiment.title + " · revision " + experiment.revision + " loaded.",
     "success",
   );
 }
@@ -1257,10 +1690,13 @@ async function saveCurrentExperiment() {
 
   currentRemote = data;
   currentWorkingCopy = null;
-  applyExperimentArtifacts(data);
-  await loadExperimentList();
+  await Promise.all([loadExperimentList(), loadRevisionHistory()]);
+  currentRevisionView = { kind: "revision", revision: data.revision };
+  const savedRevision = currentRevisions.find((revision) => revision.revision === data.revision) ?? data;
+  applyExperimentArtifacts(savedRevision);
   updateCurrentUi();
   renderBrowser();
+  renderRevisionHistory();
   setMessage(`${data.title} saved as revision ${data.revision}.`, "success");
 }
 
@@ -1435,8 +1871,10 @@ async function createNewExperiment() {
   currentRemote = data;
   currentRemoteAccess = "owned";
   currentWorkingCopy = null;
+  await Promise.all([loadCollections(), loadExperimentList(), loadRevisionHistory()]);
+  currentRevisionView = { kind: "revision", revision: data.revision };
+  subscribeCurrentExperiment(data.id);
   closeSaveAsNew();
-  await Promise.all([loadCollections(), loadExperimentList()]);
   updateCurrentUi();
   rememberCurrentWorkspace();
   renderBrowser();
@@ -1453,8 +1891,11 @@ function setSignedOutUi() {
   ui.identity.textContent = "Signed out";
   ui.auth.hidden = false;
   ui.signOut.hidden = true;
+  clearCurrentExperimentSubscription();
   remoteExperiments = [];
   currentWorkingCopy = null;
+  currentRevisions = [];
+  currentRevisionView = { kind: "builtin", revision: null };
   sharedExperiments = [];
   supervisedProfiles = [];
   supervisedExperiments = [];
@@ -1551,7 +1992,14 @@ async function refreshRegistry() {
   }
 
   setMessage("Refreshing your library…");
-  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadSupervisedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
+  await Promise.all([
+    loadCollections(),
+    loadExperimentList(),
+    loadSharedExperimentList(),
+    loadSupervisedExperimentList(),
+    loadShareRecipients(),
+    loadOutgoingShares(),
+  ]);
 
   if (previousRemote) {
     const available = previousAccess === "shared"
@@ -1571,23 +2019,21 @@ async function refreshRegistry() {
       return;
     }
 
+    currentRemote = fresh;
+    await loadRevisionHistory();
+    updateCurrentUi();
+    renderRevisionHistory();
     if (fresh.revision > previousRemote.revision) {
-      if (currentWorkingCopy) {
-        currentRemote = fresh;
-        updateCurrentUi();
-        renderBrowser();
-        setMessage(
-          `Revision ${fresh.revision} is now available. Working copy based on revision ${currentWorkingCopy.base_revision} is preserved.`,
-          "success",
-        );
-        return;
-      }
-      await loadRemoteExperiment(previousRemote.id, { access: previousAccess || "owned" });
+      const newest = currentRevisions.find((revision) => revision.revision === fresh.revision);
+      const actor = newest ? revisionActor(newest) : revisionActor(fresh);
+      setMessage(
+        "New revision R" + fresh.revision + (actor ? " from " + actor : "")
+        + " is available. Your current view was not changed.",
+        "success",
+      );
       renderBrowser();
       return;
     }
-
-    currentRemote = fresh;
   }
 
   updateCurrentUi();
@@ -1614,6 +2060,19 @@ async function run(action) {
 }
 
 currentUi.browse.addEventListener("click", openBrowser);
+currentUi.revisionTrigger.addEventListener("click", () => run(openRevisionHistory));
+currentUi.editFromRevision.addEventListener("click", () => run(editFromViewedRevision));
+revisionHistory.close.addEventListener("click", () => revisionHistory.dialog.close());
+for (const button of [revisionHistory.all, revisionHistory.mine, revisionHistory.ai]) {
+  button.addEventListener("click", () => {
+    revisionFilter = button.dataset.revisionFilter;
+    renderRevisionHistory();
+  });
+}
+revisionHistory.dialog.addEventListener("click", (event) => {
+  if (event.target === revisionHistory.dialog) revisionHistory.dialog.close();
+});
+
 experimentSelect.addEventListener("change", () => run(async () => {
   const value = experimentSelect.value;
   if (value === BUILTIN_VALUE) {

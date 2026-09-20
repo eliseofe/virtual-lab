@@ -71,11 +71,11 @@ test("editability feedback distinguishes numbered state from Working-copy persis
   const registryUi = await registryUiSource();
   assert.match(registryUi, /Built-in · Read-only/);
   assert.match(registryUi, /Your experiment · Editable/);
-  assert.match(registryUi, /Saved · r\$\{currentRemote\.revision\}/);
+  assert.match(registryUi, /Saved · r/);
   assert.match(registryUi, /Working copy · autosave pending/);
   assert.match(registryUi, /Working copy · autosaved · based on r/);
-  assert.match(registryUi, /ui\.save\.hidden = !owned/);
-  assert.match(registryUi, /ui\.save\.disabled = !owned \|\| \(!dirty && !currentWorkingCopy\)/);
+  assert.match(registryUi, /ui\.save\.hidden = !owned \|\| protectedWorkingCopy/);
+  assert.match(registryUi, /ui\.save\.disabled = !owned \|\| protectedWorkingCopy \|\| \(!dirty && !currentWorkingCopy\)/);
 });
 
 test("anonymous state exposes no persistence controls and built-in can only be copied after sign-in", async () => {
@@ -85,11 +85,11 @@ test("anonymous state exposes no persistence controls and built-in can only be c
   assert.match(registryUi, /The built-in experiment cannot be overwritten/);
 });
 
-test("refresh exposes newer numbered revisions without discarding a durable Working copy", async () => {
+test("refresh exposes newer numbered revisions without changing the current revision view", async () => {
   const registryUi = await registryUiSource();
   assert.match(registryUi, /fresh\.revision > previousRemote\.revision/);
-  assert.match(registryUi, /if \(currentWorkingCopy\)/);
-  assert.match(registryUi, /Working copy based on revision \$\{currentWorkingCopy\.base_revision\} is preserved/);
+  assert.match(registryUi, /await loadRevisionHistory\(\)/);
+  assert.match(registryUi, /Your current view was not changed/);
   assert.doesNotMatch(registryUi, /Reload the experiment before saving/);
 });
 

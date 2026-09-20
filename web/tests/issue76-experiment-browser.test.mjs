@@ -72,10 +72,10 @@ test("experiment browser exposes exact current-revision time and actor provenanc
   assert.match(source, /function formatRevisionTime\(value\)/);
   assert.match(source, /second: "2-digit"/);
   assert.match(source, /timeZoneName: "short"/);
-  assert.match(source, /function revisionActor\(experiment\)/);
+  assert.match(source, /function revisionActor\(revision\)/);
   assert.match(source, /"f9ea9bbe-2e3f-497d-92b3-5f108b64593c": "Claude"/);
   assert.match(source, /"12e106dc-4da6-49cd-9062-d0a4bb5c34c6": "Grok"/);
-  assert.match(source, /AI · \$\{client\}/);
+  assert.match(source, /AI · " \+ client/);
   assert.match(source, /updated_by_actor,updated_by_ai_client/);
   assert.match(source, /const revisionMeta =/);
   assert.doesNotMatch(source, /function formatUpdated\(value\)/);
@@ -87,6 +87,6 @@ test("human revision provenance uses the owner's profile name and role", async (
   assert.match(source, /profile\?\.id === ownerId/);
   assert.match(source, /shareRecipients\.find/);
   assert.match(source, /supervisedProfiles\.find/);
-  assert.match(source, /\${owner\.display_name} \(\${role}\)/);
+  assert.match(source, /owner\.display_name \+ " \(" \+ role \+ "\)"/);
   assert.match(source, /first_name, last_name, display_name, role/);
 });
