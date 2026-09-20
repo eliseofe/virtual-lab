@@ -29,8 +29,7 @@ async function waitReady(send) {
     }
     const parsed = latest ? JSON.parse(latest) : null;
     if (
-      parsed?.state === "ready"
-      && parsed?.hardened === "true"
+      parsed?.state === "ready" && parsed?.hardened === "true"
       && parsed?.experimentManagementReady
       && parsed?.experimentFinderReady
       && parsed?.experimentEntryReady
