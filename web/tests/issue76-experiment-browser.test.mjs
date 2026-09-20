@@ -81,12 +81,10 @@ test("experiment browser exposes exact current-revision time and actor provenanc
   assert.doesNotMatch(source, /function formatUpdated\(value\)/);
 });
 
-test("human revision provenance uses the owner's profile name and role", async () => {
+test("human revision provenance is Mine or Human rather than a profile identity", async () => {
   const source = await browserSource();
-  assert.match(source, /function profileForHumanOwner\(ownerId\)/);
-  assert.match(source, /profile\?\.id === ownerId/);
-  assert.match(source, /shareRecipients\.find/);
-  assert.match(source, /supervisedProfiles\.find/);
-  assert.match(source, /owner\.display_name \+ " \(" \+ role \+ "\)"/);
+  assert.match(source, /const humanId = revision\.created_by_user \?\? revision\.owner_id/);
+  assert.match(source, /return humanId === user\?\.id \? "Mine" : "Human"/);
+  assert.doesNotMatch(source, /owner\.display_name \+ " \(" \+ role \+ "\)"/);
   assert.match(source, /first_name, last_name, display_name, role/);
 });
