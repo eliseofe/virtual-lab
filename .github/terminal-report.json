@@ -1,18 +1,21 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The rejected implementation-first UI change has been removed and the last production-green UI restored",
-  "owner_impact": "The Lab returns to the exact pre-#417 product tree rather than keeping partial ribbon/control-panel experiments or compatibility debris. The owner's UI/UX complaints remain preserved as guarded design requirements under #273, not as code decisions. Security (#301), UI/UX (#273) and Refactoring (#425) are recorded as living maintenance domains.",
+  "outcome": "The Lab now has a focused global ribbon and one task-based Experiment control panel",
+  "owner_impact": "The sticky ribbon is limited to Virtual Lab identity, Eliseo Ferrante · Swarm robotics, Simulation, Authoring, Help and Account. Experiment, Results, Showcase and Professor are no longer global destinations. The upper Experiment area is now a named Control panel organized around Current Experiment, Revisions, and Save & share. Simulator readiness is shown inside Simulation. Existing Professor functions remain reachable through a temporary compatibility row until the final Professor integration ticket.",
   "next": {
     "kind": "epic_continues",
-    "issue": 424,
-    "text": "The UI/UX lane continues with #424 — Product Design redesign in Work. Work will audit the recovered live Lab and turn the guarded owner feedback into coherent design options. No implementation ticket has started or will be derived until the owner accepts a design direction."
+    "issue": 430,
+    "text": "The #273 UI/UX activation continues with #430 — integrate the final Professor-only Showcase and Capability requests section, remove the temporary compatibility row and residual duplication, and complete the accepted hierarchy. That ticket has not started yet."
   },
   "technical_evidence": [
-    "The recovery commit resets the repository product tree to the exact tree of the last verified pre-#417 production-green commit f5014c25ae6d280c876dc33c366b07d15ddee9f0.",
-    "All #417/#421/#422 implementation-first product, smoke and regression changes are absent from the recovered product tree rather than hidden behind compatibility code.",
-    "CURRENT_STATUS.md and ROADMAP.md record the corrected recovery -> Product Design/Work -> owner acceptance -> implementation sequence.",
-    "ROADMAP.md classifies #273 UI/UX, #301 Security and #425 Refactoring as living/ongoing maintenance domains.",
-    "No scientific/runtime, registry, authorization, capability, connector or Study semantics are changed by this recovery."
+    "React global chrome exposes Simulation and Authoring as the scientific destinations; Help is injected beside Account on desktop and mobile.",
+    "The ribbon product identity is Virtual Lab with Eliseo Ferrante · Swarm robotics; the current Experiment title and simulator status are no longer global chrome.",
+    "Simulation navigation targets #simulation and Authoring targets #authoring-workbench with sticky-header scroll margin.",
+    "Experiment management is grouped into Current Experiment, Revisions, and Save & share without changing registry, revision, Working copy, autosave, sharing, collection or copy semantics.",
+    "Save Revision remains the explicit numbered-revision action; autosave semantics are unchanged.",
+    "Simulator worker readiness is presented contextually inside the Simulation header.",
+    "Responsive production smoke verifies desktop/mobile ribbon hierarchy and task-based Experiment management.",
+    "A bounded temporary Professor tools bridge preserves Showcase and capability-request reachability until successor #430 performs final integration."
   ],
-  "close_issue": 423
+  "close_issue": 429
 }
