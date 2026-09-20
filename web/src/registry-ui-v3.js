@@ -55,6 +55,10 @@ let collections = [];
 let currentRemote = null;
 let currentRemoteAccess = null;
 let currentWorkingCopy = null;
+let currentRevisions = [];
+let currentRevisionView = { kind: "builtin", revision: null };
+let revisionFilter = "all";
+let currentExperimentChannel = null;
 let workingCopyAutosave = Promise.resolve();
 let hiddenNonRunnableCount = 0;
 let browserSource = "builtin";
@@ -110,6 +114,35 @@ function installStyles() {
     .experiment-location { background: #edf4f6; color: #315a69; }
     .experiment-browse { min-height: 32px; padding: 5px 10px; white-space: nowrap; }
     .experiment-quick-hint { margin: 6px 0 0; color: #78888e; font-size: 10.5px; line-height: 1.35; }
+    .experiment-revision-workflow { display: grid; gap: 8px; padding: 9px 10px; border: 1px solid #dfe7ea; border-radius: 11px; background: #f8fafb; }
+    .experiment-revision-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .experiment-revision-trigger { display: grid; grid-template-columns: auto 1fr auto; gap: 7px; align-items: center; min-width: 0; min-height: 38px; padding: 6px 9px; text-align: left; flex: 1; background: #fff; }
+    .experiment-revision-trigger strong { font-size: 12px; white-space: nowrap; }
+    .experiment-revision-trigger span { min-width: 0; color: #64757c; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .experiment-revision-trigger b { color: #718087; font-size: 12px; }
+    .experiment-revision-actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .experiment-revision-actions button { min-height: 36px; padding: 6px 10px; }
+    .experiment-revision-notice { margin: 0; color: #315a69; font-size: 10.5px; font-weight: 700; }
+    .experiment-revision-details { display: grid; gap: 3px; }
+    .experiment-revision-details .registry-save-state, .experiment-revision-details .registry-note { margin: 0; }
+    .experiment-history { width: min(620px, calc(100vw - 24px)); max-height: min(760px, calc(100vh - 24px)); border: 0; border-radius: 16px; padding: 0; box-shadow: 0 18px 70px rgba(16,35,44,.28); color: #172127; }
+    .experiment-history::backdrop { background: rgba(16,27,33,.42); }
+    .experiment-history-shell { display: grid; grid-template-rows: auto auto auto 1fr; max-height: inherit; min-height: min(560px, calc(100vh - 24px)); background: #fff; }
+    .experiment-history-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 16px 17px 11px; border-bottom: 1px solid #e6ecef; }
+    .experiment-history-head h2 { margin: 0; font-size: 17px; }
+    .experiment-history-filter { display: flex; gap: 5px; padding: 11px 17px 0; }
+    .experiment-history-filter button { min-height: 32px; padding: 5px 10px; }
+    .experiment-history-filter button[aria-pressed="true"] { background: #1d5166; border-color: #1d5166; color: #fff; }
+    .experiment-history-help { margin: 0; padding: 9px 17px 6px; color: #687980; font-size: 10.5px; line-height: 1.4; }
+    .experiment-history-list { display: grid; align-content: start; gap: 7px; overflow: auto; padding: 7px 17px 17px; }
+    .experiment-history-item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; width: 100%; min-height: 54px; padding: 8px 10px; text-align: left; background: #fff; border-radius: 10px; }
+    .experiment-history-item[aria-current="true"] { border-color: #6f97a6; box-shadow: 0 0 0 1px rgba(29,81,102,.12); background: #f4f8f9; }
+    .experiment-history-revision { font-size: 12px; font-weight: 800; min-width: 70px; }
+    .experiment-history-copy { display: grid; gap: 2px; min-width: 0; }
+    .experiment-history-copy strong { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .experiment-history-copy span { color: #718087; font-size: 10px; line-height: 1.35; }
+    .experiment-history-kind { min-width: 44px; text-align: right; color: #607178; font-size: 10px; font-weight: 750; }
+    .experiment-history-empty { margin: 16px 2px; color: #718087; font-size: 12px; }
 
     .experiment-browser { width: min(920px, calc(100vw - 32px)); max-height: min(740px, calc(100vh - 32px)); border: 0; border-radius: 16px; padding: 0; box-shadow: 0 18px 70px rgba(16,35,44,.28); color: #172127; }
     .experiment-browser::backdrop { background: rgba(16,27,33,.42); }
@@ -148,6 +181,13 @@ function installStyles() {
       .experiment-browser-shell { min-height: min(640px, calc(100vh - 32px)); }
       .registry-share-form { grid-template-columns: 1fr; }
       .registry-share-row button { min-height: 44px; }
+      .experiment-revision-top { align-items: stretch; flex-direction: column; }
+      .experiment-revision-actions { display: grid; grid-template-columns: 1fr 1fr; }
+      .experiment-revision-actions button { min-height: 44px; }
+      .experiment-history-item { grid-template-columns: 1fr auto; }
+      .experiment-history-revision { grid-column: 1; }
+      .experiment-history-copy { grid-column: 1; }
+      .experiment-history-kind { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
     }
   `;
   document.head.append(style);
@@ -261,14 +301,48 @@ function buildCurrentExperimentUi() {
   location.textContent = "Built-in";
   meta.append(origin, location);
 
-  current.append(main, meta);
+  const revisionWorkflow = document.createElement("div");
+  revisionWorkflow.className = "experiment-revision-workflow";
+  revisionWorkflow.hidden = true;
+  const revisionTop = document.createElement("div");
+  revisionTop.className = "experiment-revision-top";
+  const revisionTrigger = document.createElement("button");
+  revisionTrigger.className = "experiment-revision-trigger";
+  revisionTrigger.setAttribute("aria-label", "Open revision history");
+  const revisionPrimary = document.createElement("strong");
+  revisionPrimary.textContent = "Built-in";
+  const revisionSecondary = document.createElement("span");
+  revisionSecondary.textContent = "No saved revision history";
+  const revisionChevron = document.createElement("b");
+  revisionChevron.setAttribute("aria-hidden", "true");
+  revisionChevron.textContent = "▾";
+  revisionTrigger.append(revisionPrimary, revisionSecondary, revisionChevron);
+  const revisionActions = document.createElement("div");
+  revisionActions.className = "experiment-revision-actions";
+  const editFromRevision = document.createElement("button");
+  editFromRevision.textContent = "Edit from this revision";
+  editFromRevision.hidden = true;
+  revisionActions.append(editFromRevision);
+  revisionTop.append(revisionTrigger, revisionActions);
+  const revisionNotice = document.createElement("p");
+  revisionNotice.className = "experiment-revision-notice";
+  revisionNotice.hidden = true;
+  const revisionDetails = document.createElement("div");
+  revisionDetails.className = "experiment-revision-details";
+  revisionWorkflow.append(revisionTop, revisionNotice, revisionDetails);
+
+  current.append(main, meta, revisionWorkflow);
   experimentPanel.insertBefore(current, experimentLabel);
 
   const quickHint = document.createElement("p");
   quickHint.className = "experiment-quick-hint";
   experimentSelect.insertAdjacentElement("afterend", quickHint);
 
-  return { current, title, browse, origin, location, quickHint };
+  return {
+    current, title, browse, origin, location, quickHint,
+    revisionWorkflow, revisionTrigger, revisionPrimary, revisionSecondary,
+    revisionActions, revisionNotice, revisionDetails, editFromRevision,
+  };
 }
 
 function buildAccountPanel() {
@@ -436,6 +510,47 @@ function buildAccountPanel() {
   };
 }
 
+function buildRevisionHistory() {
+  const dialog = document.createElement("dialog");
+  dialog.className = "experiment-history";
+  dialog.setAttribute("aria-label", "Revision history");
+
+  const shell = document.createElement("div");
+  shell.className = "experiment-history-shell";
+  const head = document.createElement("div");
+  head.className = "experiment-history-head";
+  const heading = document.createElement("h2");
+  heading.textContent = "Revision history";
+  const close = document.createElement("button");
+  close.textContent = "Close";
+  head.append(heading, close);
+
+  const filters = document.createElement("div");
+  filters.className = "experiment-history-filter";
+  filters.setAttribute("aria-label", "Filter revisions");
+  const all = document.createElement("button");
+  all.textContent = "All";
+  all.dataset.revisionFilter = "all";
+  const mine = document.createElement("button");
+  mine.textContent = "Mine";
+  mine.dataset.revisionFilter = "mine";
+  const ai = document.createElement("button");
+  ai.textContent = "AI";
+  ai.dataset.revisionFilter = "ai";
+  filters.append(all, mine, ai);
+
+  const help = document.createElement("p");
+  help.className = "experiment-history-help";
+  help.textContent = "Choose any saved revision to inspect or continue from it. Numbered history is never rewritten.";
+  const list = document.createElement("div");
+  list.className = "experiment-history-list";
+
+  shell.append(head, filters, help, list);
+  dialog.append(shell);
+  document.body.append(dialog);
+  return { dialog, close, filters, all, mine, ai, help, list };
+}
+
 function buildBrowser() {
   const dialog = document.createElement("dialog");
   dialog.className = "experiment-browser";
@@ -522,7 +637,12 @@ function buildBrowser() {
 installStyles();
 const currentUi = buildCurrentExperimentUi();
 const ui = buildAccountPanel();
+const revisionHistory = buildRevisionHistory();
 const browser = buildBrowser();
+
+// Revision state belongs to the Experiment itself, not to Account settings.
+currentUi.revisionActions.append(ui.save);
+currentUi.revisionDetails.append(ui.saveState, ui.note);
 
 function setMessage(text, state = "idle") {
   ui.message.textContent = text;
