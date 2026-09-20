@@ -76,13 +76,6 @@ function installStyles() {
       letter-spacing: .055em;
       text-transform: uppercase;
     }
-    .experiment-task-heading span {
-      color: #7a898f;
-      font-size: 10.5px;
-      line-height: 1.2;
-      text-align: right;
-      white-space: nowrap;
-    }
     .experiment-current { margin: 0 !important; padding: 0 !important; border: 0 !important; }
     .experiment-current-main { align-items: center !important; }
     .experiment-current-title { font-size: 15px !important; }
@@ -247,24 +240,18 @@ function installStyles() {
       .experiment-task-revisions,
       .experiment-management,
       .experiment-professor-group { min-height: 0; }
-      .experiment-task-heading { align-items: flex-start; flex-direction: column; }
-      .experiment-task-heading span { text-align: left; }
+      .experiment-task-heading { align-items: flex-start; }
     }
   `;
   document.head.append(style);
 }
 
-function taskHeading(title, summary = "") {
+function taskHeading(title) {
   const heading = document.createElement("div");
   heading.className = "experiment-task-heading";
   const label = document.createElement("strong");
   label.textContent = title;
   heading.append(label);
-  if (summary) {
-    const description = document.createElement("span");
-    description.textContent = summary;
-    heading.append(description);
-  }
   return heading;
 }
 
