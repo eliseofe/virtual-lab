@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **Recover UI/UX before redesign.** #423 restores the exact pre-#417 production UI. The known successor #424 is a Product Design/Work pass grounded in the live recovered Lab and the guarded owner feedback. No implementation decomposition occurs before owner acceptance of that design.
+1. **Execute the accepted #273 UI/UX design.** #429 implements the global ribbon and shared task-based Experiment control panel from frozen brief #428. Its known successor #430 integrates Professor-only Showcase and Capability requests and performs final hierarchy cleanup. Only one substantial child executes per owner turn.
 2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
 3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
 4. Keep #301 Security and #425 Refactoring as living maintenance domains; both are dormant unless a bounded child is explicitly selected.
