@@ -9,6 +9,20 @@ async function evaluate(send, expression) {
   return result?.result?.value;
 }
 
+async function waitForFreshDocument(send, token) {
+  for (let attempt = 0; attempt < 160; attempt += 1) {
+    try {
+      const fresh = await evaluate(send, `window.__vlabResponsiveSmokeReloadToken !== ${JSON.stringify(token)}`);
+      if (fresh) return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("Inspected target navigated or closed")) throw error;
+    }
+    await sleep(50);
+  }
+  throw new Error("browser did not replace the document after responsive reload");
+}
+
 async function waitReady(send) {
   let latest = null;
   for (let attempt = 0; attempt < 160; attempt += 1) {
@@ -291,7 +305,10 @@ try {
     screenWidth: 390,
     screenHeight: 844,
   });
+  const mobileReloadToken = "vlab-responsive-before-mobile-reload";
+  await evaluate(cdp.send, `window.__vlabResponsiveSmokeReloadToken = ${JSON.stringify(mobileReloadToken)}`);
   await cdp.send("Page.reload", { ignoreCache: true });
+  await waitForFreshDocument(cdp.send, mobileReloadToken);
   await waitReady(cdp.send);
 
   const mobile = await structure(cdp.send);
