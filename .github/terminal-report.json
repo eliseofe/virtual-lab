@@ -1,21 +1,21 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Experiment Control Panel now has a consistent visual rhythm",
-  "owner_impact": "The Control Panel keeps the same structure and behavior, but peer cards now use balanced 50/50 proportions, related cards align more evenly, and action buttons follow one consistent sizing system instead of mixing unrelated heights and widths. Control Panel actions now use one common 44px height on both desktop and mobile, matching the existing accessibility-hardening system. The small Organize metadata action remains intentionally compact rather than competing with primary actions.",
+  "outcome": "The Save & share card is now compact and internally consistent",
+  "owner_impact": "The top-right Save & share card now uses the short subtitle “Save, copy and share”. Its visible Save Revision, Save as new, Move and Share actions are consolidated into one equal-size action bar that stays on one row when the card is wide enough and wraps evenly when needed. Open forms remain underneath only when used. Mobile retains 44px touch targets and a compact two-column action layout.",
   "next": {
     "kind": "scope_complete",
     "disposition": "dormant",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "This evidence-driven #273 refinement is complete. Review the live Control Panel visually; #273 remains a dormant/living UI/UX domain and any further refinement should come from what you actually see and use."
+    "text": "This direct-use #273 refinement is complete. Review the live Save & share card visually; #273 remains a dormant/living UI/UX domain and further refinement should continue from what you actually see and use."
   },
   "technical_evidence": [
-    "The main two-column Control Panel grid is now 1fr / 1fr instead of 1.15fr / 0.85fr.",
-    "Revisions and Save & share share the same minimum card rhythm and stretch behavior.",
-    "The two Research curation sub-cards share equal rows, matched minimum height and spacing.",
-    "Peer action groups use predictable two-column grids on desktop and one column on mobile.",
-    "Control Panel actions use one 44px height across desktop and mobile, consistent with the existing UX-hardening rule.",
-    "Responsive production smoke checks that the visible Experiments and Sign in to save actions have the same 44px desktop height.",
-    "No information architecture, labels, role visibility, scientific/runtime, persistence, revision/autosave, sharing, Showcase or capability-request semantics changed."
+    "The Save & share subtitle is shortened from “Persistence, copies and collaboration” to “Save, copy and share”.",
+    "Save Revision, Save as new, Move and Share are relocated into one experiment-management-actions grid.",
+    "The action bar uses equal-width auto-fit columns with fixed 44px rows, so visible peer buttons remain the same size and stay on one row where space allows.",
+    "Move visibility remains governed by the original registry move-row state after relocation.",
+    "Share still opens the original read-only sharing form; save/copy/move/share semantics are unchanged.",
+    "Responsive production smoke verifies the shortened subtitle and action-bar presence.",
+    "No surrounding Control Panel structure, scientific/runtime, persistence, revision/autosave, sharing, authorization, Showcase or capability-request semantics changed."
   ],
-  "close_issue": 437
+  "close_issue": 440
 }
