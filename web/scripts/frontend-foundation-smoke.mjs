@@ -18,7 +18,7 @@ try {
         const chrome = root?.querySelector('[data-vlab-react-chrome="mounted"]');
         const topbar = document.querySelector('.topbar');
         const legacyWorker = document.querySelector('#worker-status');
-        const reactWorker = root?.querySelector('[data-vlab-worker-status]');
+        const simulationWorker = document.querySelector('[data-vlab-simulator-readiness]');
         const nav = [...(root?.querySelectorAll('[data-vlab-nav]') ?? [])].map((node) => node.getAttribute('data-vlab-nav'));
         const rect = root?.getBoundingClientRect();
         return {
@@ -28,7 +28,7 @@ try {
           chrome: Boolean(chrome),
           visible: Boolean(rect && rect.height > 0 && getComputedStyle(root).display !== 'none'),
           legacyTopbarHidden: Boolean(topbar && getComputedStyle(topbar).display === 'none'),
-          workerMirrored: Boolean(legacyWorker && reactWorker && reactWorker.textContent?.trim() === legacyWorker.textContent?.trim()),
+          workerContextual: Boolean(legacyWorker && simulationWorker),
           nav,
           canvasOutsideRoot: Boolean(document.querySelector('#simulation-canvas')) && !root?.contains(document.querySelector('#simulation-canvas')),
           runOutsideRoot: Boolean(document.querySelector('#run')) && !root?.contains(document.querySelector('#run')),
@@ -39,13 +39,13 @@ try {
       returnByValue: true,
     });
     state = JSON.parse(result?.result?.value ?? "null");
-    if (state?.mounted && state?.chrome && state?.workerMirrored && state?.nav?.includes('showcase')) break;
+    if (state?.mounted && state?.chrome && state?.workerContextual && state?.nav?.includes('account')) break;
     await sleep(100);
   }
 
-  const requiredNav = ['experiment', 'simulation', 'results', 'authoring', 'showcase', 'account'];
+  const requiredNav = ['simulation', 'authoring', 'help', 'account'];
   const missingNav = requiredNav.filter((item) => !state?.nav?.includes(item));
-  if (!state?.root || state.hidden || !state.mounted || !state.chrome || !state.visible || !state.legacyTopbarHidden || !state.workerMirrored || missingNav.length || !state.canvasOutsideRoot || !state.runOutsideRoot || !state.experimentOutsideRoot || !state.authoringOutsideRoot) {
+  if (!state?.root || state.hidden || !state.mounted || !state.chrome || !state.visible || !state.legacyTopbarHidden || !state.workerContextual || missingNav.length || !state.canvasOutsideRoot || !state.runOutsideRoot || !state.experimentOutsideRoot || !state.authoringOutsideRoot) {
     throw new Error(`React/Mantine application chrome failed: ${JSON.stringify({ ...state, missingNav })}`);
   }
   if (cdp.exceptions.length) throw new Error(`browser exceptions: ${JSON.stringify(cdp.exceptions)}`);

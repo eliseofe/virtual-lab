@@ -144,7 +144,7 @@ function syncAuthPresentation() {
 
   for (const selector of ['[data-vlab-nav="account"]', '[data-vlab-nav="account-mobile"]']) {
     for (const button of document.querySelectorAll(selector)) {
-      const text = signedOut ? "Sign in" : "Account";
+      const text = "Account";
       if (button.textContent !== text) button.textContent = text;
       if (button.getAttribute("aria-label") !== text) button.setAttribute("aria-label", text);
     }
