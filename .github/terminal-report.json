@@ -1,24 +1,20 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Experiment revision workflow is coherent end to end",
-  "owner_impact": "The Lab now treats revision history as one consistent workflow: edits autosave into an unnumbered Working copy, numbered revisions remain immutable and selectable, AI revisions can arrive without hiding human work, Save Revision crystallizes the next chronological revision, and All/Mine/AI makes recovery of your own work immediate. Historical read-only revisions now copy the exact revision being viewed, human provenance is shown as Mine/Human rather than exposing a profile identity, and the revision UI has clearer labels, focus return and deliberate mobile touch targets.",
+  "outcome": "Experiment re-entry now prioritizes the latest numbered revision without losing Working-copy recovery",
+  "owner_impact": "When you return to an owned Experiment, the Lab opens its newest numbered revision instead of automatically dropping you into an older Working copy. Any Working copy is still preserved at the top of revision history and can be opened explicitly. A new Discard Working copy action lets you remove obsolete human work after confirmation and immediately return to the latest numbered revision.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved #396 Working-copy and navigable revision-history mini-epic is complete and should close. No owner action is required; the finished workflow is available in the live Lab. Future revision/collaboration changes belong to later evidence-driven UI/UX work rather than an automatic successor."
+    "text": "The bounded #409 revision re-entry/discard correction is complete. The living #273 UI/UX lane remains evidence-driven, with no automatic successor and no owner action required."
   },
   "technical_evidence": [
-    "A rollback-only production database scenario verified that a Working copy can remain based on an older retained revision while AI advances the head, then crystallize as the next chronological revision with the older base provenance preserved.",
-    "The same rollback scenario verified that a Professor can copy an older retained student revision after the student head advances, with copied artifacts, description and immutable provenance matching the requested retained revision exactly.",
-    "The copy RPC keeps its existing current-source authorization boundary: public visibility, explicit read-only share, or Professor supervision of a student Experiment.",
-    "Working-copy autosave now preserves title/description from the selected historical base rather than silently borrowing metadata from a newer head.",
-    "Human revision attribution is Mine for the signed-in account and Human for another person; AI attribution can still identify the authorized AI client.",
-    "The revision dialog exposes aria-expanded/aria-labelledby state and returns focus to the revision launcher when closed; mobile revision/history controls use deliberate touch targets.",
-    "Visible revision metadata uses Working copy / Revision Rn language rather than registry jargon.",
-    "No CI/CD, deployment, polling, retry, timeout, scheduling, connector-tool surface, scientific runtime, or project-development workflow rule changed.",
-    "The Experiment finder now explicitly keeps its collection-filter container hidden from primary navigation, matching the established responsive UX contract instead of depending on surrounding UI timing.",
-    "The Experiment finder explicitly unhides collection filters only while its dialog is open and re-hides them on every dialog close path, completing the secondary-navigation boundary verified by the responsive production smoke."
+    "loadRemoteExperiment preserves any owner Working copy in memory/history but always selects and applies the current numbered Experiment head on re-entry.",
+    "Working copy remains explicitly selectable through the existing revision-history entry and its base-revision provenance is unchanged.",
+    "Discard Working copy requires confirmation, waits for any pointer-boundary autosave already in flight, deletes only the current owner's experiment_working_copies row, and reloads the newest numbered revision.",
+    "The existing owner-only Working-copy delete RLS policy remains authoritative; no database migration or authorization broadening is introduced.",
+    "Focused #409 regression tests lock the latest-revision re-entry default, Working-copy recoverability, discard visibility, owner scoping, and latest-revision landing behavior.",
+    "No scientific/runtime semantics, connector contract, CI/CD, polling, retry, timeout, scheduling, or project-development workflow rule changed."
   ],
-  "close_issue": 399
+  "close_issue": 409
 }
