@@ -1151,17 +1151,19 @@ function profileForHumanOwner(ownerId) {
     ?? null;
 }
 
-function revisionActor(experiment) {
-  if (experiment.updated_by_actor === "human") {
-    const owner = profileForHumanOwner(experiment.owner_id);
-    if (!owner?.display_name) return "Human";
+function revisionActor(revision) {
+  const actor = revision.created_by_actor ?? revision.updated_by_actor;
+  if (actor === "human") {
+    const humanId = revision.created_by_user ?? revision.owner_id;
+    const owner = profileForHumanOwner(humanId);
+    if (!owner?.display_name) return humanId === user?.id ? "Mine" : "Human";
     const role = roleLabel(owner.role);
-    return role ? `${owner.display_name} (${role})` : owner.display_name;
+    return role ? owner.display_name + " (" + role + ")" : owner.display_name;
   }
-  if (experiment.updated_by_actor !== "ai") return experiment.updated_by_actor || "";
-  const client = experiment.updated_by_ai_client;
+  if (actor !== "ai") return actor || "";
+  const client = revision.created_by_ai_client ?? revision.updated_by_ai_client;
   if (!client) return "AI";
-  return AI_CLIENT_LABELS[client] ?? `AI · ${client}`;
+  return AI_CLIENT_LABELS[client] ?? "AI · " + client;
 }
 
 function filterButton(label, value) {
