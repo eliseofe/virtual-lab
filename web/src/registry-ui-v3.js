@@ -596,6 +596,7 @@ function buildBrowser() {
   const filters = document.createElement("nav");
   filters.className = "experiment-browser-filters";
   filters.setAttribute("aria-label", "Experiment collections");
+  filters.hidden = true;
   const content = document.createElement("div");
   content.className = "experiment-browser-content";
 
