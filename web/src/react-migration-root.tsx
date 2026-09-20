@@ -149,6 +149,7 @@ function ApplicationChrome() {
         <Stack gap="xs">
           <Text size="xs" c="dimmed"><strong>Eliseo Ferrante</strong> · Swarm robotics</Text>
           <WorkspaceNav closeMobile={() => setMobileOpen(false)} />
+          <Button variant="light" color="gray" onClick={() => { proxyClick('[data-vlab-nav="help"]'); setMobileOpen(false); }} data-vlab-nav="help-mobile">Help</Button>
           <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile" {...accountA11y}>Account</Button>
         </Stack>
       </Drawer>
