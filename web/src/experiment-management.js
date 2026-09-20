@@ -133,7 +133,27 @@ function installStyles() {
     .experiment-revision-workflow[hidden] { display: none !important; }
     .experiment-task-revisions:has(.experiment-revision-workflow[hidden]) { display: none; }
     .experiment-management {
-      gap: 10px;
+      gap: 8px;
+    }
+    .experiment-management-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+      grid-auto-rows: 44px;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .experiment-management-actions button {
+      width: 100%;
+      height: 44px;
+      min-height: 44px !important;
+      padding: 8px 10px !important;
+      white-space: nowrap;
+    }
+    .experiment-management-slot .registry-save-actions:empty {
+      display: none !important;
+    }
+    .experiment-management-slot .registry-move-row {
+      grid-template-columns: minmax(0, 1fr);
     }
     .experiment-management[hidden] { display: none !important; }
     .experiment-management-status {
@@ -220,6 +240,7 @@ function installStyles() {
       .experiment-management-slot .registry-save-actions,
       .experiment-management-slot .registry-new-actions,
       .experiment-professor-actions { grid-template-columns: 1fr !important; }
+      .experiment-management-actions { grid-template-columns: 1fr 1fr; }
       .experiment-professor-groups { grid-template-columns: 1fr; }
       .experiment-task-revisions,
       .experiment-management,
@@ -286,12 +307,30 @@ function buildManagementRegion() {
   const region = document.createElement("section");
   region.className = "experiment-task-card experiment-management";
   region.setAttribute("aria-label", "Save and share Experiment");
-  region.append(taskHeading("Save & share", "Persistence, copies and collaboration"));
+  region.append(taskHeading("Save & share", "Save, copy and share"));
 
   const status = document.createElement("p");
   status.className = "experiment-management-status";
   status.setAttribute("role", "status");
   status.setAttribute("aria-live", "polite");
+
+  const actions = document.createElement("div");
+  actions.className = "experiment-management-actions";
+
+  const saveActions = document.querySelector(".registry-save-actions");
+  const save = saveActions?.querySelector(".primary");
+  const saveAsNew = saveActions?.querySelector("button:not(.primary)");
+  const moveRow = document.querySelector(".registry-move-row");
+  const move = moveRow?.querySelector("button");
+  const shareOpen = document.querySelector(".registry-share-row > button");
+  if (!(save instanceof HTMLButtonElement)
+    || !(saveAsNew instanceof HTMLButtonElement)
+    || !(move instanceof HTMLButtonElement)
+    || !(shareOpen instanceof HTMLButtonElement)) {
+    throw new Error("Save & share action UI mismatch.");
+  }
+  shareOpen.textContent = "Share…";
+  actions.append(save, saveAsNew, move, shareOpen);
 
   const slot = document.createElement("div");
   slot.className = "experiment-management-slot";
@@ -302,8 +341,8 @@ function buildManagementRegion() {
   signIn.textContent = "Sign in to save";
   signIn.addEventListener("click", () => accountButton.click());
 
-  region.append(status, slot, signIn);
-  return { region, status, slot, signIn };
+  region.append(status, actions, slot, signIn);
+  return { region, status, actions, slot, signIn, move, moveRow };
 }
 
 function buildProfessorSection() {
@@ -373,6 +412,7 @@ let sourceMessageObserver = null;
 let authObserver = null;
 let currentObserver = null;
 let professorObserver = null;
+let moveObserver = null;
 
 function signedIn() {
   const signOut = document.querySelector(".registry-sign-out");
@@ -446,6 +486,10 @@ function syncSignedOutState() {
   mirrorOperationalMessage();
 }
 
+function syncManagementActions() {
+  management.move.hidden = management.moveRow.hidden;
+}
+
 function syncProfessorSection() {
   const available = !professorButton.hidden;
   professorSection.region.hidden = !available;
@@ -499,12 +543,21 @@ function attachObservers() {
       subtree: true,
     });
   }
+
+  if (!moveObserver) {
+    moveObserver = new MutationObserver(syncManagementActions);
+    moveObserver.observe(management.moveRow, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
+  }
 }
 
 function sync() {
   movePersistenceControls();
   simplifyIdentity();
   syncSignedOutState();
+  syncManagementActions();
   syncProfessorSection();
   attachObservers();
 }
