@@ -12,11 +12,18 @@ async function evaluate(send, expression) {
 async function waitReady(send) {
   let latest = null;
   for (let attempt = 0; attempt < 160; attempt += 1) {
-    latest = await evaluate(send, `JSON.stringify({
-      state: document.querySelector('#worker-status')?.dataset.state ?? null,
-      text: document.querySelector('#worker-status')?.textContent ?? null,
-      hardened: document.documentElement?.dataset.vlabUxHardened ?? null
-    })`);
+    try {
+      latest = await evaluate(send, `JSON.stringify({
+        state: document.querySelector('#worker-status')?.dataset.state ?? null,
+        text: document.querySelector('#worker-status')?.textContent ?? null,
+        hardened: document.documentElement?.dataset.vlabUxHardened ?? null
+      })`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("Inspected target navigated or closed")) throw error;
+      await sleep(100);
+      continue;
+    }
     const parsed = latest ? JSON.parse(latest) : null;
     if (parsed?.state === "ready" && parsed?.hardened === "true") return parsed;
     if (parsed?.state === "error") throw new Error(`browser reported startup error: ${latest}`);
