@@ -29,11 +29,11 @@ The aggregation case exposed both capability-flow defects and a scientific-conte
 
 **#425 — Refactoring and technical-debt reduction** is now a **living / ongoing maintenance domain**. It is currently dormant and has no authorized child; it exists as the durable home for evidence-driven structural cleanup rather than as permission for cleanup churn.
 
-The living **#273 — UI/UX refinement** lane is active for design recovery. The owner rejected the implementation-first #417/#418/#419 interpretation; those tickets are superseded. The current sequence is: #423 restores the exact pre-#417 production UI, then #424 runs Product Design in Work against the recovered live Lab and the guarded owner feedback. No implementation ticket will be derived until the owner accepts a design direction.
+The living **#273 — UI/UX refinement** lane is active for implementation of the accepted Product Design direction. Recovery #423 is complete; Product Design #424 produced three directions; #428 froze the final design as a **task-based Experiment management panel** with compact placement for frequent actions. **#429** is the current implementation ticket: simplify the global ribbon and build the shared Experiment control panel. Its known successor is **#430**, which integrates the final Professor-only Showcase and Capability requests section and completes this activation.
 
 ## Immediate frontier
 
-1. **#273 UI/UX is active only for recovery/design.** #423 restores the exact pre-#417 production UI. Its known successor is #424 Product Design in Work; implementation waits for owner acceptance of that design.
+1. **#273 UI/UX is actively implementing the accepted design.** #429 is current: global ribbon + shared task-based Experiment control panel. If production-green, known successor #430 adds the final Professor-only integration and completes this activation.
 2. **#58 capability-flow remains operationally active.** The heterogeneous-state request `2616dbb5-2134-417f-aebb-2e9e4ea0dd9c` is implemented through #304. The separate target-observation request `0971db0e-015a-4f1f-b640-8cc6b428fdb7` remains requested and unavailable. #371 has not restarted.
 3. **#301 Security** is a living maintenance domain; #302 remains queued and not started.
 4. **#425 Refactoring** is a living maintenance domain and currently dormant with no authorized child.
