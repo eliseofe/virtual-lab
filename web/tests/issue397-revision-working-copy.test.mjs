@@ -66,10 +66,11 @@ test("#397 Save Revision crystallizes only after Working-copy autosave", () => {
 
 test("#397 durable Working copy coexists with a newly arrived AI head", () => {
   assert.match(registry, /if \(fresh\.revision > previousRemote\.revision\)/);
-  assert.match(registry, /if \(currentWorkingCopy\)/);
   assert.match(registry, /currentRemote = fresh/);
-  assert.match(registry, /Working copy based on revision \$\{currentWorkingCopy\.base_revision\} is preserved/);
-  assert.match(registry, /currentRemote\.revision > currentWorkingCopy\.base_revision/);
+  assert.match(registry, /await loadRevisionHistory\(\)/);
+  assert.match(registry, /const protectedWorkingCopy = Boolean\(owned && currentWorkingCopy && viewingNumbered\)/);
+  assert.match(registry, /currentRemote\.revision > referenceRevision/);
+  assert.match(registry, /Your current view was not changed/);
 });
 
 test("#397 warns on navigation loss only for edits not yet durably autosaved", () => {
