@@ -958,7 +958,8 @@ mod tests {
     #[test]
     fn initial_state_json_is_validated() {
         let parsed = parse_initial_state(r#"[{"x":1.0,"y":2.0,"heading":0.5}]"#).unwrap();
-        assert_eq!(parsed.state[0].position, Vec2::new(1.0, 2.0));
+        assert_eq!(parsed.initialization.state[0].position, Vec2::new(1.0, 2.0));
+        assert!(parsed.controller_private_state[0].is_empty());
         assert!(parse_initial_state("[]").is_err());
     }
 }
