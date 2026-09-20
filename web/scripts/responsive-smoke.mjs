@@ -97,7 +97,8 @@ async function structure(send) {
       },
       tabHeights: authoringTabs.map((tab) => Math.round(tab.getBoundingClientRect().height)),
       ribbon: {
-        brandText: document.querySelector('.vlab-react-brand')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+        brandTitle: document.querySelector('.vlab-react-brand-title')?.textContent?.trim() ?? '',
+        brandByline: document.querySelector('.vlab-react-brand-byline')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
         globalLabels: [...document.querySelectorAll('[data-vlab-nav="simulation"], [data-vlab-nav="authoring"], [data-vlab-nav="help"], [data-vlab-nav="account"]')]
           .filter(visible)
           .map((element) => element.textContent?.trim() ?? ''),
@@ -140,7 +141,7 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
     throw new Error(`${label}: task-based Experiment management is incomplete: ${JSON.stringify(state.managementTasks)}`);
   }
   if (!touch) {
-    if (state.ribbon.brandText !== "Virtual Lab Eliseo Ferrante · Swarm robotics") {
+    if (state.ribbon.brandTitle !== "Virtual Lab" || state.ribbon.brandByline !== "Eliseo Ferrante · Swarm robotics") {
       throw new Error(`${label}: product identity regressed: ${JSON.stringify(state.ribbon)}`);
     }
     if (JSON.stringify(state.ribbon.globalLabels) !== JSON.stringify(["Simulation", "Authoring", "Help", "Account"])) {
