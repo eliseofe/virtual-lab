@@ -596,6 +596,7 @@ function buildBrowser() {
   const filters = document.createElement("nav");
   filters.className = "experiment-browser-filters";
   filters.setAttribute("aria-label", "Experiment collections");
+  filters.hidden = true;
   const content = document.createElement("div");
   content.className = "experiment-browser-content";
 
@@ -2052,6 +2053,7 @@ function openBrowser() {
   browserCollection = "all";
   browserSearch = "";
   browser.search.value = "";
+  browser.filters.hidden = false;
   renderBrowser();
   browser.dialog.showModal();
   browser.search.focus({ preventScroll: true });
@@ -2110,6 +2112,9 @@ experimentSelect.addEventListener("change", () => run(async () => {
 }));
 
 browser.close.addEventListener("click", () => browser.dialog.close());
+browser.dialog.addEventListener("close", () => {
+  browser.filters.hidden = true;
+});
 browser.refresh.addEventListener("click", () => run(refreshRegistry));
 browser.builtinTab.addEventListener("click", () => {
   browserSource = "builtin";
