@@ -16,7 +16,8 @@
     "Human revision attribution is Mine for the signed-in account and Human for another person; AI attribution can still identify the authorized AI client.",
     "The revision dialog exposes aria-expanded/aria-labelledby state and returns focus to the revision launcher when closed; mobile revision/history controls use deliberate touch targets.",
     "Visible revision metadata uses Working copy / Revision Rn language rather than registry jargon.",
-    "No CI/CD, deployment, polling, retry, timeout, scheduling, connector-tool surface, scientific runtime, or project-development workflow rule changed."
+    "No CI/CD, deployment, polling, retry, timeout, scheduling, connector-tool surface, scientific runtime, or project-development workflow rule changed.",
+    "The Experiment finder keeps collection filters hidden outside the modal finder and exposes them only while that dialog is open, preserving collection organization as secondary navigation on mobile."
   ],
   "close_issue": 399
 }
