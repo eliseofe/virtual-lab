@@ -60,9 +60,10 @@ test("#299 leaves authorization semantics outside the UI restructuring", () => {
   assert.doesNotMatch(supervisedLoader, /\.(insert|update|delete)\(/);
 });
 
-test("#299 remains complete while the living #273 lane can host a later bounded pass", () => {
-  assert.match(status, /#273 UI\/UX[^\n]*living parent lane for #396/i);
-  assert.match(status, /#301 — Virtual Lab security, identity and authorization/);
+test("#299 remains complete while the living #273 lane can host later design work", () => {
+  assert.match(status, /#273 UI\/UX[^\n]*active only for recovery\/design/i);
+  assert.match(status, /#301 Security[^\n]*living maintenance domain/i);
   assert.match(status, /#302/);
   assert.match(roadmap, /#301 Security \/ identity \/ authorization/);
+  assert.match(roadmap, /#425 Refactoring \/ technical-debt reduction/);
 });
