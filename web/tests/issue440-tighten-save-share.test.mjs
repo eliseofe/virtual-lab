@@ -4,9 +4,9 @@ import test from "node:test";
 
 const management = await readFile(new URL("../src/experiment-management.js", import.meta.url), "utf8");
 
-test("#440 shortens the Save & share subtitle", () => {
-  assert.match(management, /taskHeading\("Save & share", "Save, copy and share"\)/);
-  assert.doesNotMatch(management, /Persistence, copies and collaboration/);
+test("#440 keeps Save & share compact after the later prose-removal pass", () => {
+  assert.match(management, /taskHeading\("Save & share"\)/);
+  assert.doesNotMatch(management, /Persistence, copies and collaboration|Save, copy and share/);
 });
 
 test("#440 consolidates visible Save & share actions into one equal action bar", () => {
