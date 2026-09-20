@@ -29,11 +29,11 @@ The aggregation case exposed both capability-flow defects and a scientific-conte
 
 **#425 — Refactoring and technical-debt reduction** is now a **living / ongoing maintenance domain**. It is currently dormant and has no authorized child; it exists as the durable home for evidence-driven structural cleanup rather than as permission for cleanup churn.
 
-The living **#273 — UI/UX refinement** lane is active for implementation of the accepted Product Design direction. Recovery #423 is complete; Product Design #424 produced three directions; #428 froze the final design as a **task-based Experiment management panel** with compact placement for frequent actions. **#429** is the current implementation ticket: simplify the global ribbon and build the shared Experiment control panel. Its known successor is **#430**, which integrates the final Professor-only Showcase and Capability requests section and completes this activation.
+The living **#273 — UI/UX refinement** lane has completed the current Product Design activation through #423–#430. The accepted result is a focused global ribbon plus one task-based Experiment Control panel. Shared Experiment actions are grouped around Current Experiment, Revisions, and Save & share; the Professor-only **Research curation** section contains Showcase publication/browsing and scientific Capability requests. Simulation/Arena and Experiment Source/Authoring remain otherwise unchanged. #273 now returns to **dormant / living** status for future evidence-driven UI/UX work.
 
 ## Immediate frontier
 
-1. **#273 UI/UX is actively implementing the accepted design.** #429 is current: global ribbon + shared task-based Experiment control panel. If production-green, known successor #430 adds the final Professor-only integration and completes this activation.
+1. **#273 UI/UX is dormant / living after the completed task-based Control-panel activation.** No UI/UX child is currently executable; future work should be triggered by concrete use evidence rather than an automatic redesign successor.
 2. **#58 capability-flow remains operationally active.** The heterogeneous-state request `2616dbb5-2134-417f-aebb-2e9e4ea0dd9c` is implemented through #304. The separate target-observation request `0971db0e-015a-4f1f-b640-8cc6b428fdb7` remains requested and unavailable. #371 has not restarted.
 3. **#301 Security** is a living maintenance domain; #302 remains queued and not started.
 4. **#425 Refactoring** is a living maintenance domain and currently dormant with no authorized child.
