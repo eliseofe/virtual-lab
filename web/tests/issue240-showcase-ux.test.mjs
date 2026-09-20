@@ -27,11 +27,13 @@ test("#240 Showcase follows the relocated #208 save state instead of the old acc
   assert.doesNotMatch(showcase, /accountPanel\.querySelector\("\.registry-save-state"\)/);
 });
 
-test("#240 curation stays inside Showcase instead of being buried in Account or Professor panels", () => {
-  assert.match(showcase, /shell\.append\(head, curation, message, list\)/);
-  assert.doesNotMatch(showcase, /accountPanel\.append\(curation\)/);
-  assert.match(placement, /showcase-shell/);
-  assert.match(placement, /insertBefore\(curation, message\)/);
+test("#240 curation stays out of Account and Professor administration while remaining tied to Showcase publication", () => {
+  assert.match(showcase, /shell\.append\(head, message, list\)/);
+  assert.match(showcase, /promote\.className = "primary showcase-promote-current"/);
+  assert.match(showcase, /currentExperimentActions\.append\(promote\)/);
+  assert.doesNotMatch(showcase, /accountPanel\.append\(promote\)/);
+  assert.doesNotMatch(showcase, /Professor curation/);
+  assert.doesNotMatch(placement, /insertBefore\(curation, message\)|placeShowcaseCuration/);
 });
 
 test("#240 Showcase mobile actions meet the 44px touch-target floor", () => {
