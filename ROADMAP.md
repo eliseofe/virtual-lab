@@ -21,9 +21,9 @@ These are baseline architecture, not future roadmap items.
 ## Roadmap state classification
 
 - **Completed baseline:** #45 Access / sharing / curation / Showcase — the approved research-supervision collaboration scope is complete through Professor oversight, copy-to-own-workspace, explicit read-only sharing/revocation and separate Showcase curation.
-- **Living / ongoing domains:** #56 Simulator performance, #65 World/environment capabilities, #273 UI/UX refinement, **#58 Professor capability-request queue/lifecycle**. #58 is operationally living even when its infrastructure is complete because new research-AI/Professor extension requests can arrive at any time. #348 intentionally resets the historical aggregation queue to a clean baseline with no nonterminal legacy requests. RNG/controller stochasticity and heterogeneous agent initialization/state were not implemented by that reset; fresh scientific acceptance may rediscover them through the new typed workflow.
+- **Living / ongoing domains:** #56 Simulator performance, #65 World/environment capabilities, #273 UI/UX refinement, **#58 Professor capability-request queue/lifecycle**, **#301 Security / identity / authorization**, and **#425 Refactoring / technical-debt reduction**. #58 is operationally living even when its infrastructure is complete because new research-AI/Professor extension requests can arrive at any time. #301 and #425 may be dormant when no bounded child is active; their existence does not authorize work automatically.
 - **Foundation built, waiting for a use case:** #124 Artifact capability registry / lifecycle hooks — the architectural seam exists; continue only when a concrete optional executable-artifact use case requires runtime dispatch. #285 Research submission snapshots — preservation infrastructure exists, but no distinct research use case currently justifies a submission workflow; do not implement one until the owner identifies a non-overlapping need.
-- **Not started major lanes:** #3 Studies, #202 Code authoring ergonomics, #6 Study results → AI handoff, #119 Research Notes / Research Documents, #301 Security / identity / authorization — initial audit #302 is defined and queued, but no audit execution or remediation policy has started.
+- **Not started major lanes:** #3 Studies, #202 Code authoring ergonomics, #6 Study results → AI handoff, #119 Research Notes / Research Documents.
 
 The AI maintains this classification as the project evolves: every major epic belongs in exactly one category, and the category should change when its real execution state changes. When creating or reclassifying an epic, state the classification to the owner so it is visible and can be corrected; routine classification maintenance does not require owner approval.
 
@@ -33,12 +33,11 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **Keep UI/UX evidence-driven under living #273.** The #396/#409 revision workflow baseline is complete. The current bounded #413 pass simplifies the upper Experiment/Professor/Showcase management surface while leaving Arena and Experiment Source unchanged. No automatic successor is defined.
+1. **Recover UI/UX before redesign.** #423 restores the exact pre-#417 production UI. The known successor #424 is a Product Design/Work pass grounded in the live recovered Lab and the guarded owner feedback. No implementation decomposition occurs before owner acceptance of that design.
 2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
 3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
-4. Continue real student and owner use and feed concrete UX evidence into #273 rather than reopening a broad redesign.
-5. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
-6. Do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
+4. Keep #301 Security and #425 Refactoring as living maintenance domains; both are dormant unless a bounded child is explicitly selected.
+5. Do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
 
 ## Owner-gated major lane: Studies
 
