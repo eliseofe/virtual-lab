@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **#273 UI/UX is dormant / living.** The #423–#430 activation implemented the accepted task-based Control-panel design; #437 normalized proportions, #440 tightened Save & share, and #444 removed card prose, compacted revision display and cleaned stale local UI glue found by a bounded refactor audit. No automatic UI/UX successor is active; future children require concrete product-use evidence. #425 remains the dormant home for any future broader refactor audit, which is not activated by #444.
+1. **#273 UI/UX is dormant / living.** The #423–#430 activation implemented the task-based Control-panel design; #437 normalized proportions, #440 tightened Save & share, #444 removed card prose and stale local UI glue, and #446 corrected the remaining live-use imbalance by suppressing routine Save & share prose, grouping Current Experiment actions, and replacing fixed balancing dimensions with intrinsic action/card layouts. No automatic UI/UX successor is active; future children require concrete product-use evidence. #425 remains the dormant home for any future broader refactor audit.
 2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
 3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
 4. Keep #301 Security and #425 Refactoring as living maintenance domains; both are dormant unless a bounded child is explicitly selected.
