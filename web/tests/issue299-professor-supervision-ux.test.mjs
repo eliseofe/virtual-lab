@@ -34,7 +34,7 @@ test("#299 preserves supervised Experiment continuity across reload and refresh"
   assert.match(registry, /loadSupervisedExperimentList\(\)/);
 });
 
-test("#299 removes the duplicate supervision modal and separates Account from Professor administration", () => {
+test("#299 removes Professor administration from global navigation while preserving the inbox authority", () => {
   assert.doesNotMatch(runtimeSpeed, /professor-supervision/);
   assert.match(runtimeSpeed, /professor-inbox/);
   assert.match(professorInbox, /Extension requests/);
@@ -43,10 +43,7 @@ test("#299 removes the duplicate supervision modal and separates Account from Pr
   assert.match(workspaceShell, /professorButton\.addEventListener\("click", openProfessorInbox\)/);
   assert.match(workspaceShell, /accountPanel\.style\.display = ""/);
   assert.match(workspaceShell, /professorPanel\.style\.display = "none"/);
-  assert.doesNotMatch(workspaceShell, /openUtilities\("professor"\)|Professor tools/);
-  assert.match(reactChrome, /proxyClick\('#professor-menu'\)/);
-  assert.match(reactChrome, /data-vlab-nav="professor"/);
-  assert.match(reactChrome, /'aria-controls': 'professor-extension-inbox'/);
+  assert.doesNotMatch(reactChrome, /data-vlab-nav="professor"|proxyClick\('#professor-menu'\)/);
   assert.match(reactChrome, /data-vlab-nav="account"/);
 });
 
@@ -60,8 +57,8 @@ test("#299 leaves authorization semantics outside the UI restructuring", () => {
   assert.doesNotMatch(supervisedLoader, /\.(insert|update|delete)\(/);
 });
 
-test("#299 remains complete while the living #273 lane can host later design work", () => {
-  assert.match(status, /#273 UI\/UX[^\n]*active only for recovery\/design/i);
+test("#299 remains complete while the living #273 lane can execute later UI work", () => {
+  assert.match(status, /#273 UI\/UX[^\n]*actively implementing the accepted design/i);
   assert.match(status, /#301 Security[^\n]*living maintenance domain/i);
   assert.match(status, /#302/);
   assert.match(roadmap, /#301 Security \/ identity \/ authorization/);

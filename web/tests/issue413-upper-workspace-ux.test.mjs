@@ -19,15 +19,13 @@ test("#413 keeps Experiment identity singular and uses one library entry", () =>
   assert.match(showcase, /currentExperimentActions\.append\(browseExperiment\)/);
 });
 
-test("#413 makes Professor navigation one step to Extension Requests", () => {
+test("#413 preserves the one-step Professor inbox while global chrome no longer owns it", () => {
   assert.match(inbox, /dialog\.id = "professor-extension-inbox"/);
   assert.match(shell, /function openProfessorInbox\(\)/);
   assert.match(shell, /querySelector\("\.professor-inbox-open"\)/);
   assert.match(shell, /professorButton\.addEventListener\("click", openProfessorInbox\)/);
   assert.doesNotMatch(shell, /openUtilities\("professor"\)/);
-  assert.match(react, /const professorA11y = \{[\s\S]*'aria-controls': 'professor-extension-inbox'/);
-  assert.match(react, /data-vlab-nav="professor" \{\.\.\.professorA11y\}/);
-  assert.match(react, /data-vlab-nav="professor-mobile" \{\.\.\.professorA11y\}/);
+  assert.doesNotMatch(react, /data-vlab-nav="professor"|data-vlab-nav="professor-mobile"/);
   assert.doesNotMatch(index, /Account &amp; Professor/);
 });
 

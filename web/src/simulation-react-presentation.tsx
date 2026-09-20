@@ -16,7 +16,55 @@ function stateColor(state: string) {
   return state === 'Running' ? 'teal' : 'gray';
 }
 
+type SimulatorReadiness = {
+  state: string;
+  text: string;
+};
+
+function readSimulatorReadiness(): SimulatorReadiness {
+  const worker = document.querySelector<HTMLElement>('#worker-status');
+  return {
+    state: worker?.dataset.state || 'loading',
+    text: worker?.textContent?.trim() || 'Starting simulator…',
+  };
+}
+
+function readinessColor(state: string) {
+  if (state === 'ready') return 'teal';
+  if (state === 'error') return 'red';
+  return 'cyan';
+}
+
+function readinessLabel(readiness: SimulatorReadiness) {
+  if (readiness.state === 'ready') return 'Simulator ready';
+  if (readiness.state === 'error') return 'Simulator problem';
+  return 'Simulator starting';
+}
+
+function useSimulatorReadiness() {
+  const [readiness, setReadiness] = useState<SimulatorReadiness>(() => readSimulatorReadiness());
+
+  useEffect(() => {
+    const worker = document.querySelector<HTMLElement>('#worker-status');
+    if (!worker) return;
+    const update = () => setReadiness(readSimulatorReadiness());
+    const observer = new MutationObserver(update);
+    observer.observe(worker, {
+      attributes: true,
+      attributeFilter: ['data-state'],
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    update();
+    return () => observer.disconnect();
+  }, []);
+
+  return readiness;
+}
+
 export function SimulationPresentation() {
+  const readiness = useSimulatorReadiness();
   const [snapshot, setSnapshot] = useState<SimulationPresentationSnapshot | null>(() => readSimulationPresentation());
   const sync = () => setSnapshot(readSimulationPresentation());
   const syncSoon = () => queueMicrotask(sync);
@@ -48,6 +96,15 @@ export function SimulationPresentation() {
             <Title order={2} size="h3">Arena</Title>
           </Box>
           <Group gap="xs" wrap="wrap">
+            <Badge
+              variant="light"
+              color={readinessColor(readiness.state)}
+              title={readiness.text}
+              aria-label={`Simulator status: ${readiness.text}`}
+              data-vlab-simulator-readiness
+            >
+              {readinessLabel(readiness)}
+            </Badge>
             <Badge variant="light" color={stateColor(snapshot.runState)} data-vlab-simulation-state>{snapshot.runState}</Badge>
             <Badge variant="outline" color="gray">Seed {snapshot.seed}</Badge>
           </Group>

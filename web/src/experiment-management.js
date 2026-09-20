@@ -1,15 +1,21 @@
 const experimentPanel = document.querySelector(".experiment-panel");
 const currentExperiment = document.querySelector(".experiment-current");
+const currentMain = currentExperiment?.querySelector(".experiment-current-main");
+const currentMeta = currentExperiment?.querySelector(".experiment-current-meta");
+const revisionWorkflow = currentExperiment?.querySelector(".experiment-revision-workflow");
 const experimentLabel = document.querySelector('label[for="experiment-select"]');
 const experimentSelect = document.querySelector("#experiment-select");
 const quickHint = document.querySelector(".experiment-quick-hint");
 const browseButton = document.querySelector(".experiment-browse");
 const accountButton = document.querySelector("#account-menu");
+const professorButton = document.querySelector("#professor-menu");
+const showcaseLauncher = document.querySelector(".showcase-launcher");
 const legacyPersistence = document.querySelector("#authoring-persistence");
 const legacyPersistenceSlot = document.querySelector("#authoring-persistence-slot");
 
-if (!experimentPanel || !currentExperiment || !experimentLabel || !experimentSelect || !browseButton
-  || !accountButton || !legacyPersistence || !legacyPersistenceSlot) {
+if (!experimentPanel || !currentExperiment || !currentMain || !currentMeta || !revisionWorkflow
+  || !experimentLabel || !experimentSelect || !browseButton || !accountButton
+  || !professorButton || !legacyPersistence || !legacyPersistenceSlot) {
   throw new Error("Experiment management UI mismatch.");
 }
 
@@ -18,11 +24,99 @@ function installStyles() {
   const style = document.createElement("style");
   style.dataset.vlabExperimentManagement = "";
   style.textContent = `
-    .experiment-current { margin-bottom: 0 !important; padding-bottom: 0 !important; border-bottom: 0 !important; }
+    .experiment-control-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+      padding-bottom: 13px;
+      border-bottom: 1px solid #e2e8ea;
+    }
+    .experiment-control-heading { display: grid; gap: 2px; min-width: 0; }
+    .experiment-control-kicker {
+      margin: 0;
+      color: #17758d;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .experiment-control-title { margin: 0; color: #172127; font-size: 18px; line-height: 1.2; }
+    .experiment-control-help {
+      margin: 0;
+      max-width: 44rem;
+      color: #66777e;
+      font-size: 11.5px;
+      line-height: 1.45;
+    }
+    .experiment-control-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+      gap: 12px;
+    }
+    .experiment-task-card {
+      min-width: 0;
+      padding: 13px 14px;
+      border: 1px solid #dfe7ea;
+      border-radius: 13px;
+      background: #fbfcfc;
+    }
+    .experiment-task-current {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 9px;
+      background: #fff;
+      border-color: #d3e0e4;
+    }
+    .experiment-task-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .experiment-task-heading strong {
+      color: #344a54;
+      font-size: 11px;
+      letter-spacing: .055em;
+      text-transform: uppercase;
+    }
+    .experiment-task-heading span {
+      color: #7a898f;
+      font-size: 10.5px;
+      line-height: 1.35;
+      text-align: right;
+    }
+    .experiment-current { margin: 0 !important; padding: 0 !important; border: 0 !important; }
+    .experiment-current-main { align-items: center !important; }
+    .experiment-current-title { font-size: 15px !important; }
+    .experiment-current-meta { gap: 7px !important; }
     .experiment-location[data-management-redundant="true"] { display: none !important; }
-    .experiment-management { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5ebee; }
+    .experiment-origin, .experiment-location { min-height: 26px !important; }
+    .experiment-browse { min-height: 36px; padding: 6px 11px; white-space: nowrap; }
+    .experiment-quick-hint { display: none !important; }
+    .experiment-revision-workflow {
+      display: grid;
+      gap: 8px;
+      padding: 0 !important;
+      border: 0 !important;
+      background: transparent !important;
+    }
+    .experiment-revision-workflow[hidden] { display: none !important; }
+    .experiment-task-revisions:has(.experiment-revision-workflow[hidden]) { display: none; }
+    .experiment-management {
+      display: grid;
+      gap: 8px;
+    }
     .experiment-management[hidden] { display: none !important; }
-    .experiment-management-status { margin: 0; min-height: 0; color: #64757c; font-size: 11.5px; line-height: 1.4; }
+    .experiment-management-status {
+      margin: 0;
+      min-height: 0;
+      color: #64757c;
+      font-size: 11.5px;
+      line-height: 1.4;
+    }
     .experiment-management-status:empty { display: none; }
     .experiment-management-status[data-state="error"] { color: #9e2d29; }
     .experiment-management-status[data-state="success"] { color: #246240; }
@@ -32,26 +126,108 @@ function installStyles() {
     .experiment-management-slot .registry-note { margin: 0; }
     .experiment-sign-in-save { justify-self: start; min-height: 36px; }
     .experiment-current-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+    .experiment-professor-compat {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #f8f7fb;
+      border-color: #e2ddea;
+    }
+    .experiment-professor-compat[hidden] { display: none !important; }
+    .experiment-professor-copy { display: grid; gap: 2px; }
+    .experiment-professor-copy strong { color: #554a61; font-size: 11px; letter-spacing: .055em; text-transform: uppercase; }
+    .experiment-professor-copy span { color: #786e82; font-size: 10.5px; }
+    .experiment-professor-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .experiment-professor-actions button { min-height: 36px; padding: 6px 11px; }
+    .experiment-organize {
+      min-height: 26px !important;
+      padding: 3px 9px !important;
+      border-radius: 999px !important;
+      font-size: 10.5px !important;
+      font-weight: 700 !important;
+    }
     @media (max-width: 680px) {
-      .experiment-current-main { display: grid; grid-template-columns: minmax(0, 1fr); }
+      .experiment-control-head { align-items: stretch; flex-direction: column; gap: 6px; }
+      .experiment-control-grid { grid-template-columns: 1fr; }
+      .experiment-task-current, .experiment-professor-compat { grid-column: auto; }
+      .experiment-current-main { display: grid !important; grid-template-columns: minmax(0, 1fr); align-items: stretch !important; }
       .experiment-browse,
       .experiment-sign-in-save,
-      .experiment-management-slot .registry-save-actions button { min-height: 44px; }
+      .experiment-management-slot .registry-save-actions button,
+      .experiment-management-slot .registry-new-actions button,
+      .experiment-professor-actions button { min-height: 44px; }
       .experiment-browse,
       .experiment-sign-in-save { width: 100%; }
       .experiment-current-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
-      .experiment-management-slot .registry-save-actions { display: grid; grid-template-columns: 1fr; }
+      .experiment-management-slot .registry-save-actions,
       .experiment-management-slot .registry-new-actions { display: grid; grid-template-columns: 1fr; }
-      .experiment-management-slot .registry-new-actions button { min-height: 44px; }
+      .experiment-professor-compat { align-items: stretch; flex-direction: column; }
+      .experiment-professor-actions { display: grid; grid-template-columns: 1fr; }
+      .experiment-task-heading { align-items: flex-start; flex-direction: column; }
+      .experiment-task-heading span { text-align: left; }
     }
   `;
   document.head.append(style);
 }
 
+function taskHeading(title, help) {
+  const heading = document.createElement("div");
+  heading.className = "experiment-task-heading";
+  const label = document.createElement("strong");
+  label.textContent = title;
+  const description = document.createElement("span");
+  description.textContent = help;
+  heading.append(label, description);
+  return heading;
+}
+
+function buildControlPanel() {
+  const head = document.createElement("header");
+  head.className = "experiment-control-head";
+  const heading = document.createElement("div");
+  heading.className = "experiment-control-heading";
+  const kicker = document.createElement("p");
+  kicker.className = "experiment-control-kicker";
+  kicker.textContent = "Experiment";
+  const title = document.createElement("h2");
+  title.className = "experiment-control-title";
+  title.textContent = "Control panel";
+  const help = document.createElement("p");
+  help.className = "experiment-control-help";
+  help.textContent = "Open, revise, organize and share the current Experiment from one place.";
+  heading.append(kicker, title);
+  head.append(heading, help);
+
+  const grid = document.createElement("div");
+  grid.className = "experiment-control-grid";
+
+  currentExperiment.classList.add("experiment-task-card", "experiment-task-current");
+  currentExperiment.insertBefore(
+    taskHeading("Current Experiment", "Identity, access and organization"),
+    currentExperiment.firstChild,
+  );
+
+  const revisionTask = document.createElement("section");
+  revisionTask.className = "experiment-task-card experiment-task-revisions";
+  revisionTask.setAttribute("aria-label", "Experiment revisions");
+  revisionTask.append(
+    taskHeading("Revisions", "Working copy and numbered history"),
+    revisionWorkflow,
+  );
+
+  experimentPanel.prepend(head);
+  grid.append(currentExperiment, revisionTask);
+  experimentPanel.append(grid);
+  return { head, grid, revisionTask };
+}
+
 function buildManagementRegion() {
   const region = document.createElement("section");
-  region.className = "experiment-management";
-  region.setAttribute("aria-label", "Experiment save and management");
+  region.className = "experiment-task-card experiment-management";
+  region.setAttribute("aria-label", "Save and share Experiment");
+  region.append(taskHeading("Save & share", "Persistence, copies and collaboration"));
 
   const status = document.createElement("p");
   status.className = "experiment-management-status";
@@ -68,15 +244,51 @@ function buildManagementRegion() {
   signIn.addEventListener("click", () => accountButton.click());
 
   region.append(status, slot, signIn);
-  currentExperiment.insertAdjacentElement("afterend", region);
   return { region, status, slot, signIn };
 }
 
+function buildProfessorCompatibility() {
+  const region = document.createElement("section");
+  region.className = "experiment-task-card experiment-professor-compat";
+  region.hidden = true;
+  region.setAttribute("aria-label", "Professor tools");
+
+  const copy = document.createElement("div");
+  copy.className = "experiment-professor-copy";
+  const label = document.createElement("strong");
+  label.textContent = "Professor tools";
+  const note = document.createElement("span");
+  note.textContent = "Temporary bridge until the final Professor integration.";
+  copy.append(label, note);
+
+  const actions = document.createElement("div");
+  actions.className = "experiment-professor-actions";
+  const showcase = document.createElement("button");
+  showcase.type = "button";
+  showcase.textContent = "Showcase";
+  showcase.addEventListener("click", () => {
+    const launcher = document.querySelector(".showcase-launcher");
+    if (launcher instanceof HTMLButtonElement && !launcher.disabled) launcher.click();
+  });
+  const requests = document.createElement("button");
+  requests.type = "button";
+  requests.textContent = "Capability requests";
+  requests.addEventListener("click", () => professorButton.click());
+  actions.append(showcase, requests);
+  region.append(copy, actions);
+  return { region, showcase, requests };
+}
+
 installStyles();
+const control = buildControlPanel();
 const management = buildManagementRegion();
+const professorCompat = buildProfessorCompatibility();
+control.grid.append(management.region, professorCompat.region);
+
 let sourceMessageObserver = null;
 let authObserver = null;
 let currentObserver = null;
+let professorObserver = null;
 
 function signedIn() {
   const signOut = document.querySelector(".registry-sign-out");
@@ -120,19 +332,26 @@ function simplifyIdentity() {
   if (quickHint) quickHint.hidden = true;
   setText(browseButton, "Experiments");
 
+  const origin = document.querySelector(".experiment-origin");
   const location = document.querySelector(".experiment-location");
-  const locationText = location?.textContent?.trim();
+  const locationText = location?.textContent?.trim() || "";
   if (location) {
     const redundant = String(locationText === "Built-in" || locationText === "No collection");
     if (location.dataset.managementRedundant !== redundant) location.dataset.managementRedundant = redundant;
   }
 
-  const save = document.querySelector(".registry-save-actions .primary");
+  if (origin?.dataset.kind === "owned") setText(origin, "My Experiment");
+  else if (origin?.dataset.kind === "readonly" && locationText !== "Built-in") setText(origin, "Read-only");
+
+  const saveRevision = document.querySelector(".experiment-revision-actions .primary");
+  if (saveRevision) setText(saveRevision, "Save Revision");
+
   const saveAsNew = document.querySelector(".registry-save-actions button:not(.primary)");
-  setText(save, "Save");
-  if (locationText === "Student experiment") setText(saveAsNew, "Copy to my Experiments…");
-  else if (locationText === "Shared with me") setText(saveAsNew, "Copy to my Experiments…");
-  else setText(saveAsNew, "Save as new…");
+  if (locationText === "Student experiment" || locationText === "Shared with me") {
+    setText(saveAsNew, "Copy to my Experiments…");
+  } else {
+    setText(saveAsNew, "Save as new…");
+  }
 }
 
 function syncSignedOutState() {
@@ -141,6 +360,14 @@ function syncSignedOutState() {
   const note = management.slot.querySelector(".registry-note");
   if (note) note.hidden = !isSignedIn;
   mirrorOperationalMessage();
+}
+
+function syncProfessorBridge() {
+  const available = !professorButton.hidden;
+  professorCompat.region.hidden = !available;
+  professorCompat.requests.disabled = !available;
+  const launcher = document.querySelector(".showcase-launcher");
+  professorCompat.showcase.disabled = !(launcher instanceof HTMLButtonElement) || launcher.disabled;
 }
 
 function attachObservers() {
@@ -175,12 +402,24 @@ function attachObservers() {
       subtree: true,
     });
   }
+
+  if (!professorObserver) {
+    professorObserver = new MutationObserver(syncProfessorBridge);
+    professorObserver.observe(professorButton, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
 }
 
 function sync() {
   movePersistenceControls();
   simplifyIdentity();
   syncSignedOutState();
+  syncProfessorBridge();
   attachObservers();
 }
 

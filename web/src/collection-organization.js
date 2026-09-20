@@ -63,7 +63,7 @@ function buildOrganizer() {
   body.className = "collection-organizer-body";
   const intro = document.createElement("p");
   intro.className = "collection-organizer-intro";
-  intro.textContent = "Collections are optional organization. They never limit which experiments appear in Switch experiment or which experiments you can run.";
+  intro.textContent = "Collections are optional organization. They never limit which Experiments appear in your library or which Experiments you can run.";
 
   const assignment = document.createElement("section");
   assignment.className = "collection-organizer-section";
