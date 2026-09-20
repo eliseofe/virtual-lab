@@ -11,7 +11,15 @@ async function evaluate(send, expression) {
 
 async function waitReady(send) {
   for (let attempt = 0; attempt < 180; attempt += 1) {
-    const state = await evaluate(send, "document.querySelector('#worker-status')?.dataset.state ?? null");
+    let state;
+    try {
+      state = await evaluate(send, "document.querySelector('#worker-status')?.dataset.state ?? null");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("Inspected target navigated or closed")) throw error;
+      await sleep(100);
+      continue;
+    }
     if (state === "ready") return;
     if (state === "error") throw new Error("Browser reported simulator startup error");
     await sleep(100);
