@@ -1232,4 +1232,54 @@ mod tests {
         execute_intrinsic(Intrinsic::Motion, &mut stack);
     }
 
+    #[test]
+    fn heterogeneous_private_state_initialization_is_per_agent_and_reproducible() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Roles","entry":"step",
+          "parameters":{},"state":[{"name":"role","type":"scalar","initial":0.0}],
+          "body":[
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"self.role"},{"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, "{}");
+        let mut profiles = vec![BTreeMap::new(), BTreeMap::new(), BTreeMap::new()];
+        profiles[0].insert("role".to_owned(), 1.0);
+        profiles[1].insert("role".to_owned(), 2.0);
+        runtime.reset_with_private_state(3, &profiles).unwrap();
+
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+        };
+        assert_eq!(runtime.step(0, &observation).forward, 1.0);
+        assert_eq!(runtime.step(1, &observation).forward, 2.0);
+        assert_eq!(runtime.step(2, &observation).forward, 0.0);
+
+        runtime.reset_with_private_state(3, &profiles).unwrap();
+        assert_eq!(runtime.step(0, &observation).forward, 1.0);
+        assert_eq!(runtime.step(1, &observation).forward, 2.0);
+        assert_eq!(runtime.step(2, &observation).forward, 0.0);
+    }
+
+    #[test]
+    fn heterogeneous_private_state_rejects_undeclared_fields() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Roles","entry":"step",
+          "parameters":{},"state":[{"name":"role","type":"scalar","initial":0.0}],
+          "body":[
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"self.role"},{"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, "{}");
+        let mut profiles = vec![BTreeMap::new()];
+        profiles[0].insert("unknown".to_owned(), 1.0);
+        let error = runtime.reset_with_private_state(1, &profiles).unwrap_err();
+        assert!(error.contains("undeclared controller private state 'unknown'"));
+    }
+
 }
