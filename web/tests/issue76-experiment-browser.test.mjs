@@ -50,6 +50,9 @@ test("collections remain optional filters rather than navigation prerequisites",
   assert.match(source, /for \(const collection of collections\) browser\.filters\.append/);
   assert.match(source, /Collections organize only your own workspace/);
   assert.match(source, /if \(browserSearch\.trim\(\)\) browserCollection = "all"/);
+  assert.match(source, /filters\.hidden = true/);
+  assert.match(source, /browser\.filters\.hidden = false;[\s\S]*browser\.dialog\.showModal\(\)/);
+  assert.match(source, /browser\.dialog\.addEventListener\("close"[\s\S]*browser\.filters\.hidden = true/);
 });
 
 test("switching away from dirty work requires explicit discard confirmation", async () => {
