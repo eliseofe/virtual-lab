@@ -1,6 +1,6 @@
 import { compileConfig, numericParameters } from "./vendor/config-compiler.js";
 import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./vendor/environment-compiler.js";
-import { compileInitializer } from "./vendor/initializer-compiler.js";
+import { compileInitializer, validateInitializerControllerPrivateState } from "./vendor/initializer-compiler.js";
 import { compileController } from "./vendor/controller-compiler.js";
 import { compileMetrics, METRIC_MEASUREMENT_PHASE, METRICS_IR_SCHEMA, METRICS_LANGUAGE } from "./vendor/metrics-compiler.js";
 import {
@@ -342,6 +342,9 @@ export function validateExperimentSources({ config_source, initializer_source, c
     controller = compileController(controller_source, { parameters: parameterTypes });
     validateEnvironmentControllerPair(environment, controller);
   } catch (error) { diagnostics.push(errorDiagnostic("controller", error)); return invalid(diagnostics); }
+
+  try { validateInitializerControllerPrivateState(initializer, controller); }
+  catch (error) { diagnostics.push(errorDiagnostic("initializer", error)); return invalid(diagnostics); }
 
   let metrics;
   try { metrics = compileMetrics(metrics_source, { parameters: parameterTypes }); }
