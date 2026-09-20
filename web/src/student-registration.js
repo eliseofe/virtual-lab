@@ -31,11 +31,13 @@ function installStyles() {
   style.dataset.vlabStudentRegistration = "";
   style.textContent = `
     .registry-auth-intro { margin: 0 0 2px; color: #52656d; font-size: 12px; line-height: 1.45; }
+    .registry-signup-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .registry-auth input { width: 100%; }
     .registry-auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .registry-auth-actions > button { width: 100%; }
     .registry-auth-note { margin: 0; color: #78888e; font-size: 10.5px; line-height: 1.4; }
     @media (max-width: 460px) {
-      .registry-auth-actions { grid-template-columns: 1fr; }
+      .registry-signup-name-row, .registry-auth-actions { grid-template-columns: 1fr; }
       .registry-auth-actions > button { min-height: 44px; }
     }
   `;
@@ -48,6 +50,8 @@ function setMessage(text, state = "idle") {
 }
 
 function setBusy(busy) {
+  firstName.disabled = busy;
+  lastName.disabled = busy;
   email.disabled = busy;
   password.disabled = busy;
   signIn.disabled = busy;
@@ -58,6 +62,20 @@ const intro = document.createElement("p");
 intro.className = "registry-auth-intro";
 intro.textContent = "New to Virtual Lab? Create an account here. Already registered? Sign in.";
 
+const nameRow = document.createElement("div");
+nameRow.className = "registry-signup-name-row";
+const firstName = document.createElement("input");
+firstName.type = "text";
+firstName.autocomplete = "given-name";
+firstName.placeholder = "First name";
+firstName.setAttribute("aria-label", "First name");
+const lastName = document.createElement("input");
+lastName.type = "text";
+lastName.autocomplete = "family-name";
+lastName.placeholder = "Last name";
+lastName.setAttribute("aria-label", "Last name");
+nameRow.append(firstName, lastName);
+
 const actions = document.createElement("div");
 actions.className = "registry-auth-actions";
 const createAccount = document.createElement("button");
@@ -67,26 +85,38 @@ createAccount.textContent = "Create account";
 createAccount.setAttribute("data-vlab-create-account", "true");
 
 actions.append(signIn, createAccount);
-auth.prepend(intro);
+auth.prepend(intro, nameRow);
 auth.append(actions);
 
 const note = document.createElement("p");
 note.className = "registry-auth-note";
-note.textContent = "Accounts are for your private experiments. New accounts start with the Student role.";
+note.textContent = "Your name identifies your work in Virtual Lab. New accounts start with the Student role.";
 auth.append(note);
 
 async function signUp() {
+  const given = firstName.value.trim();
+  const family = lastName.value.trim();
   const value = email.value.trim();
   const secret = password.value;
-  if (!value || !secret) {
-    setMessage("Enter your email and a password first.", "error");
+  if (!given || !family || !value || !secret) {
+    setMessage("Enter first name, last name, email and password.", "error");
     return;
   }
 
   setBusy(true);
   setMessage("Creating your account…");
   try {
-    const { data, error } = await signupClient.auth.signUp({ email: value, password: secret });
+    const { data, error } = await signupClient.auth.signUp({
+      email: value,
+      password: secret,
+      options: {
+        data: {
+          first_name: given,
+          last_name: family,
+          display_name: `${given} ${family}`,
+        },
+      },
+    });
     if (error) throw error;
     password.value = "";
 
