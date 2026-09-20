@@ -182,9 +182,12 @@ function installStyles() {
       .registry-share-form { grid-template-columns: 1fr; }
       .registry-share-row button { min-height: 44px; }
       .experiment-revision-top { align-items: stretch; flex-direction: column; }
+      .experiment-revision-trigger { min-height: 44px; }
       .experiment-revision-actions { display: grid; grid-template-columns: 1fr 1fr; }
       .experiment-revision-actions button { min-height: 44px; }
-      .experiment-history-item { grid-template-columns: 1fr auto; }
+      .experiment-revision-actions button:only-child { grid-column: 1 / -1; }
+      .experiment-history-head button, .experiment-history-filter button { min-height: 44px; }
+      .experiment-history-item { grid-template-columns: 1fr auto; min-height: 60px; }
       .experiment-history-revision { grid-column: 1; }
       .experiment-history-copy { grid-column: 1; }
       .experiment-history-kind { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
@@ -309,6 +312,8 @@ function buildCurrentExperimentUi() {
   const revisionTrigger = document.createElement("button");
   revisionTrigger.className = "experiment-revision-trigger";
   revisionTrigger.setAttribute("aria-label", "Open revision history");
+  revisionTrigger.setAttribute("aria-haspopup", "dialog");
+  revisionTrigger.setAttribute("aria-expanded", "false");
   const revisionPrimary = document.createElement("strong");
   revisionPrimary.textContent = "Built-in";
   const revisionSecondary = document.createElement("span");
@@ -520,7 +525,9 @@ function buildRevisionHistory() {
   const head = document.createElement("div");
   head.className = "experiment-history-head";
   const heading = document.createElement("h2");
+  heading.id = "experiment-revision-history-title";
   heading.textContent = "Revision history";
+  dialog.setAttribute("aria-labelledby", heading.id);
   const close = document.createElement("button");
   close.textContent = "Close";
   head.append(heading, close);
@@ -705,6 +712,7 @@ async function persistWorkingCopy() {
   const artifacts = captureExperimentArtifacts();
   const selectedRevision = currentRevisionView.kind === "revision" ? currentRevisionView.revision : null;
   const baseRevision = currentWorkingCopy?.base_revision ?? selectedRevision ?? currentRemote.revision;
+  const baseline = currentEditingBaseline();
   setMessage("Autosaving Working copy…");
   const { data, error } = await supabase
     .from("experiment_working_copies")
@@ -712,8 +720,8 @@ async function persistWorkingCopy() {
       experiment_id: currentRemote.id,
       owner_id: user.id,
       base_revision: baseRevision,
-      title: currentRemote.title,
-      description: currentRemote.description ?? "",
+      title: baseline?.title ?? currentRemote.title,
+      description: baseline?.description ?? currentRemote.description ?? "",
       ...artifacts,
     }, { onConflict: "experiment_id" })
     .select("*")
@@ -801,9 +809,7 @@ function workingCopyHistoryItem() {
   const copy = document.createElement("span");
   copy.className = "experiment-history-copy";
   const actor = document.createElement("strong");
-  actor.textContent = profile?.display_name
-    ? profile.display_name + (profile.role ? " (" + roleLabel(profile.role) + ")" : "")
-    : "Mine";
+  actor.textContent = "Mine";
   const meta = document.createElement("span");
   const time = formatRevisionTime(currentWorkingCopy.updated_at);
   meta.textContent = "Based on R" + currentWorkingCopy.base_revision + (time ? " · autosaved " + time : "");
@@ -911,6 +917,7 @@ async function openRevisionHistory() {
   await queueWorkingCopyAutosave();
   await loadRevisionHistory();
   renderRevisionHistory();
+  currentUi.revisionTrigger.setAttribute("aria-expanded", "true");
   revisionHistory.dialog.showModal();
   const current = revisionHistory.list.querySelector('[aria-current="true"]');
   current?.focus({ preventScroll: true });
@@ -1069,7 +1076,7 @@ function updateCurrentUi() {
       currentUi.revisionPrimary.textContent = "Working copy";
       currentUi.revisionSecondary.textContent =
         "Based on R" + currentWorkingCopy.base_revision + (dirty ? " · autosave pending" : " · autosaved");
-      metadataRevision.textContent = "registry working · base r" + currentWorkingCopy.base_revision;
+      metadataRevision.textContent = "Working copy · based on R" + currentWorkingCopy.base_revision;
     } else {
       const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
       const revision = viewedRevision ?? currentRemote;
@@ -1077,7 +1084,7 @@ function updateCurrentUi() {
       const time = formatRevisionTime(revision.created_at ?? revision.updated_at);
       currentUi.revisionPrimary.textContent = "R" + revisionNumber;
       currentUi.revisionSecondary.textContent = [actor, time].filter(Boolean).join(" · ") || "Saved revision";
-      metadataRevision.textContent = "registry r" + revisionNumber;
+      metadataRevision.textContent = "Revision R" + revisionNumber;
     }
 
     const referenceRevision = viewingWorking
@@ -1201,10 +1208,7 @@ function revisionActor(revision) {
   const actor = revision.created_by_actor ?? revision.updated_by_actor;
   if (actor === "human") {
     const humanId = revision.created_by_user ?? revision.owner_id;
-    const owner = profileForHumanOwner(humanId);
-    if (!owner?.display_name) return humanId === user?.id ? "Mine" : "Human";
-    const role = roleLabel(owner.role);
-    return role ? owner.display_name + " (" + role + ")" : owner.display_name;
+    return humanId === user?.id ? "Mine" : "Human";
   }
   if (actor !== "ai") return actor || "";
   const client = revision.created_by_ai_client ?? revision.updated_by_ai_client;
@@ -1795,7 +1799,8 @@ async function revokeCurrentExperimentShare(recipientId) {
 }
 
 function defaultCopyTitle() {
-  return currentRemote?.title ? `${currentRemote.title} copy` : `${BUILTIN_TITLE} copy`;
+  const source = currentRevisionSnapshot() ?? currentRemote;
+  return source?.title ? `${source.title} copy` : `${BUILTIN_TITLE} copy`;
 }
 
 function openSaveAsNew() {
@@ -1820,8 +1825,10 @@ async function copyCurrentReadableExperiment(title, collectionId) {
   }
 
   const sourceId = currentRemote.id;
-  const sourceRevision = currentRemote.revision;
-  setMessage(`Copying ${currentRemote.title} revision ${sourceRevision}…`);
+  const sourceSnapshot = currentRevisionSnapshot();
+  const sourceRevision = sourceSnapshot?.revision ?? currentRemote.revision;
+  const sourceTitle = sourceSnapshot?.title ?? currentRemote.title;
+  setMessage(`Copying ${sourceTitle} revision ${sourceRevision}…`);
   const { data: copyId, error } = await supabase.rpc("copy_experiment_to_workspace", {
     p_source_experiment_id: sourceId,
     p_expected_revision: sourceRevision,
@@ -2063,6 +2070,10 @@ currentUi.browse.addEventListener("click", openBrowser);
 currentUi.revisionTrigger.addEventListener("click", () => run(openRevisionHistory));
 currentUi.editFromRevision.addEventListener("click", () => run(editFromViewedRevision));
 revisionHistory.close.addEventListener("click", () => revisionHistory.dialog.close());
+revisionHistory.dialog.addEventListener("close", () => {
+  currentUi.revisionTrigger.setAttribute("aria-expanded", "false");
+  currentUi.revisionTrigger.focus({ preventScroll: true });
+});
 for (const button of [revisionHistory.all, revisionHistory.mine, revisionHistory.ai]) {
   button.addEventListener("click", () => {
     revisionFilter = button.dataset.revisionFilter;

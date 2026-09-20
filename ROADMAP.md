@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **Complete the owner-authorized #396 Working-copy/revision-history mini-epic under living UI/UX lane #273.** #397 is production-complete with immutable numbered revision snapshots, durable owner Working-copy autosave at interaction boundaries, and explicit Save Revision without merge/rebase semantics. #398 is active and adds the holistic revision-history selector, exact snapshot navigation, All/Mine/AI filtering, and live visibility of newly arrived AI revisions; #399 then performs the bounded integrated UX/regression verification. Each child remains a separate approval/execution chunk under the development workflow.
+1. **Finish the owner-authorized #396 Working-copy/revision-history mini-epic under living UI/UX lane #273.** #397 and #398 are production-complete. #399 is the final approved child and performs the integrated UX/regression pass across Working copy autosave, exact historical navigation/copying, All/Mine/AI provenance, AI-arrival visibility, explicit Save Revision, responsive behavior and existing read-only permissions. Production-green #399 closes #396; no automatic successor is defined.
 2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
 3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
 4. Continue real student and owner use and feed concrete UX evidence into #273 rather than reopening a broad redesign.

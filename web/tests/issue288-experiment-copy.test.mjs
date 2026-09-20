@@ -10,6 +10,10 @@ const hardeningMigration = readFileSync(
   new URL("../../supabase/migrations/20260918070000_harden_experiment_copy_rpc.sql", import.meta.url),
   "utf8",
 );
+const retainedRevisionMigration = readFileSync(
+  new URL("../../supabase/migrations/20260920114510_copy_retained_experiment_revision.sql", import.meta.url),
+  "utf8",
+);
 const registry = readFileSync(new URL("../src/registry-ui-v3.js", import.meta.url), "utf8");
 const management = readFileSync(new URL("../src/experiment-management.js", import.meta.url), "utf8");
 
@@ -48,13 +52,23 @@ test("#288 supervised copy uses the saved remote revision rather than local unsa
   assert.match(registry, /copy one to create an independent editable Experiment|Copy to my Experiments creates an independent private Experiment/);
   assert.match(registry, /async function copyCurrentReadableExperiment\(title, collectionId\)/);
   assert.match(registry, /const sourceId = currentRemote\.id/);
-  assert.match(registry, /const sourceRevision = currentRemote\.revision/);
+  assert.match(registry, /const sourceSnapshot = currentRevisionSnapshot\(\)/);
+  assert.match(registry, /const sourceRevision = sourceSnapshot\?\.revision \?\? currentRemote\.revision/);
   assert.match(registry, /supabase\.rpc\("copy_experiment_to_workspace"/);
   assert.match(registry, /p_source_experiment_id: sourceId/);
   assert.match(registry, /p_expected_revision: sourceRevision/);
   assert.match(registry, /p_collection_id: collectionId/);
   assert.match(registry, /data = await copyCurrentReadableExperiment\(title, collectionId\)/);
   assert.match(registry, /const artifacts = registryArtifactsForSave\(\{ allowBuiltInCompatibility: true \}\)/);
+});
+
+test("#399 historical read-only copy uses the exact retained revision being viewed", () => {
+  assert.match(retainedRevisionMigration, /source_revision_row public\.experiment_revisions%rowtype/);
+  assert.match(retainedRevisionMigration, /r\.revision = p_expected_revision/);
+  assert.match(retainedRevisionMigration, /source_revision_row\.artifacts/);
+  assert.match(retainedRevisionMigration, /source_revision_row\.revision/);
+  assert.match(retainedRevisionMigration, /source_revision_row\.title/);
+  assert.doesNotMatch(retainedRevisionMigration, /source_row\.revision <> p_expected_revision/);
 });
 
 test("#288 presents copying as a distinct action while preserving ordinary Save as new", () => {
