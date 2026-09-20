@@ -34,7 +34,7 @@ test("#299 preserves supervised Experiment continuity across reload and refresh"
   assert.match(registry, /loadSupervisedExperimentList\(\)/);
 });
 
-test("#299 removes the duplicate supervision modal and separates Account from Professor administration", () => {
+test("#299 removes Professor administration from global navigation while preserving the inbox authority", () => {
   assert.doesNotMatch(runtimeSpeed, /professor-supervision/);
   assert.match(runtimeSpeed, /professor-inbox/);
   assert.match(professorInbox, /Extension requests/);
@@ -43,10 +43,7 @@ test("#299 removes the duplicate supervision modal and separates Account from Pr
   assert.match(workspaceShell, /professorButton\.addEventListener\("click", openProfessorInbox\)/);
   assert.match(workspaceShell, /accountPanel\.style\.display = ""/);
   assert.match(workspaceShell, /professorPanel\.style\.display = "none"/);
-  assert.doesNotMatch(workspaceShell, /openUtilities\("professor"\)|Professor tools/);
-  assert.match(reactChrome, /proxyClick\('#professor-menu'\)/);
-  assert.match(reactChrome, /data-vlab-nav="professor"/);
-  assert.match(reactChrome, /'aria-controls': 'professor-extension-inbox'/);
+  assert.doesNotMatch(reactChrome, /data-vlab-nav="professor"|proxyClick\('#professor-menu'\)/);
   assert.match(reactChrome, /data-vlab-nav="account"/);
 });
 
