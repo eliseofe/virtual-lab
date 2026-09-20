@@ -125,6 +125,8 @@ async function structure(send) {
         current: visible(document.querySelector('.experiment-task-current')),
         revisions: visible(document.querySelector('.experiment-task-revisions')),
         saveShare: visible(document.querySelector('.experiment-management')),
+        saveShareSubtitle: document.querySelector('.experiment-management .experiment-task-heading span')?.textContent?.trim() ?? '',
+        saveShareActionBar: Boolean(document.querySelector('.experiment-management-actions')),
         professorSectionVisible: visible(document.querySelector('.experiment-professor-section')),
         professorCompatPresent: Boolean(document.querySelector('.experiment-professor-compat')),
         showcaseVisible: visible(document.querySelector('.showcase-launcher')),
@@ -158,6 +160,9 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
   }
   if (state.managementTasks.heading !== "Control panel" || !state.managementTasks.current || !state.managementTasks.saveShare) {
     throw new Error(`${label}: task-based Experiment management is incomplete: ${JSON.stringify(state.managementTasks)}`);
+  }
+  if (state.managementTasks.saveShareSubtitle !== "Save, copy and share" || !state.managementTasks.saveShareActionBar) {
+    throw new Error(`${label}: Save & share card refinement regressed: ${JSON.stringify(state.managementTasks)}`);
   }
   if (state.managementTasks.professorCompatPresent || state.managementTasks.professorSectionVisible || state.managementTasks.showcaseVisible || state.managementTasks.capabilityRequestsVisible || state.managementTasks.promoteInCurrentExperiment) {
     throw new Error(`${label}: signed-out Professor hierarchy leaked or legacy placement remains: ${JSON.stringify(state.managementTasks)}`);
