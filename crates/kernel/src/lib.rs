@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use wasm_bindgen::prelude::*;
 use serde::Deserialize;
 
@@ -91,6 +93,23 @@ pub trait NeighbourIndex {
 }
 pub trait ControllerRuntime {
     fn reset(&mut self, agent_count: usize);
+    fn reset_with_private_state(
+        &mut self,
+        agent_count: usize,
+        private_state: &[BTreeMap<String, f64>],
+    ) -> Result<(), String> {
+        if private_state.len() != agent_count {
+            return Err(format!(
+                "controller private-state profile count {} does not match agent count {agent_count}",
+                private_state.len()
+            ));
+        }
+        if private_state.iter().any(|profile| !profile.is_empty()) {
+            return Err("controller runtime does not support per-agent private-state initialization".to_owned());
+        }
+        self.reset(agent_count);
+        Ok(())
+    }
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action;
 }
 pub trait MetricRuntime {
@@ -322,6 +341,7 @@ pub struct Snapshot {
 
 pub struct Simulation<C: ControllerRuntime> {
     initialization: SwarmInitialization,
+    controller_private_state: Vec<BTreeMap<String, f64>>,
     config: SimulationConfig,
     control_stride: u32,
     metric_stride: u32,
@@ -348,18 +368,39 @@ impl<C: ControllerRuntime> Simulation<C> {
     pub fn new_with_environment(
         initialization: SwarmInitialization,
         config: SimulationConfig,
+        controller: C,
+        environment: EnvironmentRuntime,
+    ) -> Result<Self, String> {
+        let private_state = vec![BTreeMap::new(); initialization.state.len()];
+        Self::new_with_environment_and_private_state(
+            initialization,
+            private_state,
+            config,
+            controller,
+            environment,
+        )
+    }
+
+    pub fn new_with_environment_and_private_state(
+        initialization: SwarmInitialization,
+        controller_private_state: Vec<BTreeMap<String, f64>>,
+        config: SimulationConfig,
         mut controller: C,
         environment: EnvironmentRuntime,
     ) -> Result<Self, String> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
-        controller.reset(initialization.state.len());
+        if controller_private_state.len() != initialization.state.len() {
+            return Err("controller private-state profile count must match initial agent count".to_owned());
+        }
+        controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         let mut state = initialization.build_state();
         wrap_state(&mut state, config.arena_size);
         let rng = DeterministicRng::new(config.seed);
         Ok(Self {
             actuators: vec![Action::default(); initialization.state.len()],
             initialization,
+            controller_private_state,
             config,
             control_stride,
             metric_stride,
@@ -390,9 +431,30 @@ impl<C: ControllerRuntime> Simulation<C> {
         config: SimulationConfig,
         environment: EnvironmentRuntime,
     ) -> Result<(), String> {
+        let private_state = vec![BTreeMap::new(); initialization.state.len()];
+        self.replace_setup_with_environment_and_private_state(
+            initialization,
+            private_state,
+            config,
+            environment,
+        )
+    }
+
+    pub fn replace_setup_with_environment_and_private_state(
+        &mut self,
+        initialization: SwarmInitialization,
+        controller_private_state: Vec<BTreeMap<String, f64>>,
+        config: SimulationConfig,
+        environment: EnvironmentRuntime,
+    ) -> Result<(), String> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
+        if controller_private_state.len() != initialization.state.len() {
+            return Err("controller private-state profile count must match initial agent count".to_owned());
+        }
+        self.controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         self.initialization = initialization;
+        self.controller_private_state = controller_private_state;
         self.config = config;
         self.environment = environment;
         self.control_stride = control_stride;
@@ -401,7 +463,37 @@ impl<C: ControllerRuntime> Simulation<C> {
         Ok(())
     }
 
-    pub fn replace_controller(&mut self, controller: C) { self.controller = controller; self.reset(); }
+    pub fn replace_setup_and_controller(
+        &mut self,
+        initialization: SwarmInitialization,
+        controller_private_state: Vec<BTreeMap<String, f64>>,
+        config: SimulationConfig,
+        environment: EnvironmentRuntime,
+        mut controller: C,
+    ) -> Result<(), String> {
+        initialization.validate()?;
+        let (control_stride, metric_stride) = config.validate()?;
+        if controller_private_state.len() != initialization.state.len() {
+            return Err("controller private-state profile count must match initial agent count".to_owned());
+        }
+        controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
+        self.initialization = initialization;
+        self.controller_private_state = controller_private_state;
+        self.config = config;
+        self.environment = environment;
+        self.controller = controller;
+        self.control_stride = control_stride;
+        self.metric_stride = metric_stride;
+        self.reset();
+        Ok(())
+    }
+
+    pub fn replace_controller(&mut self, mut controller: C) -> Result<(), String> {
+        controller.reset_with_private_state(self.initialization.state.len(), &self.controller_private_state)?;
+        self.controller = controller;
+        self.reset();
+        Ok(())
+    }
 
     pub fn reset(&mut self) {
         self.state = self.initialization.build_state();
@@ -414,7 +506,9 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.observation_scratch.environmental_scalar = None;
         self.observation_scratch.neighbours.clear();
         self.neighbour_indices_scratch.clear();
-        self.controller.reset(self.state.len());
+        self.controller
+            .reset_with_private_state(self.state.len(), &self.controller_private_state)
+            .expect("validated controller private-state initialization");
         for metric in &mut self.metrics { metric.reset(); }
     }
 
@@ -480,18 +574,38 @@ impl<C: ControllerRuntime> Simulation<C> {
 }
 
 #[derive(Deserialize)]
-struct InitialAgentJson { x: f64, y: f64, heading: f64 }
+struct InitialAgentJson {
+    x: f64,
+    y: f64,
+    heading: f64,
+    #[serde(default)]
+    private_state: BTreeMap<String, f64>,
+}
 
-fn parse_initial_state(json: &str) -> Result<SwarmInitialization, String> {
+struct ParsedInitialState {
+    initialization: SwarmInitialization,
+    controller_private_state: Vec<BTreeMap<String, f64>>,
+}
+
+fn parse_initial_state(json: &str) -> Result<ParsedInitialState, String> {
     let agents: Vec<InitialAgentJson> = serde_json::from_str(json).map_err(|error| format!("invalid initial state JSON: {error}"))?;
-    let initialization = SwarmInitialization {
-        state: agents.into_iter().map(|agent| AgentPhysicalState {
+    let mut state = Vec::with_capacity(agents.len());
+    let mut controller_private_state = Vec::with_capacity(agents.len());
+    for (index, agent) in agents.into_iter().enumerate() {
+        for (name, value) in &agent.private_state {
+            if !value.is_finite() {
+                return Err(format!("initial private state '{name}' for agent {index} must be finite"));
+            }
+        }
+        state.push(AgentPhysicalState {
             position: Vec2::new(agent.x, agent.y),
             heading_angle: agent.heading,
-        }).collect(),
-    };
+        });
+        controller_private_state.push(agent.private_state);
+    }
+    let initialization = SwarmInitialization { state };
     initialization.validate()?;
-    Ok(initialization)
+    Ok(ParsedInitialState { initialization, controller_private_state })
 }
 
 fn simulation_config(
