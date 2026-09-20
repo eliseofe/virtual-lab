@@ -186,6 +186,8 @@ function currentOwnedExperiment() {
 function ensureOrganizeButton() {
   const meta = document.querySelector(".experiment-current-meta");
   if (!meta) return false;
+  const actions = document.querySelector(".experiment-current-actions");
+  const host = actions || meta;
   if (!organizeButton) {
     organizeButton = document.createElement("button");
     organizeButton.type = "button";
@@ -193,7 +195,7 @@ function ensureOrganizeButton() {
     organizeButton.textContent = "Organize";
     organizeButton.addEventListener("click", () => openOrganizer());
   }
-  if (organizeButton.parentElement !== meta) meta.append(organizeButton);
+  if (organizeButton.parentElement !== host) host.append(organizeButton);
   setHidden(organizeButton, !signedIn());
   return true;
 }
