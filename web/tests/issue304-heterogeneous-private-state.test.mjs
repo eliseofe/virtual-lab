@@ -11,6 +11,7 @@ import {
   validateInitializerControllerPrivateState as validateEdgePrivateState,
 } from "../../supabase/functions/experiment-mcp/vendor/initializer-compiler.js";
 import { compileController as compileEdgeController } from "../../supabase/functions/experiment-mcp/vendor/controller-compiler.js";
+import { validateExperimentSources } from "../../supabase/functions/experiment-mcp/authoring.js";
 
 const config = {
   values: {
@@ -110,4 +111,41 @@ test("#304 cross-artifact validation rejects undeclared controller private state
     () => validateEdgePrivateState(initializer, controller),
     /assigns undeclared controller private state 'role'/,
   );
+});
+
+
+test("#304 MCP authoring wall accepts valid heterogeneous profiles and rejects schema mismatch", () => {
+  const configuration = `N = 3
+CONTROL_DT = 0.1
+EXPERIMENT_DURATION = 1.0
+ARENA_SIZE = 10.0
+INTERACTION_RADIUS = 2.0
+MAX_FORWARD_SPEED = 2.0
+MAX_ANGULAR_SPEED = 2.0
+SENSOR_NOISE = 0.0
+`;
+
+  const valid = validateExperimentSources({
+    config_source: configuration,
+    initializer_source: initializerSource,
+    controller_source: controllerSource,
+    metrics_source: "",
+  });
+  assert.equal(valid.valid, true);
+  assert.equal(valid.compiled.initializer, "vlab.initializer-state/0.3");
+
+  const invalid = validateExperimentSources({
+    config_source: configuration,
+    initializer_source: initializerSource,
+    controller_source: `class WrongAgent(Agent):
+    other = 0.0
+
+    def step(self, obs):
+        return Motion(self.other, 0.0)
+`,
+    metrics_source: "",
+  });
+  assert.equal(invalid.valid, false);
+  assert.equal(invalid.diagnostics[0].artifact, "initializer");
+  assert.match(invalid.diagnostics[0].message, /undeclared controller private state 'role'/);
 });
