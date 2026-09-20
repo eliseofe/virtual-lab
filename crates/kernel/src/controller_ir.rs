@@ -848,6 +848,7 @@ pub struct IrControllerRuntime {
     body: Vec<PreparedStatement>,
     parameters: Vec<f64>,
     private_initial: Vec<f64>,
+    private_state_slots: HashMap<String, usize>,
     private_state: Vec<Vec<f64>>,
     scratch_locals: Vec<Value>,
     scratch_eval_stack: Vec<Value>,
@@ -903,6 +904,7 @@ impl IrControllerRuntime {
             body,
             parameters,
             private_initial,
+            private_state_slots: state_slots,
             private_state: Vec::new(),
             scratch_locals: vec![Value::Scalar(f64::NAN); local_slots.len()],
             scratch_eval_stack: Vec::with_capacity(eval_stack_capacity),
@@ -912,9 +914,41 @@ impl IrControllerRuntime {
 
 impl ControllerRuntime for IrControllerRuntime {
     fn reset(&mut self, agent_count: usize) {
+        let profiles = vec![BTreeMap::new(); agent_count];
+        self.reset_with_private_state(agent_count, &profiles)
+            .expect("empty private-state initialization must be valid");
+    }
+
+    fn reset_with_private_state(
+        &mut self,
+        agent_count: usize,
+        private_state: &[BTreeMap<String, f64>],
+    ) -> Result<(), String> {
+        if private_state.len() != agent_count {
+            return Err(format!(
+                "controller private-state profile count {} does not match agent count {agent_count}",
+                private_state.len()
+            ));
+        }
         self.private_state = vec![self.private_initial.clone(); agent_count];
+        for (agent_index, profile) in private_state.iter().enumerate() {
+            for (name, value) in profile {
+                let slot = self.private_state_slots.get(name)
+                    .copied()
+                    .ok_or_else(|| format!(
+                        "agent {agent_index} assigns undeclared controller private state '{name}'"
+                    ))?;
+                if !value.is_finite() {
+                    return Err(format!(
+                        "agent {agent_index} private state '{name}' must be finite"
+                    ));
+                }
+                self.private_state[agent_index][slot] = *value;
+            }
+        }
         self.scratch_locals.fill(Value::Scalar(f64::NAN));
         self.scratch_eval_stack.clear();
+        Ok(())
     }
 
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action {
