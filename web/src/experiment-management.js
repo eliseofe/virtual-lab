@@ -95,7 +95,7 @@ function installStyles() {
     .experiment-current-meta { gap: 7px !important; }
     .experiment-location[data-management-redundant="true"] { display: none !important; }
     .experiment-origin, .experiment-location { min-height: 26px !important; }
-    .experiment-browse { min-height: 38px; padding: 7px 12px; white-space: nowrap; }
+    .experiment-browse { min-height: 44px; padding: 8px 12px; white-space: nowrap; }
     .experiment-quick-hint { display: none !important; }
     .experiment-revision-workflow {
       display: grid;
@@ -126,8 +126,8 @@ function installStyles() {
     .experiment-management-slot .registry-move-row button,
     .experiment-management-slot .registry-share-form button,
     .experiment-sign-in-save {
-      min-height: 38px !important;
-      padding: 7px 12px !important;
+      min-height: 44px !important;
+      padding: 8px 12px !important;
       font-size: 11.5px !important;
     }
     .experiment-revision-workflow[hidden] { display: none !important; }
@@ -188,14 +188,14 @@ function installStyles() {
     }
     .experiment-professor-actions button {
       width: 100%;
-      min-height: 38px;
-      padding: 7px 12px;
+      min-height: 44px;
+      padding: 8px 12px;
       font-size: 11.5px;
     }
     .experiment-professor-section .showcase-curation-status { margin: 0; }
     .experiment-organize {
-      min-height: 30px !important;
-      padding: 4px 10px !important;
+      min-height: 44px !important;
+      padding: 8px 12px !important;
       border-radius: 999px !important;
       font-size: 10.5px !important;
       font-weight: 700 !important;
