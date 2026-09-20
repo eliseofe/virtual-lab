@@ -58,7 +58,7 @@ try {
   await cdp.send("Runtime.enable");
 
   const initial = await waitReady(cdp.send);
-  if (initial.authHidden || initial.heading !== "Sign in or create account" || !initial.createAccount || initial.accountText !== "Account") {
+  if (initial.authHidden || initial.heading !== "Sign in or create account" || !initial.createAccount || initial.accountText !== "Sign in") {
     throw new Error(`signed-out student registration surface is incorrect: ${JSON.stringify(initial)}`);
   }
 
@@ -125,7 +125,7 @@ try {
       registrationReady: document.querySelector('.registry-panel')?.getAttribute('data-vlab-student-registration') ?? null,
     });
   })()`));
-  if (observerStress.heading !== "Sign in or create account" || observerStress.accountText !== "Account" || observerStress.registrationReady !== "ready") {
+  if (observerStress.heading !== "Sign in or create account" || observerStress.accountText !== "Sign in" || observerStress.registrationReady !== "ready") {
     throw new Error(`registration observer stress regressed: ${JSON.stringify(observerStress)}`);
   }
 

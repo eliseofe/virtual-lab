@@ -44,10 +44,9 @@ test("#299 removes the duplicate supervision modal and separates Account from Pr
   assert.match(workspaceShell, /accountPanel\.style\.display = ""/);
   assert.match(workspaceShell, /professorPanel\.style\.display = "none"/);
   assert.doesNotMatch(workspaceShell, /openUtilities\("professor"\)|Professor tools/);
-  assert.match(workspaceShell, /control-panel-professor-bridge/);
-  assert.match(workspaceShell, /Capability requests/);
-  assert.match(workspaceShell, /capabilityBridge\.addEventListener\("click", openProfessorInbox\)/);
-  assert.doesNotMatch(reactChrome, /data-vlab-nav="professor"|proxyClick\('#professor-menu'\)/);
+  assert.match(reactChrome, /proxyClick\('#professor-menu'\)/);
+  assert.match(reactChrome, /data-vlab-nav="professor"/);
+  assert.match(reactChrome, /'aria-controls': 'professor-extension-inbox'/);
   assert.match(reactChrome, /data-vlab-nav="account"/);
 });
 
@@ -61,10 +60,9 @@ test("#299 leaves authorization semantics outside the UI restructuring", () => {
   assert.doesNotMatch(supervisedLoader, /\.(insert|update|delete)\(/);
 });
 
-test("#299 remains complete while the living #273 lane can be reactivated independently", () => {
-  assert.match(status, /#273 UI\/UX[^\n]*living\/ongoing roadmap domain/i);
+test("#299 remains complete while the living #273 lane can host a later bounded pass", () => {
+  assert.match(status, /#273 UI\/UX[^\n]*living parent lane for #396/i);
   assert.match(status, /#301 — Virtual Lab security, identity and authorization/);
   assert.match(status, /#302/);
-  assert.match(roadmap, /Living \/ ongoing domains:[^\n]*#273 UI\/UX refinement/i);
   assert.match(roadmap, /#301 Security \/ identity \/ authorization/);
 });

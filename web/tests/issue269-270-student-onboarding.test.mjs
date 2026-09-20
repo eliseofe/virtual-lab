@@ -13,7 +13,7 @@ test('student onboarding is loaded by the production workspace shell', () => {
 
 test('Getting started remains available as persistent Help and is non-modal', () => {
   assert.match(onboarding, /"data-vlab-nav": "help"/);
-  assert.match(onboarding, /makeButton\("Help", "vlab-student-help-mobile"/);
+  assert.match(onboarding, /Getting started \/ Help/);
   assert.match(onboarding, /aria-modal", "false"/);
 });
 

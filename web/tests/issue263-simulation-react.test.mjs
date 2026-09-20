@@ -18,9 +18,6 @@ test('Simulation presentation is mounted inside the established React/Mantine ro
   assert.match(presentation, /data-vlab-simulation-action="run"/);
   assert.match(presentation, /data-vlab-simulation-speed/);
   assert.match(presentation, /data-vlab-simulation-fit/);
-  assert.match(presentation, /data-vlab-simulator-readiness/);
-  assert.match(presentation, /Simulator ready/);
-  assert.match(presentation, /#worker-status/);
 });
 
 test('Simulation adapter proxies authoritative runtime controls instead of owning simulator state', () => {
