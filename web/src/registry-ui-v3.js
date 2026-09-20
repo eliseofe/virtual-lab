@@ -1595,10 +1595,13 @@ async function confirmDiscardIfNeeded() {
 }
 
 async function restoreBuiltIn({ apply = true } = {}) {
+  clearCurrentExperimentSubscription();
   applyExperimentArtifacts(builtinArtifacts);
   currentRemote = null;
   currentRemoteAccess = null;
   currentWorkingCopy = null;
+  currentRevisions = [];
+  currentRevisionView = { kind: "builtin", revision: null };
   ui.newForm.hidden = true;
   updateCurrentUi();
   rememberCurrentWorkspace();
@@ -1613,18 +1616,28 @@ async function loadRemoteExperiment(id, { access = "owned" } = {}) {
   const workingCopy = access === "owned" && experiment.owner_id === user.id
     ? await readWorkingCopy(id)
     : null;
-  applyExperimentArtifacts(workingCopy ?? experiment);
+
   currentRemote = experiment;
   currentRemoteAccess = access;
   currentWorkingCopy = workingCopy;
+  await loadRevisionHistory();
+  currentRevisionView = workingCopy
+    ? { kind: "working", revision: null }
+    : { kind: "revision", revision: experiment.revision };
+
+  const initial = workingCopy
+    ?? currentRevisions.find((revision) => revision.revision === experiment.revision)
+    ?? experiment;
+  applyExperimentArtifacts(initial);
   ui.newForm.hidden = true;
+  subscribeCurrentExperiment(id);
   updateCurrentUi();
   rememberCurrentWorkspace();
   await applyLoadedSources();
   setMessage(
     workingCopy
-      ? `${experiment.title} · Working copy based on revision ${workingCopy.base_revision} loaded.`
-      : `${experiment.title} · revision ${experiment.revision} loaded.`,
+      ? experiment.title + " · Working copy based on revision " + workingCopy.base_revision + " loaded."
+      : experiment.title + " · revision " + experiment.revision + " loaded.",
     "success",
   );
 }
@@ -1677,10 +1690,13 @@ async function saveCurrentExperiment() {
 
   currentRemote = data;
   currentWorkingCopy = null;
-  applyExperimentArtifacts(data);
-  await loadExperimentList();
+  await Promise.all([loadExperimentList(), loadRevisionHistory()]);
+  currentRevisionView = { kind: "revision", revision: data.revision };
+  const savedRevision = currentRevisions.find((revision) => revision.revision === data.revision) ?? data;
+  applyExperimentArtifacts(savedRevision);
   updateCurrentUi();
   renderBrowser();
+  renderRevisionHistory();
   setMessage(`${data.title} saved as revision ${data.revision}.`, "success");
 }
 
@@ -1855,8 +1871,10 @@ async function createNewExperiment() {
   currentRemote = data;
   currentRemoteAccess = "owned";
   currentWorkingCopy = null;
+  await Promise.all([loadCollections(), loadExperimentList(), loadRevisionHistory()]);
+  currentRevisionView = { kind: "revision", revision: data.revision };
+  subscribeCurrentExperiment(data.id);
   closeSaveAsNew();
-  await Promise.all([loadCollections(), loadExperimentList()]);
   updateCurrentUi();
   rememberCurrentWorkspace();
   renderBrowser();
@@ -1873,8 +1891,11 @@ function setSignedOutUi() {
   ui.identity.textContent = "Signed out";
   ui.auth.hidden = false;
   ui.signOut.hidden = true;
+  clearCurrentExperimentSubscription();
   remoteExperiments = [];
   currentWorkingCopy = null;
+  currentRevisions = [];
+  currentRevisionView = { kind: "builtin", revision: null };
   sharedExperiments = [];
   supervisedProfiles = [];
   supervisedExperiments = [];
@@ -1971,7 +1992,14 @@ async function refreshRegistry() {
   }
 
   setMessage("Refreshing your library…");
-  await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadSupervisedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
+  await Promise.all([
+    loadCollections(),
+    loadExperimentList(),
+    loadSharedExperimentList(),
+    loadSupervisedExperimentList(),
+    loadShareRecipients(),
+    loadOutgoingShares(),
+  ]);
 
   if (previousRemote) {
     const available = previousAccess === "shared"
@@ -1991,23 +2019,21 @@ async function refreshRegistry() {
       return;
     }
 
+    currentRemote = fresh;
+    await loadRevisionHistory();
+    updateCurrentUi();
+    renderRevisionHistory();
     if (fresh.revision > previousRemote.revision) {
-      if (currentWorkingCopy) {
-        currentRemote = fresh;
-        updateCurrentUi();
-        renderBrowser();
-        setMessage(
-          `Revision ${fresh.revision} is now available. Working copy based on revision ${currentWorkingCopy.base_revision} is preserved.`,
-          "success",
-        );
-        return;
-      }
-      await loadRemoteExperiment(previousRemote.id, { access: previousAccess || "owned" });
+      const newest = currentRevisions.find((revision) => revision.revision === fresh.revision);
+      const actor = newest ? revisionActor(newest) : revisionActor(fresh);
+      setMessage(
+        "New revision R" + fresh.revision + (actor ? " from " + actor : "")
+        + " is available. Your current view was not changed.",
+        "success",
+      );
       renderBrowser();
       return;
     }
-
-    currentRemote = fresh;
   }
 
   updateCurrentUi();
