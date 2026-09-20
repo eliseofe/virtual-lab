@@ -37,6 +37,8 @@ test("browser unifies built-in and account-owned experiment sources", async () =
   const source = await browserSource();
   assert.match(source, /tabs\.hidden = true/);
   assert.match(source, /filters\.hidden = true/);
+  assert.match(source, /browser\.filters\.hidden = false;[\s\S]*browser\.dialog\.showModal\(\)/);
+  assert.match(source, /browser\.dialog\.addEventListener\("close"[\s\S]*browser\.filters\.hidden = true/);
   assert.match(source, /browser\.contextTitle\.textContent = "All available experiments"/);
   assert.match(source, /Browse built-in, owned/);
   assert.match(source, /builtInResult\(\)/);

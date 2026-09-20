@@ -17,7 +17,8 @@
     "The revision dialog exposes aria-expanded/aria-labelledby state and returns focus to the revision launcher when closed; mobile revision/history controls use deliberate touch targets.",
     "Visible revision metadata uses Working copy / Revision Rn language rather than registry jargon.",
     "No CI/CD, deployment, polling, retry, timeout, scheduling, connector-tool surface, scientific runtime, or project-development workflow rule changed.",
-    "The Experiment finder now explicitly keeps its collection-filter container hidden from primary navigation, matching the established responsive UX contract instead of depending on surrounding UI timing."
+    "The Experiment finder now explicitly keeps its collection-filter container hidden from primary navigation, matching the established responsive UX contract instead of depending on surrounding UI timing.",
+    "The Experiment finder explicitly unhides collection filters only while its dialog is open and re-hides them on every dialog close path, completing the secondary-navigation boundary verified by the responsive production smoke."
   ],
   "close_issue": 399
 }
