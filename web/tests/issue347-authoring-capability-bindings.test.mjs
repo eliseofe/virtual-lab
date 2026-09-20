@@ -58,10 +58,10 @@ function implementedRegistryRows(sql) {
     .filter(({ state }) => state === "implemented");
 }
 
-test("#347 authoring bindings are exact references to the frozen implemented canonical registry", () => {
+test("#347 authoring bindings preserve the frozen registry and reference later canonical additions explicitly", () => {
   const rows = implementedRegistryRows(registryMigration);
-  assert.equal(rows.length, 11);
-  assert.equal(CANONICAL_CAPABILITY_BINDINGS.length, rows.length);
+  assert.equal(rows.length, 11, "the historical registry migration remains frozen");
+  assert.equal(CANONICAL_CAPABILITY_BINDINGS.length, 12);
 
   const byId = new Map(rows.map((row) => [row.id, row.key]));
   const ids = new Set();
@@ -72,12 +72,16 @@ test("#347 authoring bindings are exact references to the frozen implemented can
     assert.equal(keys.has(binding.capability_key), false, "duplicate canonical key binding");
     ids.add(binding.canonical_capability_id);
     keys.add(binding.capability_key);
-    assert.equal(byId.get(binding.canonical_capability_id), binding.capability_key);
+    if (binding.capability_key === "initialization.per_agent_private_state_assignment") {
+      assert.equal(binding.canonical_capability_id, "25ee37e5-ba59-4e8a-9768-a5604e2501b5");
+    } else {
+      assert.equal(byId.get(binding.canonical_capability_id), binding.capability_key);
+    }
     assert.ok(binding.surfaces.length > 0);
   }
 
   for (const row of rows) {
-    assert.equal(ids.has(row.id), true, "implemented canonical capability lacks an authoring binding: " + row.key);
+    assert.equal(ids.has(row.id), true, "frozen implemented canonical capability lacks an authoring binding: " + row.key);
   }
 });
 
