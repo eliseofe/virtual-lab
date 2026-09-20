@@ -1053,24 +1053,65 @@ function updateCurrentUi() {
   const dirty = hasUnsavedRemoteEdits();
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
   const copyingReadable = Boolean(user && currentRemote && !owned);
+  const viewedRevision = currentRevisionSnapshot();
+  const viewingWorking = currentRevisionView.kind === "working" && Boolean(currentWorkingCopy);
+  const viewingNumbered = currentRevisionView.kind === "revision" && Boolean(viewedRevision);
+  const protectedWorkingCopy = Boolean(owned && currentWorkingCopy && viewingNumbered);
 
   if (currentRemote) {
     currentUi.title.textContent = currentRemote.title;
     currentUi.origin.dataset.kind = owned ? "owned" : "readonly";
     currentUi.origin.textContent = owned ? "Your experiment · Editable" : "Read-only";
     currentUi.location.textContent = currentLocationLabel();
-    metadataRevision.textContent = `registry r${currentRemote.revision}`;
+    currentUi.revisionWorkflow.hidden = false;
+
+    if (viewingWorking) {
+      currentUi.revisionPrimary.textContent = "Working copy";
+      currentUi.revisionSecondary.textContent =
+        "Based on R" + currentWorkingCopy.base_revision + (dirty ? " · autosave pending" : " · autosaved");
+      metadataRevision.textContent = "registry working · base r" + currentWorkingCopy.base_revision;
+    } else {
+      const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
+      const revision = viewedRevision ?? currentRemote;
+      const actor = revisionActor(revision);
+      const time = formatRevisionTime(revision.created_at ?? revision.updated_at);
+      currentUi.revisionPrimary.textContent = "R" + revisionNumber;
+      currentUi.revisionSecondary.textContent = [actor, time].filter(Boolean).join(" · ") || "Saved revision";
+      metadataRevision.textContent = "registry r" + revisionNumber;
+    }
+
+    const referenceRevision = viewingWorking
+      ? currentWorkingCopy.base_revision
+      : (viewedRevision?.revision ?? currentRemote.revision);
+    if (currentRemote.revision > referenceRevision) {
+      const newest = currentRevisions.find((revision) => revision.revision === currentRemote.revision) ?? currentRemote;
+      const actor = revisionActor(newest);
+      currentUi.revisionNotice.hidden = false;
+      currentUi.revisionNotice.textContent =
+        "New R" + currentRemote.revision + " available" + (actor ? " · " + actor : "");
+    } else {
+      currentUi.revisionNotice.hidden = true;
+      currentUi.revisionNotice.textContent = "";
+    }
   } else {
     currentUi.title.textContent = BUILTIN_TITLE;
     currentUi.origin.dataset.kind = "readonly";
     currentUi.origin.textContent = "Built-in · Read-only";
     currentUi.location.textContent = "Built-in";
+    currentUi.revisionWorkflow.hidden = true;
+    currentUi.revisionNotice.hidden = true;
     metadataRevision.textContent = BUILTIN_REVISION;
   }
 
+  currentUi.editFromRevision.hidden = !protectedWorkingCopy;
+  if (protectedWorkingCopy) {
+    currentUi.editFromRevision.textContent = "Edit from R" + viewedRevision.revision;
+  }
+  setArtifactEditorsLocked(protectedWorkingCopy);
+
   ui.saveRow.hidden = !user;
   ui.saveAsNew.hidden = !user;
-  ui.save.hidden = !owned;
+  ui.save.hidden = !owned || protectedWorkingCopy;
   ui.createNew.textContent = copyingReadable ? "Copy to my Experiments" : "Create private copy";
   const availableRecipients = availableShareRecipients();
   const hasOutgoingShares = currentOutgoingShares().length > 0;
@@ -1080,7 +1121,7 @@ function updateCurrentUi() {
   if (!owned || availableRecipients.length === 0) ui.shareForm.hidden = true;
   populateShareRecipientSelect();
   renderOutgoingShares();
-  ui.save.disabled = !owned || (!dirty && !currentWorkingCopy);
+  ui.save.disabled = !owned || protectedWorkingCopy || (!dirty && !currentWorkingCopy);
   ui.moveRow.hidden = !owned;
   if (owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
   updateMoveButton();
@@ -1093,34 +1134,39 @@ function updateCurrentUi() {
     ui.note.textContent = "The built-in experiment cannot be overwritten. Save as new lets you choose where its private copy is stored.";
   } else if (!owned) {
     ui.saveState.dataset.state = "readonly";
-    if (currentRemoteAccess === "shared") {
-      ui.saveState.textContent = "Shared with you · Read-only";
-      ui.note.textContent = "The owner's Experiment stays read-only. Copy to my Experiments creates an independent private Experiment from this exact saved revision.";
-    } else {
-      ui.saveState.textContent = "Professor supervision · Read-only";
-      ui.note.textContent = "This student Experiment stays read-only. Copy to my Experiments creates an independent private Experiment from this exact saved revision.";
-    }
-  } else if (dirty) {
-    ui.saveState.dataset.state = "dirty";
-    ui.saveState.textContent = currentWorkingCopy
-      ? `Working copy · autosave pending · based on r${currentWorkingCopy.base_revision}`
-      : `Working copy · autosave pending · based on r${currentRemote.revision}`;
-    ui.note.textContent = "Leaving the editor or taking another action autosaves the Working copy. Save Revision creates a numbered revision.";
-  } else if (currentWorkingCopy) {
+    const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
+    ui.saveState.textContent = "Viewing R" + revisionNumber + " · Read-only source";
+    ui.note.textContent = currentRemoteAccess === "shared"
+      ? "This shared revision stays read-only. Copy to my Experiments creates an independent private Experiment from the exact state you are viewing."
+      : "This supervised revision stays read-only. Copy to my Experiments creates an independent private Experiment from the exact state you are viewing.";
+  } else if (protectedWorkingCopy) {
     ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = `Working copy · autosaved · based on r${currentWorkingCopy.base_revision}`;
+    ui.saveState.textContent =
+      "Viewing R" + viewedRevision.revision + " · Working copy from R" + currentWorkingCopy.base_revision + " preserved";
+    ui.note.textContent = "Select Working copy to resume it, or choose Edit from this revision to replace it explicitly.";
+  } else if (dirty) {
+    const baseRevision = currentWorkingCopy?.base_revision ?? viewedRevision?.revision ?? currentRemote.revision;
+    ui.saveState.dataset.state = "dirty";
+    ui.saveState.textContent = "Working copy · autosave pending · based on r" + baseRevision;
+    ui.note.textContent = "Leaving the editor or taking another action autosaves the Working copy. Save Revision creates a numbered revision.";
+  } else if (viewingWorking) {
+    ui.saveState.dataset.state = "saved";
+    ui.saveState.textContent = "Working copy · autosaved · based on r" + currentWorkingCopy.base_revision;
     ui.note.textContent = currentRemote.revision > currentWorkingCopy.base_revision
-      ? `Revision r${currentRemote.revision} is newer. Your Working copy remains preserved from r${currentWorkingCopy.base_revision}; Save Revision will create the next chronological revision.`
+      ? "A newer numbered revision is available. Your Working copy remains preserved; Save Revision will create the next chronological revision."
       : "Working copy is durable. Save Revision crystallizes it as the next numbered revision.";
+  } else if (viewingNumbered && viewedRevision.revision < currentRemote.revision) {
+    ui.saveState.dataset.state = "saved";
+    ui.saveState.textContent = "Viewing historical R" + viewedRevision.revision;
+    ui.note.textContent = "Edit normally to start a Working copy from this revision. Numbered history remains unchanged.";
   } else {
     ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = `Saved · r${currentRemote.revision}`;
-    ui.note.textContent = currentRemote.collection_id
-      ? `This experiment belongs to your account. ${currentLocationLabel()}.`
-      : "This experiment belongs to your account. It does not need a collection.";
+    ui.saveState.textContent = "Saved · r" + currentRemote.revision;
+    ui.note.textContent = "Edit normally to create a Working copy; Save Revision crystallizes it as the next numbered revision.";
   }
 
   setQuickSwitchOptions();
+  renderRevisionHistory();
 }
 
 function formatRevisionTime(value) {
