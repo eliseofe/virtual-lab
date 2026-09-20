@@ -31,6 +31,7 @@ function installStyles() {
     .experiment-management-slot .registry-new-form { margin: 0; }
     .experiment-management-slot .registry-note { margin: 0; }
     .experiment-sign-in-save { justify-self: start; min-height: 36px; }
+    .experiment-current-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
     @media (max-width: 680px) {
       .experiment-current-main { display: grid; grid-template-columns: minmax(0, 1fr); }
       .experiment-browse,
@@ -38,6 +39,7 @@ function installStyles() {
       .experiment-management-slot .registry-save-actions button { min-height: 44px; }
       .experiment-browse,
       .experiment-sign-in-save { width: 100%; }
+      .experiment-current-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
       .experiment-management-slot .registry-save-actions { display: grid; grid-template-columns: 1fr; }
       .experiment-management-slot .registry-new-actions { display: grid; grid-template-columns: 1fr; }
       .experiment-management-slot .registry-new-actions button { min-height: 44px; }
@@ -116,7 +118,7 @@ function simplifyIdentity() {
   experimentSelect.hidden = true;
   experimentSelect.setAttribute("aria-hidden", "true");
   if (quickHint) quickHint.hidden = true;
-  setText(browseButton, "Switch experiment");
+  setText(browseButton, "Experiments");
 
   const location = document.querySelector(".experiment-location");
   const locationText = location?.textContent?.trim();
