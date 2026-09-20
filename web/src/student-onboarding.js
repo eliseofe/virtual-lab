@@ -88,8 +88,8 @@ panel.innerHTML = `
   <div class="vlab-student-help-body">
     <p class="vlab-student-help-intro">You can explore the Lab directly, or connect an AI assistant to help manage your private Experiments. The simulator keeps running independently of this guide.</p>
     <section class="vlab-student-help-step"><strong>1 · Sign in</strong><p>Create an account from the header. If confirmation is required, use the email link, return here, and sign in.</p></section>
-    <section class="vlab-student-help-step"><strong>2 · Start from an Experiment</strong><p>Use <b>Find experiment</b> to open one. To let an AI assistant see the built-in Experiment, first save a private copy to your account.</p></section>
-    <section class="vlab-student-help-step"><strong>3 · Know the workbench</strong><p><b>Simulation</b> runs the current Experiment. <b>Results</b> plots its metrics. <b>Authoring</b> edits Configuration, Initialization, Controller and Metrics.</p></section>
+    <section class="vlab-student-help-step"><strong>2 · Start from an Experiment</strong><p>Use <b>Experiments</b> to open one. To let an AI assistant see the built-in Experiment, first save a private copy to your account.</p></section>
+    <section class="vlab-student-help-step"><strong>3 · Know the workbench</strong><p><b>Simulation</b> runs the current Experiment and includes its live Results. <b>Authoring</b> edits Configuration, Initialization, Controller and Metrics.</p></section>
     <section class="vlab-student-help-step"><strong>4 · Connect an AI assistant</strong><p>Choose the assistant you use. Both connect to the same production Virtual Lab server.</p></section>
     <div class="vlab-student-provider-actions" role="group" aria-label="AI assistant setup">
       <button type="button" data-vlab-provider="grok" aria-pressed="true">Use with Grok</button>
@@ -164,7 +164,7 @@ function installHelpButtons() {
 
   const mobileAccount = document.querySelector('[data-vlab-nav="account-mobile"]');
   if (mobileAccount && !document.querySelector('[data-vlab-nav="help-mobile"]')) {
-    const help = makeButton("Getting started / Help", "vlab-student-help-mobile", { "data-vlab-nav": "help-mobile", "aria-controls": panel.id, "aria-haspopup": "dialog" });
+    const help = makeButton("Help", "vlab-student-help-mobile", { "data-vlab-nav": "help-mobile", "aria-controls": panel.id, "aria-haspopup": "dialog" });
     help.addEventListener("click", openHelp);
     mobileAccount.parentElement?.insertBefore(help, mobileAccount);
   }
