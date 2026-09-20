@@ -20,7 +20,8 @@ test("#198 active registry loads canonical artifacts instead of reconstructing M
 
   assert.match(registry, new RegExp(`\\.select\\(\\"${listSelection}\\"\\)`));
   const fullRowMatches = registry.match(new RegExp(`\\.select\\(\\"${fullSelection}\\"\\)`, "g")) ?? [];
-  assert.ok(fullRowMatches.length >= 4, "read/save/move/create must preserve canonical artifacts");
+  assert.ok(fullRowMatches.length >= 3, "read/move/create must preserve canonical artifacts; Save Revision returns the full Experiment row through RPC");
+  assert.match(registry, /\.rpc\("crystallize_experiment_working_copy"/);
 });
 
 test("#198 Metrics edits participate in active registry dirty-state comparison", () => {
