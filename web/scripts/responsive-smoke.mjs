@@ -97,7 +97,12 @@ async function structure(send) {
       },
       tabHeights: authoringTabs.map((tab) => Math.round(tab.getBoundingClientRect().height)),
       ribbon: {
-        brandText: document.querySelector('.vlab-react-brand')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+        brandTitle: document.querySelector('.vlab-react-brand-title')?.textContent?.trim() ?? '',
+        ownerName: document.querySelector('.vlab-react-owner-name')?.textContent?.trim() ?? '',
+        byline: document.querySelector('.vlab-react-brand-byline')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+        globalKeys: [...document.querySelectorAll('[data-vlab-nav="simulation"], [data-vlab-nav="authoring"], [data-vlab-nav="help"], [data-vlab-nav="account"]')]
+          .filter(visible)
+          .map((element) => element.getAttribute('data-vlab-nav')),
         globalLabels: [...document.querySelectorAll('[data-vlab-nav="simulation"], [data-vlab-nav="authoring"], [data-vlab-nav="help"], [data-vlab-nav="account"]')]
           .filter(visible)
           .map((element) => element.textContent?.trim() ?? ''),
@@ -131,11 +136,18 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
     throw new Error(`${label}: simulator readiness is not contextualized inside Simulation: ${JSON.stringify(state.ribbon)}`);
   }
   if (!touch) {
-    if (state.ribbon.brandText !== "Virtual Lab Eliseo Ferrante · Swarm robotics") {
+    if (
+      state.ribbon.brandTitle !== "Virtual Lab"
+      || state.ribbon.ownerName !== "Eliseo Ferrante"
+      || state.ribbon.byline !== "Eliseo Ferrante · Swarm robotics"
+    ) {
       throw new Error(`${label}: product identity regressed: ${JSON.stringify(state.ribbon)}`);
     }
+    if (JSON.stringify(state.ribbon.globalKeys) !== JSON.stringify(["simulation", "authoring", "help", "account"])) {
+      throw new Error(`${label}: global ribbon destinations regressed: ${JSON.stringify(state.ribbon)}`);
+    }
     if (JSON.stringify(state.ribbon.globalLabels) !== JSON.stringify(["Simulation", "Authoring", "Help", "Account"])) {
-      throw new Error(`${label}: global ribbon hierarchy regressed: ${JSON.stringify(state.ribbon)}`);
+      throw new Error(`${label}: global ribbon labels regressed: ${JSON.stringify(state.ribbon)}`);
     }
     if (state.ribbon.forbiddenVisible) {
       throw new Error(`${label}: Experiment/Results/Showcase/Professor re-entered global navigation`);
