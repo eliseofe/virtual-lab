@@ -297,6 +297,7 @@ function evaluate(expr, scope) {
       return scope.rng.uniform(args[0], args[1]);
     }
     if (expr.path === "place") { scope.place(...args); return null; }
+    if (expr.path === "set_agent_state") { scope.setAgentState(...args); return null; }
     if (scope.functions.has(expr.path)) return executeFunction(expr.path, args, scope);
     throw new InitializerCompileError(`unsupported call '${expr.path}'`, expr.line);
   }
@@ -340,15 +341,53 @@ export function compileInitializer(source, config) {
   if (!Number.isInteger(n) || n <= 0) throw new InitializerCompileError("N must be a positive integer");
   const rng = new SimulatorRng(seed);
   const state = new Array(n);
+  const privateState = Array.from({ length: n }, () => new Map());
   const place = (index, x, y, heading) => {
     if (!Number.isInteger(index) || index < 0 || index >= n) throw new InitializerCompileError(`place index ${index} is outside [0, N)`);
     if ([x, y, heading].some((value) => typeof value !== "number" || !Number.isFinite(value))) throw new InitializerCompileError("place coordinates and heading must be finite numbers");
     if (state[index] !== undefined) throw new InitializerCompileError(`agent ${index} was placed more than once`);
     state[index] = { x, y, heading };
   };
-  const root = { functions, config, rng, place, locals: new Map() };
+  const setAgentState = (index, name, value) => {
+    if (!Number.isInteger(index) || index < 0 || index >= n) throw new InitializerCompileError(`set_agent_state index ${index} is outside [0, N)`);
+    if (typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new InitializerCompileError("set_agent_state field name must be an identifier string");
+    if (typeof value !== "number" || !Number.isFinite(value)) throw new InitializerCompileError("set_agent_state value must be a finite scalar");
+    if (privateState[index].has(name)) throw new InitializerCompileError(`agent ${index} private state '${name}' was assigned more than once`);
+    privateState[index].set(name, value);
+  };
+  const root = { functions, config, rng, place, setAgentState, locals: new Map() };
   executeFunction("initialize", [config, rng, place], root);
   const missing = state.findIndex((entry) => entry === undefined);
   if (missing !== -1) throw new InitializerCompileError(`initializer did not place agent ${missing}; all N agents must be placed`);
-  return { version: "vlab.initializer-state/0.2", method: String(config.values.INITIALIZATION_METHOD ?? ""), state };
+  const compiledState = state.map((agent, index) => privateState[index].size
+    ? { ...agent, private_state: Object.fromEntries(privateState[index]) }
+    : agent);
+  return { version: "vlab.initializer-state/0.3", method: String(config.values.INITIALIZATION_METHOD ?? ""), state: compiledState };
+}
+
+export function validateInitializerControllerPrivateState(initializer, controller) {
+  const declarations = new Map((controller?.state ?? []).map((entry) => [entry.name, entry.type]));
+  for (let index = 0; index < (initializer?.state ?? []).length; index += 1) {
+    const profile = initializer.state[index]?.private_state;
+    if (profile === undefined) continue;
+    if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+      throw new InitializerCompileError(`agent ${index} private_state must be an object`);
+    }
+    for (const [name, value] of Object.entries(profile)) {
+      if (!declarations.has(name)) {
+        const error = new InitializerCompileError(`agent ${index} assigns undeclared controller private state '${name}'`);
+        error.category = "invalid-private-state";
+        throw error;
+      }
+      if (declarations.get(name) !== "scalar") {
+        const error = new InitializerCompileError(`agent ${index} private state '${name}' is not scalar`);
+        error.category = "invalid-private-state";
+        throw error;
+      }
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        throw new InitializerCompileError(`agent ${index} private state '${name}' must be a finite scalar`);
+      }
+    }
+  }
+  return initializer;
 }

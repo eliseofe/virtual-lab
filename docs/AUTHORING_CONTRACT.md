@@ -1,6 +1,6 @@
 # Experiment Authoring Contract
 
-Status: **current deployed contract, 19 September 2026**.
+Status: **current contract candidate, 20 September 2026**.
 
 Current machine-readable contract: `vlab.authoring/0.9`, exposed by production `experiment-mcp` server `3.13.0`, interface `17`.
 
@@ -67,6 +67,18 @@ Standard scalar mathematics is language substrate rather than a scientific capab
 `**` is canonicalized to the same power operation as `pow(base, exponent)`; it is not a second numerical implementation. Rust-backed artifacts execute these operations through native `f64` functions.
 
 This vocabulary is intentionally independent of any specific paper. Scientific capabilities continue to describe observations, actions, environment semantics, heterogeneous state, stochastic services, or other model-domain abilities—not generic algebra or trigonometry.
+
+## Generic heterogeneous controller-private initialization
+
+Implemented capability `initialization.per_agent_private_state_assignment` extends Initialization with one bounded intrinsic:
+
+`set_agent_state(i, "state_name", value)`
+
+The target field must be a scalar private state declared by the Controller class. The assigned value must be finite, the agent index must be valid, and one agent/field pair may be assigned at most once. Agents without an override retain the Controller class declaration's default initial value.
+
+Validation is cross-artifact: an Initialization profile is accepted only when every assigned state name exists in the compiled Controller schema. The Rust runtime independently validates and applies the same per-agent profiles on construction, setup/controller replacement and reset.
+
+This is a generic heterogeneous-state seam, not a paper-specific role mechanism. Initialization does not expose a global role table, multiple controller programs, heterogeneous sensors or unrestricted per-agent dictionaries.
 
 ## Generic Controller control-flow substrate
 

@@ -848,6 +848,7 @@ pub struct IrControllerRuntime {
     body: Vec<PreparedStatement>,
     parameters: Vec<f64>,
     private_initial: Vec<f64>,
+    private_state_slots: HashMap<String, usize>,
     private_state: Vec<Vec<f64>>,
     scratch_locals: Vec<Value>,
     scratch_eval_stack: Vec<Value>,
@@ -903,6 +904,7 @@ impl IrControllerRuntime {
             body,
             parameters,
             private_initial,
+            private_state_slots: state_slots,
             private_state: Vec::new(),
             scratch_locals: vec![Value::Scalar(f64::NAN); local_slots.len()],
             scratch_eval_stack: Vec::with_capacity(eval_stack_capacity),
@@ -912,9 +914,41 @@ impl IrControllerRuntime {
 
 impl ControllerRuntime for IrControllerRuntime {
     fn reset(&mut self, agent_count: usize) {
+        let profiles = vec![BTreeMap::new(); agent_count];
+        self.reset_with_private_state(agent_count, &profiles)
+            .expect("empty private-state initialization must be valid");
+    }
+
+    fn reset_with_private_state(
+        &mut self,
+        agent_count: usize,
+        private_state: &[BTreeMap<String, f64>],
+    ) -> Result<(), String> {
+        if private_state.len() != agent_count {
+            return Err(format!(
+                "controller private-state profile count {} does not match agent count {agent_count}",
+                private_state.len()
+            ));
+        }
         self.private_state = vec![self.private_initial.clone(); agent_count];
+        for (agent_index, profile) in private_state.iter().enumerate() {
+            for (name, value) in profile {
+                let slot = self.private_state_slots.get(name)
+                    .copied()
+                    .ok_or_else(|| format!(
+                        "agent {agent_index} assigns undeclared controller private state '{name}'"
+                    ))?;
+                if !value.is_finite() {
+                    return Err(format!(
+                        "agent {agent_index} private state '{name}' must be finite"
+                    ));
+                }
+                self.private_state[agent_index][slot] = *value;
+            }
+        }
         self.scratch_locals.fill(Value::Scalar(f64::NAN));
         self.scratch_eval_stack.clear();
+        Ok(())
     }
 
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action {
@@ -1196,6 +1230,56 @@ mod tests {
     fn non_finite_controller_action_fails_loudly() {
         let mut stack = vec![Value::Scalar(f64::NAN), Value::Scalar(0.0)];
         execute_intrinsic(Intrinsic::Motion, &mut stack);
+    }
+
+    #[test]
+    fn heterogeneous_private_state_initialization_is_per_agent_and_reproducible() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Roles","entry":"step",
+          "parameters":{},"state":[{"name":"role","type":"scalar","initial":0.0}],
+          "body":[
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"self.role"},{"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, "{}");
+        let mut profiles = vec![BTreeMap::new(), BTreeMap::new(), BTreeMap::new()];
+        profiles[0].insert("role".to_owned(), 1.0);
+        profiles[1].insert("role".to_owned(), 2.0);
+        runtime.reset_with_private_state(3, &profiles).unwrap();
+
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+        };
+        assert_eq!(runtime.step(0, &observation).forward, 1.0);
+        assert_eq!(runtime.step(1, &observation).forward, 2.0);
+        assert_eq!(runtime.step(2, &observation).forward, 0.0);
+
+        runtime.reset_with_private_state(3, &profiles).unwrap();
+        assert_eq!(runtime.step(0, &observation).forward, 1.0);
+        assert_eq!(runtime.step(1, &observation).forward, 2.0);
+        assert_eq!(runtime.step(2, &observation).forward, 0.0);
+    }
+
+    #[test]
+    fn heterogeneous_private_state_rejects_undeclared_fields() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Roles","entry":"step",
+          "parameters":{},"state":[{"name":"role","type":"scalar","initial":0.0}],
+          "body":[
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"self.role"},{"kind":"const","value":0.0}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, "{}");
+        let mut profiles = vec![BTreeMap::new()];
+        profiles[0].insert("unknown".to_owned(), 1.0);
+        let error = runtime.reset_with_private_state(1, &profiles).unwrap_err();
+        assert!(error.contains("undeclared controller private state 'unknown'"));
     }
 
 }

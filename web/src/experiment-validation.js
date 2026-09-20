@@ -1,7 +1,7 @@
 import { compileController } from "./controller/compiler.js";
 import { compileConfig, numericParameters } from "./config/compiler.js";
 import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./environment/compiler.js";
-import { compileInitializer } from "./initializer/compiler.js";
+import { compileInitializer, validateInitializerControllerPrivateState } from "./initializer/compiler.js";
 import { compileMetrics } from "./metrics/compiler.js";
 import {
   artifactWritePayload,
@@ -48,6 +48,7 @@ function compileExperiment(experiment, runtimeValues, { seed = 0 } = {}) {
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
   const controller = compileController(controllerSource, { parameters: parameterTypes });
   validateEnvironmentControllerPair(environment, controller);
+  validateInitializerControllerPrivateState(initializer, controller);
   const metrics = compileMetrics(metricsSource, { parameters: parameterTypes });
 
   return { config, runtime, initializer, environment, controller, metrics, parameters };

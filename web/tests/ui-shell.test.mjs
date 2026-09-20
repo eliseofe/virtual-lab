@@ -119,12 +119,12 @@ test("hidden simulator settings stay outside the editable config namespace", asy
   assert.doesNotMatch(config, /PHYSICS_DT|METRIC_DT|INTERNAL_SEED|INTERNAL_PHYSICS_DT|INTERNAL_METRIC_DT/);
 });
 
-test("setup and controller application use separate worker paths", async () => {
+test("setup changes apply setup and controller atomically while controller-only edits keep a separate path", async () => {
   const main = await text("src/main.js");
   const worker = await text("src/worker.js");
   assert.match(main, /type: "apply-setup"/);
   assert.match(main, /type: "apply-controller"/);
-  assert.match(worker, /simulation\.set_setup/);
+  assert.match(worker, /simulation\.set_experiment/);
   assert.match(worker, /simulation\.set_controller/);
   assert.match(worker, /simulation\.snapshot_state/);
 });

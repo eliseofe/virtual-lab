@@ -1,6 +1,6 @@
 import { compileConfig, numericParameters } from "./vendor/config-compiler.js";
 import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./vendor/environment-compiler.js";
-import { compileInitializer } from "./vendor/initializer-compiler.js";
+import { compileInitializer, validateInitializerControllerPrivateState } from "./vendor/initializer-compiler.js";
 import { compileController } from "./vendor/controller-compiler.js";
 import { compileMetrics, METRIC_MEASUREMENT_PHASE, METRICS_IR_SCHEMA, METRICS_LANGUAGE } from "./vendor/metrics-compiler.js";
 import {
@@ -46,8 +46,8 @@ export const AUTHORING_CONTRACT = Object.freeze({
       parameter_policy: "Configuration names beyond the stable runtime requirements are experiment-defined or capability-owned. Implemented capability bindings advertise any additional simulator-owned configuration symbols."
     },
     initialization: {
-      compiled_version: "vlab.initializer-state/0.2",
-      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Additional callable/member surfaces and optional entries are capability-owned.",
+      compiled_version: "vlab.initializer-state/0.3",
+      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Implemented capability surfaces may additionally assign deterministic per-agent initial controller-private scalar state. Additional callable/member surfaces and optional entries are capability-owned.",
       entry: "initialize(config, rng, place)",
       simulator_owned_inputs: ["config", "rng", "place"],
       language_intrinsics: ["abs", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "floor", "ceil", "pow", "min", "max", "range"],
@@ -342,6 +342,9 @@ export function validateExperimentSources({ config_source, initializer_source, c
     controller = compileController(controller_source, { parameters: parameterTypes });
     validateEnvironmentControllerPair(environment, controller);
   } catch (error) { diagnostics.push(errorDiagnostic("controller", error)); return invalid(diagnostics); }
+
+  try { validateInitializerControllerPrivateState(initializer, controller); }
+  catch (error) { diagnostics.push(errorDiagnostic("initializer", error)); return invalid(diagnostics); }
 
   let metrics;
   try { metrics = compileMetrics(metrics_source, { parameters: parameterTypes }); }

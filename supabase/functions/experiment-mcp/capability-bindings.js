@@ -88,6 +88,20 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
     ],
   }),
   freezeBinding({
+    canonical_capability_id: "25ee37e5-ba59-4e8a-9768-a5604e2501b5",
+    capability_key: "initialization.per_agent_private_state_assignment",
+    surfaces: [
+      {
+        artifact: "initialization",
+        kind: "intrinsic",
+        symbol: "set_agent_state",
+        syntax: "set_agent_state(i, \"state_name\", value)",
+        signature: { args: ["integer", "string", "scalar"], result: "void" },
+      },
+    ],
+    requires: ["624eb86c-65ee-4a15-abd4-9fd331c55956"],
+  }),
+  freezeBinding({
     canonical_capability_id: "59d44d30-e5ca-43eb-b648-d784ee1d8ac1",
     capability_key: "observation.self_heading",
     surfaces: [

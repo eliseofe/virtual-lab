@@ -33,9 +33,9 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **#382 — Bare-bones scientific authoring language completeness is complete.** #383–#386 establish bounded Controller/Metrics control flow, standard scientific mathematics/exponentiation, compiler/runtime parity, and generic acceptance without widening scientific capabilities.
-2. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn. The previous Constant Bearing closure/request/candidate state has been reset; its live Experiment remains available for a fresh retry in the existing research-AI chat against the completed language substrate.
-3. Treat the capability-request queue as intentionally clean at this point. RNG/controller stochasticity, heterogeneous initialization/state, and any future Constant Bearing scientific gaps are not implemented features or active approved requests; if fresh acceptance rediscovers them, they must re-enter through the normal typed request/Professor-triage path.
+1. **Implement the owner-authorized generic heterogeneous-state capability through #304.** Fresh Constant Bearing use rediscovered the previously preserved need: Initialization can assign deterministic per-agent initial values to Controller-declared private scalar state. The implementation must remain generic and reusable for roles/leaders/informed agents.
+2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It is not implementation-authorized by #304.
+3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn after the current #304 ticket reaches its terminal state.
 4. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
 5. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
 6. Turn concrete evidence from use into focused fixes; do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.

@@ -376,7 +376,7 @@ self.addEventListener("message", (event) => {
       const setup = simulationValues(message.setup);
       activeArenaSize = setup.arenaSize;
       activePhysicsDt = setup.physicsDt;
-      simulation.set_setup(
+      simulation.set_experiment(
         JSON.stringify(setup.initialState),
         setup.seed,
         setup.physicsDt,
@@ -388,10 +388,10 @@ self.addEventListener("message", (event) => {
         setup.maxForwardSpeed,
         setup.maxAngularSpeed,
         JSON.stringify(setup.environment),
+        JSON.stringify(message.ir),
         JSON.stringify(metricsIr(message)),
         JSON.stringify(message.parameters ?? {}),
       );
-      simulation.set_controller(JSON.stringify(message.ir), JSON.stringify(message.parameters ?? {}));
       activeSeed = setup.seed >>> 0;
       pacer = new RuntimePacer(activePhysicsDt);
       resetMetricTransportClock();
