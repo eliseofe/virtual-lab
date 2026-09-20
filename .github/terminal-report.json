@@ -1,21 +1,21 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Experiment re-entry now prioritizes the latest numbered revision without losing Working-copy recovery",
-  "owner_impact": "When you return to an owned Experiment, the Lab opens its newest numbered revision instead of automatically dropping you into an older Working copy. Any Working copy is still preserved at the top of revision history and can be opened explicitly. A new Discard Working copy action lets you remove obsolete human work after confirmation and immediately return to the latest numbered revision.",
+  "outcome": "Upper workspace management is simplified around the current Experiment",
+  "owner_impact": "The current Experiment surface now uses one compact Experiments entry instead of Switch experiment wording; Professor opens Extension Requests directly with no intermediate Professor-tools screen; and Professor accounts can Promote to Showcase or Publish current revision directly beside the current Experiment. The Showcase browser remains available for browsing and removing curated entries. Arena and Experiment Source are unchanged.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The bounded #409 revision re-entry/discard correction is complete. The living #273 UI/UX lane remains evidence-driven, with no automatic successor and no owner action required."
+    "text": "The bounded #413 upper-workspace UI/UX cleanup round is complete. #273 remains a living evidence-driven UI/UX domain, with no automatic successor and no owner action required."
   },
   "technical_evidence": [
-    "loadRemoteExperiment preserves any owner Working copy in memory/history but always selects and applies the current numbered Experiment head on re-entry.",
-    "Working copy remains explicitly selectable through the existing revision-history entry and its base-revision provenance is unchanged.",
-    "Discard Working copy requires confirmation, waits for any pointer-boundary autosave already in flight, deletes only the current owner's experiment_working_copies row, and reloads the newest numbered revision.",
-    "The existing owner-only Working-copy delete RLS policy remains authoritative; no database migration or authorization broadening is introduced.",
-    "Focused #409 regression tests lock the latest-revision re-entry default, Working-copy recoverability, discard visibility, owner scoping, and latest-revision landing behavior.",
-    "No scientific/runtime semantics, connector contract, CI/CD, polling, retry, timeout, scheduling, or project-development workflow rule changed.",
-    "The Experiment finder now gives its hidden collection-filter state authored CSS priority, so responsive display rules cannot surface secondary collection navigation while the finder is closed."
+    "The hidden legacy experiment select remains the internal compatibility/state source, while the visible current-Experiment surface exposes one Experiments library action.",
+    "The legacy Professor button now opens the existing Extension Requests inbox directly; Account remains the only workspace-utilities dialog view.",
+    "Desktop and mobile React Professor controls now point their dialog accessibility metadata at professor-extension-inbox rather than workspace-utilities.",
+    "Professor Showcase publication reuses the existing publication RPCs and save-before-publish semantics, but the action is mounted beside the current Experiment with Promote to Showcase, Publish current revision, In Showcase and conflict states.",
+    "The Showcase browser retains curated-entry browsing, opening, removal and private-copy behavior; no publication or authorization contract changed.",
+    "Arena, simulation controls, Experiment Source, revision/autosave semantics, sharing, collections, capability-request data, scientific runtime, connectors, CI/CD and project workflow are unchanged.",
+    "Focused #413 regression coverage locks the simplified Experiment entry, one-step Professor navigation and direct Showcase curation path."
   ],
-  "close_issue": 409
+  "close_issue": 413
 }
