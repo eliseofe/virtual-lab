@@ -1,7 +1,7 @@
 {
   "schema": "vlab.terminal-report/2",
   "outcome": "The Experiment Control Panel now has a consistent visual rhythm",
-  "owner_impact": "The Control Panel keeps the same structure and behavior, but peer cards now use balanced 50/50 proportions, related cards align more evenly, and action buttons follow one consistent sizing system instead of mixing unrelated heights and widths. Desktop actions use a common 38px height; mobile keeps 44px touch targets. The small Organize metadata action remains intentionally compact rather than competing with primary actions.",
+  "owner_impact": "The Control Panel keeps the same structure and behavior, but peer cards now use balanced 50/50 proportions, related cards align more evenly, and action buttons follow one consistent sizing system instead of mixing unrelated heights and widths. Control Panel actions now use one common 44px height on both desktop and mobile, matching the existing accessibility-hardening system. The small Organize metadata action remains intentionally compact rather than competing with primary actions.",
   "next": {
     "kind": "scope_complete",
     "disposition": "dormant",
@@ -13,8 +13,8 @@
     "Revisions and Save & share share the same minimum card rhythm and stretch behavior.",
     "The two Research curation sub-cards share equal rows, matched minimum height and spacing.",
     "Peer action groups use predictable two-column grids on desktop and one column on mobile.",
-    "Desktop Control Panel actions use 38px height; mobile actions retain 44px touch targets.",
-    "Responsive production smoke checks that the visible Experiments and Sign in to save actions have the same desktop height.",
+    "Control Panel actions use one 44px height across desktop and mobile, consistent with the existing UX-hardening rule.",
+    "Responsive production smoke checks that the visible Experiments and Sign in to save actions have the same 44px desktop height.",
     "No information architecture, labels, role visibility, scientific/runtime, persistence, revision/autosave, sharing, Showcase or capability-request semantics changed."
   ],
   "close_issue": 437

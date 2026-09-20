@@ -12,10 +12,10 @@ test("#437 balances the peer Control Panel cards", () => {
 });
 
 test("#437 uses one desktop action-height system", () => {
-  assert.match(management, /\.experiment-browse \{ min-height: 38px/);
-  assert.match(management, /\.experiment-revision-actions button,[\s\S]*\.experiment-sign-in-save \{[\s\S]*min-height: 38px !important/);
-  assert.match(management, /\.experiment-professor-actions button \{[\s\S]*min-height: 38px/);
-  assert.match(management, /\.experiment-organize \{[\s\S]*min-height: 30px !important/);
+  assert.match(management, /\.experiment-browse \{ min-height: 44px/);
+  assert.match(management, /\.experiment-revision-actions button,[\s\S]*\.experiment-sign-in-save \{[\s\S]*min-height: 44px !important/);
+  assert.match(management, /\.experiment-professor-actions button \{[\s\S]*min-height: 44px/);
+  assert.match(management, /\.experiment-organize \{[\s\S]*min-height: 44px !important/);
 });
 
 test("#437 makes peer action groups geometrically predictable", () => {
@@ -24,7 +24,7 @@ test("#437 makes peer action groups geometrically predictable", () => {
   assert.match(management, /\.experiment-professor-actions button \{[\s\S]*width: 100%/);
 });
 
-test("#437 keeps the established mobile touch system", () => {
+test("#437 uses the same hardened 44px action height on desktop and mobile", () => {
   assert.match(management, /@media \(max-width: 680px\)/);
   assert.match(management, /\.experiment-revision-actions button,[\s\S]*\.experiment-professor-actions button \{ min-height: 44px !important; \}/);
   assert.match(management, /grid-template-columns: 1fr !important/);

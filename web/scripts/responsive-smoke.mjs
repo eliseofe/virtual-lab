@@ -163,7 +163,7 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
     throw new Error(`${label}: signed-out Professor hierarchy leaked or legacy placement remains: ${JSON.stringify(state.managementTasks)}`);
   }
   if (!touch) {
-    if (state.controlHeights.browse !== 38 || state.experimentManagement.signInSaveHeight !== 38) {
+    if (state.controlHeights.browse !== 44 || state.experimentManagement.signInSaveHeight !== 44) {
       throw new Error(`${label}: Control Panel action heights are unbalanced: ${JSON.stringify({
         browse: state.controlHeights.browse,
         signInSave: state.experimentManagement.signInSaveHeight,
