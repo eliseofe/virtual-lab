@@ -1,19 +1,20 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Human editing now uses a durable Working copy instead of creating a revision on every save",
-  "owner_impact": "While editing an owned Experiment, leaving an editor or taking another action autosaves the current text into one unnumbered Working copy. Save Revision is the only human action that crystallizes it into the next numbered revision. Numbered snapshots are retained immutably, incomplete edits can still autosave, and a newer AI revision no longer invalidates or blocks the human Working copy.",
+  "outcome": "Revision history is directly navigable from the Experiment header",
+  "owner_impact": "The Experiment header now shows exactly what you are viewing: a numbered revision or your Working copy. Opening it exposes retained history with All, Mine and AI filters, exact author/time/base provenance, and direct selection of old snapshots. New AI revisions become visible without replacing your current view or hiding your Working copy. If a Working copy already exists, inspecting another revision cannot overwrite it accidentally; starting from that revision requires an explicit Edit from this revision action.",
   "next": {
     "kind": "epic_continues",
-    "issue": 398,
-    "text": "#396 continues with #398 — revision selector, Working copy navigation, and All/Mine/AI filters. That ticket will make retained history and newly arrived AI revisions directly visible/selectable and will holistically redesign the touched Experiment/revision UI. It has not started yet."
+    "issue": 399,
+    "text": "#396 continues with #399 — the bounded integrated revision-workflow UX and regression verification pass. It will exercise the whole flow as one product experience and correct material friction found there. It has not started yet."
   },
   "technical_evidence": [
-    "Production migrations 20260920094310 and 20260920094339 add immutable experiment_revisions, owner-only experiment_working_copies, RLS, retained-base provenance, and the explicit crystallization RPC.",
-    "Existing Experiment rows were backfilled only at their current stored revision; overwritten historical contents were not fabricated.",
-    "The existing AI Experiment write path remains compatible and automatically appends numbered snapshots through the database trigger; the research-AI connector contract did not change.",
-    "Human Working-copy persistence accepts temporarily incomplete scientific text, while Save Revision retains the runnable Experiment validation boundary.",
-    "Collection-only moves no longer manufacture scientific revision numbers or overwrite revision provenance.",
-    "No CI/CD, deployment, polling, retry, timeout, scheduling, connector-tool surface, or project-workflow rule changed."
+    "Revision history reads the immutable public.experiment_revisions snapshots created by #397 and loads the exact selected artifact payload.",
+    "The revision control and Save Revision action live in the Experiment header; Account retains account, copy, collection and sharing concerns.",
+    "All/Mine/AI filtering uses retained revision authorship, with Mine defined as the currently signed-in account.",
+    "The experiments table is enabled in the Supabase Realtime publication; existing SELECT RLS remains the visibility authority and Realtime events are treated only as re-fetch signals.",
+    "A preserved Working copy locks inspected numbered revisions against accidental overwrite until the user explicitly chooses Edit from this revision.",
+    "Responsive and keyboard-accessible dialog/button semantics are covered by the #398 browser contract tests.",
+    "No CI/CD, deployment, retry, timeout, scheduling, connector-tool surface, or project-development workflow rule changed."
   ],
-  "close_issue": 397
+  "close_issue": 398
 }
