@@ -52,14 +52,15 @@ function installStyles() {
     }
     .experiment-control-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: stretch;
       gap: 12px;
     }
     .experiment-task-card {
       min-width: 0;
-      padding: 13px 14px;
+      padding: 14px;
       border: 1px solid #dfe7ea;
-      border-radius: 13px;
+      border-radius: 12px;
       background: #fbfcfc;
     }
     .experiment-task-current {
@@ -94,20 +95,45 @@ function installStyles() {
     .experiment-current-meta { gap: 7px !important; }
     .experiment-location[data-management-redundant="true"] { display: none !important; }
     .experiment-origin, .experiment-location { min-height: 26px !important; }
-    .experiment-browse { min-height: 36px; padding: 6px 11px; white-space: nowrap; }
+    .experiment-browse { min-height: 38px; padding: 7px 12px; white-space: nowrap; }
     .experiment-quick-hint { display: none !important; }
     .experiment-revision-workflow {
       display: grid;
-      gap: 8px;
+      gap: 10px;
+      align-content: start;
       padding: 0 !important;
       border: 0 !important;
       background: transparent !important;
     }
+    .experiment-task-revisions,
+    .experiment-management {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      align-content: stretch;
+      min-height: 154px;
+    }
+    .experiment-revision-actions,
+    .experiment-management-slot .registry-save-actions,
+    .experiment-management-slot .registry-new-actions {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px !important;
+      align-items: stretch !important;
+    }
+    .experiment-revision-actions button,
+    .experiment-management-slot .registry-save-actions button,
+    .experiment-management-slot .registry-new-actions button,
+    .experiment-management-slot .registry-move-row button,
+    .experiment-management-slot .registry-share-form button,
+    .experiment-sign-in-save {
+      min-height: 38px !important;
+      padding: 7px 12px !important;
+      font-size: 11.5px !important;
+    }
     .experiment-revision-workflow[hidden] { display: none !important; }
     .experiment-task-revisions:has(.experiment-revision-workflow[hidden]) { display: none; }
     .experiment-management {
-      display: grid;
-      gap: 8px;
+      gap: 10px;
     }
     .experiment-management[hidden] { display: none !important; }
     .experiment-management-status {
@@ -124,7 +150,7 @@ function installStyles() {
     .experiment-management-slot .registry-save-row,
     .experiment-management-slot .registry-new-form { margin: 0; }
     .experiment-management-slot .registry-note { margin: 0; }
-    .experiment-sign-in-save { justify-self: start; min-height: 36px; }
+    .experiment-sign-in-save { justify-self: stretch; width: 100%; }
     .experiment-current-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
     .experiment-professor-section {
       grid-column: 1 / -1;
@@ -136,27 +162,40 @@ function installStyles() {
     .experiment-professor-section[hidden] { display: none !important; }
     .experiment-professor-groups {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: 1fr;
+      gap: 12px;
     }
     .experiment-professor-group {
       display: grid;
-      align-content: start;
-      gap: 7px;
+      grid-template-rows: auto 1fr auto;
+      align-content: stretch;
+      gap: 8px;
       min-width: 0;
-      padding: 10px 11px;
+      min-height: 132px;
+      padding: 12px;
       border: 1px solid #e4dfeb;
       border-radius: 10px;
       background: #fff;
     }
     .experiment-professor-group strong { color: #554a61; font-size: 11px; }
     .experiment-professor-group p { margin: 0; color: #786e82; font-size: 10.5px; line-height: 1.4; }
-    .experiment-professor-actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
-    .experiment-professor-actions button { min-height: 36px; padding: 6px 11px; }
+    .experiment-professor-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+    .experiment-professor-actions button {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 12px;
+      font-size: 11.5px;
+    }
     .experiment-professor-section .showcase-curation-status { margin: 0; }
     .experiment-organize {
-      min-height: 26px !important;
-      padding: 3px 9px !important;
+      min-height: 30px !important;
+      padding: 4px 10px !important;
       border-radius: 999px !important;
       font-size: 10.5px !important;
       font-weight: 700 !important;
@@ -168,16 +207,23 @@ function installStyles() {
       .experiment-current-main { display: grid !important; grid-template-columns: minmax(0, 1fr); align-items: stretch !important; }
       .experiment-browse,
       .experiment-sign-in-save,
+      .experiment-revision-actions button,
       .experiment-management-slot .registry-save-actions button,
       .experiment-management-slot .registry-new-actions button,
-      .experiment-professor-actions button { min-height: 44px; }
+      .experiment-management-slot .registry-move-row button,
+      .experiment-management-slot .registry-share-form button,
+      .experiment-professor-actions button { min-height: 44px !important; }
       .experiment-browse,
       .experiment-sign-in-save { width: 100%; }
       .experiment-current-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
+      .experiment-revision-actions,
       .experiment-management-slot .registry-save-actions,
-      .experiment-management-slot .registry-new-actions { display: grid; grid-template-columns: 1fr; }
+      .experiment-management-slot .registry-new-actions,
+      .experiment-professor-actions { grid-template-columns: 1fr !important; }
       .experiment-professor-groups { grid-template-columns: 1fr; }
-      .experiment-professor-actions { display: grid; grid-template-columns: 1fr; }
+      .experiment-task-revisions,
+      .experiment-management,
+      .experiment-professor-group { min-height: 0; }
       .experiment-task-heading { align-items: flex-start; flex-direction: column; }
       .experiment-task-heading span { text-align: left; }
     }
