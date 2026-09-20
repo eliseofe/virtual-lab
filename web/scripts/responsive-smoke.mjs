@@ -96,6 +96,16 @@ async function structure(send) {
         browse: height('.experiment-browse')
       },
       tabHeights: authoringTabs.map((tab) => Math.round(tab.getBoundingClientRect().height)),
+      ribbon: {
+        brandText: document.querySelector('.vlab-react-brand')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+        globalLabels: [...document.querySelectorAll('[data-vlab-nav="simulation"], [data-vlab-nav="authoring"], [data-vlab-nav="help"], [data-vlab-nav="account"]')]
+          .filter(visible)
+          .map((element) => element.textContent?.trim() ?? ''),
+        forbiddenVisible: [...document.querySelectorAll('[data-vlab-nav="experiment"], [data-vlab-nav="results"], [data-vlab-nav="showcase"], [data-vlab-nav="professor"]')]
+          .some(visible),
+        workerStatusVisible: visible(document.querySelector('[data-vlab-worker-status]')),
+      },
+      simulatorReadinessVisible: visible(document.querySelector('[data-vlab-simulator-readiness]')),
       topbarRole: document.querySelector('.topbar-status')?.getAttribute('role') ?? null,
       canvasDescribedBy: document.querySelector('#simulation-canvas')?.getAttribute('aria-describedby') ?? null
     };
@@ -116,6 +126,20 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
   if (state.canvasRight > state.width + 1) throw new Error(`${label}: arena exceeds viewport width: ${JSON.stringify(state)}`);
   if (state.topbarRole !== "status" || state.canvasDescribedBy !== "arena-instructions") {
     throw new Error(`${label}: semantic status/arena description wiring missing: ${JSON.stringify(state)}`);
+  }
+  if (!state.simulatorReadinessVisible || state.ribbon.workerStatusVisible) {
+    throw new Error(`${label}: simulator readiness is not contextualized inside Simulation: ${JSON.stringify(state.ribbon)}`);
+  }
+  if (!touch) {
+    if (state.ribbon.brandText !== "Virtual Lab Eliseo Ferrante · Swarm robotics") {
+      throw new Error(`${label}: product identity regressed: ${JSON.stringify(state.ribbon)}`);
+    }
+    if (JSON.stringify(state.ribbon.globalLabels) !== JSON.stringify(["Simulation", "Authoring", "Help", "Account"])) {
+      throw new Error(`${label}: global ribbon hierarchy regressed: ${JSON.stringify(state.ribbon)}`);
+    }
+    if (state.ribbon.forbiddenVisible) {
+      throw new Error(`${label}: Experiment/Results/Showcase/Professor re-entered global navigation`);
+    }
   }
   if (!state.experimentManagement.visible || state.experimentManagement.selectVisible || state.experimentManagement.legacyPersistenceVisible) {
     throw new Error(`${label}: Experiment identity/persistence is not unified: ${JSON.stringify(state.experimentManagement)}`);
@@ -166,6 +190,14 @@ async function verifyFinder(send) {
 async function verifyUtilityDialog(send) {
   await evaluate(send, "document.querySelector('[data-vlab-nav-toggle=\"true\"]').click()");
   await sleep(100);
+  const drawerLabels = JSON.parse(await evaluate(send, `JSON.stringify(
+    [...document.querySelectorAll('[data-vlab-nav="simulation"], [data-vlab-nav="authoring"], [data-vlab-nav="help-mobile"], [data-vlab-nav="account-mobile"]')]
+      .filter((element) => !element.hidden && getComputedStyle(element).display !== 'none' && element.getClientRects().length)
+      .map((element) => element.textContent?.trim() ?? '')
+  )`));
+  if (JSON.stringify(drawerLabels) !== JSON.stringify(["Simulation", "Authoring", "Help", "Account"])) {
+    throw new Error(`mobile global navigation hierarchy regressed: ${JSON.stringify(drawerLabels)}`);
+  }
   await evaluate(send, "document.querySelector('[data-vlab-nav=\"account-mobile\"]').click()");
   await sleep(100);
   const opened = JSON.parse(await evaluate(send, `JSON.stringify((() => {
