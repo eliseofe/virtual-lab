@@ -16,7 +16,10 @@ async function waitReady(send) {
       latest = await evaluate(send, `JSON.stringify({
         state: document.querySelector('#worker-status')?.dataset.state ?? null,
         text: document.querySelector('#worker-status')?.textContent ?? null,
-        hardened: document.documentElement?.dataset.vlabUxHardened ?? null
+        hardened: document.documentElement?.dataset.vlabUxHardened ?? null,
+        experimentManagementReady: Boolean(document.querySelector('.experiment-management')),
+        experimentFinderReady: Boolean(document.querySelector('.experiment-browser-filters')),
+        experimentEntryReady: Boolean(document.querySelector('.experiment-browse'))
       })`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -25,7 +28,13 @@ async function waitReady(send) {
       continue;
     }
     const parsed = latest ? JSON.parse(latest) : null;
-    if (parsed?.state === "ready" && parsed?.hardened === "true") return parsed;
+    if (
+      parsed?.state === "ready"
+      && parsed?.hardened === "true"
+      && parsed?.experimentManagementReady
+      && parsed?.experimentFinderReady
+      && parsed?.experimentEntryReady
+    ) return parsed;
     if (parsed?.state === "error") throw new Error(`browser reported startup error: ${latest}`);
     await sleep(100);
   }
@@ -66,6 +75,7 @@ async function structure(send) {
       adminInsideWorkspace: Boolean(workspace?.querySelector('.registry-panel, .professor-panel, .utility-dialog, #collection-organizer')),
       visiblePanes,
       technicalOpen: Boolean(technical?.open),
+      filtersPresent: Boolean(document.querySelector('.experiment-browser-filters')),
       filtersHidden: Boolean(document.querySelector('.experiment-browser-filters')?.hidden),
       canvasRight: Math.ceil(document.querySelector('#simulation-canvas')?.getBoundingClientRect().right ?? 0),
       experimentManagement: {
@@ -102,6 +112,7 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
   if (state.adminInsideWorkspace) throw new Error(`${label}: administrative surface re-entered the scientific workspace`);
   if (state.visiblePanes !== 1) throw new Error(`${label}: expected exactly one visible authoring pane, got ${state.visiblePanes}`);
   if (state.technicalOpen) throw new Error(`${label}: Technical details should be collapsed by default`);
+  if (!state.filtersPresent) throw new Error(`${label}: Experiment finder filters were not initialized`);
   if (!state.filtersHidden) throw new Error(`${label}: collection filters re-entered primary experiment navigation`);
   if (state.canvasRight > state.width + 1) throw new Error(`${label}: arena exceeds viewport width: ${JSON.stringify(state)}`);
   if (state.topbarRole !== "status" || state.canvasDescribedBy !== "arena-instructions") {
