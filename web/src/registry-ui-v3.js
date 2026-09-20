@@ -182,9 +182,12 @@ function installStyles() {
       .registry-share-form { grid-template-columns: 1fr; }
       .registry-share-row button { min-height: 44px; }
       .experiment-revision-top { align-items: stretch; flex-direction: column; }
+      .experiment-revision-trigger { min-height: 44px; }
       .experiment-revision-actions { display: grid; grid-template-columns: 1fr 1fr; }
       .experiment-revision-actions button { min-height: 44px; }
-      .experiment-history-item { grid-template-columns: 1fr auto; }
+      .experiment-revision-actions button:only-child { grid-column: 1 / -1; }
+      .experiment-history-head button, .experiment-history-filter button { min-height: 44px; }
+      .experiment-history-item { grid-template-columns: 1fr auto; min-height: 60px; }
       .experiment-history-revision { grid-column: 1; }
       .experiment-history-copy { grid-column: 1; }
       .experiment-history-kind { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
@@ -1073,7 +1076,7 @@ function updateCurrentUi() {
       currentUi.revisionPrimary.textContent = "Working copy";
       currentUi.revisionSecondary.textContent =
         "Based on R" + currentWorkingCopy.base_revision + (dirty ? " · autosave pending" : " · autosaved");
-      metadataRevision.textContent = "registry working · base r" + currentWorkingCopy.base_revision;
+      metadataRevision.textContent = "Working copy · based on R" + currentWorkingCopy.base_revision;
     } else {
       const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
       const revision = viewedRevision ?? currentRemote;
@@ -1081,7 +1084,7 @@ function updateCurrentUi() {
       const time = formatRevisionTime(revision.created_at ?? revision.updated_at);
       currentUi.revisionPrimary.textContent = "R" + revisionNumber;
       currentUi.revisionSecondary.textContent = [actor, time].filter(Boolean).join(" · ") || "Saved revision";
-      metadataRevision.textContent = "registry r" + revisionNumber;
+      metadataRevision.textContent = "Revision R" + revisionNumber;
     }
 
     const referenceRevision = viewingWorking
