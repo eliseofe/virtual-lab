@@ -552,7 +552,9 @@ async function persistWorkingCopy() {
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
   if (!owned || !hasUnpersistedRemoteEdits()) return currentWorkingCopy;
 
-  const artifacts = registryArtifactsForSave();
+  // Working copy persistence is deliberately tolerant of temporarily invalid
+  // scientific code. It must preserve text while the human is still editing.
+  const artifacts = captureExperimentArtifacts();
   const baseRevision = currentWorkingCopy?.base_revision ?? currentRemote.revision;
   setMessage("Autosaving Working copy…");
   const { data, error } = await supabase
@@ -1242,6 +1244,10 @@ async function saveCurrentExperiment() {
     setMessage("No Working copy changes to save.");
     return;
   }
+
+  // Numbered revisions remain runnable scientific checkpoints even though the
+  // durable Working copy can contain incomplete code between editing actions.
+  registryArtifactsForSave();
 
   setMessage(`Saving ${currentRemote.title} as a new revision…`);
   const { data, error } = await supabase
