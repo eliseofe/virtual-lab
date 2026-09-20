@@ -12,7 +12,7 @@ const [management, showcase, inbox, react, responsive] = await Promise.all([
 
 test("#430 replaces the temporary bridge with one Professor-only research-curation section", () => {
   assert.match(management, /experiment-professor-section/);
-  assert.match(management, /taskHeading\("Research curation", "Showcase publication and scientific capability requests"\)/);
+  assert.match(management, /taskHeading\("Research curation"\)/);
   assert.match(management, /professorSection\.region\.hidden = !available/);
   assert.doesNotMatch(management, /experiment-professor-compat|Temporary bridge until the final Professor integration|Professor tools/);
 });
@@ -20,7 +20,7 @@ test("#430 replaces the temporary bridge with one Professor-only research-curati
 test("#430 places authoritative Showcase actions inside Research curation", () => {
   assert.match(management, /showcaseLauncher\.textContent = "Browse Showcase"/);
   assert.match(management, /showcaseActions\.append\(showcaseLauncher, promote\)/);
-  assert.match(management, /showcaseGroup\.append\(showcaseTitle, showcaseHelp, showcaseActions, curationStatus\)/);
+  assert.match(management, /showcaseGroup\.append\(showcaseTitle, showcaseActions, curationStatus\)/);
   assert.match(showcase, /ui\.launcher\.addEventListener\("click", \(\) => run\(openDialog\)\)/);
   assert.match(showcase, /ui\.promote\.addEventListener\("click", \(\) => run\(promoteCurrent\)\)/);
   assert.match(showcase, /supabase\.rpc\("promote_experiment_to_showcase"/);

@@ -37,7 +37,7 @@ test("#413 Showcase curation remains authoritative while #430 owns its final pla
   assert.match(showcase, /ui\.promote\.addEventListener\("click", \(\) => run\(promoteCurrent\)\)/);
   assert.match(showcase, /supabase\.rpc\("promote_experiment_to_showcase"/);
   assert.match(management, /showcaseActions\.append\(showcaseLauncher, promote\)/);
-  assert.match(management, /showcaseGroup\.append\(showcaseTitle, showcaseHelp, showcaseActions, curationStatus\)/);
+  assert.match(management, /showcaseGroup\.append\(showcaseTitle, showcaseActions, curationStatus\)/);
   assert.doesNotMatch(placement, /MutationObserver|placeShowcaseCuration/);
 });
 

@@ -1115,17 +1115,21 @@ function updateCurrentUi() {
     currentUi.revisionWorkflow.hidden = false;
 
     if (viewingWorking) {
-      currentUi.revisionPrimary.textContent = "Working copy";
-      currentUi.revisionSecondary.textContent =
-        "Based on R" + currentWorkingCopy.base_revision + (dirty ? " · autosave pending" : " · autosaved");
+      currentUi.revisionPrimary.textContent = "W";
+      currentUi.revisionSecondary.textContent = "";
+      currentUi.revisionTrigger.setAttribute(
+        "aria-label",
+        "Open revision history. Working copy based on revision " + currentWorkingCopy.base_revision,
+      );
       metadataRevision.textContent = "Working copy · based on R" + currentWorkingCopy.base_revision;
     } else {
       const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
-      const revision = viewedRevision ?? currentRemote;
-      const actor = revisionActor(revision);
-      const time = formatRevisionTime(revision.created_at ?? revision.updated_at);
-      currentUi.revisionPrimary.textContent = "R" + revisionNumber;
-      currentUi.revisionSecondary.textContent = [actor, time].filter(Boolean).join(" · ") || "Saved revision";
+      currentUi.revisionPrimary.textContent = String(revisionNumber);
+      currentUi.revisionSecondary.textContent = "";
+      currentUi.revisionTrigger.setAttribute(
+        "aria-label",
+        "Open revision history. Revision " + revisionNumber,
+      );
       metadataRevision.textContent = "Revision R" + revisionNumber;
     }
 
@@ -1137,7 +1141,7 @@ function updateCurrentUi() {
       const actor = revisionActor(newest);
       currentUi.revisionNotice.hidden = false;
       currentUi.revisionNotice.textContent =
-        "New R" + currentRemote.revision + " available" + (actor ? " · " + actor : "");
+        "New · " + currentRemote.revision + (actor ? " · " + actor : "");
     } else {
       currentUi.revisionNotice.hidden = true;
       currentUi.revisionNotice.textContent = "";
@@ -1180,38 +1184,38 @@ function updateCurrentUi() {
     ui.note.textContent = "You can edit and run the built-in experiment locally. Sign in to save a private copy or open your own library.";
   } else if (!currentRemote) {
     ui.saveState.dataset.state = "readonly";
-    ui.saveState.textContent = "Read-only source";
+    ui.saveState.textContent = "Read-only";
     ui.note.textContent = "The built-in experiment cannot be overwritten. Save as new lets you choose where its private copy is stored.";
   } else if (!owned) {
     ui.saveState.dataset.state = "readonly";
     const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
-    ui.saveState.textContent = "Viewing R" + revisionNumber + " · Read-only source";
+    ui.saveState.textContent = revisionNumber + " · Read-only";
     ui.note.textContent = currentRemoteAccess === "shared"
       ? "This shared revision stays read-only. Copy to my Experiments creates an independent private Experiment from the exact state you are viewing."
       : "This supervised revision stays read-only. Copy to my Experiments creates an independent private Experiment from the exact state you are viewing.";
   } else if (protectedWorkingCopy) {
     ui.saveState.dataset.state = "saved";
     ui.saveState.textContent =
-      "Viewing R" + viewedRevision.revision + " · Working copy from R" + currentWorkingCopy.base_revision + " preserved";
+      viewedRevision.revision + " · Working " + currentWorkingCopy.base_revision;
     ui.note.textContent = "Select Working copy to resume it, or choose Edit from this revision to replace it explicitly.";
   } else if (dirty) {
     const baseRevision = currentWorkingCopy?.base_revision ?? viewedRevision?.revision ?? currentRemote.revision;
     ui.saveState.dataset.state = "dirty";
-    ui.saveState.textContent = "Working copy · autosave pending · based on r" + baseRevision;
+    ui.saveState.textContent = "Working · pending · " + baseRevision;
     ui.note.textContent = "Leaving the editor or taking another action autosaves the Working copy. Save Revision creates a numbered revision.";
   } else if (viewingWorking) {
     ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = "Working copy · autosaved · based on r" + currentWorkingCopy.base_revision;
+    ui.saveState.textContent = "Working · " + currentWorkingCopy.base_revision;
     ui.note.textContent = currentRemote.revision > currentWorkingCopy.base_revision
       ? "A newer numbered revision is available. Your Working copy remains preserved; Save Revision will create the next chronological revision."
       : "Working copy is durable. Save Revision crystallizes it as the next numbered revision.";
   } else if (viewingNumbered && viewedRevision.revision < currentRemote.revision) {
     ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = "Viewing historical R" + viewedRevision.revision;
+    ui.saveState.textContent = viewedRevision.revision + " · Historical";
     ui.note.textContent = "Edit normally to start a Working copy from this revision. Numbered history remains unchanged.";
   } else {
     ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = "Saved · r" + currentRemote.revision;
+    ui.saveState.textContent = currentRemote.revision + " · Saved";
     ui.note.textContent = "Edit normally to create a Working copy; Save Revision crystallizes it as the next numbered revision.";
   }
 

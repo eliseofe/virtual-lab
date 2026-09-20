@@ -43,13 +43,6 @@ function installStyles() {
       text-transform: uppercase;
     }
     .experiment-control-title { margin: 0; color: #172127; font-size: 18px; line-height: 1.2; }
-    .experiment-control-help {
-      margin: 0;
-      max-width: 44rem;
-      color: #66777e;
-      font-size: 11.5px;
-      line-height: 1.45;
-    }
     .experiment-control-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -83,12 +76,6 @@ function installStyles() {
       letter-spacing: .055em;
       text-transform: uppercase;
     }
-    .experiment-task-heading span {
-      color: #7a898f;
-      font-size: 10.5px;
-      line-height: 1.35;
-      text-align: right;
-    }
     .experiment-current { margin: 0 !important; padding: 0 !important; border: 0 !important; }
     .experiment-current-main { align-items: center !important; }
     .experiment-current-title { font-size: 15px !important; }
@@ -105,6 +92,27 @@ function installStyles() {
       border: 0 !important;
       background: transparent !important;
     }
+    .experiment-revision-trigger {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: auto !important;
+      min-width: 52px !important;
+      max-width: 72px !important;
+      min-height: 44px !important;
+      padding: 6px 12px !important;
+      flex: 0 0 auto !important;
+      text-align: center !important;
+    }
+    .experiment-revision-trigger > span,
+    .experiment-revision-trigger > b {
+      display: none !important;
+    }
+    .experiment-revision-trigger > strong {
+      min-width: 0 !important;
+      font-size: 13px !important;
+      text-align: center;
+    }
     .experiment-task-revisions,
     .experiment-management {
       display: grid;
@@ -113,7 +121,6 @@ function installStyles() {
       min-height: 154px;
     }
     .experiment-revision-actions,
-    .experiment-management-slot .registry-save-actions,
     .experiment-management-slot .registry-new-actions {
       display: grid !important;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -121,9 +128,7 @@ function installStyles() {
       align-items: stretch !important;
     }
     .experiment-revision-actions button,
-    .experiment-management-slot .registry-save-actions button,
     .experiment-management-slot .registry-new-actions button,
-    .experiment-management-slot .registry-move-row button,
     .experiment-management-slot .registry-share-form button,
     .experiment-sign-in-save {
       min-height: 44px !important;
@@ -149,9 +154,6 @@ function installStyles() {
       padding: 8px 10px !important;
       white-space: nowrap;
     }
-    .experiment-management-slot .registry-save-actions:empty {
-      display: none !important;
-    }
     .experiment-management[hidden] { display: none !important; }
     .experiment-management-status {
       margin: 0;
@@ -164,9 +166,8 @@ function installStyles() {
     .experiment-management-status[data-state="error"] { color: #9e2d29; }
     .experiment-management-status[data-state="success"] { color: #246240; }
     .experiment-management-slot { display: grid; gap: 8px; }
-    .experiment-management-slot .registry-save-row,
+    .experiment-management-slot .registry-share-row,
     .experiment-management-slot .registry-new-form { margin: 0; }
-    .experiment-management-slot .registry-note { margin: 0; }
     .experiment-sign-in-save { justify-self: stretch; width: 100%; }
     .experiment-current-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
     .experiment-professor-section {
@@ -185,7 +186,7 @@ function installStyles() {
     }
     .experiment-professor-group {
       display: grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto auto;
       align-content: stretch;
       gap: 8px;
       min-width: 0;
@@ -225,16 +226,13 @@ function installStyles() {
       .experiment-browse,
       .experiment-sign-in-save,
       .experiment-revision-actions button,
-      .experiment-management-slot .registry-save-actions button,
       .experiment-management-slot .registry-new-actions button,
-      .experiment-management-slot .registry-move-row button,
       .experiment-management-slot .registry-share-form button,
       .experiment-professor-actions button { min-height: 44px !important; }
       .experiment-browse,
       .experiment-sign-in-save { width: 100%; }
       .experiment-current-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
       .experiment-revision-actions,
-      .experiment-management-slot .registry-save-actions,
       .experiment-management-slot .registry-new-actions,
       .experiment-professor-actions { grid-template-columns: 1fr !important; }
       .experiment-management-actions { grid-template-columns: 1fr 1fr; }
@@ -242,21 +240,18 @@ function installStyles() {
       .experiment-task-revisions,
       .experiment-management,
       .experiment-professor-group { min-height: 0; }
-      .experiment-task-heading { align-items: flex-start; flex-direction: column; }
-      .experiment-task-heading span { text-align: left; }
+      .experiment-task-heading { align-items: flex-start; }
     }
   `;
   document.head.append(style);
 }
 
-function taskHeading(title, help) {
+function taskHeading(title) {
   const heading = document.createElement("div");
   heading.className = "experiment-task-heading";
   const label = document.createElement("strong");
   label.textContent = title;
-  const description = document.createElement("span");
-  description.textContent = help;
-  heading.append(label, description);
+  heading.append(label);
   return heading;
 }
 
@@ -271,18 +266,15 @@ function buildControlPanel() {
   const title = document.createElement("h2");
   title.className = "experiment-control-title";
   title.textContent = "Control panel";
-  const help = document.createElement("p");
-  help.className = "experiment-control-help";
-  help.textContent = "Open, revise, organize and share the current Experiment from one place.";
   heading.append(kicker, title);
-  head.append(heading, help);
+  head.append(heading);
 
   const grid = document.createElement("div");
   grid.className = "experiment-control-grid";
 
   currentExperiment.classList.add("experiment-task-card", "experiment-task-current");
   currentExperiment.insertBefore(
-    taskHeading("Current Experiment", "Identity, access and organization"),
+    taskHeading("Current Experiment"),
     currentExperiment.firstChild,
   );
 
@@ -290,7 +282,7 @@ function buildControlPanel() {
   revisionTask.className = "experiment-task-card experiment-task-revisions";
   revisionTask.setAttribute("aria-label", "Experiment revisions");
   revisionTask.append(
-    taskHeading("Revisions", "Working copy and numbered history"),
+    taskHeading("Revisions"),
     revisionWorkflow,
   );
 
@@ -304,7 +296,7 @@ function buildManagementRegion() {
   const region = document.createElement("section");
   region.className = "experiment-task-card experiment-management";
   region.setAttribute("aria-label", "Save and share Experiment");
-  region.append(taskHeading("Save & share", "Save, copy and share"));
+  region.append(taskHeading("Save & share"));
 
   const status = document.createElement("p");
   status.className = "experiment-management-status";
@@ -333,7 +325,7 @@ function buildManagementRegion() {
   signIn.addEventListener("click", () => accountButton.click());
 
   region.append(status, actions, slot, signIn);
-  return { region, status, actions, slot, signIn };
+  return { region, status, actions, slot, signIn, saveAsNew, shareOpen };
 }
 
 function buildProfessorSection() {
@@ -347,7 +339,7 @@ function buildProfessorSection() {
   region.className = "experiment-task-card experiment-professor-section";
   region.hidden = true;
   region.setAttribute("aria-label", "Research curation");
-  region.append(taskHeading("Research curation", "Showcase publication and scientific capability requests"));
+  region.append(taskHeading("Research curation"));
 
   const groups = document.createElement("div");
   groups.className = "experiment-professor-groups";
@@ -356,20 +348,16 @@ function buildProfessorSection() {
   showcaseGroup.className = "experiment-professor-group";
   const showcaseTitle = document.createElement("strong");
   showcaseTitle.textContent = "Showcase";
-  const showcaseHelp = document.createElement("p");
-  showcaseHelp.textContent = "Browse curated Experiments or publish the current scientific state.";
   const showcaseActions = document.createElement("div");
   showcaseActions.className = "experiment-professor-actions";
   showcaseLauncher.textContent = "Browse Showcase";
   showcaseActions.append(showcaseLauncher, promote);
-  showcaseGroup.append(showcaseTitle, showcaseHelp, showcaseActions, curationStatus);
+  showcaseGroup.append(showcaseTitle, showcaseActions, curationStatus);
 
   const capabilityGroup = document.createElement("div");
   capabilityGroup.className = "experiment-professor-group";
   const capabilityTitle = document.createElement("strong");
   capabilityTitle.textContent = "Capability requests";
-  const capabilityHelp = document.createElement("p");
-  capabilityHelp.textContent = "Review scientific needs that the current Lab cannot yet express or run.";
   const capabilityActions = document.createElement("div");
   capabilityActions.className = "experiment-professor-actions";
   const requests = document.createElement("button");
@@ -382,7 +370,7 @@ function buildProfessorSection() {
     else professorButton.click();
   });
   capabilityActions.append(requests);
-  capabilityGroup.append(capabilityTitle, capabilityHelp, capabilityActions);
+  capabilityGroup.append(capabilityTitle, capabilityActions);
 
   groups.append(showcaseGroup, capabilityGroup);
   region.append(groups);
@@ -431,10 +419,12 @@ function mirrorOperationalMessage() {
 }
 
 function movePersistenceControls() {
-  for (const selector of [".registry-save-row", ".registry-new-form", ".registry-note"]) {
+  for (const selector of [".registry-share-row", ".registry-new-form"]) {
     const element = document.querySelector(selector);
     if (element && element.parentElement !== management.slot) management.slot.append(element);
   }
+  const note = document.querySelector(".registry-note");
+  if (note) note.hidden = true;
   legacyPersistence.hidden = true;
   legacyPersistence.setAttribute("aria-hidden", "true");
 }
@@ -460,19 +450,16 @@ function simplifyIdentity() {
   const saveRevision = document.querySelector(".experiment-revision-actions .primary");
   if (saveRevision) setText(saveRevision, "Save Revision");
 
-  const saveAsNew = document.querySelector(".registry-save-actions button:not(.primary)");
   if (locationText === "Student experiment" || locationText === "Shared with me") {
-    setText(saveAsNew, "Copy to my Experiments…");
+    setText(management.saveAsNew, "Copy to my Experiments…");
   } else {
-    setText(saveAsNew, "Save as new…");
+    setText(management.saveAsNew, "Save as new…");
   }
 }
 
 function syncSignedOutState() {
   const isSignedIn = signedIn();
   management.signIn.hidden = isSignedIn;
-  const note = management.slot.querySelector(".registry-note");
-  if (note) note.hidden = !isSignedIn;
   mirrorOperationalMessage();
 }
 

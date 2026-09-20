@@ -73,8 +73,8 @@ test("#399 historical read-only copy uses the exact retained revision being view
 
 test("#288 presents copying as a distinct action while preserving ordinary Save as new", () => {
   assert.match(management, /locationText === "Student experiment" \|\| locationText === "Shared with me"/);
-  assert.match(management, /setText\(saveAsNew, "Copy to my Experiments…"\)/);
-  assert.match(management, /setText\(saveAsNew, "Save as new…"\)/);
+  assert.match(management, /setText\(management\.saveAsNew, "Copy to my Experiments…"\)/);
+  assert.match(management, /setText\(management\.saveAsNew, "Save as new…"\)/);
   assert.match(registry, /ui\.createNew\.textContent = copyingReadable \? "Copy to my Experiments" : "Create private copy"/);
 });
 

@@ -306,7 +306,7 @@ async function ensureCurrentSavedForPromotion() {
   if (state === "saved") return experiment;
   if (state !== "dirty") throw new Error("This Experiment is not ready for promotion yet.");
 
-  const saveButton = document.querySelector(".registry-save-actions .primary");
+  const saveButton = document.querySelector(".experiment-revision-actions .primary");
   if (!saveButton || saveButton.hidden || saveButton.disabled) throw new Error("The current Experiment cannot be saved right now.");
 
   saveButton.click();
@@ -356,7 +356,7 @@ async function syncCurationUi() {
     if (state === "conflict") {
       ui.promote.textContent = "Publish to Showcase";
       ui.promote.disabled = true;
-      ui.curationStatus.textContent = "Resolve the save conflict before publishing.";
+      ui.curationStatus.textContent = "Save conflict";
       ui.curationStatus.dataset.state = "error";
       return;
     }
@@ -389,7 +389,7 @@ async function promoteCurrent() {
     if (registryId) {
       const experiment = await ensureCurrentSavedForPromotion();
       ui.promote.textContent = "Publishing…";
-      ui.curationStatus.textContent = `Publishing ${experiment.title}…`;
+      ui.curationStatus.textContent = `Publishing · ${experiment.title}`;
       ui.curationStatus.dataset.state = "idle";
       const { error } = await supabase.rpc("promote_experiment_to_showcase", {
         p_experiment_id: experiment.id,
@@ -397,7 +397,7 @@ async function promoteCurrent() {
       });
       if (error) throw error;
       await loadEntries();
-      ui.curationStatus.textContent = `${experiment.title} is in Showcase.`;
+      ui.curationStatus.textContent = `Published · ${experiment.title}`;
       ui.curationStatus.dataset.state = "success";
       return;
     }
@@ -406,7 +406,7 @@ async function promoteCurrent() {
     if (!source) throw new Error("Open an Experiment to promote it.");
     const payload = captureExperimentArtifacts();
     ui.promote.textContent = "Publishing…";
-    ui.curationStatus.textContent = `Publishing ${source.title}…`;
+    ui.curationStatus.textContent = `Publishing · ${source.title}`;
     ui.curationStatus.dataset.state = "idle";
     const { error } = await supabase.rpc("promote_catalog_to_showcase", {
       p_source_key: source.key,
@@ -418,7 +418,7 @@ async function promoteCurrent() {
     });
     if (error) throw error;
     await loadEntries();
-    ui.curationStatus.textContent = `${source.title} is in Showcase.`;
+    ui.curationStatus.textContent = `Published · ${source.title}`;
     ui.curationStatus.dataset.state = "success";
   } finally {
     busy = false;

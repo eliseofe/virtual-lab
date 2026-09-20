@@ -71,9 +71,9 @@ test("editability feedback distinguishes numbered state from Working-copy persis
   const registryUi = await registryUiSource();
   assert.match(registryUi, /Built-in · Read-only/);
   assert.match(registryUi, /Your experiment · Editable/);
-  assert.match(registryUi, /Saved · r/);
-  assert.match(registryUi, /Working copy · autosave pending/);
-  assert.match(registryUi, /Working copy · autosaved · based on r/);
+  assert.match(registryUi, /currentRemote\.revision \+ " · Saved"/);
+  assert.match(registryUi, /"Working · pending · " \+ baseRevision/);
+  assert.match(registryUi, /"Working · " \+ currentWorkingCopy\.base_revision/);
   assert.match(registryUi, /ui\.save\.hidden = !owned \|\| protectedWorkingCopy/);
   assert.match(registryUi, /ui\.save\.disabled = !owned \|\| protectedWorkingCopy \|\| \(!dirty && !currentWorkingCopy\)/);
 });

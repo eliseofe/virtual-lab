@@ -46,9 +46,9 @@ test("#429 Experiment management is one named task-based control panel", () => {
 
 test("#429 keeps existing Experiment semantics and collection organization reachable", () => {
   assert.match(management, /experimentSelect\.hidden = true/);
-  assert.match(management, /registry-save-row/);
+  assert.match(management, /registry-share-row/);
   assert.match(management, /registry-new-form/);
-  assert.match(management, /registry-note/);
+  assert.match(management, /note\.hidden = true/);
   assert.match(collection, /experiment-organize/);
   assert.doesNotMatch(management, /autosave.*keydown|keyup|input.*persistWorkingCopy/i);
 });
