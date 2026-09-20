@@ -1,23 +1,20 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Upper workspace management is simplified around the current Experiment",
-  "owner_impact": "The current Experiment surface now uses one compact Experiments entry instead of Switch experiment wording; Professor opens Extension Requests directly with no intermediate Professor-tools screen; and Professor accounts can Promote to Showcase or Publish current revision directly beside the current Experiment. The Showcase browser remains available for browsing and removing curated entries. Arena and Experiment Source are unchanged.",
+  "outcome": "The sticky ribbon now represents product identity and true global navigation",
+  "owner_impact": "The sticky ribbon presents Virtual Lab with Eliseo Ferrante and Swarm robotics, and removes the current paper title, Experiment, Results, Showcase, Professor and simulator-status clutter. The scientific navigation is Simulation and Authoring; Help and Account remain global utilities. Simulator readiness is shown inside Simulation. Professor accounts retain Showcase and Capability requests through a temporary top-card action group so no existing function is stranded before the Control Panel redesign.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The bounded #413 upper-workspace UI/UX cleanup round is complete. #273 remains a living evidence-driven UI/UX domain, with no automatic successor and no owner action required."
+    "kind": "epic_continues",
+    "issue": 418,
+    "text": "The #273 redesign continues with #418 — build the shared Experiment Control Panel. That ticket will reorganize the existing Experiment identity, library, revision/Working-copy, Save Revision, collection/organize and persistence actions into one coherent control surface. It has not started yet."
   },
   "technical_evidence": [
-    "The hidden legacy experiment select remains the internal compatibility/state source, while the visible current-Experiment surface exposes one Experiments library action.",
-    "The legacy Professor button now opens the existing Extension Requests inbox directly; Account remains the only workspace-utilities dialog view.",
-    "Desktop and mobile React Professor controls now point their dialog accessibility metadata at professor-extension-inbox rather than workspace-utilities.",
-    "Professor Showcase publication reuses the existing publication RPCs and save-before-publish semantics, but the action is mounted beside the current Experiment with Promote to Showcase, Publish current revision, In Showcase and conflict states.",
-    "The Showcase browser retains curated-entry browsing, opening, removal and private-copy behavior; no publication or authorization contract changed.",
-    "Arena, simulation controls, Experiment Source, revision/autosave semantics, sharing, collections, capability-request data, scientific runtime, connectors, CI/CD and project workflow are unchanged.",
-    "Focused #413 regression coverage locks the simplified Experiment entry, one-step Professor navigation and direct Showcase curation path.",
-    "The responsive production smoke now locks the approved visible Experiment-library label as Experiments while retaining all existing identity, hidden-select, persistence, hierarchy and touch-target assertions.",
-    "Responsive production smoke now waits for the Experiment-management surface, Experiment-library entry and finder-filter DOM to exist before asserting their state; missing initialization fails explicitly, and hidden-filter behavior remains a separate required assertion."
+    "React desktop and mobile global navigation now expose Simulation and Authoring only; Help remains the existing onboarding utility and Account remains the existing account dialog.",
+    "Simulation navigation targets the explicit #simulation section and Authoring targets #authoring-workbench; both have sticky-header scroll margin.",
+    "The ribbon brand is Virtual Lab with Eliseo Ferrante and Swarm robotics; the current Experiment title is no longer rendered in global chrome.",
+    "The old ribbon simulator badge is removed; SimulationPresentation observes the existing worker status and renders an accessible Simulator ready/starting/problem badge in the Simulation header.",
+    "A bounded compatibility bridge in the existing top Experiment card exposes Showcase and Capability requests only when the Professor surface is available, proxying the existing authoritative actions.",
+    "Responsive production smoke asserts desktop and mobile global hierarchy and verifies that simulator readiness is contextual rather than global.",
+    "No simulation/runtime, Results, Authoring, revision, autosave, sharing, Showcase publication, capability-request, authorization, connector or workflow semantics changed."
   ],
-  "close_issue": 413
+  "close_issue": 417
 }
