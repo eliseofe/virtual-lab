@@ -320,7 +320,8 @@ function buildManagementRegion() {
   const saveActions = document.querySelector(".registry-save-actions");
   const save = saveActions?.querySelector(".primary");
   const saveAsNew = saveActions?.querySelector("button:not(.primary)");
-  const move = document.querySelector(".registry-move-row button");
+  const moveRow = document.querySelector(".registry-move-row");
+  const move = moveRow?.querySelector("button");
   const shareOpen = document.querySelector(".registry-share-row > button");
   if (!(save instanceof HTMLButtonElement)
     || !(saveAsNew instanceof HTMLButtonElement)
@@ -341,7 +342,7 @@ function buildManagementRegion() {
   signIn.addEventListener("click", () => accountButton.click());
 
   region.append(status, actions, slot, signIn);
-  return { region, status, actions, slot, signIn };
+  return { region, status, actions, slot, signIn, move, moveRow };
 }
 
 function buildProfessorSection() {
@@ -411,6 +412,7 @@ let sourceMessageObserver = null;
 let authObserver = null;
 let currentObserver = null;
 let professorObserver = null;
+let moveObserver = null;
 
 function signedIn() {
   const signOut = document.querySelector(".registry-sign-out");
@@ -484,6 +486,10 @@ function syncSignedOutState() {
   mirrorOperationalMessage();
 }
 
+function syncManagementActions() {
+  management.move.hidden = management.moveRow.hidden;
+}
+
 function syncProfessorSection() {
   const available = !professorButton.hidden;
   professorSection.region.hidden = !available;
@@ -537,12 +543,21 @@ function attachObservers() {
       subtree: true,
     });
   }
+
+  if (!moveObserver) {
+    moveObserver = new MutationObserver(syncManagementActions);
+    moveObserver.observe(management.moveRow, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
+  }
 }
 
 function sync() {
   movePersistenceControls();
   simplifyIdentity();
   syncSignedOutState();
+  syncManagementActions();
   syncProfessorSection();
   attachObservers();
 }
