@@ -32,7 +32,7 @@ test("#413 makes Professor navigation one step to Extension Requests", () => {
 });
 
 test("#413 surfaces Professor Showcase curation on the current Experiment", () => {
-  assert.match(showcase, /currentExperimentMain\.querySelector\("\.experiment-browse"\)/);
+  assert.match(showcase, /currentExperimentMain\?\.querySelector\("\.experiment-browse"\)/);
   assert.match(showcase, /currentExperimentActions\.className = "experiment-current-actions"/);
   assert.match(showcase, /promote\.className = "primary showcase-promote-current"/);
   assert.match(showcase, /"Promote to Showcase"/);
