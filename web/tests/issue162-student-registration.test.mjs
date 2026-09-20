@@ -23,7 +23,8 @@ test('sign in and create account are peer actions in the same auth surface', () 
 test('signed-out production chrome has a stable high-level auth presentation', () => {
   assert.match(registration, /document\.body\.dataset\.vlabAuthState = signedOut \? "signed-out" : "signed-in"/);
   assert.match(registration, /data-vlab-nav="account"/);
-  assert.match(registration, /signedOut \? "Sign in" : "Account"/);
+  assert.match(registration, /const text = "Account"/);
+  assert.match(registration, /signedOut \? "Account — sign in" : "Account"/);
   assert.match(registration, /New accounts start with the Student role/);
 });
 
