@@ -40,3 +40,13 @@ test('workspace shell loads student registration after registry UI', () => {
   assert.ok(registry >= 0);
   assert.ok(registrationImport > registry);
 });
+
+test('registration requires structured human identity and passes it as signup metadata', () => {
+  assert.match(registration, /placeholder = "First name"/);
+  assert.match(registration, /placeholder = "Last name"/);
+  assert.match(registration, /first_name: given/);
+  assert.match(registration, /last_name: family/);
+  assert.match(registration, /display_name:/);
+  assert.ok(registration.includes("${given} ${family}"));
+  assert.match(registration, /Enter first name, last name, email and password/);
+});

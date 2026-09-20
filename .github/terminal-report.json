@@ -1,19 +1,20 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Experiment browsing shows the exact current-revision timestamp and actor provenance",
-  "owner_impact": "Each owned, shared or supervised Experiment in the library now identifies its current saved revision with exact local date/time including seconds and timezone plus the actor that produced that revision. Existing Claude and Grok OAuth client identifiers render as readable names; human revisions render as Human; unknown AI clients remain explicit instead of being hidden.",
+  "outcome": "Human users have structured names and named revision provenance",
+  "owner_impact": "Registration now asks for first and last name. Human revision provenance displays the Experiment owner's profile as Name (Role) rather than the generic label Human. Existing accounts were migrated to Eliseo Ferrante (Professor), Eliseo Ferrante (Student), and Sergio Gutierrez (Student); the dependency-free probe account was removed.",
   "next": {
     "kind": "scope_complete",
     "disposition": "dormant",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The bounded #392 UI pass is complete and #273 returns dormant. No Experiment storage or revision model changed. The displayed provenance applies to the currently stored revision; superseded revision history is not reconstructed by this ticket."
+    "text": "The bounded #394 identity scope is complete. #302 remains a separately queued security audit. Autosave/candidate-revision semantics are not part of #394 and remain to be discussed before implementation."
   },
   "technical_evidence": [
-    "Experiment rows already carried revision, updated_at, updated_by_actor and updated_by_ai_client; #392 only exposes those existing fields.",
-    "The revision timestamp is rendered with date, hour, minute, second and timezone in the browser's local timezone.",
-    "Known historical/current Claude and Grok OAuth client IDs map to readable labels with an explicit fallback for unknown AI-client identifiers.",
-    "Owned, shared, supervised and direct Experiment reads retain current-revision provenance fields.",
-    "No database schema, trigger, revision semantics, connector or development-workflow rule changed."
+    "profiles has first_name and last_name display fields; role/user id remain the authorization authority.",
+    "Student registration sends first_name, last_name and display_name through supported Supabase signup metadata; the profile trigger copies them into public.profiles.",
+    "Human Experiment provenance resolves the existing Experiment owner profile and renders Name (Role); AI provenance is unchanged.",
+    "The three real profile rows were migrated and the probe account was deleted only after zero meaningful dependencies were verified.",
+    "Migration 20260920091102_human_identity_profile_names is applied in production and recorded in the repository.",
+    "No Experiment revision semantics, RLS authorization rule, connector, workflow, polling, retry or scheduling behavior changed."
   ],
-  "close_issue": 392
+  "close_issue": 394
 }

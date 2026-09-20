@@ -715,8 +715,26 @@ function formatRevisionTime(value) {
   }).format(date);
 }
 
+function roleLabel(role) {
+  if (!role) return "";
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function profileForHumanOwner(ownerId) {
+  if (!ownerId) return null;
+  if (profile?.id === ownerId) return profile;
+  return supervisedProfiles.find((candidate) => candidate.id === ownerId)
+    ?? shareRecipients.find((candidate) => candidate.id === ownerId)
+    ?? null;
+}
+
 function revisionActor(experiment) {
-  if (experiment.updated_by_actor === "human") return "Human";
+  if (experiment.updated_by_actor === "human") {
+    const owner = profileForHumanOwner(experiment.owner_id);
+    if (!owner?.display_name) return "Human";
+    const role = roleLabel(owner.role);
+    return role ? `${owner.display_name} (${role})` : owner.display_name;
+  }
   if (experiment.updated_by_actor !== "ai") return experiment.updated_by_actor || "";
   const client = experiment.updated_by_ai_client;
   if (!client) return "AI";
@@ -917,7 +935,7 @@ function renderBrowser() {
 }
 
 async function loadProfile() {
-  const { data, error } = await supabase.from("profiles").select("id, display_name, role").eq("id", user.id).maybeSingle();
+  const { data, error } = await supabase.from("profiles").select("id, first_name, last_name, display_name, role").eq("id", user.id).maybeSingle();
   if (error) throw error;
   profile = data;
 }
