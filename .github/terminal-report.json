@@ -1,7 +1,7 @@
 {
   "schema": "vlab.terminal-report/2",
   "outcome": "The Save & share card is now compact and internally consistent",
-  "owner_impact": "The top-right Save & share card now uses the short subtitle “Save, copy and share”. Its visible Save Revision, Save as new and Share actions are consolidated into one equal-size action bar that stays on one row when the card is wide enough and wraps evenly when needed. Collection movement remains where it already belongs: the Organize flow. Open save/share forms remain underneath only when used. Mobile retains 44px touch targets and a compact two-column action layout.",
+  "owner_impact": "The top-right Save & share card now uses the short subtitle “Save, copy and share”. Its two actual peer actions—Save as new… and Share…—sit in one equal-size action row. Save Revision stays where it belongs in the Revisions card, and collection movement stays in Organize. Open save/share forms remain underneath only when used. Mobile retains 44px touch targets.",
   "next": {
     "kind": "scope_complete",
     "disposition": "dormant",
@@ -9,13 +9,14 @@
     "text": "This direct-use #273 refinement is complete. Review the live Save & share card visually; #273 remains a dormant/living UI/UX domain and further refinement should continue from what you actually see and use."
   },
   "technical_evidence": [
-    "Save Revision, Save as new and Share are relocated into one experiment-management-actions grid; collection movement stays in the existing Organize dialog.",
+    "Save as new and Share are the two actual Save & share peer actions and are placed in one equal-size experiment-management-actions grid.",
     "The Save & share subtitle is shortened from “Persistence, copies and collaboration” to “Save, copy and share”.",
     "The action bar uses equal-width auto-fit columns with fixed 44px rows, so visible peer buttons remain the same size and stay on one row where space allows.",
-    "Share still opens the original read-only sharing form; save/copy/share semantics are unchanged.",
+    "Share still opens the original read-only sharing form; copy/share semantics are unchanged.",
     "Responsive production smoke verifies the shortened subtitle and action-bar presence.",
     "No surrounding Control Panel structure, scientific/runtime, persistence, revision/autosave, sharing, authorization, Showcase or capability-request semantics changed.",
-    "The repair removes the incorrect dependency on the collection-organizer Move button, preventing experiment-management initialization failure."
+    "The repair removes the incorrect dependency on the collection-organizer Move button, preventing experiment-management initialization failure.",
+    "Save Revision remains in the Revisions card; the repair no longer assumes it remains inside registry-save-actions."
   ],
   "close_issue": 440
 }

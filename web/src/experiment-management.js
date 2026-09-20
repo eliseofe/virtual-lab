@@ -314,17 +314,14 @@ function buildManagementRegion() {
   const actions = document.createElement("div");
   actions.className = "experiment-management-actions";
 
-  const saveActions = document.querySelector(".registry-save-actions");
-  const save = saveActions?.querySelector(".primary");
-  const saveAsNew = saveActions?.querySelector("button:not(.primary)");
+  const saveAsNew = document.querySelector(".registry-save-actions button");
   const shareOpen = document.querySelector(".registry-share-row > button");
-  if (!(save instanceof HTMLButtonElement)
-    || !(saveAsNew instanceof HTMLButtonElement)
+  if (!(saveAsNew instanceof HTMLButtonElement)
     || !(shareOpen instanceof HTMLButtonElement)) {
     throw new Error("Save & share action UI mismatch.");
   }
   shareOpen.textContent = "Share…";
-  actions.append(save, saveAsNew, shareOpen);
+  actions.append(saveAsNew, shareOpen);
 
   const slot = document.createElement("div");
   slot.className = "experiment-management-slot";
