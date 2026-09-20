@@ -15,9 +15,9 @@ assert.ok(
   "Experiment management must run after the legacy authoring persistence relocation",
 );
 
-assert.match(management, /\.registry-save-row/);
+assert.match(management, /\.registry-share-row/);
 assert.match(management, /\.registry-new-form/);
-assert.match(management, /\.registry-note/);
+assert.match(management, /if \(note\) note\.hidden = true/);
 assert.match(management, /management\.slot\.append\(element\)/);
 assert.match(management, /legacyPersistence\.hidden = true/);
 assert.match(management, /experimentSelect\.hidden = true/);
@@ -29,7 +29,7 @@ assert.doesNotMatch(management, /browseButton\.textContent = "Experiments"/);
 assert.match(management, /signIn\.textContent = "Sign in to save"/);
 assert.match(management, /accountButton\.click\(\)/);
 assert.match(management, /setText\(saveRevision, "Save Revision"\)/);
-assert.match(management, /setText\(saveAsNew, "Save as new…"\)/);
+assert.match(management, /setText\(management\.saveAsNew, "Save as new…"\)/);
 assert.match(management, /if \(location\.dataset\.managementRedundant !== redundant\) location\.dataset\.managementRedundant = redundant/);
 assert.match(management, /experiment-location\[data-management-redundant="true"\]/);
 assert.match(management, /@media \(max-width: 680px\)/);
