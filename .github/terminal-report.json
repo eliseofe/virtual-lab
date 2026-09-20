@@ -1,19 +1,20 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The bare-bones scientific authoring language scope is complete and regression-checked",
-  "owner_impact": "Virtual Lab now has a generic bounded programming/mathematics substrate for ordinary scientific authoring: typed scalar/vector/boolean expressions, comparisons, boolean composition, if/elif/else, bounded simulator-owned loops, arithmetic and exponentiation, standard scalar math/trigonometry, and read-only Metrics control flow. Unsupported scientific surfaces remain blocked. The preserved Active Elastic Showcase source compiles identically before and after this epic and its unchanged 100-tick Rust regression remains green. The stale Constant Bearing closure/request/candidate state was cleared while its live Experiment was preserved for a fresh retry.",
+  "outcome": "Agents can start with different values of Controller-declared private scalar state",
+  "owner_impact": "Initialization can now assign a finite scalar initial value to a named Controller private-state field for an individual agent with set_agent_state(i, \"state_name\", value). Unspecified agents keep the Controller class default. The authoring wall validates the field against the Controller schema, and the Rust runtime independently reapplies the same heterogeneous profile on reset. This is generic heterogeneous state for roles, leaders or informed agents; it contains no Constant-Bearing-specific logic.",
   "next": {
     "kind": "scope_complete",
-    "disposition": "closed",
+    "disposition": "dormant",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved #382 bare-bones-language epic is complete and is being closed. No owner action is required for this ticket. The previously paused #371 scientific black-box acceptance may be resumed only in a later owner turn; the Constant Bearing Experiment is clean for a fresh retry in the existing Grok chat."
+    "text": "The owner-approved #304 heterogeneous-state implementation scope is complete and #58 returns to its normal living queue state. No owner action is required for this ticket. The separate target-observation request remains requested and unavailable; it has not been approved for implementation, and #371 has not restarted."
   },
   "technical_evidence": [
-    "Generic #386 acceptance covers browser/MCP compiler parity, Rust runtime execution, ordinary control flow/math, hard-wall rejection of unsupported science, and candidate non-authorability.",
-    "Exact preserved Active Elastic artifacts compile identically at pre-#382 commit 17c13a2337cdaed267b20e7680f4487d161038b1 and post-#385 commit c292bad7dc87c07d78cbeee0fd892df0b40dbae3, including all 91 initialized agents, Controller IR and both Metrics IRs.",
-    "The byte-identical pre-existing Active Elastic Rust regression advances 100 physics ticks; exact main runs 35461336832 and 35468871261 both passed.",
-    "Constant Bearing cleanup leaves 0 nonterminal requests, 0 unavailable candidates, 0 blocked drafts and 0 closure analyses while preserving the live Experiment.",
-    "No Showcase snapshot, scientific capability, MCP tool count, CI/CD, polling, retry, timeout, scheduling or development-workflow rule changed."
+    "Browser and MCP Initializer compilers remain mirrored and emit vlab.initializer-state/0.3 with optional per-agent private_state profiles.",
+    "Cross-artifact validation rejects undeclared, duplicate, invalid-index and non-finite per-agent private-state assignments before persistence.",
+    "Rust Controller runtime validates named profile fields independently, applies per-agent overrides over class defaults, and reproduces them exactly on reset.",
+    "Setup plus Controller replacement is atomic so schema/profile changes cannot be transiently misapplied.",
+    "The implemented surface is exactly set_agent_state(i, \"state_name\", value); no assign alias, RHO parameter, global role table or paper-specific informed flag was added.",
+    "The separate target-observation capability request remains untouched and unavailable."
   ],
-  "close_issue": 386
+  "close_issue": 304
 }
