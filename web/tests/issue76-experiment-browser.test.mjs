@@ -36,6 +36,7 @@ test("loaded experiment exposes ownership, revision and optional location contex
 test("browser unifies built-in and account-owned experiment sources", async () => {
   const source = await browserSource();
   assert.match(source, /tabs\.hidden = true/);
+  assert.match(source, /filters\.hidden = true/);
   assert.match(source, /browser\.contextTitle\.textContent = "All available experiments"/);
   assert.match(source, /Browse built-in, owned/);
   assert.match(source, /builtInResult\(\)/);
