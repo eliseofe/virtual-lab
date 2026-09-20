@@ -16,7 +16,8 @@
     "Showcase publication is removed from Current Experiment actions; the Experiments library entry remains there.",
     "The global ribbon still excludes Experiment, Results, Showcase and Professor; Results remains within Simulation.",
     "Signed-out responsive production smoke verifies that Professor controls do not leak to ordinary users and that no temporary compatibility section remains.",
-    "No scientific/runtime, authorization, revision/Working-copy/autosave, sharing, Showcase publication, capability-request or connector semantics are changed."
+    "No scientific/runtime, authorization, revision/Working-copy/autosave, sharing, Showcase publication, capability-request or connector semantics are changed.",
+    "Responsive production smoke now waits for a fresh document after the mobile Page.reload before applying readiness assertions, eliminating the old-document/new-document race exposed by production #321."
   ],
   "close_issue": 430
 }
