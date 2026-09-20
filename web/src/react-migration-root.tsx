@@ -52,28 +52,10 @@ const theme = createTheme({
   },
 });
 
-type ChromeState = {
-  workerText: string;
-  workerState: string;
-  experimentTitle: string;
-  showcaseAvailable: boolean;
-  professorAvailable: boolean;
-  professorLabel: string;
-};
+type ChromeState = {};
 
 function legacyChromeState(): ChromeState {
-  const worker = document.querySelector<HTMLElement>('#worker-status');
-  const experiment = document.querySelector<HTMLSelectElement>('#experiment-select');
-  const professor = document.querySelector<HTMLButtonElement>('#professor-menu');
-  const showcase = document.querySelector<HTMLButtonElement>('.showcase-launcher');
-  return {
-    workerText: worker?.textContent?.trim() || 'Starting simulator…',
-    workerState: worker?.dataset.state || 'loading',
-    experimentTitle: experiment?.selectedOptions?.[0]?.textContent?.trim() || 'Experiment',
-    showcaseAvailable: Boolean(showcase),
-    professorAvailable: Boolean(professor && !professor.hidden),
-    professorLabel: professor?.textContent?.trim() || 'Professor',
-  };
+  return {};
 }
 
 function observeElement(
@@ -91,24 +73,7 @@ function useChromeState() {
   const [state, setState] = useState<ChromeState>(() => legacyChromeState());
 
   useEffect(() => {
-    const update = () => setState(legacyChromeState());
-    const worker = document.querySelector('#worker-status');
-    const experiment = document.querySelector<HTMLSelectElement>('#experiment-select');
-    const professor = document.querySelector('#professor-menu');
-    const launchers = document.querySelector('.utility-launchers');
-
-    const cleanup = [
-      observeElement(worker, update, { attributes: true, attributeFilter: ['data-state'], childList: true, characterData: true, subtree: true }),
-      observeElement(experiment, update, { childList: true, characterData: true, subtree: true }),
-      observeElement(professor, update, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true }),
-      observeElement(launchers, update, { childList: true, subtree: true }),
-    ];
-    experiment?.addEventListener('change', update);
-    update();
-    return () => {
-      cleanup.forEach((stop) => stop());
-      experiment?.removeEventListener('change', update);
-    };
+    setState(legacyChromeState());
   }, []);
 
   return state;
@@ -129,12 +94,6 @@ function visible(element: HTMLElement | null) {
   return Boolean(element && !element.hidden && element.getClientRects().length > 0);
 }
 
-function workerColor(state: string) {
-  if (state === 'ready') return 'teal';
-  if (state === 'error') return 'red';
-  return 'cyan';
-}
-
 function WorkspaceNav({ closeMobile }: { closeMobile?: () => void }) {
   const action = (callback: () => void) => () => {
     callback();
@@ -142,9 +101,7 @@ function WorkspaceNav({ closeMobile }: { closeMobile?: () => void }) {
   };
   return (
     <>
-      <Button className="vlab-react-nav-button" variant="subtle" color="gray" onClick={action(() => scrollTo('.experiment-panel'))} data-vlab-nav="experiment">Experiment</Button>
-      <Button className="vlab-react-nav-button" variant="subtle" color="gray" onClick={action(() => scrollTo('.stage-panel'))} data-vlab-nav="simulation">Simulation</Button>
-      <Button className="vlab-react-nav-button" variant="subtle" color="gray" onClick={action(() => scrollTo('#live-results'))} data-vlab-nav="results">Results</Button>
+      <Button className="vlab-react-nav-button" variant="subtle" color="gray" onClick={action(() => scrollTo('#simulation'))} data-vlab-nav="simulation">Simulation</Button>
       <Button className="vlab-react-nav-button" variant="subtle" color="gray" onClick={action(() => scrollTo('#authoring-workbench'))} data-vlab-nav="authoring">Authoring</Button>
     </>
   );
@@ -196,32 +153,23 @@ function ApplicationChrome() {
     'aria-controls': 'workspace-utilities',
     'aria-expanded': utilityOpen,
   };
-  const professorA11y = {
-    'aria-haspopup': 'dialog' as const,
-    'aria-controls': 'professor-extension-inbox',
-  };
-
   return (
     <Box data-vlab-react-foundation="mounted" data-vlab-react-chrome="mounted">
       <Paper component="header" className="vlab-react-chrome" radius={0} shadow="sm">
         <Container size="xl" py={8}>
           <Group justify="space-between" gap="md" wrap="nowrap">
             <Box className="vlab-react-brand">
-              <Group gap="xs" align="baseline" wrap="nowrap" className="vlab-react-brand-lockup">
-                <Title order={1} size="h3" c="white" className="vlab-react-brand-title">Virtual Lab</Title>
-                <Text size="xs" fw={700} tt="uppercase" c="cyan.2" lts="0.12em" visibleFrom="sm">Swarm robotics</Text>
-              </Group>
-              <Text size="xs" c="gray.4" lineClamp={1} className="vlab-react-experiment-name" data-vlab-current-experiment>{state.experimentTitle}</Text>
+              <Title order={1} size="h3" c="white" className="vlab-react-brand-title">Virtual Lab</Title>
+              <Text size="xs" c="gray.3" className="vlab-react-brand-byline">
+                <span className="vlab-react-owner-name">Eliseo Ferrante</span> · Swarm robotics
+              </Text>
             </Box>
 
             <Group gap={2} wrap="nowrap" visibleFrom="lg" className="vlab-react-nav">
               <WorkspaceNav />
-              <Button className="vlab-react-nav-button" variant="subtle" color="gray" onClick={() => proxyClick('.showcase-launcher')} disabled={!state.showcaseAvailable} data-vlab-nav="showcase">Showcase</Button>
             </Group>
 
             <Group gap="xs" wrap="nowrap">
-              <Badge className="vlab-react-status-badge" color={workerColor(state.workerState)} variant="light" data-vlab-worker-status>{state.workerText}</Badge>
-              {state.professorAvailable && <Button className="vlab-react-account-button" visibleFrom="sm" variant="subtle" color="violet" onClick={() => proxyClick('#professor-menu')} data-vlab-nav="professor" {...professorA11y}>{state.professorLabel}</Button>}
               <Button className="vlab-react-account-button" visibleFrom="sm" variant="outline" color="gray" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account" {...accountA11y}>Account</Button>
               <Burger hiddenFrom="lg" opened={mobileOpen} onClick={() => setMobileOpen((value) => !value)} color="white" aria-label="Open workspace navigation" data-vlab-nav-toggle="true" />
             </Group>
@@ -231,9 +179,8 @@ function ApplicationChrome() {
 
       <Drawer opened={mobileOpen} onClose={() => setMobileOpen(false)} title="Virtual Lab" position="right" size="xs">
         <Stack gap="xs">
+          <Text size="xs" c="dimmed"><strong>Eliseo Ferrante</strong> · Swarm robotics</Text>
           <WorkspaceNav closeMobile={() => setMobileOpen(false)} />
-          <Button variant="light" color="cyan" onClick={() => { proxyClick('.showcase-launcher'); setMobileOpen(false); }} disabled={!state.showcaseAvailable} data-vlab-nav="showcase-mobile">Showcase</Button>
-          {state.professorAvailable && <Button variant="light" color="violet" onClick={() => { proxyClick('#professor-menu'); setMobileOpen(false); }} data-vlab-nav="professor-mobile" {...professorA11y}>{state.professorLabel}</Button>}
           <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile" {...accountA11y}>Account</Button>
         </Stack>
       </Drawer>
