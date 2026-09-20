@@ -14,7 +14,8 @@
     "Discard Working copy requires confirmation, waits for any pointer-boundary autosave already in flight, deletes only the current owner's experiment_working_copies row, and reloads the newest numbered revision.",
     "The existing owner-only Working-copy delete RLS policy remains authoritative; no database migration or authorization broadening is introduced.",
     "Focused #409 regression tests lock the latest-revision re-entry default, Working-copy recoverability, discard visibility, owner scoping, and latest-revision landing behavior.",
-    "No scientific/runtime semantics, connector contract, CI/CD, polling, retry, timeout, scheduling, or project-development workflow rule changed."
+    "No scientific/runtime semantics, connector contract, CI/CD, polling, retry, timeout, scheduling, or project-development workflow rule changed.",
+    "The Experiment finder now gives its hidden collection-filter state authored CSS priority, so responsive display rules cannot surface secondary collection navigation while the finder is closed."
   ],
   "close_issue": 409
 }
