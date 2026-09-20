@@ -125,6 +125,7 @@ function buildUi() {
 
   const dialog = document.createElement("dialog");
   dialog.className = "professor-inbox";
+  dialog.id = "professor-extension-inbox";
   dialog.setAttribute("aria-label", "Professor extension request inbox");
   const shell = document.createElement("div");
   shell.className = "professor-inbox-shell";
