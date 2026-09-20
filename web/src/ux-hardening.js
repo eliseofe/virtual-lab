@@ -6,7 +6,8 @@ const dialogInvokers = new WeakMap();
 const dialogObservers = new WeakMap();
 
 const dialogSpecs = [
-  { selector: "#workspace-utilities", triggers: ["#account-menu", "#professor-menu"], fallbackId: "workspace-utilities" },
+  { selector: "#workspace-utilities", triggers: ["#account-menu", '[data-vlab-nav="account"]', '[data-vlab-nav="account-mobile"]'], fallbackId: "workspace-utilities" },
+  { selector: ".professor-inbox", triggers: ["#professor-menu", '[data-vlab-nav="professor"]', '[data-vlab-nav="professor-mobile"]'], fallbackId: "professor-extension-inbox" },
   { selector: ".experiment-browser", triggers: [".experiment-browse"], fallbackId: "experiment-library-dialog" },
   { selector: "#collection-organizer", triggers: [".experiment-organize"], fallbackId: "collection-organizer" },
 ];
@@ -144,11 +145,11 @@ function enhanceAll() {
 document.addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) return;
-  const trigger = target.closest("#account-menu, #professor-menu, .experiment-browse, .experiment-organize");
+  const trigger = target.closest("#account-menu, #professor-menu, [data-vlab-nav='account'], [data-vlab-nav='account-mobile'], [data-vlab-nav='professor'], [data-vlab-nav='professor-mobile'], .experiment-browse, .experiment-organize");
   if (!(trigger instanceof HTMLElement)) return;
   const dialog = dialogForTrigger(trigger);
   if (!dialog) return;
-  dialogInvokers.set(dialog, trigger);
+  if (visible(trigger)) dialogInvokers.set(dialog, trigger);
   queueMicrotask(() => syncDialogExpanded(dialog));
 }, true);
 
