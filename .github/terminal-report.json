@@ -1,23 +1,21 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The accepted UI/UX redesign is complete: one focused ribbon and one role-aware Experiment Control panel",
-  "owner_impact": "The Control panel now has the final Professor-only Research curation section. Showcase browsing/publication and scientific Capability requests live there instead of in global navigation or temporary compatibility controls. Students keep the same shared Experiment management surface without Professor controls. The accepted ribbon remains Virtual Lab / Eliseo Ferrante · Swarm robotics with Simulation, Authoring, Help and Account.",
+  "outcome": "The Experiment Control Panel now has a consistent visual rhythm",
+  "owner_impact": "The Control Panel keeps the same structure and behavior, but peer cards now use balanced 50/50 proportions, related cards align more evenly, and action buttons follow one consistent sizing system instead of mixing unrelated heights and widths. Desktop actions use a common 38px height; mobile keeps 44px touch targets. The small Organize metadata action remains intentionally compact rather than competing with primary actions.",
   "next": {
     "kind": "scope_complete",
     "disposition": "dormant",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The current #273 UI/UX activation is complete. #273 remains open but dormant as a living UI/UX maintenance domain; there is no automatic next UI ticket. Use the live Lab normally and future UI work should come from concrete usage evidence."
+    "text": "This evidence-driven #273 refinement is complete. Review the live Control Panel visually; #273 remains a dormant/living UI/UX domain and any further refinement should come from what you actually see and use."
   },
   "technical_evidence": [
-    "The temporary experiment-professor-compat bridge and its temporary wording are removed.",
-    "A Professor-only experiment-professor-section named Research curation is integrated inside the task-based Control panel.",
-    "The existing authoritative Showcase launcher, current-publication action and curation status are relocated into Research curation rather than reimplemented.",
-    "Capability requests opens the existing Professor request inbox and reflects its pending count without changing request semantics.",
-    "Showcase publication is removed from Current Experiment actions; the Experiments library entry remains there.",
-    "The global ribbon still excludes Experiment, Results, Showcase and Professor; Results remains within Simulation.",
-    "Signed-out responsive production smoke verifies that Professor controls do not leak to ordinary users and that no temporary compatibility section remains.",
-    "No scientific/runtime, authorization, revision/Working-copy/autosave, sharing, Showcase publication, capability-request or connector semantics are changed.",
-    "Responsive production smoke now waits for a fresh document after the mobile Page.reload before applying readiness assertions, eliminating the old-document/new-document race exposed by production #321."
+    "The main two-column Control Panel grid is now 1fr / 1fr instead of 1.15fr / 0.85fr.",
+    "Revisions and Save & share share the same minimum card rhythm and stretch behavior.",
+    "The two Research curation sub-cards share equal rows, matched minimum height and spacing.",
+    "Peer action groups use predictable two-column grids on desktop and one column on mobile.",
+    "Desktop Control Panel actions use 38px height; mobile actions retain 44px touch targets.",
+    "Responsive production smoke checks that the visible Experiments and Sign in to save actions have the same desktop height.",
+    "No information architecture, labels, role visibility, scientific/runtime, persistence, revision/autosave, sharing, Showcase or capability-request semantics changed."
   ],
-  "close_issue": 430
+  "close_issue": 437
 }
