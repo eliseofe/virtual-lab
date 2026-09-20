@@ -52,33 +52,6 @@ const theme = createTheme({
   },
 });
 
-type ChromeState = {};
-
-function legacyChromeState(): ChromeState {
-  return {};
-}
-
-function observeElement(
-  element: Element | null,
-  callback: () => void,
-  options: MutationObserverInit,
-) {
-  if (!element) return () => {};
-  const observer = new MutationObserver(callback);
-  observer.observe(element, options);
-  return () => observer.disconnect();
-}
-
-function useChromeState() {
-  const [state, setState] = useState<ChromeState>(() => legacyChromeState());
-
-  useEffect(() => {
-    setState(legacyChromeState());
-  }, []);
-
-  return state;
-}
-
 function scrollTo(selector: string) {
   const target = document.querySelector<HTMLElement>(selector);
   if (!target) return;
@@ -110,7 +83,6 @@ function WorkspaceNav({ closeMobile }: { closeMobile?: () => void }) {
 function ApplicationChrome() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [utilityOpen, setUtilityOpen] = useState(false);
-  const state = useChromeState();
 
   useEffect(() => {
     document.body.classList.add('vlab-react-chrome-mounted');
@@ -124,17 +96,13 @@ function ApplicationChrome() {
     const restoreFocus = () => {
       syncOpen();
       requestAnimationFrame(() => {
-        const view = dialog.dataset.view === 'professor' ? 'professor' : 'account';
-        const desktopTarget = document.querySelector<HTMLElement>(`[data-vlab-nav="${view}"]`);
         const desktopAccount = document.querySelector<HTMLElement>('[data-vlab-nav="account"]');
         const navigationToggle = document.querySelector<HTMLElement>('[data-vlab-nav-toggle="true"]');
-        const target = visible(desktopTarget)
-          ? desktopTarget
-          : visible(desktopAccount)
-            ? desktopAccount
-            : visible(navigationToggle)
-              ? navigationToggle
-              : null;
+        const target = visible(desktopAccount)
+          ? desktopAccount
+          : visible(navigationToggle)
+            ? navigationToggle
+            : null;
         target?.focus({ preventScroll: true });
       });
     };
