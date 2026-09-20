@@ -25,16 +25,18 @@ The Professor capability-request system is a **living operational queue** under 
 
 The aggregation case exposed both capability-flow defects and a scientific-context problem. #310–#312, #323/#324/#327/#328, the canonical-capability transition #343–#348, #354 and the #335 production re-audit are complete. The fresh scientific-acceptance follow-up produced #359–#362 and the exact connector cutover #367. The subsequent two-paper acceptance exposed duplicate request creation across overlapping papers. #376 reset that failed acceptance state; #375–#373 completed the candidate architecture and Professor generalization repair. #371 then exposed #380, now complete: the JavaScript/MCP authoring wall and Rust runtime are aligned for the discovered IR-boundary defects. **#382 — Bare-bones scientific authoring language completeness** is complete through #383–#386. A fresh Constant Bearing retry after that cutover produced valid Grok and Claude Experiments; Claude then reached two genuinely semantic gaps for the informed-agent variant. The owner explicitly selected the generic heterogeneous-state gap for implementation. **#304 — generic per-agent initialization of Controller private scalar state is complete and production-green.** The separate experiment-defined target observation request remains requested and is not implementation-authorized. #325/#326 remain paused.
 
-A new **#301 — Virtual Lab security, identity and authorization** umbrella is logged from real-student evidence. **#394** is a bounded identity slice under it: structured human names are now first-class profile data while roles remain the existing authorization authority. Its audit child **#302** is still defined but not started; no broader enrollment, OAuth/client-admission or security remediation policy has been frozen.
+**#301 — Virtual Lab security, identity and authorization** is now explicitly classified as a **living / ongoing security domain**. Its audit child **#302** remains defined but not started; no broader enrollment, OAuth/client-admission or security remediation policy has been frozen.
 
-The living **#273 — UI/UX refinement** lane has a new bounded observed-use pass in **#413**. It simplifies only the upper workspace management surface: the Experiment library entry is reduced to a single **Experiments** action, Professor navigation goes directly to Extension Requests, and Professor Showcase publication is available from the current Experiment instead of being buried in the Showcase browser. Arena and Experiment Source remain outside this pass.
+**#425 — Refactoring and technical-debt reduction** is now a **living / ongoing maintenance domain**. It is currently dormant and has no authorized child; it exists as the durable home for evidence-driven structural cleanup rather than as permission for cleanup churn.
+
+The living **#273 — UI/UX refinement** lane is active for design recovery. The owner rejected the implementation-first #417/#418/#419 interpretation; those tickets are superseded. The current sequence is: #423 restores the exact pre-#417 production UI, then #424 runs Product Design in Work against the recovered live Lab and the guarded owner feedback. No implementation ticket will be derived until the owner accepts a design direction.
 
 ## Immediate frontier
 
-1. **#273 UI/UX remains a living evidence-driven lane.** #409 is complete. #413 is the current bounded observed-use pass, simplifying upper Experiment/Professor/Showcase management without touching Arena or Experiment Source. It has no automatic successor.
+1. **#273 UI/UX is active only for recovery/design.** #423 restores the exact pre-#417 production UI. Its known successor is #424 Product Design in Work; implementation waits for owner acceptance of that design.
 2. **#58 capability-flow remains operationally active.** The heterogeneous-state request `2616dbb5-2134-417f-aebb-2e9e4ea0dd9c` is implemented through #304. The separate target-observation request `0971db0e-015a-4f1f-b640-8cc6b428fdb7` remains requested and unavailable. #371 has not restarted.
-3. **#273 UI/UX** is the living parent lane for #396 and remains evidence-driven rather than a broad redesign mandate.
-4. **#302 — security audit** is separately queued under #301 but has not started.
+3. **#301 Security** is a living maintenance domain; #302 remains queued and not started.
+4. **#425 Refactoring** is a living maintenance domain and currently dormant with no authorized child.
 5. Studies and other parked/not-started lanes remain separately gated.
 
 Do not invent a maintenance phase, a second Lab, another broad redesign, a duplicate collaboration mechanism, or an automatic successor to the completed #45 scope.
