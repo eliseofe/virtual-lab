@@ -33,6 +33,16 @@ const BUILTIN_REVISION = metadataRevision.textContent;
 const builtinArtifacts = captureExperimentArtifacts();
 const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 
+const AI_CLIENT_LABELS = Object.freeze({
+  "f9ea9bbe-2e3f-497d-92b3-5f108b64593c": "Claude",
+  "7f8986f1-11c3-4be5-8cc7-3887dfb038d9": "Claude",
+  "12e106dc-4da6-49cd-9062-d0a4bb5c34c6": "Grok",
+  "13c111c5-64f6-4be5-9e02-7188dd104cce": "Grok",
+  "d3ab452e-1e41-4ceb-a694-645e2f03872a": "Grok",
+  "ChatGPT-owner-authorized-AEM-metric": "ChatGPT",
+  "mcp-client": "AI · legacy MCP client",
+});
+
 let user = null;
 let profile = null;
 let remoteExperiments = [];
@@ -690,11 +700,27 @@ function updateCurrentUi() {
   setQuickSwitchOptions();
 }
 
-function formatUpdated(value) {
+function formatRevisionTime(value) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(date);
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  }).format(date);
+}
+
+function revisionActor(experiment) {
+  if (experiment.updated_by_actor === "human") return "Human";
+  if (experiment.updated_by_actor !== "ai") return experiment.updated_by_actor || "";
+  const client = experiment.updated_by_ai_client;
+  if (!client) return "AI";
+  return AI_CLIENT_LABELS[client] ?? `AI · ${client}`;
 }
 
 function filterButton(label, value) {
@@ -729,13 +755,15 @@ function experimentResult(experiment, { access = "owned" } = {}) {
   title.textContent = experiment.title;
   const meta = document.createElement("span");
   meta.className = "experiment-result-meta";
-  const updated = formatUpdated(experiment.updated_at);
+  const revisionTime = formatRevisionTime(experiment.updated_at);
+  const actor = revisionActor(experiment);
+  const revisionMeta = `Revision ${experiment.revision}${revisionTime ? ` · ${revisionTime}` : ""}${actor ? ` · ${actor}` : ""}`;
   const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";
   meta.textContent = access === "shared"
-    ? `Shared with me · Read-only · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`
+    ? `Shared with me · Read-only · ${revisionMeta}`
     : access === "supervised"
-      ? `${supervisedResearcherName(experiment.owner_id)} · Supervised · Read-only · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`
-      : `Your experiment · ${location} · Revision ${experiment.revision}${updated ? ` · Updated ${updated}` : ""}`;
+      ? `${supervisedResearcherName(experiment.owner_id)} · Supervised · Read-only · ${revisionMeta}`
+      : `Your experiment · ${location} · ${revisionMeta}`;
   result.append(title, meta);
   result.addEventListener("click", () => run(async () => {
     if (currentRemote?.id !== experiment.id && !(await confirmDiscardIfNeeded())) return;
@@ -958,7 +986,7 @@ async function loadSharedExperimentList() {
 
   const { data, error } = await supabase
     .from("experiments")
-    .select("id,owner_id,collection_id,title,revision,updated_at,artifacts,config_source,initializer_source,controller_source")
+    .select("id,owner_id,collection_id,title,revision,updated_at,updated_by_actor,updated_by_ai_client,artifacts,config_source,initializer_source,controller_source")
     .in("id", ids)
     .eq("lifecycle", "active");
   if (error) throw error;
@@ -995,7 +1023,7 @@ async function loadSupervisedExperimentList() {
 
   const { data, error } = await supabase
     .from("experiments")
-    .select("id,owner_id,collection_id,title,revision,updated_at,artifacts,config_source,initializer_source,controller_source")
+    .select("id,owner_id,collection_id,title,revision,updated_at,updated_by_actor,updated_by_ai_client,artifacts,config_source,initializer_source,controller_source")
     .in("owner_id", ids)
     .eq("lifecycle", "active")
     .order("updated_at", { ascending: false });
@@ -1015,7 +1043,7 @@ async function loadExperimentList() {
   }
   const { data, error } = await supabase
     .from("experiments")
-    .select("id,owner_id,collection_id,title,revision,updated_at,artifacts,config_source,initializer_source,controller_source")
+    .select("id,owner_id,collection_id,title,revision,updated_at,updated_by_actor,updated_by_ai_client,artifacts,config_source,initializer_source,controller_source")
     .eq("owner_id", user.id)
     .eq("lifecycle", "active")
     .order("updated_at", { ascending: false });
@@ -1033,7 +1061,7 @@ async function loadExperimentList() {
 async function readExperiment(id) {
   const { data, error } = await supabase
     .from("experiments")
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
+    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
@@ -1128,7 +1156,7 @@ async function saveCurrentExperiment() {
     .eq("id", currentRemote.id)
     .eq("owner_id", user.id)
     .eq("revision", baseRevision)
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
+    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
     .maybeSingle();
 
   if (error) throw error;
@@ -1169,7 +1197,7 @@ async function moveCurrentExperiment() {
     .eq("id", currentRemote.id)
     .eq("owner_id", user.id)
     .eq("revision", baseRevision)
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
+    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
     .maybeSingle();
 
   if (error) throw error;
@@ -1316,7 +1344,7 @@ async function createNewExperiment() {
         updated_by_actor: "human",
         updated_by_ai_client: null,
       })
-      .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,updated_at")
+      .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
       .single();
     if (error) throw error;
     data = created;
