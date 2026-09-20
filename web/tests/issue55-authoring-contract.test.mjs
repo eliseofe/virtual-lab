@@ -64,7 +64,7 @@ test("issue #55/#63/#196 a generic experiment with arbitrary scientific paramete
   assert.equal(result.valid, true, JSON.stringify(result, null, 2));
   assert.equal(result.contract_version, "vlab.authoring/0.9");
   assert.equal(result.compiled.configuration, "vlab.config/0.2");
-  assert.equal(result.compiled.initializer, "vlab.initializer-state/0.2");
+  assert.equal(result.compiled.initializer, "vlab.initializer-state/0.3");
   assert.equal(result.compiled.controller_language, "python-vlab/0.1");
   assert.equal(result.compiled.controller_ir_schema, "vlab.controller-ir/0.1");
   assert.equal(result.compiled.metrics_language, "python-vlab-metrics/0.1");
