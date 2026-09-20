@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [management, showcase, inbox, react] = await Promise.all([
+const [management, showcase, inbox, react, responsive] = await Promise.all([
   readFile(new URL("../src/experiment-management.js", import.meta.url), "utf8"),
   readFile(new URL("../src/showcase.js", import.meta.url), "utf8"),
   readFile(new URL("../src/professor-inbox.js", import.meta.url), "utf8"),
   readFile(new URL("../src/react-migration-root.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../scripts/responsive-smoke.mjs", import.meta.url), "utf8"),
 ]);
 
 test("#430 replaces the temporary bridge with one Professor-only research-curation section", () => {
@@ -47,4 +48,10 @@ test("#430 preserves role and publication semantics in authoritative modules", (
   assert.match(showcase, /Professor role required/);
   assert.match(inbox, /panel\.hidden = true/);
   assert.match(inbox, /professor-pending-count/);
+});
+
+test("#430 responsive verification waits for the reloaded document before asserting mobile UI", () => {
+  assert.match(responsive, /function waitForFreshDocument/);
+  assert.match(responsive, /__vlabResponsiveSmokeReloadToken/);
+  assert.match(responsive, /await waitForFreshDocument\(cdp\.send, mobileReloadToken\)/);
 });
