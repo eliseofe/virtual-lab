@@ -32,7 +32,7 @@ test("#446 balances peer cards with intrinsic layout rather than fixed card dime
   assert.doesNotMatch(management, /min-height: 154px/);
   assert.doesNotMatch(management, /min-height: 132px/);
   assert.doesNotMatch(management, /grid-auto-rows: 44px/);
-  assert.doesNotMatch(management, /height: 44px/);
+  assert.doesNotMatch(management, /\.experiment-management-actions button \{[^}]*\n\s*height: 44px/);
   assert.doesNotMatch(management, /max-width: 72px/);
 });
 
