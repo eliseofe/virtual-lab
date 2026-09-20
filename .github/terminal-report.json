@@ -15,7 +15,8 @@
     "A bounded compatibility bridge in the existing top Experiment card exposes Showcase and Capability requests only when the Professor surface is available, proxying the existing authoritative actions.",
     "No simulation/runtime, Results, Authoring, revision, autosave, sharing, Showcase publication, capability-request, authorization, connector or workflow semantics changed.",
     "The Account destination keeps the stable global label Account in signed-out and signed-in states; signed-out intent is conveyed by the Account dialog and its accessible label rather than replacing the navigation destination with Sign in.",
-    "React-shell and responsive production smoke now require exactly the approved global destinations (Simulation, Authoring, Help, Account), reject Experiment/Results/Showcase/Professor in global navigation, verify the three product-identity fields independently, and require simulator readiness inside Simulation."
+    "React-shell and responsive production smoke now require exactly the approved global destinations (Simulation, Authoring, Help, Account), reject Experiment/Results/Showcase/Professor in global navigation, verify the three product-identity fields independently, and require simulator readiness inside Simulation.",
+    "The React mobile Drawer owns its Help destination directly and proxies the existing Getting started/Help action, avoiding portal-observer timing while preserving the same Help content."
   ],
   "close_issue": 417
 }
