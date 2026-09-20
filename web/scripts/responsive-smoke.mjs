@@ -97,7 +97,7 @@ async function structure(send) {
       },
       tabHeights: authoringTabs.map((tab) => Math.round(tab.getBoundingClientRect().height)),
       ribbon: {
-        brandText: document.querySelector('.vlab-react-brand')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+        brandText: document.querySelector('.vlab-react-brand')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
         globalLabels: [...document.querySelectorAll('[data-vlab-nav="simulation"], [data-vlab-nav="authoring"], [data-vlab-nav="help"], [data-vlab-nav="account"]')]
           .filter(visible)
           .map((element) => element.textContent?.trim() ?? ''),
