@@ -1,22 +1,23 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Save & share card is now compact and internally consistent",
-  "owner_impact": "The top-right Save & share card now uses the short subtitle “Save, copy and share”. Its two actual peer actions—Save as new… and Share…—sit in one equal-size action row. Save Revision stays where it belongs in the Revisions card, and collection movement stays in Organize. Open save/share forms remain underneath only when used. Mobile retains 44px touch targets.",
+  "outcome": "The Control Panel is now terse, data-first and locally cleaned up",
+  "owner_impact": "The four primary Control Panel areas no longer carry explanatory prose. Current Experiment, Revisions, Save & share and Research curation use headings plus controls/data only. Numbered revisions show only the revision number in the compact trigger; Working copy shows W, while full meaning remains available to assistive technology. Research curation no longer contains explanatory paragraphs; dynamic counts/statuses remain concise. The local audit also removes stale Control Panel glue from earlier control relocations.",
   "next": {
     "kind": "scope_complete",
     "disposition": "dormant",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "This direct-use #273 refinement is complete. Review the live Save & share card visually; #273 remains a dormant/living UI/UX domain and further refinement should continue from what you actually see and use."
+    "text": "This bounded #273 Control Panel pass is complete. Review the live panel visually. #273 and #425 remain living but dormant; no repo-wide refactor has been activated."
   },
   "technical_evidence": [
-    "Save as new and Share are the two actual Save & share peer actions and are placed in one equal-size experiment-management-actions grid.",
-    "The Save & share subtitle is shortened from “Persistence, copies and collaboration” to “Save, copy and share”.",
-    "The action bar uses equal-width auto-fit columns with fixed 44px rows, so visible peer buttons remain the same size and stay on one row where space allows.",
-    "Share still opens the original read-only sharing form; copy/share semantics are unchanged.",
-    "Responsive production smoke verifies the shortened subtitle and action-bar presence.",
-    "No surrounding Control Panel structure, scientific/runtime, persistence, revision/autosave, sharing, authorization, Showcase or capability-request semantics changed.",
-    "The repair removes the incorrect dependency on the collection-organizer Move button, preventing experiment-management initialization failure.",
-    "Save Revision remains in the Revisions card; the repair no longer assumes it remains inside registry-save-actions."
+    "The Control Panel header help sentence and all four primary task subtitles are removed; taskHeading now renders title-only headings.",
+    "Static Showcase and Capability-request explanatory paragraphs are removed from Research curation; pending counts and operational status remain data/status only.",
+    "The numbered revision trigger renders only String(revisionNumber), with a compact 52–72px control sized for three digits; descriptive revision context is retained in aria-label.",
+    "Working copy uses W in the compact trigger and keeps its base revision in aria-label.",
+    "Visible revision/save state is compressed to terse values such as Saved, Historical, Working and pending rather than explanatory sentences; the verbose registry note is hidden in the Control Panel.",
+    "Save & share moves only the share row and save-as-new form that still belong there; obsolete save-row and Move placement selectors are removed.",
+    "Save-as-new relabeling now targets the relocated authoritative button directly instead of its obsolete registry-save-actions location.",
+    "Showcase dirty-state publishing now targets the authoritative Save Revision button in Revisions instead of the obsolete registry-save-actions selector.",
+    "No science/runtime, auth, revision/Working-copy/autosave, sharing, Showcase publication, capability-request or collection-organization semantics changed."
   ],
-  "close_issue": 440
+  "close_issue": 444
 }
