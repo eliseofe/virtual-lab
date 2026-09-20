@@ -66,3 +66,17 @@ test("refresh belongs to the finder and user-facing copy avoids registry jargon"
   assert.match(source, /Your library is ready/);
   assert.doesNotMatch(source, /Registry experiments/);
 });
+
+test("experiment browser exposes exact current-revision time and actor provenance", async () => {
+  const source = await browserSource();
+  assert.match(source, /function formatRevisionTime\\(value\\)/);
+  assert.match(source, /second: "2-digit"/);
+  assert.match(source, /timeZoneName: "short"/);
+  assert.match(source, /function revisionActor\\(experiment\\)/);
+  assert.match(source, /"f9ea9bbe-2e3f-497d-92b3-5f108b64593c": "Claude"/);
+  assert.match(source, /"12e106dc-4da6-49cd-9062-d0a4bb5c34c6": "Grok"/);
+  assert.match(source, /AI · \\$\\{client\\}/);
+  assert.match(source, /updated_by_actor,updated_by_ai_client/);
+  assert.match(source, /const revisionMeta =/);
+  assert.doesNotMatch(source, /function formatUpdated\\(value\\)/);
+});
