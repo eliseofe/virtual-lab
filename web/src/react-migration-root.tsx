@@ -67,12 +67,6 @@ function visible(element: HTMLElement | null) {
   return Boolean(element && !element.hidden && element.getClientRects().length > 0);
 }
 
-function workerColor(state: string) {
-  if (state === 'ready') return 'teal';
-  if (state === 'error') return 'red';
-  return 'cyan';
-}
-
 function WorkspaceNav({ closeMobile }: { closeMobile?: () => void }) {
   const action = (callback: () => void) => () => {
     callback();
