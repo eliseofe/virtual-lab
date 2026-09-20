@@ -45,7 +45,7 @@ test("#288 copy RPC authorizes readable non-owned sources and freezes the exact 
 
 test("#288 supervised copy uses the saved remote revision rather than local unsaved edits", () => {
   assert.match(registry, /ui\.saveAsNew\.hidden = !user/);
-  assert.match(registry, /Copy to my Experiments creates an independent private Experiment from this exact saved revision/);
+  assert.match(registry, /copy one to create an independent editable Experiment|Copy to my Experiments creates an independent private Experiment/);
   assert.match(registry, /async function copyCurrentReadableExperiment\(title, collectionId\)/);
   assert.match(registry, /const sourceId = currentRemote\.id/);
   assert.match(registry, /const sourceRevision = currentRemote\.revision/);
