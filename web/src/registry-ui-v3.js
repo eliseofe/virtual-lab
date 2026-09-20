@@ -2060,6 +2060,19 @@ async function run(action) {
 }
 
 currentUi.browse.addEventListener("click", openBrowser);
+currentUi.revisionTrigger.addEventListener("click", () => run(openRevisionHistory));
+currentUi.editFromRevision.addEventListener("click", () => run(editFromViewedRevision));
+revisionHistory.close.addEventListener("click", () => revisionHistory.dialog.close());
+for (const button of [revisionHistory.all, revisionHistory.mine, revisionHistory.ai]) {
+  button.addEventListener("click", () => {
+    revisionFilter = button.dataset.revisionFilter;
+    renderRevisionHistory();
+  });
+}
+revisionHistory.dialog.addEventListener("click", (event) => {
+  if (event.target === revisionHistory.dialog) revisionHistory.dialog.close();
+});
+
 experimentSelect.addEventListener("change", () => run(async () => {
   const value = experimentSelect.value;
   if (value === BUILTIN_VALUE) {
