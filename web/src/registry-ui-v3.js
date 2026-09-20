@@ -71,7 +71,7 @@ function installStyles() {
   style.dataset.vlabRegistryV3 = "";
   style.textContent = `
     .registry-panel { display: grid; gap: 10px; }
-    .registry-panel [hidden], .experiment-panel [hidden], .experiment-browser[hidden] { display: none !important; }
+    .registry-panel [hidden], .experiment-panel [hidden], .experiment-browser[hidden], .experiment-browser .experiment-browser-filters[hidden] { display: none !important; }
     .registry-heading { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
     .registry-account { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; }
     .registry-account strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
