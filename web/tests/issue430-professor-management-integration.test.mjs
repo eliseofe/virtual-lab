@@ -18,7 +18,7 @@ test("#430 replaces the temporary bridge with one Professor-only research-curati
 });
 
 test("#430 places authoritative Showcase actions inside Research curation", () => {
-  assert.match(management, /showcaseLauncher\.textContent = "Browse Showcase"/);
+  assert.match(management, /showcaseLauncher\.textContent = "Browse"/);
   assert.match(management, /showcaseActions\.append\(showcaseLauncher, promote\)/);
   assert.match(management, /showcaseGroup\.append\(showcaseTitle, showcaseActions, curationStatus\)/);
   assert.match(showcase, /ui\.launcher\.addEventListener\("click", \(\) => run\(openDialog\)\)/);
@@ -31,15 +31,16 @@ test("#430 exposes scientific Capability requests without a generic Professor la
   assert.match(management, /capabilityTitle\.textContent = "Capability requests"/);
   assert.match(management, /requests\.className = "experiment-capability-requests"/);
   assert.match(management, /querySelector\("\.professor-inbox-open"\)/);
-  assert.match(management, /Capability requests · \$\{pending\}/);
+  assert.match(management, /Open · \$\{pending\}/);
   assert.match(inbox, /dialog\.id = "professor-extension-inbox"/);
   assert.match(inbox, /Review classified research requests/);
   assert.doesNotMatch(react, /data-vlab-nav="professor"|data-vlab-nav="showcase"/);
 });
 
-test("#430 removes Showcase publication from Current Experiment actions", () => {
-  assert.match(management, /currentActions\?\.contains\(browseButton\)/);
-  assert.match(management, /currentActions\.replaceWith\(browseButton\)/);
+test("#430 keeps Showcase publication in Research curation rather than Current Experiment actions", () => {
+  assert.match(management, /currentActions\.append\(browseButton\)/);
+  assert.match(management, /showcaseActions\.append\(showcaseLauncher, promote\)/);
+  assert.doesNotMatch(management, /currentActions\.append\([^\n]*promote/);
   assert.doesNotMatch(management, /Temporary bridge/);
 });
 
