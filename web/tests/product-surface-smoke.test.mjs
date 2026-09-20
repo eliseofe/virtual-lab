@@ -7,6 +7,7 @@ const workflow = await readFile(new URL('../../.github/workflows/ci-pages.yml', 
 const runner = await readFile(new URL('../scripts/run-active-product-smoke.mjs', import.meta.url), 'utf8');
 const harness = await readFile(new URL('../scripts/smoke-browser-harness.mjs', import.meta.url), 'utf8');
 const responsiveSmoke = await readFile(new URL('../scripts/responsive-smoke.mjs', import.meta.url), 'utf8');
+const showcaseSmoke = await readFile(new URL('../scripts/showcase-ux-smoke.mjs', import.meta.url), 'utf8');
 
 test('product-surface manifest is the canonical active smoke registry', async () => {
   assert.equal(manifest.schema, 'vlab.product-surface/1');
@@ -63,4 +64,12 @@ test('responsive smoke treats only Chrome navigation-transition evaluation failu
   assert.match(responsiveSmoke, /for \(let attempt = 0; attempt < 160; attempt \+= 1\)/);
   assert.match(responsiveSmoke, /await sleep\(100\)/);
   assert.match(responsiveSmoke, /parsed\?\.state === "ready" && parsed\?\.hardened === "true"/);
+});
+
+test('showcase smoke tolerates only Chrome navigation-transition evaluation failure', () => {
+  assert.match(showcaseSmoke, /message\.includes\("Inspected target navigated or closed"\)/);
+  assert.match(showcaseSmoke, /if \(!message\.includes\("Inspected target navigated or closed"\)\) throw error/);
+  assert.match(showcaseSmoke, /for \(let attempt = 0; attempt < 180; attempt \+= 1\)/);
+  assert.match(showcaseSmoke, /await sleep\(100\)/);
+  assert.match(showcaseSmoke, /if \(state === "ready"\) return/);
 });

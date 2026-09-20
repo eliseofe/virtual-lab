@@ -16,7 +16,8 @@
     "Responsive and keyboard-accessible dialog/button semantics are covered by the #398 browser contract tests.",
     "No CI/CD, deployment, retry, timeout, scheduling, connector-tool surface, or project-development workflow rule changed.",
     "The responsive production smoke readiness probe is null-safe during Chrome's transient pre-documentElement navigation state; its retry count, cadence, readiness predicate, and completion gate are unchanged.",
-    "The responsive smoke now tolerates only Chrome's transient 'Inspected target navigated or closed' evaluation rejection during Page.reload; non-navigation errors still fail immediately, and retry count/cadence/readiness criteria remain unchanged."
+    "The responsive smoke now tolerates only Chrome's transient 'Inspected target navigated or closed' evaluation rejection during Page.reload; non-navigation errors still fail immediately, and retry count/cadence/readiness criteria remain unchanged.",
+    "The Showcase production smoke now tolerates only Chrome's transient 'Inspected target navigated or closed' evaluation rejection after Page.reload; its 180-attempt/100-ms readiness loop, 60-s outer timeout, and simulator-ready success criterion are unchanged."
   ],
   "close_issue": 398
 }
