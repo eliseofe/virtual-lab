@@ -247,3 +247,16 @@ Repository development procedure is defined only in `DEVELOPMENT_WORKFLOW.md`. A
 ## 18. Replaceability rule
 
 Supabase, MCP, GitHub Pages, Rust/WASM and specific browser APIs are current implementations. Replacement is permitted when justified, but replacements must preserve versioned scientific/domain contracts and the zero-cost/local-first baseline unless the owner explicitly approves a change.
+
+
+## Opt-in runtime profiles (fork contribution)
+
+Experiments declaring `RUNTIME_PROFILE` with schema `vlab.runtime-profile/1`
+use a shared identity, local observation and lifecycle adapter around the same
+compiled Rust controller/metric runtimes. Physics dispatches to unicycle
+kinematics or Bullet/CF2X rigid bodies. Experiments without this declaration
+retain the existing periodic kernel. Scientific force laws are authored in
+experiment artifacts, not selected by the engine. See
+[Swarm vs Swarm implementation](SWARM_VS_SWARM.md) for the contract, limitations
+and executable validation. Access-control and capability-approval boundaries
+are unchanged; this fork does not deploy registry capabilities.

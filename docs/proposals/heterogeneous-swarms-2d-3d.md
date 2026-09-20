@@ -1,6 +1,6 @@
 # Proposal: shared agent profiles, lifecycle rules and physics backends
 
-Status: fork architecture proposal; not an advertised or deployed capability.
+Status: implemented in the fork for review; not deployed upstream. See [implementation and validation](../SWARM_VS_SWARM.md).
 
 ## Problem and scope
 
@@ -16,7 +16,7 @@ The requested use case puts additional pressure on heterogeneous initialization 
 
 Establish one validated per-agent profile representation and one simulator-owned lifecycle pipeline first. Extend the existing controller/physics separation through explicit backend dispatch. The existing planar backend is the compatibility implementation of that interface, not a parallel legacy simulator. Keep role names, DM equations, case definitions and scientific parameter scaling in versioned experiment fixtures.
 
-Implementation requires the fork owner's confirmation of this shared design before extending the scientific runtime. Upstream adoption and deployment remain the maintainer's decision.
+The fork implementation follows this shared design. Upstream adoption and deployment remain the maintainer's decision.
 
 ## Shared profile and observation boundary
 

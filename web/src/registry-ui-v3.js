@@ -1,3 +1,4 @@
+import "./experiments/swarm-presets-ui.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.111.0";
 import {
   EXPERIMENT_ARTIFACTS,
@@ -1586,3 +1587,18 @@ supabase.auth.onAuthStateChange((_event, session) => {
 updateCurrentUi();
 renderBrowser();
 run(initializeSession);
+
+// Presets use the same editable workspace and existing save/role checks.
+// They never write to a registry experiment implicitly.
+document.addEventListener("vlab:load-swarm-preset", async (event) => {
+  try {
+    if (!await confirmDiscardIfNeeded()) return;
+    await restoreBuiltIn({ apply: false });
+    applyExperimentArtifacts(event.detail);
+    document.dispatchEvent(new CustomEvent("vlab:fresh-preset-seed"));
+    await applyLoadedSources();
+    const title = experimentPanel.querySelector(".experiment-current-title");
+    if (title) title.textContent = event.detail.title;
+    setMessage(`${event.detail.title} loaded.`, "success");
+  } catch (error) { setMessage(error.message, "error"); }
+});
