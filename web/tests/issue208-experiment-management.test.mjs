@@ -28,7 +28,7 @@ assert.match(management, /setText\(browseButton, "Experiments"\)/);
 assert.doesNotMatch(management, /browseButton\.textContent = "Experiments"/);
 assert.match(management, /signIn\.textContent = "Sign in to save"/);
 assert.match(management, /accountButton\.click\(\)/);
-assert.match(management, /setText\(save, "Save"\)/);
+assert.match(management, /setText\(saveRevision, "Save Revision"\)/);
 assert.match(management, /setText\(saveAsNew, "Save as new…"\)/);
 assert.match(management, /if \(location\.dataset\.managementRedundant !== redundant\) location\.dataset\.managementRedundant = redundant/);
 assert.match(management, /experiment-location\[data-management-redundant="true"\]/);
