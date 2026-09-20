@@ -144,10 +144,9 @@ function syncAuthPresentation() {
 
   for (const selector of ['[data-vlab-nav="account"]', '[data-vlab-nav="account-mobile"]']) {
     for (const button of document.querySelectorAll(selector)) {
-      const text = "Account";
-      const label = signedOut ? "Account — sign in" : "Account";
+      const text = signedOut ? "Sign in" : "Account";
       if (button.textContent !== text) button.textContent = text;
-      if (button.getAttribute("aria-label") !== label) button.setAttribute("aria-label", label);
+      if (button.getAttribute("aria-label") !== text) button.setAttribute("aria-label", text);
     }
   }
 }

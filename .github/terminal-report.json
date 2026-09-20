@@ -1,22 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The sticky ribbon now represents product identity and true global navigation",
-  "owner_impact": "The sticky ribbon presents Virtual Lab with Eliseo Ferrante and Swarm robotics, and removes the current paper title, Experiment, Results, Showcase, Professor and simulator-status clutter. The scientific navigation is Simulation and Authoring; Help and Account remain global utilities. Simulator readiness is shown inside Simulation. Professor accounts retain Showcase and Capability requests through a temporary top-card action group so no existing function is stranded before the Control Panel redesign.",
+  "outcome": "The rejected implementation-first UI change has been removed and the last production-green UI restored",
+  "owner_impact": "The Lab returns to the exact pre-#417 product tree rather than keeping partial ribbon/control-panel experiments or compatibility debris. The owner's UI/UX complaints remain preserved as guarded design requirements under #273, not as code decisions. Security (#301), UI/UX (#273) and Refactoring (#425) are recorded as living maintenance domains.",
   "next": {
     "kind": "epic_continues",
-    "issue": 418,
-    "text": "The #273 redesign continues with #418 — build the shared Experiment Control Panel. That ticket will reorganize the existing Experiment identity, library, revision/Working-copy, Save Revision, collection/organize and persistence actions into one coherent control surface. It has not started yet."
+    "issue": 424,
+    "text": "The UI/UX lane continues with #424 — Product Design redesign in Work. Work will audit the recovered live Lab and turn the guarded owner feedback into coherent design options. No implementation ticket has started or will be derived until the owner accepts a design direction."
   },
   "technical_evidence": [
-    "React desktop and mobile global navigation now expose Simulation and Authoring only; Help remains the existing onboarding utility and Account remains the existing account dialog.",
-    "Simulation navigation targets the explicit #simulation section and Authoring targets #authoring-workbench; both have sticky-header scroll margin.",
-    "The ribbon brand is Virtual Lab with Eliseo Ferrante and Swarm robotics; the current Experiment title is no longer rendered in global chrome.",
-    "The old ribbon simulator badge is removed; SimulationPresentation observes the existing worker status and renders an accessible Simulator ready/starting/problem badge in the Simulation header.",
-    "A bounded compatibility bridge in the existing top Experiment card exposes Showcase and Capability requests only when the Professor surface is available, proxying the existing authoritative actions.",
-    "No simulation/runtime, Results, Authoring, revision, autosave, sharing, Showcase publication, capability-request, authorization, connector or workflow semantics changed.",
-    "The Account destination keeps the stable global label Account in signed-out and signed-in states; signed-out intent is conveyed by the Account dialog and its accessible label rather than replacing the navigation destination with Sign in.",
-    "React-shell and responsive production smoke now require exactly the approved global destinations (Simulation, Authoring, Help, Account), reject Experiment/Results/Showcase/Professor in global navigation, verify the three product-identity fields independently, and require simulator readiness inside Simulation.",
-    "The React mobile Drawer owns its Help destination directly and proxies the existing Getting started/Help action, avoiding portal-observer timing while preserving the same Help content."
+    "The recovery commit resets the repository product tree to the exact tree of the last verified pre-#417 production-green commit f5014c25ae6d280c876dc33c366b07d15ddee9f0.",
+    "All #417/#421/#422 implementation-first product, smoke and regression changes are absent from the recovered product tree rather than hidden behind compatibility code.",
+    "CURRENT_STATUS.md and ROADMAP.md record the corrected recovery -> Product Design/Work -> owner acceptance -> implementation sequence.",
+    "ROADMAP.md classifies #273 UI/UX, #301 Security and #425 Refactoring as living/ongoing maintenance domains.",
+    "No scientific/runtime, registry, authorization, capability, connector or Study semantics are changed by this recovery."
   ],
-  "close_issue": 417
+  "close_issue": 423
 }

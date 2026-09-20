@@ -164,7 +164,7 @@ function installHelpButtons() {
 
   const mobileAccount = document.querySelector('[data-vlab-nav="account-mobile"]');
   if (mobileAccount && !document.querySelector('[data-vlab-nav="help-mobile"]')) {
-    const help = makeButton("Help", "vlab-student-help-mobile", { "data-vlab-nav": "help-mobile", "aria-controls": panel.id, "aria-haspopup": "dialog" });
+    const help = makeButton("Getting started / Help", "vlab-student-help-mobile", { "data-vlab-nav": "help-mobile", "aria-controls": panel.id, "aria-haspopup": "dialog" });
     help.addEventListener("click", openHelp);
     mobileAccount.parentElement?.insertBefore(help, mobileAccount);
   }

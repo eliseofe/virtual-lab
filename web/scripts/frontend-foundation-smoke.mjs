@@ -17,6 +17,8 @@ try {
         const root = document.querySelector('#react-migration-root');
         const chrome = root?.querySelector('[data-vlab-react-chrome="mounted"]');
         const topbar = document.querySelector('.topbar');
+        const legacyWorker = document.querySelector('#worker-status');
+        const reactWorker = root?.querySelector('[data-vlab-worker-status]');
         const nav = [...(root?.querySelectorAll('[data-vlab-nav]') ?? [])].map((node) => node.getAttribute('data-vlab-nav'));
         const rect = root?.getBoundingClientRect();
         return {
@@ -26,7 +28,7 @@ try {
           chrome: Boolean(chrome),
           visible: Boolean(rect && rect.height > 0 && getComputedStyle(root).display !== 'none'),
           legacyTopbarHidden: Boolean(topbar && getComputedStyle(topbar).display === 'none'),
-          simulatorReadiness: Boolean(document.querySelector('[data-vlab-simulator-readiness]')),
+          workerMirrored: Boolean(legacyWorker && reactWorker && reactWorker.textContent?.trim() === legacyWorker.textContent?.trim()),
           nav,
           canvasOutsideRoot: Boolean(document.querySelector('#simulation-canvas')) && !root?.contains(document.querySelector('#simulation-canvas')),
           runOutsideRoot: Boolean(document.querySelector('#run')) && !root?.contains(document.querySelector('#run')),
@@ -37,42 +39,18 @@ try {
       returnByValue: true,
     });
     state = JSON.parse(result?.result?.value ?? "null");
-    const required = ['simulation', 'authoring', 'help', 'account'];
-    const forbidden = ['experiment', 'results', 'showcase', 'professor'];
-    if (
-      state?.mounted
-      && state?.chrome
-      && state?.simulatorReadiness
-      && required.every((item) => state?.nav?.includes(item))
-      && forbidden.every((item) => !state?.nav?.includes(item))
-    ) break;
+    if (state?.mounted && state?.chrome && state?.workerMirrored && state?.nav?.includes('showcase')) break;
     await sleep(100);
   }
 
-  const requiredNav = ['simulation', 'authoring', 'help', 'account'];
-  const forbiddenNav = ['experiment', 'results', 'showcase', 'professor'];
+  const requiredNav = ['experiment', 'simulation', 'results', 'authoring', 'showcase', 'account'];
   const missingNav = requiredNav.filter((item) => !state?.nav?.includes(item));
-  const forbiddenPresent = forbiddenNav.filter((item) => state?.nav?.includes(item));
-  if (
-    !state?.root
-    || state.hidden
-    || !state.mounted
-    || !state.chrome
-    || !state.visible
-    || !state.legacyTopbarHidden
-    || !state.simulatorReadiness
-    || missingNav.length
-    || forbiddenPresent.length
-    || !state.canvasOutsideRoot
-    || !state.runOutsideRoot
-    || !state.experimentOutsideRoot
-    || !state.authoringOutsideRoot
-  ) {
-    throw new Error(`React/Mantine application chrome failed: ${JSON.stringify({ ...state, missingNav, forbiddenPresent })}`);
+  if (!state?.root || state.hidden || !state.mounted || !state.chrome || !state.visible || !state.legacyTopbarHidden || !state.workerMirrored || missingNav.length || !state.canvasOutsideRoot || !state.runOutsideRoot || !state.experimentOutsideRoot || !state.authoringOutsideRoot) {
+    throw new Error(`React/Mantine application chrome failed: ${JSON.stringify({ ...state, missingNav })}`);
   }
   if (cdp.exceptions.length) throw new Error(`browser exceptions: ${JSON.stringify(cdp.exceptions)}`);
   console.log(JSON.stringify(state, null, 2));
-  console.log("React/Mantine global chrome is visible with Simulation/Authoring/Help/Account while authoritative simulator/workspace DOM remains outside React ownership.");
+  console.log("React/Mantine application chrome is visible while authoritative simulator/workspace DOM remains outside React ownership.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (session?.getChromeLog()?.trim()) console.error("Chrome stderr:\n" + session.getChromeLog());
