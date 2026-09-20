@@ -16,17 +16,18 @@ async function registryUiSource() {
   return readFile(path.join(src, "registry-ui-v3.js"), "utf8");
 }
 
-test("private save uses strict registry validation and optimistic revision ownership guards", async () => {
+test("private human edits autosave to a Working copy and only Save Revision crystallizes", async () => {
   const registryUi = await registryUiSource();
   assert.match(registryUi, /function registryArtifactsForSave/);
   assert.match(registryUi, /registryExperimentRunnability\(artifacts\)/);
+  assert.match(registryUi, /async function persistWorkingCopy\(\)/);
+  assert.match(registryUi, /\.from\("experiment_working_copies"\)/);
+  assert.match(registryUi, /base_revision: baseRevision/);
   assert.match(registryUi, /async function saveCurrentExperiment\(\)/);
-  assert.match(registryUi, /\.update\(\{[\s\S]*updated_by_actor: "human"[\s\S]*\}\)/);
-  assert.match(registryUi, /\.eq\("id", currentRemote\.id\)/);
-  assert.match(registryUi, /\.eq\("owner_id", user\.id\)/);
-  assert.match(registryUi, /\.eq\("revision", baseRevision\)/);
-  assert.match(registryUi, /Save conflict: a newer revision exists/);
-  assert.match(registryUi, /conflictRevision = fresh\?\.revision/);
+  assert.match(registryUi, /crystallize_experiment_working_copy/);
+  assert.match(registryUi, /Save Revision/);
+  assert.doesNotMatch(registryUi, /Save conflict: a newer revision exists/);
+  assert.doesNotMatch(registryUi, /conflictRevision/);
 });
 
 test("strict registry validation does not inherit production-only legacy aliases", () => {
@@ -66,15 +67,15 @@ test("save-as-new creates a distinct private human-owned registry experiment", a
   assert.match(registryUi, /data\.collection_id \? ` in \$\{collectionName\(data\.collection_id\)\}` : " without a collection"/);
 });
 
-test("editability feedback distinguishes read-only, saved, dirty and conflict states", async () => {
+test("editability feedback distinguishes numbered state from Working-copy persistence", async () => {
   const registryUi = await registryUiSource();
   assert.match(registryUi, /Built-in · Read-only/);
   assert.match(registryUi, /Your experiment · Editable/);
   assert.match(registryUi, /Saved · r\$\{currentRemote\.revision\}/);
-  assert.match(registryUi, /Unsaved changes/);
-  assert.match(registryUi, /Newer revision r\$\{conflictRevision\} available/);
+  assert.match(registryUi, /Working copy · autosave pending/);
+  assert.match(registryUi, /Working copy · autosaved · based on r/);
   assert.match(registryUi, /ui\.save\.hidden = !owned/);
-  assert.match(registryUi, /ui\.save\.disabled = !owned \|\| !dirty \|\| conflictRevision !== null/);
+  assert.match(registryUi, /ui\.save\.disabled = !owned \|\| \(!dirty && !currentWorkingCopy\)/);
 });
 
 test("anonymous state exposes no persistence controls and built-in can only be copied after sign-in", async () => {
@@ -84,11 +85,12 @@ test("anonymous state exposes no persistence controls and built-in can only be c
   assert.match(registryUi, /The built-in experiment cannot be overwritten/);
 });
 
-test("refresh detects newer remote revisions without discarding local edits", async () => {
+test("refresh exposes newer numbered revisions without discarding a durable Working copy", async () => {
   const registryUi = await registryUiSource();
-  assert.match(registryUi, /const dirty = hasUnsavedRemoteEdits\(\)/);
   assert.match(registryUi, /fresh\.revision > previousRemote\.revision/);
-  assert.match(registryUi, /Your local edits are preserved/);
+  assert.match(registryUi, /if \(currentWorkingCopy\)/);
+  assert.match(registryUi, /Working copy based on revision \$\{currentWorkingCopy\.base_revision\} is preserved/);
+  assert.doesNotMatch(registryUi, /Reload the experiment before saving/);
 });
 
 test("write-back remains artifact-descriptor driven", async () => {
