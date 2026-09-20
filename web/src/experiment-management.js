@@ -63,6 +63,26 @@ function installStyles() {
       background: #fff;
       border-color: #d3e0e4;
     }
+    .experiment-current-main {
+      display: block !important;
+    }
+    .experiment-current-toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+    .experiment-current-toolbar .experiment-current-meta {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .experiment-current-actions {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin-inline-start: auto;
+    }
     .experiment-task-heading {
       display: flex;
       align-items: baseline;
@@ -77,12 +97,18 @@ function installStyles() {
       text-transform: uppercase;
     }
     .experiment-current { margin: 0 !important; padding: 0 !important; border: 0 !important; }
-    .experiment-current-main { align-items: center !important; }
     .experiment-current-title { font-size: 15px !important; }
     .experiment-current-meta { gap: 7px !important; }
     .experiment-location[data-management-redundant="true"] { display: none !important; }
     .experiment-origin, .experiment-location { min-height: 26px !important; }
-    .experiment-browse { min-height: 44px; padding: 8px 12px; white-space: nowrap; }
+    .experiment-browse,
+    .experiment-organize {
+      min-height: 44px !important;
+      padding: 8px 12px !important;
+      border-radius: 10px !important;
+      font-size: 11.5px !important;
+      white-space: nowrap;
+    }
     .experiment-quick-hint { display: none !important; }
     .experiment-revision-workflow {
       display: grid;
@@ -97,8 +123,7 @@ function installStyles() {
       align-items: center !important;
       justify-content: center !important;
       width: auto !important;
-      min-width: 52px !important;
-      max-width: 72px !important;
+      min-width: 3ch !important;
       min-height: 44px !important;
       padding: 6px 12px !important;
       flex: 0 0 auto !important;
@@ -116,16 +141,24 @@ function installStyles() {
     .experiment-task-revisions,
     .experiment-management {
       display: grid;
-      grid-template-rows: auto 1fr;
-      align-content: stretch;
-      min-height: 154px;
+      align-content: start;
+      gap: 8px;
+    }
+    .experiment-revision-top {
+      display: grid !important;
+      grid-template-columns: max-content minmax(0, 1fr);
+      align-items: stretch !important;
+      gap: 8px !important;
     }
     .experiment-revision-actions,
     .experiment-management-slot .registry-new-actions {
-      display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px !important;
+      display: flex !important;
       align-items: stretch !important;
+      gap: 8px !important;
+    }
+    .experiment-revision-actions button,
+    .experiment-management-slot .registry-new-actions button {
+      flex: 1 1 0;
     }
     .experiment-revision-actions button,
     .experiment-management-slot .registry-new-actions button,
@@ -137,19 +170,14 @@ function installStyles() {
     }
     .experiment-revision-workflow[hidden] { display: none !important; }
     .experiment-task-revisions:has(.experiment-revision-workflow[hidden]) { display: none; }
-    .experiment-management {
-      gap: 8px;
-    }
     .experiment-management-actions {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
-      grid-auto-rows: 44px;
-      gap: 8px;
+      display: flex;
       align-items: stretch;
+      gap: 8px;
     }
     .experiment-management-actions button {
-      width: 100%;
-      height: 44px;
+      flex: 1 1 0;
+      width: auto;
       min-height: 44px !important;
       padding: 8px 10px !important;
       white-space: nowrap;
@@ -169,7 +197,6 @@ function installStyles() {
     .experiment-management-slot .registry-share-row,
     .experiment-management-slot .registry-new-form { margin: 0; }
     .experiment-sign-in-save { justify-self: stretch; width: 100%; }
-    .experiment-current-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
     .experiment-professor-section {
       grid-column: 1 / -1;
       display: grid;
@@ -181,16 +208,14 @@ function installStyles() {
     .experiment-professor-groups {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      grid-auto-rows: 1fr;
+      align-items: stretch;
       gap: 12px;
     }
     .experiment-professor-group {
-      display: grid;
-      grid-template-rows: auto auto;
-      align-content: stretch;
+      display: flex;
+      flex-direction: column;
       gap: 8px;
       min-width: 0;
-      min-height: 132px;
       padding: 12px;
       border: 1px solid #e4dfeb;
       border-radius: 10px;
@@ -199,30 +224,28 @@ function installStyles() {
     .experiment-professor-group strong { color: #554a61; font-size: 11px; }
     .experiment-professor-group p { margin: 0; color: #786e82; font-size: 10.5px; line-height: 1.4; }
     .experiment-professor-actions {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
+      display: flex;
       align-items: stretch;
+      gap: 8px;
+      margin-top: auto;
     }
     .experiment-professor-actions button {
-      width: 100%;
+      flex: 1 1 0;
+      width: auto;
       min-height: 44px;
       padding: 8px 12px;
       font-size: 11.5px;
     }
     .experiment-professor-section .showcase-curation-status { margin: 0; }
-    .experiment-organize {
-      min-height: 44px !important;
-      padding: 8px 12px !important;
-      border-radius: 999px !important;
-      font-size: 10.5px !important;
-      font-weight: 700 !important;
-    }
+    .experiment-professor-section .showcase-curation-status:empty { display: none; }
     @media (max-width: 680px) {
       .experiment-control-head { align-items: stretch; flex-direction: column; gap: 6px; }
       .experiment-control-grid { grid-template-columns: 1fr; }
       .experiment-task-current, .experiment-professor-section { grid-column: auto; }
-      .experiment-current-main { display: grid !important; grid-template-columns: minmax(0, 1fr); align-items: stretch !important; }
+      .experiment-current-toolbar { align-items: stretch; }
+      .experiment-current-toolbar .experiment-current-meta { flex-basis: 100%; }
+      .experiment-current-actions { width: 100%; margin-inline-start: 0; }
+      .experiment-current-actions button { flex: 1 1 0; }
       .experiment-browse,
       .experiment-sign-in-save,
       .experiment-revision-actions button,
@@ -232,10 +255,12 @@ function installStyles() {
       .experiment-browse,
       .experiment-sign-in-save { width: 100%; }
       .experiment-current-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
+      .experiment-revision-top { grid-template-columns: 1fr; }
+      .experiment-revision-trigger { width: 100% !important; }
       .experiment-revision-actions,
       .experiment-management-slot .registry-new-actions,
-      .experiment-professor-actions { grid-template-columns: 1fr !important; }
-      .experiment-management-actions { grid-template-columns: 1fr 1fr; }
+      .experiment-professor-actions,
+      .experiment-management-actions { flex-wrap: wrap; }
       .experiment-professor-groups { grid-template-columns: 1fr; }
       .experiment-task-revisions,
       .experiment-management,
@@ -277,6 +302,14 @@ function buildControlPanel() {
     taskHeading("Current Experiment"),
     currentExperiment.firstChild,
   );
+
+  const currentToolbar = document.createElement("div");
+  currentToolbar.className = "experiment-current-toolbar";
+  const currentActions = document.createElement("div");
+  currentActions.className = "experiment-current-actions";
+  currentMain.after(currentToolbar);
+  currentToolbar.append(currentMeta, currentActions);
+  currentActions.append(browseButton);
 
   const revisionTask = document.createElement("section");
   revisionTask.className = "experiment-task-card experiment-task-revisions";
@@ -350,7 +383,7 @@ function buildProfessorSection() {
   showcaseTitle.textContent = "Showcase";
   const showcaseActions = document.createElement("div");
   showcaseActions.className = "experiment-professor-actions";
-  showcaseLauncher.textContent = "Browse Showcase";
+  showcaseLauncher.textContent = "Browse";
   showcaseActions.append(showcaseLauncher, promote);
   showcaseGroup.append(showcaseTitle, showcaseActions, curationStatus);
 
@@ -363,7 +396,7 @@ function buildProfessorSection() {
   const requests = document.createElement("button");
   requests.type = "button";
   requests.className = "experiment-capability-requests";
-  requests.textContent = "Capability requests";
+  requests.textContent = "Open";
   requests.addEventListener("click", () => {
     const inbox = document.querySelector(".professor-inbox-open");
     if (inbox instanceof HTMLButtonElement && !inbox.disabled) inbox.click();
@@ -374,9 +407,6 @@ function buildProfessorSection() {
 
   groups.append(showcaseGroup, capabilityGroup);
   region.append(groups);
-
-  const currentActions = currentMain.querySelector(".experiment-current-actions");
-  if (currentActions?.contains(browseButton)) currentActions.replaceWith(browseButton);
 
   return { region, requests };
 }
@@ -409,13 +439,13 @@ function mirrorOperationalMessage() {
     return;
   }
   const state = source.dataset.state || "idle";
-  if (state !== "error" && state !== "success") {
+  if (state !== "error") {
     setText(management.status, "");
     management.status.dataset.state = "idle";
     return;
   }
   setText(management.status, source.textContent?.trim() || "");
-  management.status.dataset.state = state;
+  management.status.dataset.state = "error";
 }
 
 function movePersistenceControls() {
@@ -470,8 +500,8 @@ function syncProfessorSection() {
   professorSection.requests.disabled = !available;
   const pending = document.querySelector(".professor-pending-count")?.textContent?.trim();
   professorSection.requests.textContent = pending && pending !== "0"
-    ? `Capability requests · ${pending}`
-    : "Capability requests";
+    ? `Open · ${pending}`
+    : "Open";
 }
 
 function attachObservers() {

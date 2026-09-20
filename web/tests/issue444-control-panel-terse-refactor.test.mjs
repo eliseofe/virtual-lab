@@ -24,7 +24,8 @@ test("#444 shows only compact revision data in the Revisions trigger", () => {
   assert.match(registry, /"Open revision history\. Revision " \+ revisionNumber/);
   assert.match(registry, /"Open revision history\. Working copy based on revision " \+ currentWorkingCopy\.base_revision/);
   assert.match(management, /\.experiment-revision-trigger > span,[\s\S]*\.experiment-revision-trigger > b[\s\S]*display: none !important/);
-  assert.match(management, /max-width: 72px !important/);
+  assert.match(management, /min-width: 3ch !important/);
+  assert.doesNotMatch(management, /max-width: 72px !important/);
   assert.doesNotMatch(registry, /currentUi\.revisionPrimary\.textContent = "R" \+ revisionNumber/);
 });
 
