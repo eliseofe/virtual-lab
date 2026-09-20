@@ -54,7 +54,8 @@ let outgoingShares = [];
 let collections = [];
 let currentRemote = null;
 let currentRemoteAccess = null;
-let conflictRevision = null;
+let currentWorkingCopy = null;
+let workingCopyAutosave = Promise.resolve();
 let hiddenNonRunnableCount = 0;
 let browserSource = "builtin";
 let browserCollection = "all";
@@ -323,7 +324,7 @@ function buildAccountPanel() {
   saveActions.className = "registry-save-actions";
   const save = document.createElement("button");
   save.className = "primary";
-  save.textContent = "Save changes";
+  save.textContent = "Save Revision";
   const saveAsNew = document.createElement("button");
   saveAsNew.textContent = "Save as new…";
   saveActions.append(save, saveAsNew);
@@ -532,8 +533,53 @@ function artifactsEqual(left, right) {
   return experimentArtifactsEqual(left, right);
 }
 
+function currentEditingBaseline() {
+  return currentWorkingCopy ?? currentRemote;
+}
+
+function hasUnpersistedRemoteEdits() {
+  const baseline = currentEditingBaseline();
+  return currentRemote !== null && baseline !== null && !artifactsEqual(captureExperimentArtifacts(), baseline);
+}
+
+// Kept as the switching/loss predicate name used by existing callers. Under #397
+// "unsaved" means only edits that have not yet reached the durable Working copy.
 function hasUnsavedRemoteEdits() {
-  return currentRemote !== null && !artifactsEqual(captureExperimentArtifacts(), currentRemote);
+  return hasUnpersistedRemoteEdits();
+}
+
+async function persistWorkingCopy() {
+  const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
+  if (!owned || !hasUnpersistedRemoteEdits()) return currentWorkingCopy;
+
+  const artifacts = registryArtifactsForSave();
+  const baseRevision = currentWorkingCopy?.base_revision ?? currentRemote.revision;
+  setMessage("Autosaving Working copy…");
+  const { data, error } = await supabase
+    .from("experiment_working_copies")
+    .upsert({
+      experiment_id: currentRemote.id,
+      owner_id: user.id,
+      base_revision: baseRevision,
+      title: currentRemote.title,
+      description: currentRemote.description ?? "",
+      ...artifacts,
+    }, { onConflict: "experiment_id" })
+    .select("*")
+    .single();
+  if (error) throw error;
+
+  currentWorkingCopy = data;
+  updateCurrentUi();
+  setMessage(`Working copy autosaved · based on revision ${data.base_revision}.`, "success");
+  return data;
+}
+
+function queueWorkingCopyAutosave() {
+  workingCopyAutosave = workingCopyAutosave
+    .catch(() => undefined)
+    .then(() => persistWorkingCopy());
+  return workingCopyAutosave;
 }
 
 function experimentsInCollection(collectionId) {
@@ -624,10 +670,9 @@ function setQuickSwitchOptions() {
 }
 function updateMoveButton() {
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
-  const dirty = hasUnsavedRemoteEdits();
   const target = selectedCollectionId(ui.moveCollection);
   const current = currentRemote?.collection_id || null;
-  ui.move.disabled = !owned || dirty || conflictRevision !== null || target === current;
+  ui.move.disabled = !owned || target === current;
 }
 
 function updateCurrentUi() {
@@ -661,7 +706,7 @@ function updateCurrentUi() {
   if (!owned || availableRecipients.length === 0) ui.shareForm.hidden = true;
   populateShareRecipientSelect();
   renderOutgoingShares();
-  ui.save.disabled = !owned || !dirty || conflictRevision !== null;
+  ui.save.disabled = !owned || (!dirty && !currentWorkingCopy);
   ui.moveRow.hidden = !owned;
   if (owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
   updateMoveButton();
@@ -681,14 +726,18 @@ function updateCurrentUi() {
       ui.saveState.textContent = "Professor supervision · Read-only";
       ui.note.textContent = "This student Experiment stays read-only. Copy to my Experiments creates an independent private Experiment from this exact saved revision.";
     }
-  } else if (conflictRevision !== null) {
-    ui.saveState.dataset.state = "conflict";
-    ui.saveState.textContent = `Newer revision r${conflictRevision} available`;
-    ui.note.textContent = "Your local edits are still here. Reload the experiment before saving or moving this same record.";
   } else if (dirty) {
     ui.saveState.dataset.state = "dirty";
-    ui.saveState.textContent = "Unsaved changes";
-    ui.note.textContent = `Save changes before moving this experiment. Saving creates a new revision; collection is only organization.`;
+    ui.saveState.textContent = currentWorkingCopy
+      ? `Working copy · autosave pending · based on r${currentWorkingCopy.base_revision}`
+      : `Working copy · autosave pending · based on r${currentRemote.revision}`;
+    ui.note.textContent = "Leaving the editor or taking another action autosaves the Working copy. Save Revision creates a numbered revision.";
+  } else if (currentWorkingCopy) {
+    ui.saveState.dataset.state = "saved";
+    ui.saveState.textContent = `Working copy · autosaved · based on r${currentWorkingCopy.base_revision}`;
+    ui.note.textContent = currentRemote.revision > currentWorkingCopy.base_revision
+      ? `Revision r${currentRemote.revision} is newer. Your Working copy remains preserved from r${currentWorkingCopy.base_revision}; Save Revision will create the next chronological revision.`
+      : "Working copy is durable. Save Revision crystallizes it as the next numbered revision.";
   } else {
     ui.saveState.dataset.state = "saved";
     ui.saveState.textContent = `Saved · r${currentRemote.revision}`;
@@ -1087,6 +1136,17 @@ async function readExperiment(id) {
   if (!productionExperimentRunnability(data).runnable) throw new Error("This experiment cannot run in the current simulator version.");
   return data;
 }
+
+async function readWorkingCopy(id) {
+  const { data, error } = await supabase
+    .from("experiment_working_copies")
+    .select("*")
+    .eq("experiment_id", id)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
 async function waitForSimulatorReady() {
   const deadline = performance.now() + 15000;
   while (applySetup.disabled && performance.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1099,7 +1159,16 @@ async function applyLoadedSources() {
 }
 
 async function confirmDiscardIfNeeded() {
-  if (!hasUnsavedRemoteEdits()) return true;
+  if (!hasUnpersistedRemoteEdits()) return true;
+  const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
+  if (owned) {
+    try {
+      await queueWorkingCopyAutosave();
+      if (!hasUnpersistedRemoteEdits()) return true;
+    } catch (error) {
+      console.error("Could not autosave Working copy before navigation.", error);
+    }
+  }
   return window.confirm("Discard the unsaved changes to the current experiment?");
 }
 
@@ -1107,7 +1176,7 @@ async function restoreBuiltIn({ apply = true } = {}) {
   applyExperimentArtifacts(builtinArtifacts);
   currentRemote = null;
   currentRemoteAccess = null;
-  conflictRevision = null;
+  currentWorkingCopy = null;
   ui.newForm.hidden = true;
   updateCurrentUi();
   rememberCurrentWorkspace();
@@ -1119,15 +1188,23 @@ async function loadRemoteExperiment(id, { access = "owned" } = {}) {
   if (!user) throw new Error("Sign in to open Experiments.");
   setMessage("Opening experiment…");
   const experiment = await readExperiment(id);
-  applyExperimentArtifacts(experiment);
+  const workingCopy = access === "owned" && experiment.owner_id === user.id
+    ? await readWorkingCopy(id)
+    : null;
+  applyExperimentArtifacts(workingCopy ?? experiment);
   currentRemote = experiment;
   currentRemoteAccess = access;
-  conflictRevision = null;
+  currentWorkingCopy = workingCopy;
   ui.newForm.hidden = true;
   updateCurrentUi();
   rememberCurrentWorkspace();
   await applyLoadedSources();
-  setMessage(`${experiment.title} · revision ${experiment.revision} loaded.`, "success");
+  setMessage(
+    workingCopy
+      ? `${experiment.title} · Working copy based on revision ${workingCopy.base_revision} loaded.`
+      : `${experiment.title} · revision ${experiment.revision} loaded.`,
+    "success",
+  );
 }
 
 function connectedMessage() {
@@ -1159,34 +1236,22 @@ function registryArtifactsForSave({ allowBuiltInCompatibility = false } = {}) {
 async function saveCurrentExperiment() {
   if (!user) throw new Error("Sign in before saving.");
   if (!currentRemote || currentRemote.owner_id !== user.id) throw new Error("This source is read-only. Use Save as new instead.");
-  if (conflictRevision !== null) throw new Error("A newer revision exists. Reload the experiment before saving to the same record.");
-  if (!hasUnsavedRemoteEdits()) {
-    setMessage("No unsaved changes.");
+
+  await queueWorkingCopyAutosave();
+  if (!currentWorkingCopy) {
+    setMessage("No Working copy changes to save.");
     return;
   }
 
-  const artifacts = registryArtifactsForSave();
-  const baseRevision = currentRemote.revision;
-  setMessage(`Saving ${currentRemote.title}…`);
+  setMessage(`Saving ${currentRemote.title} as a new revision…`);
   const { data, error } = await supabase
-    .from("experiments")
-    .update({ ...artifacts, updated_by_actor: "human", updated_by_ai_client: null })
-    .eq("id", currentRemote.id)
-    .eq("owner_id", user.id)
-    .eq("revision", baseRevision)
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
-    .maybeSingle();
-
+    .rpc("crystallize_experiment_working_copy", { p_experiment_id: currentRemote.id })
+    .single();
   if (error) throw error;
-  if (!data) {
-    const { data: fresh } = await supabase.from("experiments").select("revision").eq("id", currentRemote.id).eq("owner_id", user.id).maybeSingle();
-    conflictRevision = fresh?.revision ?? baseRevision + 1;
-    updateCurrentUi();
-    throw new Error("Save conflict: a newer revision exists. Your local edits are still here.");
-  }
 
   currentRemote = data;
-  conflictRevision = null;
+  currentWorkingCopy = null;
+  applyExperimentArtifacts(data);
   await loadExperimentList();
   updateCurrentUi();
   renderBrowser();
@@ -1196,8 +1261,8 @@ async function saveCurrentExperiment() {
 async function moveCurrentExperiment() {
   if (!user) throw new Error("Sign in before moving an experiment.");
   if (!currentRemote || currentRemote.owner_id !== user.id) throw new Error("Only your own experiment can be moved.");
-  if (conflictRevision !== null) throw new Error("A newer revision exists. Reload the experiment before moving it.");
-  if (hasUnsavedRemoteEdits()) throw new Error("Save or discard source edits before moving this experiment.");
+
+  await queueWorkingCopyAutosave();
 
   const targetCollectionId = selectedCollectionId(ui.moveCollection);
   const currentCollectionId = currentRemote.collection_id || null;
@@ -1206,32 +1271,24 @@ async function moveCurrentExperiment() {
     return;
   }
 
-  const baseRevision = currentRemote.revision;
   const targetName = collectionName(targetCollectionId);
   setMessage(`Moving ${currentRemote.title} to ${targetName}…`);
   const { data, error } = await supabase
     .from("experiments")
-    .update({ collection_id: targetCollectionId, updated_by_actor: "human", updated_by_ai_client: null })
+    .update({ collection_id: targetCollectionId })
     .eq("id", currentRemote.id)
     .eq("owner_id", user.id)
-    .eq("revision", baseRevision)
     .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
     .maybeSingle();
 
   if (error) throw error;
-  if (!data) {
-    const { data: fresh } = await supabase.from("experiments").select("revision").eq("id", currentRemote.id).eq("owner_id", user.id).maybeSingle();
-    conflictRevision = fresh?.revision ?? baseRevision + 1;
-    updateCurrentUi();
-    throw new Error("Move conflict: a newer revision exists. Reload the experiment before moving it.");
-  }
+  if (!data) throw new Error("The Experiment is missing or is no longer owned by this account.");
 
   currentRemote = data;
-  conflictRevision = null;
   await loadExperimentList();
   updateCurrentUi();
   renderBrowser();
-  setMessage(`${data.title} moved to My experiments / ${collectionName(data.collection_id)} as revision ${data.revision}.`, "success");
+  setMessage(`${data.title} moved to My experiments / ${collectionName(data.collection_id)}. Revision remains r${data.revision}.`, "success");
 }
 
 function openShareForm() {
@@ -1371,7 +1428,7 @@ async function createNewExperiment() {
   applyExperimentArtifacts(data);
   currentRemote = data;
   currentRemoteAccess = "owned";
-  conflictRevision = null;
+  currentWorkingCopy = null;
   closeSaveAsNew();
   await Promise.all([loadCollections(), loadExperimentList()]);
   updateCurrentUi();
@@ -1391,6 +1448,7 @@ function setSignedOutUi() {
   ui.auth.hidden = false;
   ui.signOut.hidden = true;
   remoteExperiments = [];
+  currentWorkingCopy = null;
   sharedExperiments = [];
   supervisedProfiles = [];
   supervisedExperiments = [];
@@ -1480,9 +1538,13 @@ async function signOut() {
 async function refreshRegistry() {
   if (!user) return;
   const previousRemote = currentRemote;
-  const dirty = hasUnsavedRemoteEdits();
-  setMessage("Refreshing your library…");
   const previousAccess = currentRemoteAccess;
+
+  if (previousRemote?.owner_id === user.id && hasUnpersistedRemoteEdits()) {
+    await queueWorkingCopyAutosave();
+  }
+
+  setMessage("Refreshing your library…");
   await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadSupervisedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
 
   if (previousRemote) {
@@ -1493,8 +1555,8 @@ async function refreshRegistry() {
         : remoteExperiments;
     const fresh = available.find((experiment) => experiment.id === previousRemote.id);
     if (!fresh) {
-      if (dirty) {
-        setMessage("This experiment is no longer in your available library. Your local edits are still here.", "error");
+      if (currentWorkingCopy) {
+        setMessage("This experiment is no longer in your available library. Your durable Working copy is still preserved.", "error");
       } else {
         await restoreBuiltIn();
         setMessage("The previously loaded experiment is no longer available in this simulator version.");
@@ -1502,17 +1564,24 @@ async function refreshRegistry() {
       renderBrowser();
       return;
     }
+
     if (fresh.revision > previousRemote.revision) {
-      if (dirty) {
-        conflictRevision = fresh.revision;
+      if (currentWorkingCopy) {
+        currentRemote = fresh;
         updateCurrentUi();
-        setMessage(`Revision ${fresh.revision} is now in the library. Your local edits are preserved.`, "error");
-      } else {
-        await loadRemoteExperiment(previousRemote.id, { access: previousAccess || "owned" });
+        renderBrowser();
+        setMessage(
+          `Revision ${fresh.revision} is now available. Working copy based on revision ${currentWorkingCopy.base_revision} is preserved.`,
+          "success",
+        );
+        return;
       }
+      await loadRemoteExperiment(previousRemote.id, { access: previousAccess || "owned" });
       renderBrowser();
       return;
     }
+
+    currentRemote = fresh;
   }
 
   updateCurrentUi();
@@ -1609,11 +1678,37 @@ ui.newTitle.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeSaveAsNew();
 });
 
+function autosaveAtInteractionBoundary() {
+  if (!user || !currentRemote || currentRemote.owner_id !== user.id || !hasUnpersistedRemoteEdits()) return;
+  run(queueWorkingCopyAutosave);
+}
+
 for (const descriptor of EXPERIMENT_ARTIFACTS) {
-  document.querySelector(descriptor.editorSelector)?.addEventListener("input", updateCurrentUi);
+  const editor = descriptor.editorSelector ? document.querySelector(descriptor.editorSelector) : null;
+  editor?.addEventListener("input", updateCurrentUi);
+  editor?.addEventListener("blur", autosaveAtInteractionBoundary);
 }
 document.querySelector("#additional-experiment-artifacts")?.addEventListener("input", (event) => {
   if (event.target?.dataset?.experimentArtifactEditor === "true") updateCurrentUi();
+});
+document.querySelector("#additional-experiment-artifacts")?.addEventListener("focusout", (event) => {
+  if (event.target?.dataset?.experimentArtifactEditor === "true") autosaveAtInteractionBoundary();
+});
+
+// Any action outside an artifact editor is also an autosave boundary. Pointer-down
+// starts persistence before the action's click handler (including Run or Save Revision).
+document.addEventListener("pointerdown", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  const insideArtifactEditor = target?.matches(
+    "#experiment-config, #initializer-source, #controller-source, [data-experiment-artifact-editor='true']",
+  );
+  if (!insideArtifactEditor) autosaveAtInteractionBoundary();
+}, { capture: true });
+
+window.addEventListener("beforeunload", (event) => {
+  if (!hasUnpersistedRemoteEdits()) return;
+  event.preventDefault();
+  event.returnValue = "";
 });
 
 window.addEventListener("vlab:open-supervised-experiment", (event) => run(async () => {
