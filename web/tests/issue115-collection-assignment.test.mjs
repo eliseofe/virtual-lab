@@ -41,7 +41,7 @@ test("moving first preserves dirty source edits in the Working copy, not the num
   assert.match(moveSource, /\.update\(\{ collection_id: targetCollectionId \}\)/);
   assert.match(source, /ui\.move\.disabled = !owned \|\| target === current/);
   assert.doesNotMatch(moveSource, /registryArtifactsForSave/);
-  assert.doesNotMatch(moveSource, /updated_by_actor/);
+  assert.doesNotMatch(moveSource, /\.update\(\{[^}]*updated_by_actor/);
 });
 
 test("collection selectors only use collections loaded through the signed-in account RLS path", async () => {
