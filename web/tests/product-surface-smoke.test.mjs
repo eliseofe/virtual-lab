@@ -6,6 +6,7 @@ const manifest = JSON.parse(await readFile(new URL('../product-surface.json', im
 const workflow = await readFile(new URL('../../.github/workflows/ci-pages.yml', import.meta.url), 'utf8');
 const runner = await readFile(new URL('../scripts/run-active-product-smoke.mjs', import.meta.url), 'utf8');
 const harness = await readFile(new URL('../scripts/smoke-browser-harness.mjs', import.meta.url), 'utf8');
+const responsiveSmoke = await readFile(new URL('../scripts/responsive-smoke.mjs', import.meta.url), 'utf8');
 
 test('product-surface manifest is the canonical active smoke registry', async () => {
   assert.equal(manifest.schema, 'vlab.product-surface/1');
@@ -47,4 +48,11 @@ test('production smoke uses one shared Chrome host and isolated harness sessions
   assert.match(harness, /Target\.createBrowserContext/);
   assert.match(harness, /Target\.disposeBrowserContext/);
   assert.match(harness, /Target\.attachToTarget/);
+});
+
+test('responsive smoke tolerates the transient pre-documentElement navigation state without weakening readiness', () => {
+  assert.match(responsiveSmoke, /document\.documentElement\?\.dataset\.vlabUxHardened \?\? null/);
+  assert.match(responsiveSmoke, /for \(let attempt = 0; attempt < 160; attempt \+= 1\)/);
+  assert.match(responsiveSmoke, /await sleep\(100\)/);
+  assert.match(responsiveSmoke, /parsed\?\.state === "ready" && parsed\?\.hardened === "true"/);
 });
