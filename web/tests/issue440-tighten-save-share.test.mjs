@@ -11,14 +11,14 @@ test("#440 shortens the Save & share subtitle", () => {
 
 test("#440 consolidates visible Save & share actions into one equal action bar", () => {
   assert.match(management, /actions\.className = "experiment-management-actions"/);
-  assert.match(management, /actions\.append\(save, saveAsNew, shareOpen\)/);
+  assert.match(management, /actions\.append\(saveAsNew, shareOpen\)/);
   assert.match(management, /grid-template-columns: repeat\(auto-fit, minmax\(108px, 1fr\)\)/);
   assert.match(management, /grid-auto-rows: 44px/);
   assert.match(management, /\.experiment-management-actions button \{[\s\S]*width: 100%[\s\S]*height: 44px/);
 });
 
-test("#440 keeps collection movement in the existing Organize flow", () => {
-  assert.doesNotMatch(management, /actions\.append\([^\n]*move/);
+test("#440 keeps Save Revision in Revisions and collection movement in Organize", () => {
+  assert.doesNotMatch(management, /actions\.append\([^\n]*(save,|move)/);
   assert.doesNotMatch(management, /syncManagementActions|moveObserver/);
 });
 
