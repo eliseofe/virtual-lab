@@ -20,27 +20,28 @@ test("save-as-new exposes owned collection choice and defaults owned copies to t
   assert.match(source, /data\.collection_id \? ` in \$\{collectionName\(data\.collection_id\)\}` : " without a collection"/);
 });
 
-test("owned experiments can move collections with optimistic ownership and revision guards", async () => {
+test("owned experiments can move collections without manufacturing a scientific revision", async () => {
   const source = await registryUiSource();
   assert.match(source, /async function moveCurrentExperiment\(\)/);
-  assert.match(source, /\.update\(\{ collection_id: targetCollectionId, updated_by_actor: "human", updated_by_ai_client: null \}\)/);
+  assert.match(source, /\.update\(\{ collection_id: targetCollectionId \}\)/);
   assert.match(source, /\.eq\("id", currentRemote\.id\)/);
   assert.match(source, /\.eq\("owner_id", user\.id\)/);
-  assert.match(source, /\.eq\("revision", baseRevision\)/);
-  assert.match(source, /Move conflict: a newer revision exists/);
+  assert.doesNotMatch(source, /Move conflict: a newer revision exists/);
   assert.match(source, /currentRemote = data/);
-  assert.match(source, /moved to My experiments \/ \$\{collectionName\(data\.collection_id\)\}/);
+  assert.match(source, /Revision remains r\$\{data\.revision\}/);
 });
 
-test("moving never implicitly persists dirty source edits", async () => {
+test("moving first preserves dirty source edits in the Working copy, not the numbered head", async () => {
   const source = await registryUiSource();
   const start = source.indexOf("async function moveCurrentExperiment()");
-  const end = source.indexOf("function defaultCopyTitle()", start);
+  const end = source.indexOf("function openShareForm()", start);
   assert.ok(start >= 0 && end > start);
   const moveSource = source.slice(start, end);
-  assert.match(moveSource, /if \(hasUnsavedRemoteEdits\(\)\) throw new Error\("Save or discard source edits before moving this experiment\."\)/);
-  assert.match(source, /ui\.move\.disabled = !owned \|\| dirty \|\| conflictRevision !== null \|\| target === current/);
+  assert.match(moveSource, /await queueWorkingCopyAutosave\(\)/);
+  assert.match(moveSource, /\.update\(\{ collection_id: targetCollectionId \}\)/);
+  assert.match(source, /ui\.move\.disabled = !owned \|\| target === current/);
   assert.doesNotMatch(moveSource, /registryArtifactsForSave/);
+  assert.doesNotMatch(moveSource, /\.update\(\{[^}]*updated_by_actor/);
 });
 
 test("collection selectors only use collections loaded through the signed-in account RLS path", async () => {

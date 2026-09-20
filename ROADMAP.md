@@ -33,12 +33,12 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **Implement the owner-authorized generic heterogeneous-state capability through #304.** Fresh Constant Bearing use rediscovered the previously preserved need: Initialization can assign deterministic per-agent initial values to Controller-declared private scalar state. The implementation must remain generic and reusable for roles/leaders/informed agents.
-2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It is not implementation-authorized by #304.
-3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn after the current #304 ticket reaches its terminal state.
-4. Continue real student and owner use; #273 is dormant after the production-verified Experiment-navigation/supervision pass.
+1. **Complete the owner-authorized #396 Working-copy/revision-history mini-epic under living UI/UX lane #273.** #397 establishes immutable numbered revision snapshots, durable owner Working-copy autosave at interaction boundaries, and explicit Save Revision without merge/rebase semantics. The known successor #398 adds the holistic revision-history selector plus All/Mine/AI filtering; #399 then performs the bounded integrated UX/regression verification. Each child remains a separate approval/execution chunk under the development workflow.
+2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
+3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
+4. Continue real student and owner use and feed concrete UX evidence into #273 rather than reopening a broad redesign.
 5. Keep #301/#302 security audit work explicitly queued but not started; select it only in a later owner turn.
-6. Turn concrete evidence from use into focused fixes; do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
+6. Do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
 
 ## Owner-gated major lane: Studies
 

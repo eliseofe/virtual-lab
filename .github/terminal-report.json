@@ -1,20 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Human users have structured names and named revision provenance",
-  "owner_impact": "Registration now asks for first and last name. Human revision provenance displays the Experiment owner's profile as Name (Role) rather than the generic label Human. Existing accounts were migrated to Eliseo Ferrante (Professor), Eliseo Ferrante (Student), and Sergio Gutierrez (Student); the dependency-free probe account was removed.",
+  "outcome": "Human editing now uses a durable Working copy instead of creating a revision on every save",
+  "owner_impact": "While editing an owned Experiment, leaving an editor or taking another action autosaves the current text into one unnumbered Working copy. Save Revision is the only human action that crystallizes it into the next numbered revision. Numbered snapshots are retained immutably, incomplete edits can still autosave, and a newer AI revision no longer invalidates or blocks the human Working copy.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "dormant",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The bounded #394 identity scope is complete. #302 remains a separately queued security audit. Autosave/candidate-revision semantics are not part of #394 and remain to be discussed before implementation."
+    "kind": "epic_continues",
+    "issue": 398,
+    "text": "#396 continues with #398 — revision selector, Working copy navigation, and All/Mine/AI filters. That ticket will make retained history and newly arrived AI revisions directly visible/selectable and will holistically redesign the touched Experiment/revision UI. It has not started yet."
   },
   "technical_evidence": [
-    "profiles has first_name and last_name display fields; role/user id remain the authorization authority.",
-    "Student registration sends first_name, last_name and display_name through supported Supabase signup metadata; the profile trigger copies them into public.profiles.",
-    "Human Experiment provenance resolves the existing Experiment owner profile and renders Name (Role); AI provenance is unchanged.",
-    "The three real profile rows were migrated and the probe account was deleted only after zero meaningful dependencies were verified.",
-    "Migration 20260920091102_human_identity_profile_names is applied in production and recorded in the repository.",
-    "No Experiment revision semantics, RLS authorization rule, connector, workflow, polling, retry or scheduling behavior changed."
+    "Production migrations 20260920094310 and 20260920094339 add immutable experiment_revisions, owner-only experiment_working_copies, RLS, retained-base provenance, and the explicit crystallization RPC.",
+    "Existing Experiment rows were backfilled only at their current stored revision; overwritten historical contents were not fabricated.",
+    "The existing AI Experiment write path remains compatible and automatically appends numbered snapshots through the database trigger; the research-AI connector contract did not change.",
+    "Human Working-copy persistence accepts temporarily incomplete scientific text, while Save Revision retains the runnable Experiment validation boundary.",
+    "Collection-only moves no longer manufacture scientific revision numbers or overwrite revision provenance.",
+    "No CI/CD, deployment, polling, retry, timeout, scheduling, connector-tool surface, or project-workflow rule changed."
   ],
-  "close_issue": 394
+  "close_issue": 397
 }

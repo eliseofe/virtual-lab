@@ -57,8 +57,8 @@ test("#299 leaves authorization semantics outside the UI restructuring", () => {
   assert.doesNotMatch(supervisedLoader, /\.(insert|update|delete)\(/);
 });
 
-test("#299 remains recorded as a dormant bounded #273 pass with security separate", () => {
-  assert.match(status, /#273 UI\/UX[^\n]*dormant\/living/i);
+test("#299 remains complete while the living #273 lane can host a later bounded pass", () => {
+  assert.match(status, /#273 UI\/UX[^\n]*living parent lane for #396/i);
   assert.match(status, /#301 — Virtual Lab security, identity and authorization/);
   assert.match(status, /#302/);
   assert.match(roadmap, /#301 Security \/ identity \/ authorization/);
