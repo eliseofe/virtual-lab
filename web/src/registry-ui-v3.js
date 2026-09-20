@@ -327,7 +327,10 @@ function buildCurrentExperimentUi() {
   const editFromRevision = document.createElement("button");
   editFromRevision.textContent = "Edit from this revision";
   editFromRevision.hidden = true;
-  revisionActions.append(editFromRevision);
+  const discardWorkingCopy = document.createElement("button");
+  discardWorkingCopy.textContent = "Discard Working copy";
+  discardWorkingCopy.hidden = true;
+  revisionActions.append(editFromRevision, discardWorkingCopy);
   revisionTop.append(revisionTrigger, revisionActions);
   const revisionNotice = document.createElement("p");
   revisionNotice.className = "experiment-revision-notice";
@@ -346,7 +349,7 @@ function buildCurrentExperimentUi() {
   return {
     current, title, browse, origin, location, quickHint,
     revisionWorkflow, revisionTrigger, revisionPrimary, revisionSecondary,
-    revisionActions, revisionNotice, revisionDetails, editFromRevision,
+    revisionActions, revisionNotice, revisionDetails, editFromRevision, discardWorkingCopy,
   };
 }
 
@@ -913,6 +916,44 @@ async function editFromViewedRevision() {
   setMessage("Revision " + revision.revision + " is ready to edit. Your first edit will create a Working copy based on it.", "success");
 }
 
+async function discardCurrentWorkingCopy() {
+  if (!user || !currentRemote || currentRemote.owner_id !== user.id || !currentWorkingCopy) return;
+
+  const baseRevision = currentWorkingCopy.base_revision;
+  const ok = window.confirm(
+    "Discard the Working copy based on R" + baseRevision
+    + "? Numbered revisions will remain unchanged.",
+  );
+  if (!ok) return;
+
+  // A pointer-down outside the editor is an autosave boundary. If that boundary
+  // started immediately before this click, let it finish before deleting so it
+  // cannot recreate the Working copy after the discard.
+  try {
+    await workingCopyAutosave;
+  } catch (error) {
+    console.error("Working-copy autosave failed before discard; discarding the durable copy anyway.", error);
+  }
+
+  const { error, count } = await supabase
+    .from("experiment_working_copies")
+    .delete({ count: "exact" })
+    .eq("experiment_id", currentRemote.id)
+    .eq("owner_id", user.id);
+  if (error) throw error;
+  if (count !== 1) throw new Error("The Working copy was not found or could not be discarded.");
+
+  currentWorkingCopy = null;
+  await loadRevisionHistory();
+  currentRevisionView = { kind: "revision", revision: currentRemote.revision };
+  const latest = currentRevisions.find((revision) => revision.revision === currentRemote.revision) ?? currentRemote;
+  applyExperimentArtifacts(latest);
+  updateCurrentUi();
+  renderRevisionHistory();
+  await applyLoadedSources();
+  setMessage("Working copy discarded. Latest revision R" + currentRemote.revision + " loaded.", "success");
+}
+
 async function openRevisionHistory() {
   if (!currentRemote) return;
   await queueWorkingCopyAutosave();
@@ -1115,6 +1156,7 @@ function updateCurrentUi() {
   if (protectedWorkingCopy) {
     currentUi.editFromRevision.textContent = "Edit from R" + viewedRevision.revision;
   }
+  currentUi.discardWorkingCopy.hidden = !owned || !currentWorkingCopy;
   setArtifactEditorsLocked(protectedWorkingCopy);
 
   ui.saveRow.hidden = !user;
@@ -1626,12 +1668,9 @@ async function loadRemoteExperiment(id, { access = "owned" } = {}) {
   currentRemoteAccess = access;
   currentWorkingCopy = workingCopy;
   await loadRevisionHistory();
-  currentRevisionView = workingCopy
-    ? { kind: "working", revision: null }
-    : { kind: "revision", revision: experiment.revision };
+  currentRevisionView = { kind: "revision", revision: experiment.revision };
 
-  const initial = workingCopy
-    ?? currentRevisions.find((revision) => revision.revision === experiment.revision)
+  const initial = currentRevisions.find((revision) => revision.revision === experiment.revision)
     ?? experiment;
   applyExperimentArtifacts(initial);
   ui.newForm.hidden = true;
@@ -1641,7 +1680,8 @@ async function loadRemoteExperiment(id, { access = "owned" } = {}) {
   await applyLoadedSources();
   setMessage(
     workingCopy
-      ? experiment.title + " · Working copy based on revision " + workingCopy.base_revision + " loaded."
+      ? experiment.title + " · latest revision " + experiment.revision
+        + " loaded. Working copy based on revision " + workingCopy.base_revision + " remains preserved."
       : experiment.title + " · revision " + experiment.revision + " loaded.",
     "success",
   );
@@ -2071,6 +2111,7 @@ async function run(action) {
 currentUi.browse.addEventListener("click", openBrowser);
 currentUi.revisionTrigger.addEventListener("click", () => run(openRevisionHistory));
 currentUi.editFromRevision.addEventListener("click", () => run(editFromViewedRevision));
+currentUi.discardWorkingCopy.addEventListener("click", () => run(discardCurrentWorkingCopy));
 revisionHistory.close.addEventListener("click", () => revisionHistory.dialog.close());
 revisionHistory.dialog.addEventListener("close", () => {
   currentUi.revisionTrigger.setAttribute("aria-expanded", "false");
