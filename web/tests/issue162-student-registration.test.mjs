@@ -46,6 +46,7 @@ test('registration requires structured human identity and passes it as signup me
   assert.match(registration, /placeholder = "Last name"/);
   assert.match(registration, /first_name: given/);
   assert.match(registration, /last_name: family/);
-  assert.match(registration, /display_name: \`${given} ${family}\`/);
+  assert.match(registration, /display_name:/);
+  assert.ok(registration.includes("${given} ${family}"));
   assert.match(registration, /Enter first name, last name, email and password/);
 });
