@@ -29,16 +29,15 @@ test("#413 preserves the one-step Professor inbox while global chrome no longer 
   assert.doesNotMatch(index, /Account &amp; Professor/);
 });
 
-test("#413 surfaces Professor Showcase curation on the current Experiment", () => {
-  assert.match(showcase, /currentExperimentMain\?\.querySelector\("\.experiment-browse"\)/);
-  assert.match(showcase, /currentExperimentActions\.className = "experiment-current-actions"/);
+test("#413 Showcase curation remains authoritative while #430 owns its final placement", () => {
   assert.match(showcase, /promote\.className = "primary showcase-promote-current"/);
   assert.match(showcase, /"Promote to Showcase"/);
   assert.match(showcase, /"Publish current revision"/);
   assert.match(showcase, /"In Showcase"/);
   assert.match(showcase, /ui\.promote\.addEventListener\("click", \(\) => run\(promoteCurrent\)\)/);
   assert.match(showcase, /supabase\.rpc\("promote_experiment_to_showcase"/);
-  assert.doesNotMatch(showcase, /Professor curation/);
+  assert.match(management, /showcaseActions\.append\(showcaseLauncher, promote\)/);
+  assert.match(management, /showcaseGroup\.append\(showcaseTitle, showcaseHelp, showcaseActions, curationStatus\)/);
   assert.doesNotMatch(placement, /MutationObserver|placeShowcaseCuration/);
 });
 

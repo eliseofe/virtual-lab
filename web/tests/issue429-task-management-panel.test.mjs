@@ -60,10 +60,8 @@ test("#429 simulator readiness is contextual inside Simulation", () => {
   assert.doesNotMatch(react, /data-vlab-worker-status/);
 });
 
-test("#429 preserves Professor reachability only through a temporary compatibility bridge", () => {
-  assert.match(management, /experiment-professor-compat/);
-  assert.match(management, /Temporary bridge until the final Professor integration/);
-  assert.match(management, /showcase\.textContent = "Showcase"/);
-  assert.match(management, /requests\.textContent = "Capability requests"/);
+test("#429 shared hierarchy remains intact after final Professor integration", () => {
+  assert.match(management, /experiment-professor-section/);
+  assert.doesNotMatch(management, /experiment-professor-compat|Temporary bridge until the final Professor integration/);
   assert.doesNotMatch(react, /data-vlab-nav="showcase"|data-vlab-nav="professor"/);
 });

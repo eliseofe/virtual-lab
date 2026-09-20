@@ -1,24 +1,22 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Lab now has a focused global ribbon and one task-based Experiment control panel",
-  "owner_impact": "The sticky ribbon is limited to Virtual Lab identity, Eliseo Ferrante · Swarm robotics, Simulation, Authoring, Help and Account. Experiment, Results, Showcase and Professor are no longer global destinations. The upper Experiment area is now a named Control panel organized around Current Experiment, Revisions, and Save & share. Simulator readiness is shown inside Simulation. Existing Professor functions remain reachable through a temporary compatibility row until the final Professor integration ticket.",
+  "outcome": "The accepted UI/UX redesign is complete: one focused ribbon and one role-aware Experiment Control panel",
+  "owner_impact": "The Control panel now has the final Professor-only Research curation section. Showcase browsing/publication and scientific Capability requests live there instead of in global navigation or temporary compatibility controls. Students keep the same shared Experiment management surface without Professor controls. The accepted ribbon remains Virtual Lab / Eliseo Ferrante · Swarm robotics with Simulation, Authoring, Help and Account.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 430,
-    "text": "The #273 UI/UX activation continues with #430 — integrate the final Professor-only Showcase and Capability requests section, remove the temporary compatibility row and residual duplication, and complete the accepted hierarchy. That ticket has not started yet."
+    "kind": "scope_complete",
+    "disposition": "dormant",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The current #273 UI/UX activation is complete. #273 remains open but dormant as a living UI/UX maintenance domain; there is no automatic next UI ticket. Use the live Lab normally and future UI work should come from concrete usage evidence."
   },
   "technical_evidence": [
-    "React global chrome exposes Simulation and Authoring as the scientific destinations; Help is injected beside Account on desktop and mobile.",
-    "The ribbon product identity is Virtual Lab with Eliseo Ferrante · Swarm robotics; the current Experiment title and simulator status are no longer global chrome.",
-    "Simulation navigation targets #simulation and Authoring targets #authoring-workbench with sticky-header scroll margin.",
-    "Experiment management is grouped into Current Experiment, Revisions, and Save & share without changing registry, revision, Working copy, autosave, sharing, collection or copy semantics.",
-    "Save Revision remains the explicit numbered-revision action; autosave semantics are unchanged.",
-    "Simulator worker readiness is presented contextually inside the Simulation header.",
-    "Responsive production smoke verifies desktop/mobile ribbon hierarchy and task-based Experiment management.",
-    "A bounded temporary Professor tools bridge preserves Showcase and capability-request reachability until successor #430 performs final integration.",
-    "The production smoke repair keeps Account as the stable global utility label in signed-out and signed-in states, updates the React-shell smoke to the accepted navigation, and corrects ribbon text normalization.",
-    "Final smoke repair verifies product identity as separate title/byline elements and aligns onboarding verification with the intentionally stable Account label; product code is unchanged.",
-    "Mobile Help is now a native React-drawer action that proxies the established Help surface, avoiding the portal timing gap exposed by production smoke while preserving the same Help content and behavior."
+    "The temporary experiment-professor-compat bridge and its temporary wording are removed.",
+    "A Professor-only experiment-professor-section named Research curation is integrated inside the task-based Control panel.",
+    "The existing authoritative Showcase launcher, current-publication action and curation status are relocated into Research curation rather than reimplemented.",
+    "Capability requests opens the existing Professor request inbox and reflects its pending count without changing request semantics.",
+    "Showcase publication is removed from Current Experiment actions; the Experiments library entry remains there.",
+    "The global ribbon still excludes Experiment, Results, Showcase and Professor; Results remains within Simulation.",
+    "Signed-out responsive production smoke verifies that Professor controls do not leak to ordinary users and that no temporary compatibility section remains.",
+    "No scientific/runtime, authorization, revision/Working-copy/autosave, sharing, Showcase publication, capability-request or connector semantics are changed."
   ],
-  "close_issue": 429
+  "close_issue": 430
 }

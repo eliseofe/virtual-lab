@@ -126,21 +126,34 @@ function installStyles() {
     .experiment-management-slot .registry-note { margin: 0; }
     .experiment-sign-in-save { justify-self: start; min-height: 36px; }
     .experiment-current-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
-    .experiment-professor-compat {
+    .experiment-professor-section {
       grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: grid;
       gap: 12px;
       background: #f8f7fb;
       border-color: #e2ddea;
     }
-    .experiment-professor-compat[hidden] { display: none !important; }
-    .experiment-professor-copy { display: grid; gap: 2px; }
-    .experiment-professor-copy strong { color: #554a61; font-size: 11px; letter-spacing: .055em; text-transform: uppercase; }
-    .experiment-professor-copy span { color: #786e82; font-size: 10.5px; }
-    .experiment-professor-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .experiment-professor-section[hidden] { display: none !important; }
+    .experiment-professor-groups {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+    }
+    .experiment-professor-group {
+      display: grid;
+      align-content: start;
+      gap: 7px;
+      min-width: 0;
+      padding: 10px 11px;
+      border: 1px solid #e4dfeb;
+      border-radius: 10px;
+      background: #fff;
+    }
+    .experiment-professor-group strong { color: #554a61; font-size: 11px; }
+    .experiment-professor-group p { margin: 0; color: #786e82; font-size: 10.5px; line-height: 1.4; }
+    .experiment-professor-actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
     .experiment-professor-actions button { min-height: 36px; padding: 6px 11px; }
+    .experiment-professor-section .showcase-curation-status { margin: 0; }
     .experiment-organize {
       min-height: 26px !important;
       padding: 3px 9px !important;
@@ -151,7 +164,7 @@ function installStyles() {
     @media (max-width: 680px) {
       .experiment-control-head { align-items: stretch; flex-direction: column; gap: 6px; }
       .experiment-control-grid { grid-template-columns: 1fr; }
-      .experiment-task-current, .experiment-professor-compat { grid-column: auto; }
+      .experiment-task-current, .experiment-professor-section { grid-column: auto; }
       .experiment-current-main { display: grid !important; grid-template-columns: minmax(0, 1fr); align-items: stretch !important; }
       .experiment-browse,
       .experiment-sign-in-save,
@@ -163,7 +176,7 @@ function installStyles() {
       .experiment-current-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
       .experiment-management-slot .registry-save-actions,
       .experiment-management-slot .registry-new-actions { display: grid; grid-template-columns: 1fr; }
-      .experiment-professor-compat { align-items: stretch; flex-direction: column; }
+      .experiment-professor-groups { grid-template-columns: 1fr; }
       .experiment-professor-actions { display: grid; grid-template-columns: 1fr; }
       .experiment-task-heading { align-items: flex-start; flex-direction: column; }
       .experiment-task-heading span { text-align: left; }
@@ -247,43 +260,68 @@ function buildManagementRegion() {
   return { region, status, slot, signIn };
 }
 
-function buildProfessorCompatibility() {
+function buildProfessorSection() {
+  const promote = document.querySelector(".showcase-promote-current");
+  const curationStatus = document.querySelector(".showcase-curation-status");
+  if (!(showcaseLauncher instanceof HTMLButtonElement) || !(promote instanceof HTMLButtonElement) || !curationStatus) {
+    throw new Error("Professor curation UI mismatch.");
+  }
+
   const region = document.createElement("section");
-  region.className = "experiment-task-card experiment-professor-compat";
+  region.className = "experiment-task-card experiment-professor-section";
   region.hidden = true;
-  region.setAttribute("aria-label", "Professor tools");
+  region.setAttribute("aria-label", "Research curation");
+  region.append(taskHeading("Research curation", "Showcase publication and scientific capability requests"));
 
-  const copy = document.createElement("div");
-  copy.className = "experiment-professor-copy";
-  const label = document.createElement("strong");
-  label.textContent = "Professor tools";
-  const note = document.createElement("span");
-  note.textContent = "Temporary bridge until the final Professor integration.";
-  copy.append(label, note);
+  const groups = document.createElement("div");
+  groups.className = "experiment-professor-groups";
 
-  const actions = document.createElement("div");
-  actions.className = "experiment-professor-actions";
-  const showcase = document.createElement("button");
-  showcase.type = "button";
-  showcase.textContent = "Showcase";
-  showcase.addEventListener("click", () => {
-    const launcher = document.querySelector(".showcase-launcher");
-    if (launcher instanceof HTMLButtonElement && !launcher.disabled) launcher.click();
-  });
+  const showcaseGroup = document.createElement("div");
+  showcaseGroup.className = "experiment-professor-group";
+  const showcaseTitle = document.createElement("strong");
+  showcaseTitle.textContent = "Showcase";
+  const showcaseHelp = document.createElement("p");
+  showcaseHelp.textContent = "Browse curated Experiments or publish the current scientific state.";
+  const showcaseActions = document.createElement("div");
+  showcaseActions.className = "experiment-professor-actions";
+  showcaseLauncher.textContent = "Browse Showcase";
+  showcaseActions.append(showcaseLauncher, promote);
+  showcaseGroup.append(showcaseTitle, showcaseHelp, showcaseActions, curationStatus);
+
+  const capabilityGroup = document.createElement("div");
+  capabilityGroup.className = "experiment-professor-group";
+  const capabilityTitle = document.createElement("strong");
+  capabilityTitle.textContent = "Capability requests";
+  const capabilityHelp = document.createElement("p");
+  capabilityHelp.textContent = "Review scientific needs that the current Lab cannot yet express or run.";
+  const capabilityActions = document.createElement("div");
+  capabilityActions.className = "experiment-professor-actions";
   const requests = document.createElement("button");
   requests.type = "button";
+  requests.className = "experiment-capability-requests";
   requests.textContent = "Capability requests";
-  requests.addEventListener("click", () => professorButton.click());
-  actions.append(showcase, requests);
-  region.append(copy, actions);
-  return { region, showcase, requests };
+  requests.addEventListener("click", () => {
+    const inbox = document.querySelector(".professor-inbox-open");
+    if (inbox instanceof HTMLButtonElement && !inbox.disabled) inbox.click();
+    else professorButton.click();
+  });
+  capabilityActions.append(requests);
+  capabilityGroup.append(capabilityTitle, capabilityHelp, capabilityActions);
+
+  groups.append(showcaseGroup, capabilityGroup);
+  region.append(groups);
+
+  const currentActions = currentMain.querySelector(".experiment-current-actions");
+  if (currentActions?.contains(browseButton)) currentActions.replaceWith(browseButton);
+
+  return { region, requests };
 }
 
 installStyles();
 const control = buildControlPanel();
 const management = buildManagementRegion();
-const professorCompat = buildProfessorCompatibility();
-control.grid.append(management.region, professorCompat.region);
+const professorSection = buildProfessorSection();
+control.grid.append(management.region, professorSection.region);
 
 let sourceMessageObserver = null;
 let authObserver = null;
@@ -362,12 +400,14 @@ function syncSignedOutState() {
   mirrorOperationalMessage();
 }
 
-function syncProfessorBridge() {
+function syncProfessorSection() {
   const available = !professorButton.hidden;
-  professorCompat.region.hidden = !available;
-  professorCompat.requests.disabled = !available;
-  const launcher = document.querySelector(".showcase-launcher");
-  professorCompat.showcase.disabled = !(launcher instanceof HTMLButtonElement) || launcher.disabled;
+  professorSection.region.hidden = !available;
+  professorSection.requests.disabled = !available;
+  const pending = document.querySelector(".professor-pending-count")?.textContent?.trim();
+  professorSection.requests.textContent = pending && pending !== "0"
+    ? `Capability requests · ${pending}`
+    : "Capability requests";
 }
 
 function attachObservers() {
@@ -404,7 +444,7 @@ function attachObservers() {
   }
 
   if (!professorObserver) {
-    professorObserver = new MutationObserver(syncProfessorBridge);
+    professorObserver = new MutationObserver(syncProfessorSection);
     professorObserver.observe(professorButton, {
       attributes: true,
       attributeFilter: ["hidden"],
@@ -419,7 +459,7 @@ function sync() {
   movePersistenceControls();
   simplifyIdentity();
   syncSignedOutState();
-  syncProfessorBridge();
+  syncProfessorSection();
   attachObservers();
 }
 
