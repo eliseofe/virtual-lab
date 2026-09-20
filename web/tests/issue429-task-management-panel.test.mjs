@@ -19,6 +19,8 @@ test("#429 global ribbon is product identity plus Simulation, Authoring, Help an
   assert.match(react, /data-vlab-nav="authoring">Authoring/);
   assert.match(react, /data-vlab-nav="account"/);
   assert.match(onboarding, /"data-vlab-nav": "help"/);
+  assert.match(react, /data-vlab-nav="help-mobile">Help/);
+  assert.match(react, /proxyClick\('\[data-vlab-nav="help"\]'\)/);
   assert.doesNotMatch(react, /data-vlab-nav="experiment"|data-vlab-nav="results"|data-vlab-nav="showcase"|data-vlab-nav="professor"/);
   assert.doesNotMatch(react, /data-vlab-current-experiment|data-vlab-worker-status/);
 });
