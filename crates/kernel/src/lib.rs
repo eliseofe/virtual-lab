@@ -653,11 +653,17 @@ impl ProbeSimulation {
         controller_ir_json: &str,
         parameters_json: &str,
     ) -> Result<ProbeSimulation, JsValue> {
-        let initialization = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
+        let parsed = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
         let config = simulation_config(seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size, sensor_noise, max_forward_speed, max_angular_speed);
         let environment = EnvironmentRuntime::from_json(environment_ir_json).map_err(|message| JsValue::from_str(&message))?;
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json).map_err(|message| JsValue::from_str(&message))?;
-        let simulation = Simulation::new_with_environment(initialization, config, controller, environment).map_err(|message| JsValue::from_str(&message))?;
+        let simulation = Simulation::new_with_environment_and_private_state(
+            parsed.initialization,
+            parsed.controller_private_state,
+            config,
+            controller,
+            environment,
+        ).map_err(|message| JsValue::from_str(&message))?;
         Ok(Self { simulation })
     }
 
@@ -675,16 +681,20 @@ impl ProbeSimulation {
         max_angular_speed: f64,
         environment_ir_json: &str,
     ) -> Result<(), JsValue> {
-        let initialization = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
+        let parsed = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
         let config = simulation_config(seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size, sensor_noise, max_forward_speed, max_angular_speed);
         let environment = EnvironmentRuntime::from_json(environment_ir_json).map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_setup_with_environment(initialization, config, environment).map_err(|message| JsValue::from_str(&message))
+        self.simulation.replace_setup_with_environment_and_private_state(
+            parsed.initialization,
+            parsed.controller_private_state,
+            config,
+            environment,
+        ).map_err(|message| JsValue::from_str(&message))
     }
 
     pub fn set_controller(&mut self, controller_ir_json: &str, parameters_json: &str) -> Result<(), JsValue> {
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json).map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_controller(controller);
-        Ok(())
+        self.simulation.replace_controller(controller).map_err(|message| JsValue::from_str(&message))
     }
 
     pub fn advance_ticks(&mut self, ticks: u32) -> f64 { self.simulation.advance_physics_ticks(ticks); self.simulation.scientific_time() }
