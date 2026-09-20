@@ -1,23 +1,22 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Revision history is directly navigable from the Experiment header",
-  "owner_impact": "The Experiment header now shows exactly what you are viewing: a numbered revision or your Working copy. Opening it exposes retained history with All, Mine and AI filters, exact author/time/base provenance, and direct selection of old snapshots. New AI revisions become visible without replacing your current view or hiding your Working copy. If a Working copy already exists, inspecting another revision cannot overwrite it accidentally; starting from that revision requires an explicit Edit from this revision action.",
+  "outcome": "Experiment revision workflow is coherent end to end",
+  "owner_impact": "The Lab now treats revision history as one consistent workflow: edits autosave into an unnumbered Working copy, numbered revisions remain immutable and selectable, AI revisions can arrive without hiding human work, Save Revision crystallizes the next chronological revision, and All/Mine/AI makes recovery of your own work immediate. Historical read-only revisions now copy the exact revision being viewed, human provenance is shown as Mine/Human rather than exposing a profile identity, and the revision UI has clearer labels, focus return and deliberate mobile touch targets.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 399,
-    "text": "#396 continues with #399 — the bounded integrated revision-workflow UX and regression verification pass. It will exercise the whole flow as one product experience and correct material friction found there. It has not started yet."
+    "kind": "scope_complete",
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The approved #396 Working-copy and navigable revision-history mini-epic is complete and should close. No owner action is required; the finished workflow is available in the live Lab. Future revision/collaboration changes belong to later evidence-driven UI/UX work rather than an automatic successor."
   },
   "technical_evidence": [
-    "Revision history reads the immutable public.experiment_revisions snapshots created by #397 and loads the exact selected artifact payload.",
-    "The revision control and Save Revision action live in the Experiment header; Account retains account, copy, collection and sharing concerns.",
-    "All/Mine/AI filtering uses retained revision authorship, with Mine defined as the currently signed-in account.",
-    "The experiments table is enabled in the Supabase Realtime publication; existing SELECT RLS remains the visibility authority and Realtime events are treated only as re-fetch signals.",
-    "A preserved Working copy locks inspected numbered revisions against accidental overwrite until the user explicitly chooses Edit from this revision.",
-    "Responsive and keyboard-accessible dialog/button semantics are covered by the #398 browser contract tests.",
-    "No CI/CD, deployment, retry, timeout, scheduling, connector-tool surface, or project-development workflow rule changed.",
-    "The responsive production smoke readiness probe is null-safe during Chrome's transient pre-documentElement navigation state; its retry count, cadence, readiness predicate, and completion gate are unchanged.",
-    "The responsive smoke now tolerates only Chrome's transient 'Inspected target navigated or closed' evaluation rejection during Page.reload; non-navigation errors still fail immediately, and retry count/cadence/readiness criteria remain unchanged.",
-    "The Showcase production smoke now tolerates only Chrome's transient 'Inspected target navigated or closed' evaluation rejection after Page.reload; its 180-attempt/100-ms readiness loop, 60-s outer timeout, and simulator-ready success criterion are unchanged."
+    "A rollback-only production database scenario verified that a Working copy can remain based on an older retained revision while AI advances the head, then crystallize as the next chronological revision with the older base provenance preserved.",
+    "The same rollback scenario verified that a Professor can copy an older retained student revision after the student head advances, with copied artifacts, description and immutable provenance matching the requested retained revision exactly.",
+    "The copy RPC keeps its existing current-source authorization boundary: public visibility, explicit read-only share, or Professor supervision of a student Experiment.",
+    "Working-copy autosave now preserves title/description from the selected historical base rather than silently borrowing metadata from a newer head.",
+    "Human revision attribution is Mine for the signed-in account and Human for another person; AI attribution can still identify the authorized AI client.",
+    "The revision dialog exposes aria-expanded/aria-labelledby state and returns focus to the revision launcher when closed; mobile revision/history controls use deliberate touch targets.",
+    "Visible revision metadata uses Working copy / Revision Rn language rather than registry jargon.",
+    "No CI/CD, deployment, polling, retry, timeout, scheduling, connector-tool surface, scientific runtime, or project-development workflow rule changed."
   ],
-  "close_issue": 398
+  "close_issue": 399
 }
