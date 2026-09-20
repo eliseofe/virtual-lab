@@ -99,6 +99,9 @@ async function structure(send) {
         signInSaveVisible: visible(signInSave),
         signInSaveHeight: Math.round(signInSave?.getBoundingClientRect().height ?? 0),
         browseLabel: browse?.textContent?.trim() ?? null,
+        browseInActionGroup: Boolean(document.querySelector('.experiment-current-actions .experiment-browse')),
+        browseInTitleRow: Boolean(document.querySelector('.experiment-current-main .experiment-browse')),
+        statusText: document.querySelector('.experiment-management-status')?.textContent?.trim() ?? '',
       },
       controlHeights: {
         run: heightOfFirstVisible('[data-vlab-simulation-action="run"], #run'),
@@ -189,8 +192,16 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
   if (!state.experimentManagement.visible || state.experimentManagement.selectVisible || state.experimentManagement.legacyPersistenceVisible) {
     throw new Error(`${label}: Experiment identity/persistence is not unified: ${JSON.stringify(state.experimentManagement)}`);
   }
-  if (state.experimentManagement.redundantLocationVisible || state.experimentManagement.browseLabel !== "Experiments") {
+  if (
+    state.experimentManagement.redundantLocationVisible
+    || state.experimentManagement.browseLabel !== "Experiments"
+    || !state.experimentManagement.browseInActionGroup
+    || state.experimentManagement.browseInTitleRow
+  ) {
     throw new Error(`${label}: Experiment library entry or identity hierarchy regressed: ${JSON.stringify(state.experimentManagement)}`);
+  }
+  if (state.experimentManagement.statusText) {
+    throw new Error(`${label}: routine prose leaked into signed-out Save & share: ${JSON.stringify(state.experimentManagement)}`);
   }
   if (!state.experimentManagement.signInSaveVisible) {
     throw new Error(`${label}: signed-out Experiment surface lacks direct sign-in-to-save action: ${JSON.stringify(state.experimentManagement)}`);
