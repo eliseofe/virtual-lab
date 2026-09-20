@@ -75,7 +75,7 @@ test("#398 deliberately handles mobile revision navigation", () => {
   assert.match(registry, /@media \(max-width: 680px\)/);
   assert.match(registry, /\.experiment-revision-top \{ align-items: stretch; flex-direction: column; \}/);
   assert.match(registry, /\.experiment-revision-actions \{ display: grid; grid-template-columns: 1fr 1fr; \}/);
-  assert.match(registry, /\.experiment-history-item \{ grid-template-columns: 1fr auto; \}/);
+  assert.match(registry, /\.experiment-history-item \{ grid-template-columns: 1fr auto;[^}]*\}/);
 });
 
 test("#398 keeps history immutable and does not introduce merge or rebase machinery", () => {
