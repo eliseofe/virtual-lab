@@ -163,6 +163,12 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
     throw new Error(`${label}: signed-out Professor hierarchy leaked or legacy placement remains: ${JSON.stringify(state.managementTasks)}`);
   }
   if (!touch) {
+    if (state.controlHeights.browse !== 38 || state.experimentManagement.signInSaveHeight !== 38) {
+      throw new Error(`${label}: Control Panel action heights are unbalanced: ${JSON.stringify({
+        browse: state.controlHeights.browse,
+        signInSave: state.experimentManagement.signInSaveHeight,
+      })}`);
+    }
     if (state.ribbon.brandTitle !== "Virtual Lab" || state.ribbon.brandByline !== "Eliseo Ferrante · Swarm robotics") {
       throw new Error(`${label}: product identity regressed: ${JSON.stringify(state.ribbon)}`);
     }
