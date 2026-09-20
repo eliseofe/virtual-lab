@@ -1,23 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Upper workspace management is simplified around the current Experiment",
-  "owner_impact": "The current Experiment surface now uses one compact Experiments entry instead of Switch experiment wording; Professor opens Extension Requests directly with no intermediate Professor-tools screen; and Professor accounts can Promote to Showcase or Publish current revision directly beside the current Experiment. The Showcase browser remains available for browsing and removing curated entries. Arena and Experiment Source are unchanged.",
+  "outcome": "The rejected implementation-first UI change has been removed and the last production-green UI restored",
+  "owner_impact": "The Lab returns to the exact pre-#417 product tree rather than keeping partial ribbon/control-panel experiments or compatibility debris. The owner's UI/UX complaints remain preserved as guarded design requirements under #273, not as code decisions. Security (#301), UI/UX (#273) and Refactoring (#425) are recorded as living maintenance domains.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The bounded #413 upper-workspace UI/UX cleanup round is complete. #273 remains a living evidence-driven UI/UX domain, with no automatic successor and no owner action required."
+    "kind": "epic_continues",
+    "issue": 424,
+    "text": "The UI/UX lane continues with #424 — Product Design redesign in Work. Work will audit the recovered live Lab and turn the guarded owner feedback into coherent design options. No implementation ticket has started or will be derived until the owner accepts a design direction."
   },
   "technical_evidence": [
-    "The hidden legacy experiment select remains the internal compatibility/state source, while the visible current-Experiment surface exposes one Experiments library action.",
-    "The legacy Professor button now opens the existing Extension Requests inbox directly; Account remains the only workspace-utilities dialog view.",
-    "Desktop and mobile React Professor controls now point their dialog accessibility metadata at professor-extension-inbox rather than workspace-utilities.",
-    "Professor Showcase publication reuses the existing publication RPCs and save-before-publish semantics, but the action is mounted beside the current Experiment with Promote to Showcase, Publish current revision, In Showcase and conflict states.",
-    "The Showcase browser retains curated-entry browsing, opening, removal and private-copy behavior; no publication or authorization contract changed.",
-    "Arena, simulation controls, Experiment Source, revision/autosave semantics, sharing, collections, capability-request data, scientific runtime, connectors, CI/CD and project workflow are unchanged.",
-    "Focused #413 regression coverage locks the simplified Experiment entry, one-step Professor navigation and direct Showcase curation path.",
-    "The responsive production smoke now locks the approved visible Experiment-library label as Experiments while retaining all existing identity, hidden-select, persistence, hierarchy and touch-target assertions.",
-    "Responsive production smoke now waits for the Experiment-management surface, Experiment-library entry and finder-filter DOM to exist before asserting their state; missing initialization fails explicitly, and hidden-filter behavior remains a separate required assertion."
+    "The recovery commit resets the repository product tree to the exact tree of the last verified pre-#417 production-green commit f5014c25ae6d280c876dc33c366b07d15ddee9f0.",
+    "All #417/#421/#422 implementation-first product, smoke and regression changes are absent from the recovered product tree rather than hidden behind compatibility code.",
+    "CURRENT_STATUS.md and ROADMAP.md record the corrected recovery -> Product Design/Work -> owner acceptance -> implementation sequence.",
+    "ROADMAP.md classifies #273 UI/UX, #301 Security and #425 Refactoring as living/ongoing maintenance domains.",
+    "No scientific/runtime, registry, authorization, capability, connector or Study semantics are changed by this recovery."
   ],
-  "close_issue": 413
+  "close_issue": 423
 }
