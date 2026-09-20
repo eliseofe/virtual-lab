@@ -26,6 +26,8 @@ test("#417 global navigation is exactly Simulation, Authoring, Help and Account"
   assert.match(react, /data-vlab-nav="authoring">Authoring/);
   assert.match(react, /data-vlab-nav="account"/);
   assert.match(onboarding, /"data-vlab-nav": "help"/);
+  assert.match(react, /data-vlab-nav="help-mobile">Help/);
+  assert.match(react, /proxyClick\('\[data-vlab-nav="help"\]'\)/);
   assert.match(onboarding, /makeButton\("Help", "vlab-student-help-mobile"/);
 
   for (const removed of ["experiment", "results", "showcase", "professor"]) {
