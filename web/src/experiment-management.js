@@ -152,9 +152,6 @@ function installStyles() {
     .experiment-management-slot .registry-save-actions:empty {
       display: none !important;
     }
-    .experiment-management-slot .registry-move-row {
-      grid-template-columns: minmax(0, 1fr);
-    }
     .experiment-management[hidden] { display: none !important; }
     .experiment-management-status {
       margin: 0;
@@ -320,17 +317,14 @@ function buildManagementRegion() {
   const saveActions = document.querySelector(".registry-save-actions");
   const save = saveActions?.querySelector(".primary");
   const saveAsNew = saveActions?.querySelector("button:not(.primary)");
-  const moveRow = document.querySelector(".registry-move-row");
-  const move = moveRow?.querySelector("button");
   const shareOpen = document.querySelector(".registry-share-row > button");
   if (!(save instanceof HTMLButtonElement)
     || !(saveAsNew instanceof HTMLButtonElement)
-    || !(move instanceof HTMLButtonElement)
     || !(shareOpen instanceof HTMLButtonElement)) {
     throw new Error("Save & share action UI mismatch.");
   }
   shareOpen.textContent = "Share…";
-  actions.append(save, saveAsNew, move, shareOpen);
+  actions.append(save, saveAsNew, shareOpen);
 
   const slot = document.createElement("div");
   slot.className = "experiment-management-slot";
@@ -342,7 +336,7 @@ function buildManagementRegion() {
   signIn.addEventListener("click", () => accountButton.click());
 
   region.append(status, actions, slot, signIn);
-  return { region, status, actions, slot, signIn, move, moveRow };
+  return { region, status, actions, slot, signIn };
 }
 
 function buildProfessorSection() {
@@ -412,7 +406,6 @@ let sourceMessageObserver = null;
 let authObserver = null;
 let currentObserver = null;
 let professorObserver = null;
-let moveObserver = null;
 
 function signedIn() {
   const signOut = document.querySelector(".registry-sign-out");
@@ -486,9 +479,6 @@ function syncSignedOutState() {
   mirrorOperationalMessage();
 }
 
-function syncManagementActions() {
-  management.move.hidden = management.moveRow.hidden;
-}
 
 function syncProfessorSection() {
   const available = !professorButton.hidden;
@@ -544,20 +534,12 @@ function attachObservers() {
     });
   }
 
-  if (!moveObserver) {
-    moveObserver = new MutationObserver(syncManagementActions);
-    moveObserver.observe(management.moveRow, {
-      attributes: true,
-      attributeFilter: ["hidden"],
-    });
-  }
 }
 
 function sync() {
   movePersistenceControls();
   simplifyIdentity();
   syncSignedOutState();
-  syncManagementActions();
   syncProfessorSection();
   attachObservers();
 }
