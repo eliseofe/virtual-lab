@@ -55,24 +55,21 @@ function syncUtilityPanels() {
     : "Professor";
   setText(professorButton, professorLabel);
 
-  if (accountPanel) accountPanel.style.display = utilityTarget === "account" ? "" : "none";
-  if (professorPanel) professorPanel.style.display = utilityTarget === "professor" && professorAvailable ? "" : "none";
-  utilityContent.dataset.view = utilityTarget;
+  if (accountPanel) accountPanel.style.display = "";
+  if (professorPanel) professorPanel.style.display = "none";
+  utilityContent.dataset.view = "account";
 }
 
-function openUtilities(target = "account") {
-  utilityTarget = target === "professor" ? "professor" : "account";
+function openUtilities() {
+  utilityTarget = "account";
   syncUtilityPanels();
 
-  utilityHeading.textContent = utilityTarget === "professor" ? "Professor tools" : "Account";
-  utilityDialog.setAttribute("aria-label", utilityTarget === "professor" ? "Professor tools" : "Account");
-  closeButton.setAttribute("aria-label", utilityTarget === "professor" ? "Close Professor tools" : "Close Account");
+  utilityHeading.textContent = "Account";
+  utilityDialog.setAttribute("aria-label", "Account");
+  closeButton.setAttribute("aria-label", "Close Account");
   if (!utilityDialog.open) utilityDialog.showModal();
 
-  const panel = utilityTarget === "professor"
-    ? utilityContent.querySelector(".professor-panel:not([hidden])")
-    : utilityContent.querySelector(".registry-panel");
-
+  const panel = utilityContent.querySelector(".registry-panel");
   panel?.scrollIntoView({ block: "start" });
   const focusTarget = panel?.querySelector(
     "button:not(:disabled):not([hidden]), input:not(:disabled):not([hidden]), select:not(:disabled):not([hidden]), textarea:not(:disabled):not([hidden])",
@@ -80,8 +77,13 @@ function openUtilities(target = "account") {
   focusTarget?.focus({ preventScroll: true });
 }
 
-accountButton.addEventListener("click", () => openUtilities("account"));
-professorButton.addEventListener("click", () => openUtilities("professor"));
+function openProfessorInbox() {
+  const open = document.querySelector(".professor-inbox-open");
+  if (open instanceof HTMLButtonElement && !open.disabled) open.click();
+}
+
+accountButton.addEventListener("click", openUtilities);
+professorButton.addEventListener("click", openProfessorInbox);
 closeButton.addEventListener("click", () => utilityDialog.close());
 utilityDialog.addEventListener("click", (event) => {
   if (event.target === utilityDialog) utilityDialog.close();

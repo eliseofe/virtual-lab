@@ -27,9 +27,11 @@ The aggregation case exposed both capability-flow defects and a scientific-conte
 
 A new **#301 — Virtual Lab security, identity and authorization** umbrella is logged from real-student evidence. **#394** is a bounded identity slice under it: structured human names are now first-class profile data while roles remain the existing authorization authority. Its audit child **#302** is still defined but not started; no broader enrollment, OAuth/client-admission or security remediation policy has been frozen.
 
+The living **#273 — UI/UX refinement** lane has a new bounded observed-use pass in **#413**. It simplifies only the upper workspace management surface: the Experiment library entry is reduced to a single **Experiments** action, Professor navigation goes directly to Extension Requests, and Professor Showcase publication is available from the current Experiment instead of being buried in the Showcase browser. Arena and Experiment Source remain outside this pass.
+
 ## Immediate frontier
 
-1. **#273 UI/UX remains a living evidence-driven lane.** The completed #396 revision baseline has one bounded observed-use correction in #409: reopening defaults to the newest numbered revision, preserved Working copies remain explicitly selectable, and owners can discard obsolete Working copies. #409 has no automatic successor.
+1. **#273 UI/UX remains a living evidence-driven lane.** #409 is complete. #413 is the current bounded observed-use pass, simplifying upper Experiment/Professor/Showcase management without touching Arena or Experiment Source. It has no automatic successor.
 2. **#58 capability-flow remains operationally active.** The heterogeneous-state request `2616dbb5-2134-417f-aebb-2e9e4ea0dd9c` is implemented through #304. The separate target-observation request `0971db0e-015a-4f1f-b640-8cc6b428fdb7` remains requested and unavailable. #371 has not restarted.
 3. **#273 UI/UX** is the living parent lane for #396 and remains evidence-driven rather than a broad redesign mandate.
 4. **#302 — security audit** is separately queued under #301 but has not started.

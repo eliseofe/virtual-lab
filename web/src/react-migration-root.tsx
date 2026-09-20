@@ -196,6 +196,10 @@ function ApplicationChrome() {
     'aria-controls': 'workspace-utilities',
     'aria-expanded': utilityOpen,
   };
+  const professorA11y = {
+    'aria-haspopup': 'dialog' as const,
+    'aria-controls': 'professor-extension-inbox',
+  };
 
   return (
     <Box data-vlab-react-foundation="mounted" data-vlab-react-chrome="mounted">
@@ -217,7 +221,7 @@ function ApplicationChrome() {
 
             <Group gap="xs" wrap="nowrap">
               <Badge className="vlab-react-status-badge" color={workerColor(state.workerState)} variant="light" data-vlab-worker-status>{state.workerText}</Badge>
-              {state.professorAvailable && <Button className="vlab-react-account-button" visibleFrom="sm" variant="subtle" color="violet" onClick={() => proxyClick('#professor-menu')} data-vlab-nav="professor" {...accountA11y}>{state.professorLabel}</Button>}
+              {state.professorAvailable && <Button className="vlab-react-account-button" visibleFrom="sm" variant="subtle" color="violet" onClick={() => proxyClick('#professor-menu')} data-vlab-nav="professor" {...professorA11y}>{state.professorLabel}</Button>}
               <Button className="vlab-react-account-button" visibleFrom="sm" variant="outline" color="gray" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account" {...accountA11y}>Account</Button>
               <Burger hiddenFrom="lg" opened={mobileOpen} onClick={() => setMobileOpen((value) => !value)} color="white" aria-label="Open workspace navigation" data-vlab-nav-toggle="true" />
             </Group>
@@ -229,7 +233,7 @@ function ApplicationChrome() {
         <Stack gap="xs">
           <WorkspaceNav closeMobile={() => setMobileOpen(false)} />
           <Button variant="light" color="cyan" onClick={() => { proxyClick('.showcase-launcher'); setMobileOpen(false); }} disabled={!state.showcaseAvailable} data-vlab-nav="showcase-mobile">Showcase</Button>
-          {state.professorAvailable && <Button variant="light" color="violet" onClick={() => { proxyClick('#professor-menu'); setMobileOpen(false); }} data-vlab-nav="professor-mobile" {...accountA11y}>{state.professorLabel}</Button>}
+          {state.professorAvailable && <Button variant="light" color="violet" onClick={() => { proxyClick('#professor-menu'); setMobileOpen(false); }} data-vlab-nav="professor-mobile" {...professorA11y}>{state.professorLabel}</Button>}
           <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile" {...accountA11y}>Account</Button>
         </Stack>
       </Drawer>

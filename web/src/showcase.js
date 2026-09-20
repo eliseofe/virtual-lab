@@ -66,15 +66,15 @@ function installStyles() {
     .showcase-current-title { margin: 0; font-size: 12px; font-weight: 750; }
     .showcase-current-meta { margin: 0; color: #64757c; font-size: 10.5px; }
     .showcase-current-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-    .showcase-curation { display: grid; gap: 7px; margin: 10px 18px 6px; padding: 10px 12px; border: 1px solid #d8e4e8; border-radius: 11px; background: #f7fafb; }
-    .showcase-curation[hidden] { display: none !important; }
-    .showcase-curation strong { font-size: 12px; }
-    .showcase-curation p { margin: 0; color: #5f7077; font-size: 11.5px; line-height: 1.4; }
-    .showcase-curation-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .showcase-promote-current[hidden] { display: none !important; }
+    .showcase-curation-status { margin: 5px 0 0; color: #5f7077; font-size: 11.5px; line-height: 1.4; }
+    .showcase-curation-status:empty { display: none; }
+    .showcase-curation-status[data-state="error"] { color: #9e2d29; }
+    .showcase-curation-status[data-state="success"] { color: #246240; }
     @media (max-width: 680px) {
       .showcase-dialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
       .showcase-shell { min-height: min(620px, calc(100vh - 20px)); }
-      .showcase-head-actions button, .showcase-curation-actions button, .showcase-entry-remove { min-height: 44px; }
+      .showcase-head-actions button, .showcase-promote-current, .showcase-entry-remove { min-height: 44px; }
       .showcase-entry-row { grid-template-columns: 1fr; }
       .showcase-entry-remove { width: 100%; }
     }
@@ -110,26 +110,34 @@ function buildUi() {
   headActions.append(refresh, close);
   head.append(title, headActions);
 
-  const curation = document.createElement("section");
-  curation.className = "showcase-curation";
-  curation.hidden = true;
-  const curationTitle = document.createElement("strong");
-  curationTitle.textContent = "Professor curation";
-  const curationStatus = document.createElement("p");
-  const curationActions = document.createElement("div");
-  curationActions.className = "showcase-curation-actions";
+  const currentExperimentMain = experimentPanel.querySelector(".experiment-current-main");
+  const browseExperiment = currentExperimentMain?.querySelector(".experiment-browse");
+  if (!currentExperimentMain || !browseExperiment) throw new Error("Showcase current-Experiment UI mismatch.");
+
+  const currentExperimentActions = document.createElement("div");
+  currentExperimentActions.className = "experiment-current-actions";
+  browseExperiment.replaceWith(currentExperimentActions);
+  currentExperimentActions.append(browseExperiment);
+
   const promote = document.createElement("button");
   promote.type = "button";
-  promote.className = "primary";
-  curationActions.append(promote);
-  curation.append(curationTitle, curationStatus, curationActions);
+  promote.className = "primary showcase-promote-current";
+  promote.hidden = true;
+  currentExperimentActions.append(promote);
+
+  const curationStatus = document.createElement("p");
+  curationStatus.className = "showcase-curation-status";
+  curationStatus.setAttribute("role", "status");
+  curationStatus.setAttribute("aria-live", "polite");
+  curationStatus.dataset.state = "idle";
+  currentExperimentMain.insertAdjacentElement("afterend", curationStatus);
 
   const message = document.createElement("p");
   message.className = "showcase-message";
   message.setAttribute("role", "status");
   const list = document.createElement("div");
   list.className = "showcase-list";
-  shell.append(head, curation, message, list);
+  shell.append(head, message, list);
   dialog.append(shell);
   document.body.append(dialog);
 
@@ -158,7 +166,7 @@ function buildUi() {
   return {
     launcher, dialog, refresh, close, message, list,
     current, currentTitle, currentMeta, saveCopy, leave,
-    curation, curationStatus, promote,
+    curationStatus, promote,
   };
 }
 
@@ -322,48 +330,52 @@ async function ensureCurrentSavedForPromotion() {
 
 async function syncCurationUi() {
   const professor = profile?.role === "professor";
-  ui.curation.hidden = !professor || Boolean(currentShowcase);
+  ui.promote.hidden = !professor || Boolean(currentShowcase);
+  ui.curationStatus.textContent = "";
+  ui.curationStatus.dataset.state = "idle";
   if (!professor || currentShowcase) return;
 
   const registryId = currentRegistryId();
   if (registryId) {
     const experiment = await readCurrentOwnedExperiment();
     if (!experiment) {
-      ui.curationStatus.textContent = "Open one of your Experiments to curate it.";
       ui.promote.hidden = true;
       return;
     }
 
     const state = currentRegistryDirtyState();
     const active = activeEntryForExperiment(experiment.id);
+    ui.promote.hidden = false;
+
     if (active?.source_revision === experiment.revision && state === "saved") {
-      ui.curationStatus.textContent = `${experiment.title} is in Showcase.`;
-      ui.promote.hidden = true;
+      ui.promote.textContent = "In Showcase";
+      ui.promote.disabled = true;
       return;
     }
 
-    ui.promote.hidden = false;
+    if (state === "conflict") {
+      ui.promote.textContent = "Publish to Showcase";
+      ui.promote.disabled = true;
+      ui.curationStatus.textContent = "Resolve the save conflict before publishing.";
+      ui.curationStatus.dataset.state = "error";
+      return;
+    }
+
     ui.promote.textContent = active ? "Publish current revision" : "Promote to Showcase";
-    ui.promote.disabled = busy || state === "conflict";
-    ui.curationStatus.textContent = state === "conflict"
-      ? "Resolve the save conflict before publishing."
-      : active
-        ? `Showcase has revision ${active.source_revision}; publish the current version when ready.`
-        : "Publish the current Experiment.";
+    ui.promote.disabled = busy;
     return;
   }
 
   const source = currentCatalogSource();
   if (!source) {
-    ui.curationStatus.textContent = "Open an Experiment to curate it.";
     ui.promote.hidden = true;
     return;
   }
+
   const active = activeEntryForCatalog(source.key);
-  ui.curationStatus.textContent = active ? `${source.title} is in Showcase.` : "Publish the current Experiment.";
-  ui.promote.hidden = Boolean(active);
-  ui.promote.textContent = "Promote to Showcase";
-  ui.promote.disabled = busy;
+  ui.promote.hidden = false;
+  ui.promote.textContent = active ? "In Showcase" : "Promote to Showcase";
+  ui.promote.disabled = busy || Boolean(active);
 }
 
 async function promoteCurrent() {
@@ -376,7 +388,9 @@ async function promoteCurrent() {
     const registryId = currentRegistryId();
     if (registryId) {
       const experiment = await ensureCurrentSavedForPromotion();
+      ui.promote.textContent = "Publishing…";
       ui.curationStatus.textContent = `Publishing ${experiment.title}…`;
+      ui.curationStatus.dataset.state = "idle";
       const { error } = await supabase.rpc("promote_experiment_to_showcase", {
         p_experiment_id: experiment.id,
         p_expected_revision: experiment.revision,
@@ -384,13 +398,16 @@ async function promoteCurrent() {
       if (error) throw error;
       await loadEntries();
       ui.curationStatus.textContent = `${experiment.title} is in Showcase.`;
+      ui.curationStatus.dataset.state = "success";
       return;
     }
 
     const source = currentCatalogSource();
     if (!source) throw new Error("Open an Experiment to promote it.");
     const payload = captureExperimentArtifacts();
+    ui.promote.textContent = "Publishing…";
     ui.curationStatus.textContent = `Publishing ${source.title}…`;
+    ui.curationStatus.dataset.state = "idle";
     const { error } = await supabase.rpc("promote_catalog_to_showcase", {
       p_source_key: source.key,
       p_title: source.title,
@@ -402,6 +419,7 @@ async function promoteCurrent() {
     if (error) throw error;
     await loadEntries();
     ui.curationStatus.textContent = `${source.title} is in Showcase.`;
+    ui.curationStatus.dataset.state = "success";
   } finally {
     busy = false;
     await syncCurationUi();
@@ -590,7 +608,10 @@ async function run(action) {
     console.error(error);
     const message = error instanceof Error ? error.message : String(error);
     setMessage(message, "error");
-    if (profile?.role === "professor" && !ui.curation.hidden) ui.curationStatus.textContent = message;
+    if (profile?.role === "professor" && !ui.promote.hidden) {
+      ui.curationStatus.textContent = message;
+      ui.curationStatus.dataset.state = "error";
+    }
   }
 }
 

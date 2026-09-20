@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **Keep revision UX evidence-driven under living #273.** The #396 Working-copy/revision-history mini-epic is complete. The bounded #409 follow-up folds observed-use behavior into that baseline: reopening an Experiment shows the newest numbered revision by default, preserved Working copies remain explicitly recoverable, and an obsolete Working copy can be discarded. No automatic successor is defined.
+1. **Keep UI/UX evidence-driven under living #273.** The #396/#409 revision workflow baseline is complete. The current bounded #413 pass simplifies the upper Experiment/Professor/Showcase management surface while leaving Arena and Experiment Source unchanged. No automatic successor is defined.
 2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
 3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
 4. Continue real student and owner use and feed concrete UX evidence into #273 rather than reopening a broad redesign.
