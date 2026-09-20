@@ -44,9 +44,10 @@ test("#299 removes the duplicate supervision modal and separates Account from Pr
   assert.match(workspaceShell, /accountPanel\.style\.display = ""/);
   assert.match(workspaceShell, /professorPanel\.style\.display = "none"/);
   assert.doesNotMatch(workspaceShell, /openUtilities\("professor"\)|Professor tools/);
-  assert.match(reactChrome, /proxyClick\('#professor-menu'\)/);
-  assert.match(reactChrome, /data-vlab-nav="professor"/);
-  assert.match(reactChrome, /'aria-controls': 'professor-extension-inbox'/);
+  assert.match(workspaceShell, /control-panel-professor-bridge/);
+  assert.match(workspaceShell, /Capability requests/);
+  assert.match(workspaceShell, /capabilityBridge\.addEventListener\("click", openProfessorInbox\)/);
+  assert.doesNotMatch(reactChrome, /data-vlab-nav="professor"|proxyClick\('#professor-menu'\)/);
   assert.match(reactChrome, /data-vlab-nav="account"/);
 });
 
