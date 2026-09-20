@@ -33,7 +33,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 
 ## Near term
 
-1. **#273 UI/UX returns to dormant / living.** The #423–#430 activation implemented the accepted task-based Control-panel design, including the final Professor-only Research curation section for Showcase and Capability requests. No automatic UI/UX successor is active; future children require concrete product-use evidence.
+1. **#273 UI/UX is dormant / living.** The #423–#430 activation implemented the accepted task-based Control-panel design; #437 then normalized card proportions and button sizing from direct owner use evidence. No automatic UI/UX successor is active; future children require concrete product-use evidence.
 2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
 3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
 4. Keep #301 Security and #425 Refactoring as living maintenance domains; both are dormant unless a bounded child is explicitly selected.
