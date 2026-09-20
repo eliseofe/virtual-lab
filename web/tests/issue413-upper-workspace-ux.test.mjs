@@ -25,9 +25,10 @@ test("#413 makes Professor navigation one step to Extension Requests", () => {
   assert.match(shell, /querySelector\("\.professor-inbox-open"\)/);
   assert.match(shell, /professorButton\.addEventListener\("click", openProfessorInbox\)/);
   assert.doesNotMatch(shell, /openUtilities\("professor"\)/);
-  assert.match(react, /const professorA11y = \{[\s\S]*'aria-controls': 'professor-extension-inbox'/);
-  assert.match(react, /data-vlab-nav="professor" \{\.\.\.professorA11y\}/);
-  assert.match(react, /data-vlab-nav="professor-mobile" \{\.\.\.professorA11y\}/);
+  assert.match(shell, /control-panel-professor-bridge/);
+  assert.match(shell, /Capability requests/);
+  assert.match(shell, /capabilityBridge\.addEventListener\("click", openProfessorInbox\)/);
+  assert.doesNotMatch(react, /data-vlab-nav="professor"|data-vlab-nav="professor-mobile"/);
   assert.doesNotMatch(index, /Account &amp; Professor/);
 });
 
