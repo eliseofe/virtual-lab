@@ -13,8 +13,9 @@
     "The ribbon brand is Virtual Lab with Eliseo Ferrante and Swarm robotics; the current Experiment title is no longer rendered in global chrome.",
     "The old ribbon simulator badge is removed; SimulationPresentation observes the existing worker status and renders an accessible Simulator ready/starting/problem badge in the Simulation header.",
     "A bounded compatibility bridge in the existing top Experiment card exposes Showcase and Capability requests only when the Professor surface is available, proxying the existing authoritative actions.",
-    "Responsive production smoke asserts desktop and mobile global hierarchy and verifies that simulator readiness is contextual rather than global.",
-    "No simulation/runtime, Results, Authoring, revision, autosave, sharing, Showcase publication, capability-request, authorization, connector or workflow semantics changed."
+    "No simulation/runtime, Results, Authoring, revision, autosave, sharing, Showcase publication, capability-request, authorization, connector or workflow semantics changed.",
+    "The Account destination keeps the stable global label Account in signed-out and signed-in states; signed-out intent is conveyed by the Account dialog and its accessible label rather than replacing the navigation destination with Sign in.",
+    "React-shell and responsive production smoke now require exactly the approved global destinations (Simulation, Authoring, Help, Account), reject Experiment/Results/Showcase/Professor in global navigation, verify the three product-identity fields independently, and require simulator readiness inside Simulation."
   ],
   "close_issue": 417
 }
