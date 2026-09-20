@@ -56,3 +56,11 @@ test('responsive smoke tolerates the transient pre-documentElement navigation st
   assert.match(responsiveSmoke, /await sleep\(100\)/);
   assert.match(responsiveSmoke, /parsed\?\.state === "ready" && parsed\?\.hardened === "true"/);
 });
+
+test('responsive smoke treats only Chrome navigation-transition evaluation failure as transient', () => {
+  assert.match(responsiveSmoke, /message\.includes\("Inspected target navigated or closed"\)/);
+  assert.match(responsiveSmoke, /if \(!message\.includes\("Inspected target navigated or closed"\)\) throw error/);
+  assert.match(responsiveSmoke, /for \(let attempt = 0; attempt < 160; attempt \+= 1\)/);
+  assert.match(responsiveSmoke, /await sleep\(100\)/);
+  assert.match(responsiveSmoke, /parsed\?\.state === "ready" && parsed\?\.hardened === "true"/);
+});
