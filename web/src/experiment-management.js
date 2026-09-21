@@ -24,6 +24,9 @@ function installStyles() {
   const style = document.createElement("style");
   style.dataset.vlabExperimentManagement = "";
   style.textContent = `
+    .experiment-panel > .vlab-workspace-card-title {
+      margin-bottom: 14px !important;
+    }
     .experiment-control-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -172,7 +175,7 @@ function installStyles() {
     .experiment-revision-actions button,
     .experiment-management-slot .registry-new-actions button,
     .experiment-management-slot .registry-share-form button,
-    .experiment-sign-in-save {
+    .experiment-sign-in {
       min-height: 44px !important;
       padding: 8px 12px !important;
       font-size: 11.5px !important;
@@ -205,7 +208,7 @@ function installStyles() {
     .experiment-management-slot { display: grid; gap: 8px; }
     .experiment-management-slot .registry-share-row,
     .experiment-management-slot .registry-new-form { margin: 0; }
-    .experiment-sign-in-save { justify-self: stretch; width: 100%; }
+    .experiment-sign-in { justify-self: stretch; width: 100%; }
     .experiment-professor-section {
       grid-column: 1 / -1;
       display: grid;
@@ -257,12 +260,12 @@ function installStyles() {
         flex: 1 1 150px;
       }
       .experiment-browse,
-      .experiment-sign-in-save,
+      .experiment-sign-in,
       .experiment-revision-actions button,
       .experiment-management-slot .registry-new-actions button,
       .experiment-management-slot .registry-share-form button,
       .experiment-professor-actions button { min-height: 44px !important; }
-      .experiment-sign-in-save { width: 100%; }
+      .experiment-sign-in { width: 100%; }
       .experiment-revision-top { grid-template-columns: 1fr; }
       .experiment-revision-trigger { width: 100% !important; }
       .experiment-revision-actions,
@@ -289,16 +292,19 @@ function taskHeading(title) {
 }
 
 function buildControlPanel() {
-  experimentPanel.setAttribute("aria-label", "Control Panel");
+  const panelTitle = document.createElement("h2");
+  panelTitle.id = "control-panel-heading";
+  panelTitle.className = "vlab-workspace-card-title";
+  panelTitle.textContent = "Control Panel";
+  experimentPanel.removeAttribute("aria-label");
+  experimentPanel.setAttribute("aria-labelledby", panelTitle.id);
+  experimentPanel.prepend(panelTitle);
 
   const grid = document.createElement("div");
   grid.className = "experiment-control-grid";
 
   currentExperiment.classList.add("experiment-task-card", "experiment-task-current");
-  currentExperiment.insertBefore(
-    taskHeading("Current Experiment"),
-    currentExperiment.firstChild,
-  );
+  currentExperiment.setAttribute("aria-label", "Current experiment");
 
   const currentContext = document.createElement("div");
   currentContext.className = "experiment-current-context";
@@ -322,7 +328,7 @@ function buildControlPanel() {
   return { grid, revisionTask, currentActions };
 }
 
-function buildManagementRegion() {
+function buildManagementRegion(currentActions) {
   const region = document.createElement("section");
   region.className = "experiment-task-card experiment-management";
   region.setAttribute("aria-label", "Save and share Experiment");
@@ -415,7 +421,7 @@ function buildProfessorSection(currentActions) {
 
 installStyles();
 const control = buildControlPanel();
-const management = buildManagementRegion();
+const management = buildManagementRegion(control.currentActions);
 const professorSection = buildProfessorSection(control.currentActions);
 control.grid.append(management.region, professorSection.region);
 
@@ -502,6 +508,7 @@ function simplifyIdentity() {
 function syncSignedOutState() {
   const isSignedIn = signedIn();
   management.signIn.hidden = isSignedIn;
+  management.region.hidden = !isSignedIn;
   mirrorOperationalMessage();
 }
 
