@@ -45,7 +45,7 @@ const NEIGHBOUR_FIELD_TYPES = new Map(
 
 const CAPABILITY_CALL_SIGNATURES = Object.fromEntries(
   CONTROLLER_CAPABILITY_SURFACES
-    .filter((surface) => surface.kind === "action_constructor" && surface.signature)
+    .filter((surface) => surface.signature)
     .map((surface) => [surface.symbol, surface.signature]),
 );
 
@@ -264,7 +264,7 @@ class ExprParser {
     }
 
     if (this.peek("(")) {
-      if (parts.length !== 1 || !CALL_SIGNATURES[parts[0]]) {
+      if (!CALL_SIGNATURES[path]) {
         const category = parts.length > 1 ? "unsupported-capability" : "unsupported-feature";
         throw new ControllerCompileError(category, `call '${path}' is not available in python-vlab/0.1`, this.line);
       }
@@ -278,7 +278,7 @@ class ExprParser {
         } while (!this.peek(")"));
       }
       this.take(")");
-      return { kind: "call", name: parts[0], args, line: this.line };
+      return { kind: "call", name: path, args, line: this.line };
     }
     return { kind: "load", path, line: this.line };
   }
