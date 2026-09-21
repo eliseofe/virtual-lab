@@ -159,7 +159,7 @@ body.vlab-react-chrome-mounted {
 }
 
 .vlab-react-chrome-mounted .experiment-browse,
-.vlab-react-chrome-mounted .experiment-sign-in-save,
+.vlab-react-chrome-mounted .experiment-sign-in,
 .vlab-react-chrome-mounted .registry-save-actions button,
 .vlab-react-chrome-mounted .registry-new-actions button {
   border-radius: 10px;
@@ -190,6 +190,15 @@ body.vlab-react-chrome-mounted {
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+}
+
+.vlab-workspace-card-title {
+  margin: 0 !important;
+  color: #172127 !important;
+  font-size: clamp(1.25rem, 1.18rem + 0.22vw, 1.45rem) !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.015em;
 }
 
 .vlab-react-simulation-heading {
