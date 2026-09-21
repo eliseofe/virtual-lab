@@ -1,4 +1,4 @@
-import { RNG_DOMAINS, ScientificRng } from "../rng.js";
+import { RNG_DOMAINS, ScientificRng } from "./rng.js";
 
 export class InitializerCompileError extends Error {
   constructor(message, line = null) {
