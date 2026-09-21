@@ -111,5 +111,7 @@ test("#472 production manifest includes deterministic live-contract browser smok
   assert.match(smoke, /dataset\.vlabProfessorReviewContract/);
   assert.match(smoke, /accepted,revise,deferred,future,rejected/);
   assert.match(smoke, /vlabProfessorReviseGuidanceRequired/);
+  assert.match(smoke, /waitProfessorReviewContract/);
+  assert.match(smoke, /attempt < 250/);
   assert.doesNotMatch(smoke, /performance\.getEntriesByType\("resource"\)/);
 });

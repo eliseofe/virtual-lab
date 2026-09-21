@@ -13,7 +13,8 @@
     "Initialization stream index 0 intentionally preserves the historical root SplitMix64 sequence, keeping existing seeded initial conditions unchanged.",
     "Sensing noise now uses its own derived stream; future per-agent controller streams have a reserved independently derived domain.",
     "The worker reports the active RNG contract version from the WASM kernel; raw stream state is not exposed to authoring/UI.",
-    "Production Professor-review smoke now reads a live versioned DOM contract marker emitted by the deployed module instead of scraping/minifier-dependent JavaScript resource text."
+    "Production Professor-review smoke now reads a live versioned DOM contract marker emitted by the deployed module instead of scraping/minifier-dependent JavaScript resource text.",
+    "Professor-review production smoke now waits with a finite deadline for the asynchronously loaded registry/Professor module before checking its live contract, distinguishing legitimate module latency from a true load failure."
   ],
   "close_issue": 305
 }

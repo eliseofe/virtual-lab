@@ -19,6 +19,31 @@ async function waitReady(send) {
   throw new Error("Professor review smoke did not reach ready state");
 }
 
+async function waitProfessorReviewContract(send) {
+  let latest = null;
+  for (let attempt = 0; attempt < 250; attempt += 1) {
+    latest = JSON.parse(await evaluate(send, `JSON.stringify((() => {
+      const panel = document.querySelector(".professor-panel");
+      return {
+        contract: panel?.dataset.vlabProfessorReviewContract ?? null,
+        decisions: panel?.dataset.vlabProfessorReviewDecisions ?? null,
+        reviseGuidanceRequired: panel?.dataset.vlabProfessorReviseGuidanceRequired ?? null,
+        signedOutProfessorHidden: Boolean(panel?.hidden),
+        dialogReady: Boolean(document.querySelector("#professor-extension-inbox")),
+      };
+    })())`));
+    if (
+      latest.contract === "vlab.professor-review/2"
+      && latest.decisions === "accepted,revise,deferred,future,rejected"
+      && latest.reviseGuidanceRequired === "true"
+      && latest.signedOutProfessorHidden
+      && latest.dialogReady
+    ) return latest;
+    await sleep(100);
+  }
+  throw new Error(`Professor review module did not expose its deployed contract: ${JSON.stringify(latest)}`);
+}
+
 let session;
 let cdp;
 try {
@@ -26,6 +51,7 @@ try {
   cdp = session.cdp;
   await cdp.send("Runtime.enable");
   await waitReady(cdp.send);
+  await waitProfessorReviewContract(cdp.send);
 
   const expression = `JSON.stringify((() => {
     const panel = document.querySelector(".professor-panel");
