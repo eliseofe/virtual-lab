@@ -28,14 +28,20 @@ Controller source receives only declared local observations/capabilities. Curren
 - global simulator/world object;
 - global list of agents;
 - global position unless a future owner-approved observation capability explicitly changes that gatekeeper;
-- arbitrary RNG/seed/random stream;
+- raw RNG/seed/random-stream access outside the implemented simulator-owned stochastic primitives;
 - filesystem/network;
 - arbitrary imports/reflection/host APIs;
 - direct physical-state mutation.
 
 Private controller state belongs to each controller instance and is modified by its own controller execution. The simulator/environment constructs observations and applies returned actions.
 
-The current approved-but-not-implementation-authorized request for controller stochasticity must, if later authorized, expose simulator-owned deterministic/reproducible random operations; it must not introduce arbitrary host RNG.
+Controller stochasticity is simulator-owned and versioned by `vlab.controller-stochasticity/1`. The implemented primitives are:
+
+- `rng.uniform(a, b)` — scalar sample in `[a, b)` for finite `b >= a`; one stream draw;
+- `rng.bernoulli(p)` — boolean event for finite `p` in `[0, 1]`; one stream draw;
+- `rng.normal(mean, stddev)` — Gaussian scalar using the contract's Box-Muller transform for finite `mean` and finite non-negative `stddev`; exactly two stream draws.
+
+Each agent owns an independent deterministic controller stream derived from the run `SEED`, the `controller` RNG domain, and that agent's stable index. Extra stochastic calls by one agent therefore do not alter any other agent's sequence. Resetting the run reconstructs every stream and replays the same draws. Controller code cannot inspect stream state, reseed it, select another agent's stream, or call host/global randomness.
 
 ## Bounded control flow
 
