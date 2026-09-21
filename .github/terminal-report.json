@@ -1,19 +1,21 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Professor review now has an independent five-way scientific disposition model",
-  "owner_impact": "Capability requests can now store Professor judgment independently from technical implementation lifecycle: Accept, Reject, Revise, Defer, or Future, with Pending reserved for unreviewed requests. Existing request IDs, evidence, candidate identities, provenance, approved/declined compatibility, in-progress work, and implemented capabilities remain intact. Professor guidance is stored separately from internal notes, and reviewed Revise/Defer/Future candidates remain unavailable but discoverable so they are not recreated as duplicates. This ticket does not yet replace the two-button inbox or expose the new semantics through the research-AI MCP.",
+  "outcome": "Five-way Professor review and same-candidate revision are available end to end",
+  "owner_impact": "The Professor review flow now supports Accept, Reject, Revise, Defer and Future instead of a binary decision. Professor guidance is preserved and exposed through sanitized candidate discovery. Revise sends the formulation back to the original requester, who can reformulate the same candidate/request identity through the existing capability-request protocol; evidence and history are preserved and the item returns to Pending for another Professor review. Defer and Future leave the item reviewed but unavailable, so they do not clutter the pending inbox or get rediscovered as duplicates. No Sergio request is classified by this deployment.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 472,
-    "text": "Next is the Professor review interaction and MCP round-trip: replace the binary inbox controls with Accept, Reject, Revise, Defer and Future; expose sanitized decisions/guidance to research AI; and let Revise update the same candidate identity and return it to Pending. That work has not started yet."
+    "kind": "scope_complete",
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The approved non-binary Professor-review scope is complete and is being closed. The parent capability-request queue remains a living operational domain for future requests. Applying the scientific decisions to the currently pending Sergio requests is a separate owner action: first review the agreed classification table, then apply only the decisions the owner confirms."
   },
   "technical_evidence": [
-    "Professor disposition is stored separately from capability_requests.status and is constrained to pending, accepted, rejected, revise, deferred or future.",
-    "Legacy approved/in-progress/implemented rows backfill as accepted; declined rows as rejected; requested rows as pending.",
-    "A durable review-history table records each non-pending Professor decision without changing request or candidate identity.",
-    "Candidate capability and contract-delta surfaces synchronize only intentionally shareable Professor disposition/guidance while remaining candidate_unavailable until implementation.",
-    "Professor-only RLS and a restrictive insert policy prevent researchers from self-approving or creating pre-reviewed requests.",
-    "The existing triage RPC keeps approved/declined aliases compatible while accepting all five new decisions."
+    "The Professor inbox exposes exactly five current decisions: Accept, Reject, Revise, Defer and Future; Pending is the unreviewed system state.",
+    "Revise requires Professor guidance and preserves an append-only review record.",
+    "Only the original requester may reformulate a Revise candidate; shared-candidate reuse does not grant rewrite authority.",
+    "Requester revision updates the same request/candidate identity, increments candidate revision history, preserves linked evidence, and returns disposition to Pending without making the candidate authorable.",
+    "Neutral MCP discovery and RLS-safe closure readback expose only sanitized Professor disposition/guidance, not private requester context or internal notes.",
+    "Capability-request protocol advances to vlab.capability-request/8 and MCP server 3.14.0 while the exact nine-tool surface and authoring contract remain unchanged.",
+    "Production browser smoke is registered for the deployed five-way Professor review artifact using the shared smoke-browser harness."
   ],
-  "close_issue": 473
+  "close_issue": 472
 }
