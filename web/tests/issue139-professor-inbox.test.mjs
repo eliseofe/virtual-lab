@@ -35,10 +35,13 @@ test("#139 Lab inbox remains Professor-only while later triage moves behind the 
   assert.match(inbox, /ui\.panel\.hidden = !isProfessor/);
   assert.match(inbox, /\.from\("capability_requests"\)/);
   assert.match(inbox, /triage_extension_request/);
-  assert.match(inbox, /p_decision: status/);
+  assert.match(inbox, /p_decision: decision/);
   assert.match(inbox, /p_professor_notes: note\.trim\(\) \|\| null/);
-  assert.match(inbox, /approve\.textContent = "Approve"/);
-  assert.match(inbox, /decline\.textContent = "Decline"/);
+  assert.match(inbox, /\["Accept", "accepted", true\]/);
+  assert.match(inbox, /\["Reject", "rejected", false\]/);
+  assert.match(inbox, /\["Revise", "revise", false\]/);
+  assert.match(inbox, /\["Defer", "deferred", false\]/);
+  assert.match(inbox, /\["Future", "future", false\]/);
   assert.doesNotMatch(inbox, /github\.com|github_issue_url|github_pr_url|service_role|deploy/i);
 });
 
