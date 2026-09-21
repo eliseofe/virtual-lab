@@ -16,13 +16,15 @@ function hiddenSelectors(css) {
 test("#254 React owns product chrome and true global navigation", () => {
   for (const marker of [
     'data-vlab-react-chrome="mounted"',
+    'data-vlab-nav="control-panel"',
     'data-vlab-nav="simulation"',
-    'data-vlab-nav="authoring"',
+    'data-vlab-nav="edit-experiment"',
     'data-vlab-nav="account"',
   ]) assert.ok(reactRoot.includes(marker), marker);
 
   for (const removed of [
     'data-vlab-nav="experiment"',
+    'data-vlab-nav="authoring"',
     'data-vlab-nav="results"',
     'data-vlab-nav="showcase"',
     'data-vlab-nav="professor"',
@@ -39,9 +41,10 @@ test("#254 React owns product chrome and true global navigation", () => {
 
 test("#254 presentation proxies only global workspace actions", () => {
   assert.match(reactRoot, /proxyClick\('#account-menu'\)/);
-  assert.match(reactRoot, /scrollTo\('#simulation'\)/);
-  assert.match(reactRoot, /scrollTo\('#authoring-workbench'\)/);
-  assert.doesNotMatch(reactRoot, /proxyClick\('\.showcase-launcher'\)|proxyClick\('#professor-menu'\)|scrollTo\('\.experiment-panel'\)|scrollTo\('#live-results'\)/);
+  assert.match(reactRoot, /'control-panel', '#control-panel'/);
+  assert.match(reactRoot, /'simulation', '#simulation'/);
+  assert.match(reactRoot, /'edit-experiment', '#authoring-workbench'/);
+  assert.doesNotMatch(reactRoot, /proxyClick\('\.showcase-launcher'\)|proxyClick\('#professor-menu'\)|scrollTo\('#live-results'\)/);
   assert.doesNotMatch(reactRoot, /createClient|supabase|vlab_kernel|ControllerRuntime|simulation-canvas|#run|#pause/);
 });
 
