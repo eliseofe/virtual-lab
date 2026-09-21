@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_CATALOG_EXPERIMENT } from "../src/experiment-catalog.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.resolve(here, "..");
@@ -11,10 +12,14 @@ async function text(relative) {
   return readFile(path.join(web, relative), "utf8");
 }
 
-function editableConfig(main) {
-  const match = main.match(/const defaultConfigSource = `([\s\S]*?)`;\n/);
-  assert.ok(match, "defaultConfigSource must be present");
-  return match[1];
+function artifactSource(id) {
+  const artifact = DEFAULT_CATALOG_EXPERIMENT.artifacts.find((candidate) => candidate.id === id);
+  assert.ok(artifact, `catalog artifact '${id}' must be present`);
+  return artifact.content;
+}
+
+function editableConfig() {
+  return artifactSource("configuration");
 }
 
 test("Round 1 UI exposes experiment config, initializer source, controller source, simulation stage, controls, runtime speed, and run seed", async () => {
@@ -34,7 +39,7 @@ test("Round 1 UI exposes experiment config, initializer source, controller sourc
 
 test("student config exposes only active experiment and controller parameters", async () => {
   const main = await text("src/main.js");
-  const config = editableConfig(main);
+  const config = editableConfig();
   for (const parameter of [
     "N", "ARENA_SIZE", "INITIAL_POSITION_NOISE", "CONTROL_DT", "SENSOR_NOISE", "EXPERIMENT_DURATION",
     "U", "OMEGA_MAX", "K1", "K2", "POTENTIAL_ALPHA", "POTENTIAL_EPSILON", "DESIRED_DISTANCE", "PROXIMAL_RANGE",
@@ -46,19 +51,20 @@ test("student config exposes only active experiment and controller parameters", 
     "SPRING_K", "SPRING_L", "DR =", "DTHETA", "SEED =",
   ]) assert.doesNotMatch(config, new RegExp(hiddenOrRemoved.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
-  assert.match(main, /def hexagon_perturbed\(config, rng, place\):/);
-  assert.match(main, /def random_uniform\(config, rng, place\):/);
-  assert.match(main, /config\.DESIRED_DISTANCE/);
-  assert.match(main, /config\.ARENA_SIZE/);
-  assert.match(main, /place\(i, x, y, theta\)/);
+  const initializer = artifactSource("initialization");
+  assert.match(initializer, /def hexagon_perturbed\(config, rng, place\):/);
+  assert.match(initializer, /def random_uniform\(config, rng, place\):/);
+  assert.match(initializer, /config\.DESIRED_DISTANCE/);
+  assert.match(initializer, /config\.ARENA_SIZE/);
+  assert.match(initializer, /place\(i, x, y, theta\)/);
 });
 
-test("2012 controller source contains proximal potential and MDMC parameters without legacy aliases", async () => {
-  const main = await text("src/main.js");
-  assert.match(main, /sigma_lj = DESIRED_DISTANCE \/ pow\(2\.0, 1\.0 \/ POTENTIAL_ALPHA\)/);
-  assert.match(main, /magnitude = -\(4\.0 \* POTENTIAL_ALPHA \* POTENTIAL_EPSILON \/ distance\)/);
-  assert.match(main, /forward = K1 \* dot\(proximal, obs\.heading\) \+ U/);
-  assert.match(main, /turning = K2 \* dot\(proximal, perpendicular\(obs\.heading\)\)/);
+test("2012 controller source contains proximal potential and MDMC parameters without legacy aliases", () => {
+  const controller = artifactSource("controller");
+  assert.match(controller, /sigma_lj = DESIRED_DISTANCE \/ pow\(2\.0, 1\.0 \/ POTENTIAL_ALPHA\)/);
+  assert.match(controller, /magnitude = -\(4\.0 \* POTENTIAL_ALPHA \* POTENTIAL_EPSILON \/ distance\)/);
+  assert.match(controller, /forward = K1 \* dot\(proximal, obs\.heading\) \+ U/);
+  assert.match(controller, /turning = K2 \* dot\(proximal, perpendicular\(obs\.heading\)\)/);
 });
 
 test("renderer uses fixed arena coordinates and renders agent orientation", async () => {
@@ -75,7 +81,7 @@ test("renderer uses fixed arena coordinates and renders agent orientation", asyn
 test("worker owns simulation execution while renderer only consumes snapshots", async () => {
   const main = await text("src/main.js");
   const worker = await text("src/worker.js");
-  const config = editableConfig(main);
+  const config = editableConfig();
 
   assert.match(main, /function runtimeSpeed\(\)/);
   assert.match(main, /type: "run"/);
@@ -99,7 +105,7 @@ test("worker owns simulation execution while renderer only consumes snapshots", 
 test("run seed is simulator provenance with explicit reproducible and randomized restart paths", async () => {
   const main = await text("src/main.js");
   const worker = await text("src/worker.js");
-  const config = editableConfig(main);
+  const config = editableConfig();
   assert.match(main, /let activeSeed = INTERNAL_SEED/);
   assert.match(main, /globalThis\.crypto\.getRandomValues/);
   assert.match(main, /ui\.restartNewSeed\.addEventListener/);
@@ -112,7 +118,7 @@ test("run seed is simulator provenance with explicit reproducible and randomized
 test("hidden simulator settings stay outside the editable config namespace", async () => {
   const main = await text("src/main.js");
   const runtime = await text("src/runtime/contract.js");
-  const config = editableConfig(main);
+  const config = editableConfig();
   assert.match(main, /const INTERNAL_SEED = 2026/);
   assert.match(runtime, /PHYSICS_DT: 0\.01/);
   assert.match(runtime, /METRIC_DT: 0\.10/);
