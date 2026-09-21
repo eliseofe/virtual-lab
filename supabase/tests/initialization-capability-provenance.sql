@@ -30,14 +30,14 @@ insert into public.canonical_capabilities values
   ('25ee37e5-ba59-4e8a-9768-a5604e2501b5', 'initialization.per_agent_private_state_assignment'),
   ('11111111-1111-4111-8111-111111111111', 'unrelated.capability');
 
--- Missing implementation source must fail.
+-- Missing implemented source must fail.
 savepoint missing_source;
 \set ON_ERROR_STOP off
 \ir ../migrations/20260921160000_restore_initialization_capability_provenance.sql
 \if :ERROR
   rollback to missing_source;
 \else
-  \echo 'FAIL: missing source request must reject the repair'
+  \echo 'FAIL: missing implemented source must reject the repair'
   \quit 1
 \endif
 \set ON_ERROR_STOP on
@@ -50,7 +50,7 @@ insert into public.capability_requests values (
   'requested'
 );
 
--- A non-implemented source request cannot establish implementation provenance.
+-- A non-implemented request cannot establish implementation provenance.
 savepoint not_implemented;
 \set ON_ERROR_STOP off
 \ir ../migrations/20260921160000_restore_initialization_capability_provenance.sql
@@ -62,25 +62,29 @@ savepoint not_implemented;
 \endif
 \set ON_ERROR_STOP on
 
--- A request bound to another capability cannot be used as bibliography.
-update public.capability_requests
-set status = 'implemented',
-    canonical_capability_id = '11111111-1111-4111-8111-111111111111';
-savepoint conflicting_source;
+-- Ambiguous source history must fail instead of guessing.
+update public.capability_requests set status = 'implemented';
+insert into public.capability_requests values (
+  '22222222-2222-4222-8222-222222222222',
+  '25ee37e5-ba59-4e8a-9768-a5604e2501b5',
+  'doi:second-source',
+  'Second implemented source (test fixture)',
+  'implemented'
+);
+savepoint ambiguous_source;
 \set ON_ERROR_STOP off
 \ir ../migrations/20260921160000_restore_initialization_capability_provenance.sql
 \if :ERROR
-  rollback to conflicting_source;
+  rollback to ambiguous_source;
 \else
-  \echo 'FAIL: conflicting canonical binding must reject the repair'
+  \echo 'FAIL: multiple implemented sources must reject the repair'
   \quit 1
 \endif
 \set ON_ERROR_STOP on
+delete from public.capability_requests
+where id = '22222222-2222-4222-8222-222222222222';
 
--- The exact implemented source restores one bibliography row and is idempotent.
-update public.capability_requests
-set canonical_capability_id = '25ee37e5-ba59-4e8a-9768-a5604e2501b5',
-    status = 'implemented';
+-- One uniquely bound implemented source restores one bibliography row and is idempotent.
 \ir ../migrations/20260921160000_restore_initialization_capability_provenance.sql
 \ir ../migrations/20260921160000_restore_initialization_capability_provenance.sql
 
@@ -94,7 +98,7 @@ begin
          and publication_identifier = 'doi:test-source'
          and publication_title = 'Original scientific source (test fixture)'
      ) then
-    raise exception 'Repair must copy the exact implementation-source bibliography exactly once.';
+    raise exception 'Repair must copy the unique implemented-source bibliography exactly once.';
   end if;
 end;
 $$;
