@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { validateCanonicalCapabilitySurface } from "../../supabase/functions/experiment-mcp/canonical-capability-consistency.js";
+import { CANONICAL_CAPABILITY_BINDINGS } from "../../supabase/functions/experiment-mcp/canonical-capability-bindings.js";
 
 const migration = readFileSync(
   new URL("../../supabase/migrations/20260919102500_capability_origin_symmetry.sql", import.meta.url),
@@ -34,6 +35,28 @@ const binding = {
 
 test("#354 accepts origin-neutral implemented capability truth", () => {
   assert.deepEqual(validateCanonicalCapabilitySurface([implemented], [binding]), { valid: true, errors: [] });
+});
+
+test("workspace discovery rejects missing #304 provenance and accepts its restoration", () => {
+  const key = "initialization.per_agent_private_state_assignment";
+  const registry = CANONICAL_CAPABILITY_BINDINGS.map((entry) => ({
+    ...implemented,
+    id: entry.canonical_capability_id,
+    capability_key: entry.capability_key,
+    publication_provenance: entry.capability_key === key ? [] : implemented.publication_provenance,
+  }));
+  const heterogeneous = registry.find((entry) => entry.capability_key === key);
+  assert.ok(heterogeneous, "the deployed heterogeneous-state binding must be covered");
+  assert.deepEqual(validateCanonicalCapabilitySurface(registry, CANONICAL_CAPABILITY_BINDINGS), {
+    valid: false,
+    errors: [`Canonical capability lacks publication provenance: ${key}`],
+  });
+
+  heterogeneous.publication_provenance = implemented.publication_provenance;
+  assert.deepEqual(validateCanonicalCapabilitySurface(registry, CANONICAL_CAPABILITY_BINDINGS), {
+    valid: true,
+    errors: [],
+  });
 });
 
 test("#354 rejects implemented capabilities without complete metadata or deployed binding", () => {
