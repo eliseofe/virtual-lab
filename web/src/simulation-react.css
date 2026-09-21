@@ -19,6 +19,11 @@
   min-width: 96px;
 }
 
+[data-vlab-simulation-action],
+[data-vlab-simulation-fit] {
+  min-height: 44px;
+}
+
 .vlab-react-simulation-speed,
 .vlab-react-simulation-stats > * {
   min-width: 0;
@@ -45,8 +50,6 @@
     width: 100%;
   }
 
-  [data-vlab-simulation-action],
-  [data-vlab-simulation-fit],
   [data-vlab-simulation-glyph] input {
     min-height: 44px;
   }
