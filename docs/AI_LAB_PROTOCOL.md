@@ -70,7 +70,7 @@ Current deployed contract:
 - MCP server `3.13.0`
 - interface `17`
 - authoring `vlab.authoring/0.9`
-- capability requests `vlab.capability-request/7`
+- capability requests `vlab.capability-request/8`
 
 The exact shared experiment-domain tool surface contains 9 tools:
 

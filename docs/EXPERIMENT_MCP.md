@@ -10,7 +10,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.13.1`
+- MCP server: `3.14.0`
 - interface: `17`
 - authoring contract: `vlab.authoring/0.9`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -18,7 +18,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
 - Results presentation: `vlab.results-presentation/1`
-- capability requests: `vlab.capability-request/7`
+- capability requests: `vlab.capability-request/8`
 
 A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is the only Experiment-authoring input. All four core artifacts are supplied explicitly; Metrics may be empty.
 
@@ -95,7 +95,7 @@ The browser loads a saved `vlab.results-presentation/1` layout for registry Expe
 
 ## Durable extension closure and request submission
 
-Student and Professor profiles share `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure` under `vlab.capability-request/7`.
+Student and Professor profiles share `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure` under `vlab.capability-request/8`.
 
 The authoring continuation is deterministic:
 
@@ -115,7 +115,9 @@ relevant extension later becomes available
     -> become unblocked only when no unsupported requirement or unresolved scientific ambiguity remains
 ```
 
-Resume readback treats the caller-visible closure evidence as authoritative membership. If RLS correctly hides another requester's private request row, an evidence-linked shared candidate is reconstructed from the same sanitized candidate fields exposed by neutral workspace discovery; requester identity, private draft/context, notes, and publication provenance are not synthesized or exposed. Evidence without any readable request/candidate metadata still remains visible as an unresolved linked ID rather than disappearing. Candidate presence remains unavailable to authoring/validation.\n\nA Student can resume/revalidate their own blocked Experiment. A Professor has the same scientific blocking semantics and may additionally resume/revalidate visible blocked Experiments for supervision. Professor alone owns queue-wide approve/decline triage; that role distinction does not change what counts as supported or unsupported science.
+Resume readback treats the caller-visible closure evidence as authoritative membership. If RLS correctly hides another requester's private request row, an evidence-linked shared candidate is reconstructed from the same sanitized candidate fields exposed by neutral workspace discovery; requester identity, private draft/context, notes, and publication provenance are not synthesized or exposed. Evidence without any readable request/candidate metadata still remains visible as an unresolved linked ID rather than disappearing. Candidate presence remains unavailable to authoring/validation.
+
+A Student can resume/revalidate their own blocked Experiment. A Professor has the same scientific blocking semantics and may additionally resume/revalidate visible blocked Experiments for supervision. Professor alone owns queue-wide scientific/design disposition. The current decisions are Accept, Reject, Revise, Defer and Future; Pending means not yet reviewed. These decisions do not change what counts as implemented science and do not authorize implementation.
 
 Each clear request is classified as exactly one of:
 - `semantic_capability`;
@@ -125,11 +127,21 @@ Each clear request is classified as exactly one of:
 - `implementation_optimization`;
 - `security_boundary`.
 
-All six classes may reach Professor triage; none is automatically rejected. Minimal publication identity is stored separately from research reasoning. Semantic requests are born as complete candidate capabilities, including the concrete authoring surfaces needed to express them. The other five classes are born as candidate contract deltas against precise stable-contract paths. A covering candidate collects new evidence without another request row; a related but too-narrow candidate collects `generalization_needed` evidence for Professor action; only a genuinely absent need creates one new candidate/request. Declined candidates remain discoverable historical candidate identity until explicitly superseded.
+All six classes may reach Professor triage; none is automatically rejected. Minimal publication identity is stored separately from research reasoning. Semantic requests are born as complete candidate capabilities, including the concrete authoring surfaces needed to express them. The other five classes are born as candidate contract deltas against precise stable-contract paths. A covering candidate collects new evidence without another request row; a related but too-narrow candidate collects `generalization_needed` evidence for Professor action; only a genuinely absent need creates one new candidate/request. Reviewed candidates remain discoverable unavailable identities unless and until implementation supersedes them, so Reject, Defer, Future and Revise never cause duplicate rediscovery.
 
-When later evidence shows a candidate is related but too narrow, the Professor can generalize that same unavailable candidate in the Lab inbox. The stable request/candidate key and all linked papers/blocked Experiments stay attached. The revision is audit-recorded, and evidence originally marked `generalization_needed` remains historically marked while recording the Professor revision that resolved it. Generalization does not change request lifecycle, canonical implemented capability truth, compiler acceptance, or implementation authorization. Fresh `read_workspace` discovery exposes the revised candidate plus its `generalization_revision` and `generalized_at` metadata.
+Professor disposition semantics are:
+- `pending`: unreviewed; reuse the candidate if it covers the need and never duplicate it;
+- `accepted`: accepted into design/implementation consideration but still unavailable until implemented;
+- `rejected`: not support, and not permission to recreate an exact duplicate;
+- `revise`: the current formulation is not acceptable; Professor guidance is exposed on the sanitized candidate surface;
+- `deferred`: preserve the candidate but reconsider only with a genuinely new/useful use case;
+- `future`: preserve it as an acknowledged long-horizon direction, not current roadmap authorization.
 
-Professor approval accepts the request into developer design/queue. It does not implement the capability and does not itself create canonical semantic truth. Canonical semantic reconciliation happens later in the trusted developer-generalization step.
+When later evidence shows a candidate is related but too narrow, the Professor can generalize that same unavailable candidate in the Lab inbox. The stable request/candidate identity and all linked papers/blocked Experiments stay attached. The revision is audit-recorded, and evidence originally marked `generalization_needed` remains historically marked while recording the Professor revision that resolved it. Professor-controlled generalization does not change canonical implemented capability truth, compiler acceptance, or implementation authorization.
+
+When the Professor disposition is `revise`, the original requester may instead answer that guidance through the existing `request_capability` or whole-closure revalidation input using `revised_candidate_capability` or `revised_candidate_contract_delta`. This updates the same request/candidate identity, increments candidate revision history, preserves all evidence, and returns Professor disposition to `pending` for another review. A caller who does not own that request may reuse/link it but cannot rewrite it.
+
+Accept maps to the existing approved technical state; Reject maps to declined. Revise, Defer and Future remain technically requested/unavailable while no longer counting as pending Professor review. None of the five decisions implements the capability or creates canonical implemented semantic truth.
 
 Lifecycle-hook vocabulary remains:
 
@@ -167,4 +179,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 established Professor-controlled candidate generalization metadata at server `3.13.0`. The capability-request integrity repairs then made clear-requirement evidence lossless, preserved exact blocked-Experiment revision snapshots, and patched shared-candidate resume readback at server `3.13.1`, without changing interface `17`, request interface `vlab.capability-request/7`, `vlab.authoring/0.9`, or the nine-tool surface.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 established Professor-controlled candidate generalization metadata at server `3.13.0`. The capability-request integrity repairs then made clear-requirement evidence lossless, preserved exact blocked-Experiment revision snapshots, and patched shared-candidate resume readback at server `3.13.1`. Professor multi-way disposition and same-candidate revision are versioned at server `3.14.0` / request interface `vlab.capability-request/8`, while interface `17`, `vlab.authoring/0.9`, and the exact nine-tool surface remain unchanged.

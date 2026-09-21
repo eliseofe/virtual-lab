@@ -149,6 +149,8 @@ test('#464 evidence remains visible even if neither private request nor candidat
     id: 'legacy',
     request_class: null,
     status: null,
+    professor_disposition: null,
+    professor_guidance: null,
     extension_key: null,
     extension_domain: null,
     extension_name: null,
@@ -170,11 +172,11 @@ test('#464 MCP resume uses sanitized shared candidate queries and evidence-autho
   assert.match(mcp, /buildClosureLinkedRequests/)
   assert.match(
     mcp,
-    /candidate_capabilities'\)\s*\.select\('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at'\)/,
+    /candidate_capabilities'\)\s*\.select\('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, professor_disposition, professor_guidance, request_created_at, request_updated_at, generalization_revision, generalized_at'\)/,
   )
   assert.match(
     mcp,
-    /candidate_contract_deltas'\)\s*\.select\('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at'\)/,
+    /candidate_contract_deltas'\)\s*\.select\('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, professor_disposition, professor_guidance, request_created_at, request_updated_at, generalization_revision, generalized_at'\)/,
   )
   assert.doesNotMatch(mcp, /linkedRequests = \(requests \?\? \[\]\)\.map/)
 })

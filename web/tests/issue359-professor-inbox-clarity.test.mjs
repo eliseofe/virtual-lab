@@ -7,11 +7,14 @@ const inbox = readFileSync(new URL("../src/professor-inbox.js", import.meta.url)
 test("#359 keeps the default Professor card compact and science-oriented", () => {
   assert.match(inbox, /title\.textContent = candidateName\(request\)/);
   assert.match(inbox, /REQUEST_CLASS_LABELS\[request\.request_class\]/);
-  assert.match(inbox, /status\.textContent = request\.status\.replaceAll/);
+  assert.match(inbox, /status\.textContent = request\.professor_disposition\.replaceAll/);
   assert.match(inbox, /definition\.textContent = candidateDefinition\(request\)/);
-  assert.match(inbox, /Professor note/);
-  assert.match(inbox, /approve\.textContent = "Approve"/);
-  assert.match(inbox, /decline\.textContent = "Decline"/);
+  assert.match(inbox, /Professor guidance/);
+  assert.match(inbox, /\["Accept", "accepted", true\]/);
+  assert.match(inbox, /\["Revise", "revise", false\]/);
+  assert.match(inbox, /\["Defer", "deferred", false\]/);
+  assert.match(inbox, /\["Future", "future", false\]/);
+  assert.match(inbox, /\["Reject", "rejected", false\]/);
   assert.doesNotMatch(inbox, /professor-semantic-editor|Create new canonical capability|Bind existing:/);
 });
 
@@ -54,8 +57,8 @@ test("#359 keeps Professor-only authorization and existing triage lifecycle", ()
   assert.match(inbox, /profile\?\.role !== "professor"/);
   assert.match(inbox, /ui\.panel\.hidden = !isProfessor/);
   assert.match(inbox, /triage_extension_request/);
-  assert.match(inbox, /p_decision: status/);
-  assert.match(inbox, /p_professor_notes: note\.trim\(\) \|\| null/);
+  assert.match(inbox, /p_decision: decision/);
+  assert.match(inbox, /p_professor_notes: guidance \|\| null/);
   assert.match(inbox, /p_bind_canonical_capability_id: null/);
 });
 

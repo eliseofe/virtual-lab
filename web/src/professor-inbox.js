@@ -50,7 +50,7 @@ function installStyles() {
     .professor-request-list { display: grid; align-content: start; gap: 10px; overflow: auto; padding: 0 18px 18px; }
     .professor-request-empty { margin: 16px 2px; color: #718087; font-size: 12px; }
     .professor-request-card { display: grid; gap: 8px; padding: 11px 12px; border: 1px solid #dfe7ea; border-radius: 12px; background: #fff; }
-    .professor-request-card[data-status="requested"] { border-color: #bdd1d9; }
+    .professor-request-card[data-status="pending"] { border-color: #bdd1d9; }
     .professor-request-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
     .professor-request-top h3 { margin: 0; font-size: 13.5px; line-height: 1.35; }
     .professor-request-domain { margin: 2px 0 0; color: #6c7c83; font-size: 10.5px; }
@@ -59,9 +59,12 @@ function installStyles() {
     .professor-evidence-count { background: #f2f0f7; color: #5a4d73; }
     .professor-generalization-needed { background: #fff0dd; color: #805018; }
     .professor-status { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 8px; border-radius: 999px; background: #eef3f5; color: #50626a; font-size: 10px; font-weight: 750; text-transform: capitalize; }
-    .professor-status[data-status="requested"] { background: #fff4d8; color: #7a5712; }
-    .professor-status[data-status="approved"] { background: #e7f3ec; color: #265f43; }
-    .professor-status[data-status="declined"] { background: #f8e9e8; color: #8b3731; }
+    .professor-status[data-status="pending"] { background: #fff4d8; color: #7a5712; }
+    .professor-status[data-status="accepted"] { background: #e7f3ec; color: #265f43; }
+    .professor-status[data-status="rejected"] { background: #f8e9e8; color: #8b3731; }
+    .professor-status[data-status="revise"] { background: #fff0dd; color: #805018; }
+    .professor-status[data-status="deferred"] { background: #eef1f7; color: #495c7a; }
+    .professor-status[data-status="future"] { background: #f1ecf8; color: #654c7d; }
     .professor-request-definition { margin: 0; color: #344850; font-size: 11.5px; line-height: 1.45; }
     .professor-request-details { border-top: 1px solid #edf1f3; padding-top: 6px; }
     .professor-request-details summary { cursor: pointer; color: #52666f; font-size: 10.5px; font-weight: 700; }
@@ -73,7 +76,8 @@ function installStyles() {
     .professor-request-note-label { display: grid; gap: 4px; color: #52666f; font-size: 10.5px; font-weight: 700; }
     .professor-request-note { width: 100%; min-height: 54px; resize: vertical; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; font: inherit; color: #172127; background: #fff; }
     .professor-request-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-    .professor-request-actions button { min-height: 32px; padding: 5px 10px; }
+    .professor-request-actions button { min-height: 36px; padding: 6px 10px; }
+    @media (max-width: 680px) { .professor-request-actions button { min-height: 44px; } }
     .professor-request-review { margin: 0; color: #65767d; font-size: 10.5px; line-height: 1.4; }
     .professor-generalization-editor { border-top: 1px solid #edf1f3; padding-top: 7px; }
     .professor-generalization-editor > summary { cursor: pointer; color: #315a69; font-size: 10.8px; font-weight: 750; }
@@ -119,7 +123,7 @@ function buildUi() {
 
   const note = document.createElement("p");
   note.className = "professor-panel-note";
-  note.textContent = "Review classified research requests. Approval does not authorize implementation.";
+  note.textContent = "Review classified research requests. A review decision does not authorize implementation.";
   panel.append(head, open, note);
   accountPanel.insertAdjacentElement("afterend", panel);
 
@@ -513,7 +517,7 @@ function render() {
   for (const request of ordered) {
     const card = document.createElement("article");
     card.className = "professor-request-card";
-    card.dataset.status = request.status;
+    card.dataset.status = request.professor_disposition;
     card.dataset.requestId = request.id;
 
     const top = document.createElement("div");
@@ -533,8 +537,8 @@ function render() {
     requestClass.textContent = REQUEST_CLASS_LABELS[request.request_class] || "Extension request";
     const status = document.createElement("span");
     status.className = "professor-status";
-    status.dataset.status = request.status;
-    status.textContent = request.status.replaceAll("_", " ");
+    status.dataset.status = request.professor_disposition;
+    status.textContent = request.professor_disposition.replaceAll("_", " ");
     badges.append(requestClass, status);
 
     const requestEvidence = evidenceForRequest(request.id);
@@ -568,30 +572,35 @@ function render() {
     if (request.professor_disposition === "pending") {
       const noteLabel = document.createElement("label");
       noteLabel.className = "professor-request-note-label";
-      noteLabel.textContent = "Professor note";
+      noteLabel.textContent = "Professor guidance";
       const note = document.createElement("textarea");
       note.className = "professor-request-note";
       note.maxLength = 20000;
-      note.placeholder = "Optional note";
-      note.setAttribute("aria-label", `Professor note for ${request.extension_name || request.capability_name}`);
+      note.placeholder = "Optional except for Revise";
+      note.setAttribute("aria-label", `Professor guidance for ${request.extension_name || request.capability_name}`);
       note.value = request.professor_guidance || "";
       noteLabel.append(note);
 
       const actions = document.createElement("div");
       actions.className = "professor-request-actions";
-      const approve = document.createElement("button");
-      approve.className = "primary";
-      approve.textContent = "Approve";
-      const decline = document.createElement("button");
-      decline.textContent = "Decline";
+      const decisions = [
+        ["Accept", "accepted", true],
+        ["Revise", "revise", false],
+        ["Defer", "deferred", false],
+        ["Future", "future", false],
+        ["Reject", "rejected", false],
+      ];
       const busy = busyRequestId === request.id;
-      approve.disabled = busy;
-      decline.disabled = busy;
+      for (const [label, decision, primary] of decisions) {
+        const button = document.createElement("button");
+        if (primary) button.className = "primary";
+        button.textContent = label;
+        button.dataset.professorDecision = decision;
+        button.disabled = busy;
+        button.addEventListener("click", () => triage(request, decision, note.value));
+        actions.append(button);
+      }
       note.disabled = busy;
-
-      approve.addEventListener("click", () => triage(request, "approved", note.value));
-      decline.addEventListener("click", () => triage(request, "declined", note.value));
-      actions.append(approve, decline);
       card.append(noteLabel, actions);
     } else {
       const review = document.createElement("p");
@@ -599,7 +608,8 @@ function render() {
       const parts = [];
       if (request.professor_disposition && request.professor_disposition !== "pending") parts.push(`Professor decision: ${request.professor_disposition.replaceAll("_", " ")}`);
       if (request.professor_disposition_reviewed_at || request.reviewed_at) parts.push(formatDate(request.professor_disposition_reviewed_at || request.reviewed_at));
-      if (request.professor_guidance || request.professor_notes) parts.push(`Professor note: ${request.professor_guidance || request.professor_notes}`);
+      if (request.professor_guidance || request.professor_notes) parts.push(`Professor guidance: ${request.professor_guidance || request.professor_notes}`);
+      if (request.status !== "requested") parts.push(`Technical state: ${request.status.replaceAll("_", " ")}`);
       review.textContent = parts.join(" · ") || "No Professor note.";
       card.append(review);
     }
@@ -744,16 +754,28 @@ async function generalizeCandidate(request, candidate, payload, resolveEvidence,
   }
 }
 
-async function triage(request, status, note) {
+async function triage(request, decision, note) {
   if (profile?.role !== "professor" || request.status !== "requested" || request.professor_disposition !== "pending") return;
+  const guidance = note.trim();
+  if (decision === "revise" && !guidance) {
+    setMessage("Revise requires Professor guidance describing what must change.", "error");
+    return;
+  }
+  const labels = {
+    accepted: "Accepting",
+    rejected: "Rejecting",
+    revise: "Sending back for revision",
+    deferred: "Deferring",
+    future: "Marking as future",
+  };
   busyRequestId = request.id;
   render();
-  setMessage(`${status === "approved" ? "Approving" : "Declining"} request…`);
+  setMessage(`${labels[decision] || "Reviewing"} request…`);
   try {
     const { data, error } = await supabase.rpc("triage_extension_request", {
       p_request_id: request.id,
-      p_decision: status,
-      p_professor_notes: note.trim() || null,
+      p_decision: decision,
+      p_professor_notes: guidance || null,
       p_bind_canonical_capability_id: null,
       p_canonical_key: null,
       p_canonical_domain: null,

@@ -9,6 +9,8 @@ const CAPABILITY_FIELDS = Object.freeze([
   'authoring_surfaces',
   'availability',
   'request_status',
+  'professor_disposition',
+  'professor_guidance',
   'request_created_at',
   'request_updated_at',
   'generalization_revision',
@@ -24,6 +26,8 @@ const CONTRACT_DELTA_FIELDS = Object.freeze([
   'requested_change',
   'availability',
   'request_status',
+  'professor_disposition',
+  'professor_guidance',
   'request_created_at',
   'request_updated_at',
   'generalization_revision',
@@ -65,6 +69,8 @@ export function buildClosureLinkedRequests(evidence, requests, candidateCapabili
         ? 'semantic_capability'
         : candidateContractDelta?.request_class ?? null,
       status: candidateCapability?.request_status ?? candidateContractDelta?.request_status ?? null,
+      professor_disposition: candidateCapability?.professor_disposition ?? candidateContractDelta?.professor_disposition ?? null,
+      professor_guidance: candidateCapability?.professor_guidance ?? candidateContractDelta?.professor_guidance ?? null,
       extension_key: candidateCapability?.capability_key ?? candidateContractDelta?.delta_key ?? null,
       extension_domain: candidateCapability?.capability_domain
         ?? (candidateContractDelta ? 'authoring_contract' : null),

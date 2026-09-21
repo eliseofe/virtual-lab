@@ -192,7 +192,7 @@ test("#375 neutral MCP discovery keeps contract and capabilities separate but jo
   assert.match(mcp, /authoring_surfaces: binding\?\.surfaces \?\? \[\]/);
   assert.match(mcp, /capability_registry: discoverableCapabilityRegistry/);
   assert.doesNotMatch(mcp, /AUTHORING_CONTRACT\.canonical_capability_bindings/);
-  assert.match(versions, /MCP_SERVER_VERSION = '3\.13\.1'/);
+  assert.match(versions, /MCP_SERVER_VERSION = '3\.14\.0'/);
   assert.match(versions, /MCP_INTERFACE_VERSION = '17'/);
   assert.match(versions, /contract_version: 'vlab\.authoring\/0\.9'/);
 });

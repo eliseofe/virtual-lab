@@ -24,7 +24,16 @@ import { MCP_TOOL_COUNT, MCP_TOOL_NAMES } from './tool-surface.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
-const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/7'
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/8'
+
+const PROFESSOR_DISPOSITION_BEHAVIOR = Object.freeze({
+  pending: 'Candidate exists and remains unavailable. Reuse it when it covers the need; never duplicate it.',
+  accepted: 'Professor accepted the candidate into the design queue. It remains unavailable until implemented; reuse it and remain blocked.',
+  rejected: 'Do not treat the candidate as support and do not recreate an exact duplicate. Only materially different evidence can justify a distinct request.',
+  revise: 'Professor requires reformulation. The original requester may submit a revised candidate on the same request ID using request_capability/revalidation plus the Professor guidance.',
+  deferred: 'Preserve and reuse the candidate identity without resubmitting merely for a different answer. A genuinely new use case may justify renewed review.',
+  future: 'Preserve and reuse the candidate as an acknowledged long-horizon direction; it is not current roadmap authorization or implemented support.',
+}) as const
 
 type RegistryRole = 'student' | 'professor'
 type RegistryProfile = {
@@ -121,6 +130,36 @@ const CANDIDATE_CONTRACT_DELTA_SPEC = z.object({
   ),
 })
 
+const REVISED_SEMANTIC_EXTENSION_REQUEST_INPUT = z.object({
+  existing_request_id: z.string().uuid().describe(
+    'Stable request ID of your own candidate currently returned with professor_disposition=revise.',
+  ),
+  revised_candidate_capability: CANDIDATE_CAPABILITY_SPEC.describe(
+    'Reformulated semantic candidate responding to Professor guidance. The same request/candidate identity is preserved.',
+  ),
+  revision_response: z.string().min(1).max(6000).optional().describe(
+    'Optional concise explanation of how the revised candidate responds to Professor guidance.',
+  ),
+  relationship: z.enum(['covered', 'generalization_needed']).default('covered'),
+  generalization_note: z.string().min(1).max(6000).optional(),
+  requirement_keys: REQUEST_REQUIREMENT_KEYS,
+})
+
+const REVISED_CONTRACT_DELTA_REQUEST_INPUT = z.object({
+  existing_request_id: z.string().uuid().describe(
+    'Stable request ID of your own contract-delta candidate currently returned with professor_disposition=revise.',
+  ),
+  revised_candidate_contract_delta: CANDIDATE_CONTRACT_DELTA_SPEC.describe(
+    'Reformulated contract delta responding to Professor guidance. The same request/candidate identity is preserved.',
+  ),
+  revision_response: z.string().min(1).max(6000).optional().describe(
+    'Optional concise explanation of how the revised candidate responds to Professor guidance.',
+  ),
+  relationship: z.enum(['covered', 'generalization_needed']).default('covered'),
+  generalization_note: z.string().min(1).max(6000).optional(),
+  requirement_keys: REQUEST_REQUIREMENT_KEYS,
+})
+
 const REUSED_EXTENSION_REQUEST_INPUT = z.object({
   existing_request_id: z.string().uuid().describe(
     'Stable request ID exposed by candidate_capabilities or candidate_contract_deltas.',
@@ -163,6 +202,8 @@ const NEW_CONTRACT_DELTA_REQUEST_INPUT = z.object({
 })
 
 const GROUPED_EXTENSION_REQUEST_INPUT = z.union([
+  REVISED_SEMANTIC_EXTENSION_REQUEST_INPUT,
+  REVISED_CONTRACT_DELTA_REQUEST_INPUT,
   REUSED_EXTENSION_REQUEST_INPUT,
   NEW_SEMANTIC_EXTENSION_REQUEST_INPUT,
   NEW_CONTRACT_DELTA_REQUEST_INPUT,
@@ -216,6 +257,9 @@ function extensionRequestBehavior(role: RegistryRole) {
     comprehensive_analysis_required: true,
     submitter_role: role,
     triage_authority: 'professor',
+    professor_disposition_behavior: PROFESSOR_DISPOSITION_BEHAVIOR,
+    revise_via_same_candidate_identity: true,
+    revise_action: 'request_capability',
     automatic_rejection_classes: [],
   }
 }
@@ -332,7 +376,7 @@ function registerExperimentTools(
 
       const { data: candidateCapabilities, error: candidateCapabilitiesError } = await supabase
         .from('candidate_capabilities')
-        .select('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at')
+        .select('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, professor_disposition, professor_guidance, request_created_at, request_updated_at, generalization_revision, generalized_at')
         .eq('availability', 'candidate_unavailable')
         .order('request_updated_at', { ascending: false })
       if (candidateCapabilitiesError) {
@@ -341,7 +385,7 @@ function registerExperimentTools(
 
       const { data: candidateContractDeltas, error: candidateContractDeltasError } = await supabase
         .from('candidate_contract_deltas')
-        .select('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at')
+        .select('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, professor_disposition, professor_guidance, request_created_at, request_updated_at, generalization_revision, generalized_at')
         .eq('availability', 'candidate_unavailable')
         .order('request_updated_at', { ascending: false })
       if (candidateContractDeltasError) {
@@ -640,7 +684,7 @@ function registerExperimentTools(
         )
       }
 
-      const { data, error } = await supabase.rpc('submit_structured_extension_closure', {
+      const { data, error } = await supabase.rpc('submit_structured_extension_closure_v8', {
         p_blocked_experiment_id: blocked_experiment_id ?? null,
         p_origin_experiment_id: origin_experiment_id ?? null,
         p_origin_experiment_revision: origin_revision ?? null,
@@ -722,7 +766,7 @@ function registerExperimentTools(
 
           const { data: candidateCapabilities, error: candidateCapabilitiesError } = await supabase
             .from('candidate_capabilities')
-            .select('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at')
+            .select('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, professor_disposition, professor_guidance, request_created_at, request_updated_at, generalization_revision, generalized_at')
             .in('request_id', requestIds)
           if (candidateCapabilitiesError) {
             return toolError('Could not read linked candidate capabilities.', candidateCapabilitiesError.message)
@@ -730,7 +774,7 @@ function registerExperimentTools(
 
           const { data: candidateContractDeltas, error: candidateContractDeltasError } = await supabase
             .from('candidate_contract_deltas')
-            .select('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at')
+            .select('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, professor_disposition, professor_guidance, request_created_at, request_updated_at, generalization_revision, generalized_at')
             .in('request_id', requestIds)
           if (candidateContractDeltasError) {
             return toolError('Could not read linked candidate contract deltas.', candidateContractDeltasError.message)
@@ -763,7 +807,7 @@ function registerExperimentTools(
     {
       title: 'Revalidate a whole blocked Experiment against the current capability contract',
       description:
-        'Student/Professor research-AI action. Re-analyse the entire preserved Experiment against implemented capabilities, candidate_capabilities, candidate_contract_deltas, and the stable Lab contract. A Student revalidates their own blocked Experiment; a Professor may also supervise a visible blocked Experiment. Reuse a covering candidate, record generalization_needed evidence on a related-but-too-narrow candidate, and create a structured candidate only for a genuinely absent need. Candidate presence never makes validation pass. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
+        'Student/Professor research-AI action. Re-analyse the entire preserved Experiment against implemented capabilities, candidate_capabilities, candidate_contract_deltas, and the stable Lab contract. A Student revalidates their own blocked Experiment; a Professor may also supervise a visible blocked Experiment. Respect Professor dispositions/guidance: reuse unavailable candidates without duplicating them, and when your own candidate is marked revise you may reformulate the same identity in this request. Candidate presence never makes validation pass. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid(),
         base_analysis_sequence: z.number().int().positive(),
@@ -795,7 +839,7 @@ function registerExperimentTools(
         return toolError('partial_due_to_ambiguity requires unresolved scientific ambiguity.')
       }
 
-      const { data, error } = await supabase.rpc('revalidate_structured_extension_closure', {
+      const { data, error } = await supabase.rpc('revalidate_structured_extension_closure_v8', {
         p_blocked_experiment_id: blocked_experiment_id,
         p_base_analysis_sequence: base_analysis_sequence,
         p_contract_version: AUTHORING_CONTRACT.contract_version,
