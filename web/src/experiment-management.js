@@ -319,7 +319,7 @@ function buildControlPanel() {
 
   grid.append(currentExperiment, revisionTask);
   experimentPanel.append(grid);
-  return { grid, revisionTask };
+  return { grid, revisionTask, currentActions };
 }
 
 function buildManagementRegion() {
@@ -358,7 +358,7 @@ function buildManagementRegion() {
   return { region, status, actions, slot, signIn, saveAsNew, shareOpen };
 }
 
-function buildProfessorSection() {
+function buildProfessorSection(currentActions) {
   const promote = document.querySelector(".showcase-promote-current");
   const curationStatus = document.querySelector(".showcase-curation-status");
   if (!(showcaseLauncher instanceof HTMLButtonElement) || !(promote instanceof HTMLButtonElement) || !curationStatus) {
@@ -383,7 +383,10 @@ function buildProfessorSection() {
   showcaseLauncher.textContent = "Browse";
   showcaseActions.append(showcaseLauncher, promote);
   const legacyCurrentActions = currentMain.querySelector(".experiment-current-actions");
-  if (legacyCurrentActions?.childElementCount === 0) legacyCurrentActions.remove();
+  if (legacyCurrentActions && legacyCurrentActions !== currentActions) {
+    for (const child of [...legacyCurrentActions.children]) currentActions.append(child);
+    legacyCurrentActions.remove();
+  }
   showcaseGroup.append(showcaseTitle, showcaseActions, curationStatus);
 
   const capabilityGroup = document.createElement("div");
@@ -413,7 +416,7 @@ function buildProfessorSection() {
 installStyles();
 const control = buildControlPanel();
 const management = buildManagementRegion();
-const professorSection = buildProfessorSection();
+const professorSection = buildProfessorSection(control.currentActions);
 control.grid.append(management.region, professorSection.region);
 
 let sourceMessageObserver = null;
