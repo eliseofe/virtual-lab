@@ -1342,4 +1342,107 @@ mod tests {
         assert!(error.contains("undeclared controller private state 'unknown'"));
     }
 
+    fn stochastic_runtime() -> IrControllerRuntime {
+        compile(r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Stochastic","entry":"step",
+          "parameters":{},"state":[],
+          "body":[
+            {"kind":"if","branches":[
+              {"condition":{"kind":"call","name":"rng.bernoulli","args":[{"kind":"const","value":0.5}]},
+               "body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[
+                 {"kind":"call","name":"rng.uniform","args":[{"kind":"const","value":0.0},{"kind":"const","value":1.0}]},
+                 {"kind":"call","name":"rng.normal","args":[{"kind":"const","value":0.0},{"kind":"const","value":0.25}]}
+               ]}}]}
+            ],"else_body":[
+              {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+                {"kind":"call","name":"rng.uniform","args":[{"kind":"const","value":0.0},{"kind":"const","value":1.0}]},
+                {"kind":"call","name":"rng.normal","args":[{"kind":"const","value":0.0},{"kind":"const","value":0.25}]}
+              ]}}
+            ]}
+          ]
+        }"#, "{}")
+    }
+
+    fn empty_observation() -> Observation {
+        Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+        }
+    }
+
+    #[test]
+    fn controller_stochasticity_replays_exactly_after_reset() {
+        let mut runtime = stochastic_runtime();
+        runtime.set_run_seed(2026);
+        runtime.reset(2);
+        let observation = empty_observation();
+        let first = [
+            runtime.step(0, &observation),
+            runtime.step(1, &observation),
+            runtime.step(0, &observation),
+        ];
+        runtime.reset(2);
+        let replay = [
+            runtime.step(0, &observation),
+            runtime.step(1, &observation),
+            runtime.step(0, &observation),
+        ];
+        assert_eq!(first, replay);
+        assert!(first.iter().all(|action| action.forward >= 0.0 && action.forward < 1.0));
+        assert!(first.iter().all(|action| action.turning.is_finite()));
+    }
+
+    #[test]
+    fn controller_stochastic_streams_are_independent_per_agent() {
+        let observation = empty_observation();
+
+        let mut extra_agent_zero_draws = stochastic_runtime();
+        extra_agent_zero_draws.set_run_seed(2026);
+        extra_agent_zero_draws.reset(2);
+        for _ in 0..100 {
+            let _ = extra_agent_zero_draws.step(0, &observation);
+        }
+        let agent_one_after = extra_agent_zero_draws.step(1, &observation);
+
+        let mut untouched_agent_one = stochastic_runtime();
+        untouched_agent_one.set_run_seed(2026);
+        untouched_agent_one.reset(2);
+        let agent_one_first = untouched_agent_one.step(1, &observation);
+
+        assert_eq!(agent_one_after, agent_one_first);
+    }
+
+    #[test]
+    fn controller_stochasticity_is_seeded_by_the_run_seed() {
+        let observation = empty_observation();
+        let mut a = stochastic_runtime();
+        a.set_run_seed(2026);
+        a.reset(1);
+        let first = a.step(0, &observation);
+
+        let mut b = stochastic_runtime();
+        b.set_run_seed(2027);
+        b.reset(1);
+        let second = b.step(0, &observation);
+
+        assert_ne!(first, second);
+    }
+
+    #[test]
+    fn bernoulli_endpoint_probabilities_are_deterministic_and_still_consume_draws() {
+        let mut zero = ScientificRng::for_domain(2026, RNG_DOMAIN_CONTROLLER, 0).unwrap();
+        let mut one = ScientificRng::for_domain(2026, RNG_DOMAIN_CONTROLLER, 0).unwrap();
+
+        let mut zero_stack = vec![Value::Scalar(0.0)];
+        execute_intrinsic(Intrinsic::RngBernoulli, &mut zero_stack, &mut zero);
+        assert!(!zero_stack.pop().unwrap().boolean());
+
+        let mut one_stack = vec![Value::Scalar(1.0)];
+        execute_intrinsic(Intrinsic::RngBernoulli, &mut one_stack, &mut one);
+        assert!(one_stack.pop().unwrap().boolean());
+
+        assert_eq!(zero.next_u64(), one.next_u64());
+    }
+
 }
