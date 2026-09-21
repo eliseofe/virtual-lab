@@ -13,7 +13,7 @@ test("#437 keeps peer Control Panel cards balanced without forced card heights",
 
 test("#437 retains one minimum desktop touch-target system", () => {
   assert.match(management, /\.experiment-browse,[\s\S]*\.experiment-organize \{[\s\S]*min-height: 44px !important/);
-  assert.match(management, /\.experiment-revision-actions button,[\s\S]*\.experiment-sign-in-save \{[\s\S]*min-height: 44px !important/);
+  assert.match(management, /\.experiment-revision-actions button,[\s\S]*\.experiment-sign-in \{[\s\S]*min-height: 44px !important/);
   assert.match(management, /\.experiment-professor-actions button \{[\s\S]*min-height: 44px/);
 });
 
