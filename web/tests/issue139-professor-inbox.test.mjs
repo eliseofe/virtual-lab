@@ -36,7 +36,7 @@ test("#139 Lab inbox remains Professor-only while later triage moves behind the 
   assert.match(inbox, /\.from\("capability_requests"\)/);
   assert.match(inbox, /triage_extension_request/);
   assert.match(inbox, /p_decision: decision/);
-  assert.match(inbox, /p_professor_notes: note\.trim\(\) \|\| null/);
+  assert.match(inbox, /p_professor_notes: guidance \|\| null/);
   assert.match(inbox, /\["Accept", "accepted", true\]/);
   assert.match(inbox, /\["Reject", "rejected", false\]/);
   assert.match(inbox, /\["Revise", "revise", false\]/);
