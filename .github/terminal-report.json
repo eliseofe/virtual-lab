@@ -1,28 +1,26 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The accepted Control Panel and workspace-navigation design is implemented across phone through ultra-wide layouts",
-  "owner_impact": "The workspace now has three clear peer destinations: Control Panel, Simulation and Edit Experiment. The duplicate EXPERIMENT / Control panel heading is gone. Current Experiment now reads in one stable order: title, only meaningful exceptional access state, collection metadata, then Browse experiments and Organize. Normal ownership is implicit instead of shown as My Experiment. Research curation is renamed Professor controls while preserving Showcase and Capability requests.",
+  "outcome": "Signed-in and signed-out workspace presentation now share one hierarchy, and authentication separates Sign In from Create Account",
+  "owner_impact": "The three primary workspace surfaces now use the same names in navigation and card titles: Control Panel, Simulation and Experiment Authoring. Each surface has one prominent primary title instead of kicker/title pairs. Signed-out Control Panel keeps the same experiment context but replaces the Save & share card with a direct Sign In action. The authentication surface defaults to Sign In with only email and password; Create Account is a separate mode that reveals first and last name only when needed.",
   "next": {
     "kind": "scope_complete",
     "disposition": "dormant",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "This accepted #273 design correction is finished. The UI/UX domain returns to living/dormant status until new concrete use evidence appears."
+    "text": "This concrete #273 UI/UX correction is finished. The UI/UX domain returns to living/dormant status with no automatic successor; future work requires new product-use evidence."
   },
   "technical_evidence": [
-    "Workspace navigation exposes Control Panel, Simulation and Edit Experiment with one active destination and keeps Help/Account as utilities.",
-    "Navigation remains visible and single-line across responsive layouts; narrow layouts reflow the workspace nav beneath the brand instead of hiding it in the utility drawer.",
-    "The visible duplicate Control Panel heading was removed while the panel retains accessible naming.",
-    "Current Experiment uses a stable title → access → collection → actions hierarchy; owned/editable state is hidden as the default.",
-    "Browse experiments is the primary library/finder action and Organize remains secondary in the same action group.",
-    "Professor controls preserves the existing Showcase and Capability requests functions.",
-    "Responsive production smoke checks narrow phone, foldable/wider mobile, ordinary desktop and ultra-wide desktop using the shared browser harness.",
-    "Scientific/runtime, revision/Working-copy/autosave, sharing, Showcase, capability-request and collection semantics are unchanged.",
-    "The production repair aligns both application-shell and responsive smoke gates with the accepted three-destination navigation and waits for the initialized Experiment finder before viewport assertions.",
-    "Responsive smoke verifies metadata ownership inside the Current Experiment context block and the context-before-actions relationship, matching the implemented hierarchy without relying on a brittle nested-node ordering comparison.",
-    "The obsolete Showcase-era Current Experiment action wrapper is removed after its controls are relocated, leaving one authoritative action group for responsive hierarchy verification.",
-    "Any remaining legacy Current Experiment action children, including Organize, are migrated into the authoritative action group before the obsolete wrapper is removed.",
-    "Simulation Run/Pause/Restart/New seed/Fit controls keep a 44px minimum target at every viewport width, including foldable-width touch layouts, without device-specific sizing.",
-    "Edit Experiment Apply and artifact-tab controls keep a 44px minimum target at every viewport width, including foldable-width touch layouts, without device-specific sizing."
+    "Workspace navigation and primary card titles use the exact same labels: Control Panel, Simulation and Experiment Authoring.",
+    "Control Panel has one peer-level visible title; Current experiment remains an accessible inner region without competing as the card title.",
+    "Simulation removes the Simulation/Arena kicker-title pair and uses one Simulation title.",
+    "Experiment Authoring removes the Authoring/Experiment source kicker-title pair and uses one Experiment Authoring title.",
+    "Signed-out Control Panel hides the signed-in Save & share region and exposes a direct Sign In action beside the ordinary experiment actions.",
+    "Signed-in Control Panel preserves the existing Save & share functions.",
+    "Signed-out authentication defaults to Sign In with email and password only.",
+    "Create Account is an explicit second mode; first name and last name are visible only in that mode, with a direct return to Sign In.",
+    "Signed-out account navigation is labelled Sign In; signed-in navigation remains Account.",
+    "Production responsive smoke verifies workspace hierarchy on phone, foldable, desktop and ultra-wide viewports.",
+    "Production student-onboarding smoke verifies both Sign In and Create Account presentation without creating a real account.",
+    "Scientific runtime, authoring/compiler behavior, revisions, autosave, sharing semantics, Showcase and Professor functions are unchanged."
   ],
-  "close_issue": 449
+  "close_issue": 458
 }
