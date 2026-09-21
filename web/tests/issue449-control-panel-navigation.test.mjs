@@ -45,6 +45,9 @@ test("#449 gives Current Experiment one stable identity-to-action flow", () => {
   assert.match(management, /Supervised · /);
   assert.doesNotMatch(management, /setText\(origin, "My Experiment"\)/);
   assert.doesNotMatch(management, /experiment-current-toolbar/);
+  assert.match(management, /currentMain\.querySelector\("\.experiment-current-actions"\)/);
+  assert.match(management, /legacyCurrentActions\?\.childElementCount === 0/);
+  assert.match(management, /legacyCurrentActions\.remove\(\)/);
 });
 
 test("#449 renames the role-based Professor section without changing its functions", () => {

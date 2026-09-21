@@ -382,6 +382,8 @@ function buildProfessorSection() {
   showcaseActions.className = "experiment-professor-actions";
   showcaseLauncher.textContent = "Browse";
   showcaseActions.append(showcaseLauncher, promote);
+  const legacyCurrentActions = currentMain.querySelector(".experiment-current-actions");
+  if (legacyCurrentActions?.childElementCount === 0) legacyCurrentActions.remove();
   showcaseGroup.append(showcaseTitle, showcaseActions, curationStatus);
 
   const capabilityGroup = document.createElement("div");
