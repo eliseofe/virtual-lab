@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.resolve(here, "..");
@@ -11,6 +11,7 @@ const assetDir = path.join(dist, manifest.assetDir);
 for (const relative of [
   "main.js", "runtime-speed.js", "worker.js", "style.css", "ux-hardening.css", "ux-hardening.js",
   "workspace-shell.js", "student-registration.js", "student-onboarding.js",
+  "experiment-catalog.js", "catalog-workspace.js",
   "config/compiler.js", "initializer/compiler.js", "controller/compiler.js",
   "wasm/vlab_kernel.js", "wasm/vlab_kernel_bg.wasm",
   "react-migration-root.js", "react-migration-root.css",
@@ -29,19 +30,49 @@ if (index.includes('href="./ux-hardening.css"')) throw new Error("index still re
 if (index.includes('src="./runtime-speed.js"')) throw new Error("index still references unversioned runtime-speed.js");
 const main = await readFile(path.join(assetDir, "main.js"), "utf8");
 for (const required of [
+  'import "./catalog-workspace.js"',
+  "Grid: 1 unit",
+  "validateRuntimeValues(config.values)",
+]) if (!main.includes(required)) throw new Error(`missing generic startup marker: ${required}`);
+
+for (const forbidden of [
   "defaultConfigSource",
   "defaultInitializerSource",
+  "runtimeValuesForCurrentBuiltIn",
+  "kernel-probe",
+]) if (main.includes(forbidden)) throw new Error(`obsolete startup special case remains: ${forbidden}`);
+
+const catalogUrl = pathToFileURL(path.join(assetDir, "experiment-catalog.js")).href;
+const { DEFAULT_CATALOG_EXPERIMENT, catalogSelectValue } = await import(catalogUrl);
+if (DEFAULT_CATALOG_EXPERIMENT?.key !== "active-elastic") throw new Error("default catalog Experiment is not Active Elastic");
+if (catalogSelectValue(DEFAULT_CATALOG_EXPERIMENT.key) !== "catalog:active-elastic") throw new Error("default catalog source identity is unstable");
+const byArtifactId = new Map((DEFAULT_CATALOG_EXPERIMENT.artifacts ?? []).map((artifact) => [artifact.id, artifact.content]));
+for (const id of ["configuration", "initialization", "controller", "metrics"]) {
+  if (!byArtifactId.get(id)) throw new Error(`default catalog Experiment is missing ${id}`);
+}
+const editableConfig = byArtifactId.get("configuration");
+for (const required of [
   'INITIALIZATION_METHOD = "hexagon_perturbed"',
   "ARENA_SIZE = 10.0",
   "CONTROL_DT = 0.1",
   "INITIAL_POSITION_NOISE = 0.0",
   "EXPERIMENT_DURATION = 25000.0",
-  "Grid: 1 unit",
+  "INTERACTION_RADIUS = PROXIMAL_RANGE",
+  "MAX_FORWARD_SPEED = U",
+  "MAX_ANGULAR_SPEED = OMEGA_MAX",
+]) if (!editableConfig.includes(required)) throw new Error(`default catalog configuration is missing: ${required}`);
+
+const initializer = byArtifactId.get("initialization");
+for (const required of [
   "def hexagon_perturbed(config, rng, place):",
   "def random_uniform(config, rng, place):",
+]) if (!initializer.includes(required)) throw new Error(`default catalog initialization is missing: ${required}`);
+
+const controller = byArtifactId.get("controller");
+for (const required of [
   "sigma_lj = DESIRED_DISTANCE / pow(2.0, 1.0 / POTENTIAL_ALPHA)",
   "forward = K1 * dot(proximal, obs.heading) + U",
-]) if (!main.includes(required)) throw new Error(`missing startup default: ${required}`);
+]) if (!controller.includes(required)) throw new Error(`default catalog controller is missing: ${required}`);
 
 const reactRoot = await readFile(path.join(assetDir, "react-migration-root.js"), "utf8");
 for (const required of [
@@ -78,9 +109,6 @@ for (const required of [
   throw new Error(`built student-registration path is incomplete: ${required}`);
 }
 
-const configMatch = main.match(/const defaultConfigSource = `([\s\S]*?)`;\n/);
-if (!configMatch) throw new Error("built main.js does not contain defaultConfigSource");
-const editableConfig = configMatch[1];
 for (const removed of ["PHYSICS_DT", "METRIC_DT", "NEIGHBOUR_RADIUS", "K3", "WHEEL_BASE", "V0 = U", "SPRING_K"]) {
   if (editableConfig.includes(removed)) throw new Error(`student config still exposes removed parameter: ${removed}`);
 }
