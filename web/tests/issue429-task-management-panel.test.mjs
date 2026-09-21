@@ -17,7 +17,7 @@ test("#429 global ribbon is product identity plus the three workspace destinatio
   assert.match(react, /Swarm robotics/);
   assert.match(react, /'control-panel', '#control-panel', 'Control Panel'/);
   assert.match(react, /'simulation', '#simulation', 'Simulation'/);
-  assert.match(react, /'edit-experiment', '#authoring-workbench', 'Edit Experiment'/);
+  assert.match(react, /'edit-experiment', '#authoring-workbench', 'Experiment Authoring'/);
   assert.match(react, /data-vlab-nav="account"/);
   assert.match(onboarding, /"data-vlab-nav": "help"/);
   assert.match(react, /data-vlab-nav="help-mobile">Help/);
@@ -36,10 +36,10 @@ test("#429 navigation lands on precise Control Panel, Simulation and Edit Experi
   assert.doesNotMatch(react, /scrollTo\('#live-results'\)/);
 });
 
-test("#429 Experiment management is one accessible task-based Control Panel without a duplicate visible title", () => {
-  assert.match(management, /experimentPanel\.setAttribute\("aria-label", "Control Panel"\)/);
-  assert.doesNotMatch(management, /experiment-control-kicker|experiment-control-title|title\.textContent = "Control panel"/);
-  assert.match(management, /taskHeading\("Current Experiment"/);
+test("#429 Experiment management is one accessible task-based Control Panel", () => {
+  assert.match(management, /panelTitle\.textContent = "Control Panel"/);
+  assert.match(management, /experimentPanel\.setAttribute\("aria-labelledby", panelTitle\.id\)/);
+  assert.doesNotMatch(management, /experiment-control-kicker|experiment-control-title|taskHeading\("Current Experiment"\)/);
   assert.match(management, /taskHeading\("Revisions"/);
   assert.match(management, /taskHeading\("Save & share"/);
   assert.match(management, /experiment-control-grid/);
