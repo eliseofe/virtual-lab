@@ -88,7 +88,7 @@ test("#375 stable authoring contract no longer carries the current capability in
 });
 
 test("#375 implemented capabilities own typed concrete authoring surfaces", () => {
-  assert.equal(CANONICAL_CAPABILITY_BINDINGS.length, 12);
+  assert.equal(CANONICAL_CAPABILITY_BINDINGS.length, 13);
   assert.equal(browserBindings, edgeBindings, "browser and edge capability surfaces must remain byte-identical");
 
   const surfaces = CANONICAL_CAPABILITY_BINDINGS.flatMap((binding) =>
@@ -142,19 +142,19 @@ test("#375 unsupported observation remains blocked as a semantic capability", ()
   assert.equal(result.diagnostics[0].request_class, "semantic_capability");
 });
 
-test("#375 controller RNG stays behind the wall because no implemented controller RNG capability exists", () => {
+test("#375 implemented controller RNG capability is resolved through the capability registry", () => {
   const result = validateExperimentSources({
     ...FIXTURE,
     controller_source: `class Probe(Agent):
     def step(self, obs):
-        x = rng.uniform(0.0, 1.0)
-        return Motion(x, 0.0)
+        if rng.bernoulli(0.5):
+            turn = rng.normal(0.0, 0.2)
+        else:
+            turn = rng.uniform(-0.2, 0.2)
+        return Motion(0.5, turn)
 `,
   });
-  assert.equal(result.valid, false);
-  assert.equal(result.diagnostics[0].category, "unsupported-capability");
-  assert.equal(result.diagnostics[0].diagnostic_class, "semantic_capability");
-  assert.equal(result.diagnostics[0].request_class, "semantic_capability");
+  assert.equal(result.valid, true, JSON.stringify(result, null, 2));
 });
 
 test("#375 true host security remains a separate forbidden boundary", () => {
@@ -192,7 +192,7 @@ test("#375 neutral MCP discovery keeps contract and capabilities separate but jo
   assert.match(mcp, /authoring_surfaces: binding\?\.surfaces \?\? \[\]/);
   assert.match(mcp, /capability_registry: discoverableCapabilityRegistry/);
   assert.doesNotMatch(mcp, /AUTHORING_CONTRACT\.canonical_capability_bindings/);
-  assert.match(versions, /MCP_SERVER_VERSION = '3\.14\.0'/);
+  assert.match(versions, /MCP_SERVER_VERSION = '3\.15\.0'/);
   assert.match(versions, /MCP_INTERFACE_VERSION = '17'/);
   assert.match(versions, /contract_version: 'vlab\.authoring\/0\.9'/);
 });

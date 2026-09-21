@@ -66,7 +66,7 @@ test("#373 generalized candidates remain unavailable to controller authoring", (
   const result = validateExperimentSources({
     config_source: "N = 1\nARENA_SIZE = 10.0\nCONTROL_DT = 0.1\nSENSOR_NOISE = 0.0\nEXPERIMENT_DURATION = 1.0\nINTERACTION_RADIUS = 2.0\nMAX_FORWARD_SPEED = 1.0\nMAX_ANGULAR_SPEED = 1.0\n",
     initializer_source: "def initialize(config, rng, place):\n    place(0, 0.0, 0.0, 0.0)\n",
-    controller_source: "class Probe(Agent):\n    def step(self, obs):\n        x = rng.uniform(0.0, 1.0)\n        return Motion(x, 0.0)\n",
+    controller_source: "class Probe(Agent):\n    def step(self, obs):\n        x = obs.target_relative_position\n        return Motion(0.0, 0.0)\n",
     metrics_source: "",
   });
   assert.equal(result.valid, false);
@@ -74,7 +74,7 @@ test("#373 generalized candidates remain unavailable to controller authoring", (
 });
 
 test("#373 versions discovery without changing the nine-tool or authoring contract", () => {
-  assert.match(versions, /MCP_SERVER_VERSION = '3\.14\.0'/);
+  assert.match(versions, /MCP_SERVER_VERSION = '3\.15\.0'/);
   assert.match(versions, /MCP_INTERFACE_VERSION = '17'/);
   assert.match(versions, /contract_version: 'vlab\.authoring\/0\.9'/);
   assert.match(versions, /capability_request_interface: 'vlab\.capability-request\/8'/);

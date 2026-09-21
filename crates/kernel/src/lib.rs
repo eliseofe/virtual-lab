@@ -101,6 +101,7 @@ pub trait NeighbourIndex {
     );
 }
 pub trait ControllerRuntime {
+    fn set_run_seed(&mut self, _seed: u32) {}
     fn reset(&mut self, agent_count: usize);
     fn reset_with_private_state(
         &mut self,
@@ -384,6 +385,7 @@ impl<C: ControllerRuntime> Simulation<C> {
         if controller_private_state.len() != initialization.state.len() {
             return Err("controller private-state profile count must match initial agent count".to_owned());
         }
+        controller.set_run_seed(config.seed);
         controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         let mut state = initialization.build_state();
         wrap_state(&mut state, config.arena_size);
@@ -444,6 +446,7 @@ impl<C: ControllerRuntime> Simulation<C> {
         if controller_private_state.len() != initialization.state.len() {
             return Err("controller private-state profile count must match initial agent count".to_owned());
         }
+        self.controller.set_run_seed(config.seed);
         self.controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         self.initialization = initialization;
         self.controller_private_state = controller_private_state;
@@ -468,6 +471,7 @@ impl<C: ControllerRuntime> Simulation<C> {
         if controller_private_state.len() != initialization.state.len() {
             return Err("controller private-state profile count must match initial agent count".to_owned());
         }
+        controller.set_run_seed(config.seed);
         controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         self.initialization = initialization;
         self.controller_private_state = controller_private_state;
@@ -481,6 +485,7 @@ impl<C: ControllerRuntime> Simulation<C> {
     }
 
     pub fn replace_controller(&mut self, mut controller: C) -> Result<(), String> {
+        controller.set_run_seed(self.config.seed);
         controller.reset_with_private_state(self.initialization.state.len(), &self.controller_private_state)?;
         self.controller = controller;
         self.reset();
@@ -499,6 +504,7 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.observation_scratch.environmental_scalar = None;
         self.observation_scratch.neighbours.clear();
         self.neighbour_indices_scratch.clear();
+        self.controller.set_run_seed(self.config.seed);
         self.controller
             .reset_with_private_state(self.state.len(), &self.controller_private_state)
             .expect("validated controller private-state initialization");

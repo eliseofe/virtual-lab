@@ -1,20 +1,20 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Scientific randomness now has one deterministic domain-separated foundation",
-  "owner_impact": "Virtual Lab now uses one documented SplitMix64-based scientific RNG contract. Existing seeded Initialization results are preserved bit-for-bit, while simulator sensing randomness has its own deterministic domain stream. Scientific domains cannot advance each other's random sequence, reset/replay reconstructs streams from the run seed, and the controller domain is reserved for the next stochastic-controller capability. This ticket does not yet let Controller code draw probabilities.",
+  "outcome": "Controllers can make reproducible probabilistic decisions with simulator-owned stochastic distributions",
+  "owner_impact": "Controller code can use rng.uniform(a, b), rng.bernoulli(p), and rng.normal(mean, stddev). Every agent receives its own deterministic stream derived from the Experiment run seed, so one agent's random draws cannot perturb another agent's sequence. Reset/replay reconstructs the exact streams. Raw RNG state, reseeding, and host-language randomness remain unavailable.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 306,
-    "text": "Next is controller stochasticity with generic deterministic probability/distribution primitives. It will use the controller domain established here so aggregation controllers can make reproducible probabilistic decisions without host random APIs. That successor has not started."
+    "kind": "scope_complete",
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The explicitly approved #57 deterministic-RNG/controller-stochasticity scope is complete with #305 plus #306 and #57 is being closed. The living Professor capability queue #58 remains open for unrelated research requests. No further development ticket is authorized in this owner turn. The next scientific action is to retry the first aggregation Experiment from Grok or Claude against the live Lab."
   },
   "technical_evidence": [
-    "RNG contract vlab.rng/splitmix64-domain/1 is implemented in byte-identical browser/edge JavaScript plus the Rust/WASM kernel.",
-    "Root seed 2026 has fixed cross-runtime conformance vectors for initialization, sensing and reserved controller streams.",
-    "Initialization stream index 0 intentionally preserves the historical root SplitMix64 sequence, keeping existing seeded initial conditions unchanged.",
-    "Sensing noise now uses its own derived stream; future per-agent controller streams have a reserved independently derived domain.",
-    "The worker reports the active RNG contract version from the WASM kernel; raw stream state is not exposed to authoring/UI.",
-    "Production Professor-review smoke now reads a live versioned DOM contract marker emitted by the deployed module instead of scraping/minifier-dependent JavaScript resource text.",
-    "Professor-review production smoke now waits with a finite deadline for the asynchronously loaded registry/Professor module before checking its live contract, distinguishing legitimate module latency from a true load failure."
+    "Capability controller.stochastic_distributions owns the three Controller surfaces rng.uniform, rng.bernoulli and rng.normal under vlab.controller-stochasticity/1.",
+    "Browser and MCP controller compilers remain byte-identical and lower dotted stochastic calls into the existing typed vlab.controller-ir/0.1 call representation.",
+    "Rust/WASM executes stochastic calls from one vlab.rng/splitmix64-domain/1 controller stream per stable agent index, derived from the run SEED.",
+    "Reset recreates every per-agent controller stream; draw-count independence across agents and seed sensitivity are covered by Rust runtime regressions.",
+    "The capability protocol publishes distribution semantics, draw counts, RNG contract version and per-agent stream scope while raw stream access and reseeding remain forbidden.",
+    "MCP server version advances to 3.15.0 with interface 17, authoring contract 0.9, capability-request interface 8 and the same nine MCP tools."
   ],
-  "close_issue": 305
+  "close_issue": 306
 }

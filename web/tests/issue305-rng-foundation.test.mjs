@@ -112,5 +112,5 @@ test("#305 kernel exposes the active RNG contract without exposing raw streams",
   assert.match(worker, /rngContractVersion: wasm\.rng_contract_version\(\)/);
   assert.doesNotMatch(worker, /next_u64|derive_scientific_stream_seed|ScientificRng/);
   assert.match(doc, /Rendering, UI behavior, transport, metrics presentation/);
-  assert.match(doc, /controller.*reserved/i);
+  assert.match(doc, /controller.*per-agent/i);
 });

@@ -14,7 +14,7 @@ Current domains:
 
 - `initialization` — Initialization artifact `rng.uniform(...)`;
 - `sensing` — simulator-owned sensing noise;
-- `controller` — reserved by this contract for controller stochasticity; no controller RNG API is exposed by the current ticket.
+- `controller` — per-agent Controller stochasticity through the implemented `vlab.controller-stochasticity/1` distribution surface.
 
 Additional domains may be added only by versioned simulator code. Rendering, UI behavior, transport, metrics presentation, and other non-scientific activity must not consume scientific RNG streams.
 
@@ -39,7 +39,7 @@ For contract v1:
 
 This means the sensing stream changes at the v1 cutover because the previous implementation reused the root SplitMix64 stream independently for both initialization and sensing. The new sensing sequence is intentionally distinct. Initialization is unchanged.
 
-The `controller` domain is already reserved so the controller-stochasticity capability can later allocate independent per-agent streams without changing this foundation contract.
+The `controller` domain allocates one stream per agent. Stream index equals the stable zero-based agent index for the run. This keeps agents independent: changing the number of controller draws made by one agent cannot change any other agent's sequence.
 
 ## Conformance vectors
 
@@ -49,8 +49,8 @@ For root seed `2026`:
 | --- | --- | --- |
 | initialization / 0 | `0x00000000000007EA` | `DB9C559891948D23`, `78BC927DED35455D`, `AAD71E75CDE2B88E` |
 | sensing / 0 | `0x47FDC51ABF391476` | `ACB00A4D94376943`, `D1950AA56F146E6C`, `A1739EB99746500B` |
-| controller / 0 | `0x9D24ED0D15C2C6F3` | reserved |
-| controller / 1 | `0x90AA42631D02B494` | reserved |
+| controller / 0 | `0x9D24ED0D15C2C6F3` | per-agent controller stream 0 |
+| controller / 1 | `0x90AA42631D02B494` | per-agent controller stream 1 |
 
 The browser and Rust test suites enforce these values.
 
