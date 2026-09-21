@@ -1,12 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.111.0";
 import { applyExperimentArtifacts, captureExperimentArtifacts } from "./experiment-artifacts.js";
+import { isCatalogSelectValue } from "./experiment-catalog.js";
 
 const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYbJUyik9zN7WA_r4ie2P5d";
 const AUTH_STORAGE_KEY = "vlab-production-registry-auth-v1";
 const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 const SHOWCASE_QUERY = "showcase";
-const CATALOG_SOURCE_PREFIX = "catalog:";
 const REGISTRY_SCHEMA_VERSION = "vlab.registry-experiment/3";
 const ARTIFACT_INTERFACE_VERSION = "vlab.experiment-artifacts/3";
 
@@ -194,12 +194,11 @@ function currentRegistryId() {
 }
 
 function currentCatalogSource() {
-  if (currentRegistryId()) return null;
   const value = experimentSelect.value?.trim();
-  if (!value) return null;
+  if (!isCatalogSelectValue(value)) return null;
   return {
-    key: `${CATALOG_SOURCE_PREFIX}${value}`,
-    title: experimentSelect.selectedOptions?.[0]?.textContent?.trim() || value,
+    key: value,
+    title: experimentSelect.selectedOptions?.[0]?.textContent?.replace(/\s+·\s+Showcase$/, "")?.trim() || value,
   };
 }
 
@@ -486,7 +485,7 @@ async function waitForRegistryReady() {
 }
 
 async function forceCatalogWorkspace() {
-  const catalog = [...experimentSelect.options].find((option) => !option.value.startsWith("registry:"));
+  const catalog = [...experimentSelect.options].find((option) => isCatalogSelectValue(option.value));
   if (!catalog) return;
   if (experimentSelect.value !== catalog.value) {
     experimentSelect.value = catalog.value;
