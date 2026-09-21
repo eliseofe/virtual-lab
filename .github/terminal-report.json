@@ -1,18 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Authenticated MCP workspace discovery can validate the implemented heterogeneous-initialization capability again",
-  "owner_impact": "Research AI can discover the Virtual Lab workspace without the canonical-capability consistency guard failing on missing bibliography for heterogeneous per-agent initialization. The repair restores only the exact preserved source publication for that already-implemented capability. It does not approve, reject, generalize, or implement any pending capability request.",
+  "outcome": "Capability closure now rejects incomplete or lossy request evidence instead of silently accepting it",
+  "owner_impact": "When the research AI identifies clear unsupported requirements, each one must now be accounted for by a new or reused candidate before the closure can commit. One reused candidate can cover several requirements in one grouped link, but repeating the same candidate in separate links is rejected before evidence can be silently lost. Unchanged requirements may retain valid historical links, while changed or new requirements need explicit routing. Ambiguous requirements can still remain unresolved without creating requests. This changes request integrity only; it does not approve, reject, merge, generalize, or scientifically validate Sergio's pending requests.",
   "next": {
     "kind": "epic_continues",
-    "issue": 466,
-    "text": "Next is #466 — enforce complete and lossless capability-request evidence. That repair will harden closure coverage and grouped candidate reuse without making any scientific judgment about Sergio's pending requests. It has not started yet."
+    "issue": 465,
+    "text": "Next is the blocked-Experiment revision-snapshot repair: make capability closure preserve the exact Experiment revision it came from, so continuing a newer revision cannot silently reuse an older snapshot. It has not started yet."
   },
   "technical_evidence": [
-    "The production canonical capability initialization.per_agent_private_state_assignment existed as implemented but had no publication-provenance row before this repair.",
-    "The repair derives provenance from the unique implemented request already bound to initialization.per_agent_private_state_assignment; it embeds no generated request ID and fails rather than guessing if the bound implementation source is absent or ambiguous.",
-    "Existing bibliography is preserved; the migration is idempotent and does not weaken the MCP canonical-capability consistency guard.",
-    "Regression coverage reproduces the missing-provenance discovery failure and proves that restored provenance satisfies the unchanged consistency guard.",
-    "No capability/request lifecycle, RLS, Experiment content, authoring semantics, or pending scientific request status is changed."
+    "Coverage is enforced by a deferred database constraint after request/evidence writes, so an uncovered clear requirement aborts the whole transaction rather than leaving partial rows.",
+    "Coverage may inherit evidence only from the same blocked Experiment when requirement key, summary, and clear resolution are unchanged and the linked request remains in the durable active/historical candidate catalog.",
+    "The structured candidate converter rejects repeated existing_request_id entries before writes; callers must group all requirement_keys for one reused candidate into one evidence link.",
+    "Ambiguity-only analyses require no request evidence and therefore do not manufacture capability requests.",
+    "The existing submit/revalidate RPC implementations are intentionally not replaced in this ticket; revision-snapshot and shared-readback behavior remain separate successor repairs.",
+    "A real PostgreSQL regression runs automatically under the existing web test glob and covers rollback, grouped reuse, retained historical coverage, changed/new requirements, ambiguity-only closure, and duplicate reuse rejection."
   ],
-  "close_issue": 467
+  "close_issue": 466
 }
