@@ -103,7 +103,8 @@ async function structure(send) {
         browseInTitleRow: Boolean(document.querySelector('.experiment-current-main .experiment-browse')),
         browsePrimary: Boolean(browse?.classList.contains('primary')),
         currentTitleBeforeMeta: before(document.querySelector('.experiment-current-main'), document.querySelector('.experiment-current-meta')),
-        metaBeforeActions: before(document.querySelector('.experiment-current-meta'), document.querySelector('.experiment-current-actions')),
+        metaInContext: Boolean(document.querySelector('.experiment-current-context')?.contains(document.querySelector('.experiment-current-meta'))),
+        contextBeforeActions: before(document.querySelector('.experiment-current-context'), document.querySelector('.experiment-current-actions')),
         duplicateControlHeading: Boolean(document.querySelector('.experiment-control-head, .experiment-control-title, .experiment-control-kicker')),
         panelLabel: experiment?.getAttribute('aria-label') ?? null,
         statusText: document.querySelector('.experiment-management-status')?.textContent?.trim() ?? '',
@@ -204,7 +205,8 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
     || state.experimentManagement.browseInTitleRow
     || !state.experimentManagement.browsePrimary
     || !state.experimentManagement.currentTitleBeforeMeta
-    || !state.experimentManagement.metaBeforeActions
+    || !state.experimentManagement.metaInContext
+    || !state.experimentManagement.contextBeforeActions
   ) {
     throw new Error(`${label}: Current Experiment hierarchy regressed: ${JSON.stringify(state.experimentManagement)}`);
   }
