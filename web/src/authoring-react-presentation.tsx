@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Badge, Button, Group, Paper, Stack, Title } from '@mantine/core';
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -67,10 +67,7 @@ export function AuthoringPresentation() {
   const header = createPortal(
     <Paper className="vlab-react-authoring-head" radius="md" p="md" data-vlab-react-authoring="mounted">
       <Group justify="space-between" align="flex-start" gap="md" className="vlab-react-authoring-head-layout">
-        <Box>
-          <Text size="xs" fw={800} tt="uppercase" c="cyan.8" lts="0.12em">Authoring</Text>
-          <Title id="vlab-react-authoring-heading" order={2} size="h3">Experiment source</Title>
-        </Box>
+        <Title id="vlab-react-authoring-heading" order={2} size="h3" className="vlab-workspace-card-title">Experiment Authoring</Title>
         <Stack gap={8} align="flex-end" className="vlab-react-authoring-actions">
           <Badge color={statusColor(snapshot.statusState)} variant="light" className="vlab-react-authoring-status">
             {snapshot.statusText}
