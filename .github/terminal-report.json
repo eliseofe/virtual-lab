@@ -1,20 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Controllers can make reproducible probabilistic decisions with simulator-owned stochastic distributions",
-  "owner_impact": "Controller code can use rng.uniform(a, b), rng.bernoulli(p), and rng.normal(mean, stddev). Every agent receives its own deterministic stream derived from the Experiment run seed, so one agent's random draws cannot perturb another agent's sequence. Reset/replay reconstructs the exact streams. Raw RNG state, reseeding, and host-language randomness remain unavailable.",
+  "outcome": "Active Elastic is a normal Showcase/catalog Experiment instead of a privileged Built-in execution path",
+  "owner_impact": "The canonical Active Elastic example keeps the same scientific controller, initialization, runtime values and live metrics, but the Lab now loads it through the generic Experiment catalog/artifact path. Built-in-specific registry state, save/copy compatibility, result identity and Metrics injection are removed.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The explicitly approved #57 deterministic-RNG/controller-stochasticity scope is complete with #305 plus #306 and #57 is being closed. The living Professor capability queue #58 remains open for unrelated research requests. No further development ticket is authorized in this owner turn. The next scientific action is to retry the first aggregation Experiment from Grok or Claude against the live Lab."
+    "kind": "epic_continues",
+    "issue": 483,
+    "text": "Epic continues with #483 — Product Design: coherent scalable Experiment Library. That design-only ticket will start in a later owner turn and will define the final Showcase / Mine / Shared / Supervised library navigation before #480 implements it."
   },
   "technical_evidence": [
-    "Capability controller.stochastic_distributions owns the three Controller surfaces rng.uniform, rng.bernoulli and rng.normal under vlab.controller-stochasticity/1.",
-    "Browser and MCP controller compilers remain byte-identical and lower dotted stochastic calls into the existing typed vlab.controller-ir/0.1 call representation.",
-    "Rust/WASM executes stochastic calls from one vlab.rng/splitmix64-domain/1 controller stream per stable agent index, derived from the run SEED.",
-    "Reset recreates every per-agent controller stream; draw-count independence across agents and seed sensitivity are covered by Rust runtime regressions.",
-    "The capability protocol publishes distribution semantics, draw counts, RNG contract version and per-agent stream scope while raw stream access and reseeding remain forbidden.",
-    "MCP server version advances to 3.15.0 with interface 17, authoring contract 0.9, capability-request interface 8 and the same nine MCP tools."
+    "The browser bootstrap uses a generic Experiment catalog descriptor containing Configuration, Initialization, Controller and Metrics artifacts.",
+    "Active Elastic configuration now exposes the generic runtime contract aliases INTERACTION_RADIUS, MAX_FORWARD_SPEED and MAX_ANGULAR_SPEED with values identical to the previous browser-only compatibility mapping.",
+    "Registry/current-source state uses explicit catalog source identity rather than null/builtin semantics.",
+    "Metrics load through the generic artifact application path; the dedicated Active Elastic Metrics installer modules are removed.",
+    "Local result provenance records stable catalog source identity instead of the synthetic builtin ID.",
+    "Showcase catalog source identity is normalized to catalog:active-elastic while retaining the generic Showcase source-key mechanism."
   ],
-  "close_issue": 306
+  "close_issue": 481
 }
