@@ -51,8 +51,9 @@ test("#430 preserves role and publication semantics in authoritative modules", (
   assert.match(inbox, /professor-pending-count/);
 });
 
-test("#430 responsive verification waits for the reloaded document before asserting mobile UI", () => {
-  assert.match(responsive, /function waitForFreshDocument/);
-  assert.match(responsive, /__vlabResponsiveSmokeReloadToken/);
-  assert.match(responsive, /await waitForFreshDocument\(cdp\.send, mobileReloadToken\)/);
+test("#430 responsive verification covers the accepted viewport classes", () => {
+  assert.match(responsive, /label: "desktop", width: 1366/);
+  assert.match(responsive, /label: "ultra-wide", width: 1920/);
+  assert.match(responsive, /label: "foldable", width: 820/);
+  assert.match(responsive, /label: "mobile", width: 390/);
 });
