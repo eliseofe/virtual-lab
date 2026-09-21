@@ -233,10 +233,10 @@ fn periodic_query_centers(value: f64, radius: f64, arena_size: f64) -> Vec<f64> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BruteForceNeighbourIndex, DeterministicRng, Vec2};
+    use crate::{BruteForceNeighbourIndex, ScientificRng, Vec2, RNG_DOMAIN_INITIALIZATION};
 
     fn random_state(arena_size: f64, count: usize, seed: u32) -> Vec<AgentPhysicalState> {
-        let mut rng = DeterministicRng::new(seed);
+        let mut rng = ScientificRng::for_domain(seed, RNG_DOMAIN_INITIALIZATION, 0).unwrap();
         let half = arena_size / 2.0;
         (0..count)
             .map(|_| AgentPhysicalState {
