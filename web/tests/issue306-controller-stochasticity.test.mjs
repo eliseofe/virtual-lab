@@ -4,7 +4,6 @@ import test from "node:test";
 
 import { compileController, ControllerCompileError } from "../src/controller/compiler.js";
 import { IMPLEMENTED_CAPABILITY_BINDINGS } from "../src/capability-bindings.js";
-import { AUTHORING_CONTRACT } from "../../supabase/functions/experiment-mcp/authoring.js";
 
 const browserCompiler = readFileSync(new URL("../src/controller/compiler.js", import.meta.url), "utf8");
 const edgeCompiler = readFileSync(
@@ -74,14 +73,19 @@ test("#306 stochastic intrinsics keep strict type and capability walls", () => {
   );
 });
 
-test("#306 authoring contract freezes distribution and stream semantics", () => {
-  const stochasticity = AUTHORING_CONTRACT.artifacts.controller.stochasticity;
-  assert.equal(stochasticity.contract_version, "vlab.controller-stochasticity/1");
-  assert.equal(stochasticity.rng_contract_version, "vlab.rng/splitmix64-domain/1");
-  assert.match(stochasticity.stream_model, /One simulator-owned deterministic controller RNG stream per agent/);
-  assert.match(stochasticity.distributions["rng.uniform"], /exactly one/);
-  assert.match(stochasticity.distributions["rng.bernoulli"], /exactly one/);
-  assert.match(stochasticity.distributions["rng.normal"], /exactly two/);
-  assert.match(stochasticity.ownership_boundary, /cannot read raw stream state/);
+test("#306 capability protocol freezes distribution and stream semantics", () => {
+  const binding = IMPLEMENTED_CAPABILITY_BINDINGS.find(
+    (item) => item.capability_key === "controller.stochastic_distributions",
+  );
+  assert.ok(binding);
+  const bySymbol = new Map(binding.surfaces.map((surface) => [surface.symbol, surface]));
+  for (const symbol of ["rng.uniform", "rng.bernoulli", "rng.normal"]) {
+    assert.equal(bySymbol.get(symbol).contract_version, "vlab.controller-stochasticity/1");
+    assert.equal(bySymbol.get(symbol).rng_contract_version, "vlab.rng/splitmix64-domain/1");
+    assert.match(bySymbol.get(symbol).stream_scope, /per-agent deterministic stream/);
+  }
+  assert.match(bySymbol.get("rng.uniform").distribution_semantics, /exactly one/);
+  assert.match(bySymbol.get("rng.bernoulli").distribution_semantics, /exactly one/);
+  assert.match(bySymbol.get("rng.normal").distribution_semantics, /exactly two/);
   assert.match(rngDoc, /Stream index equals the stable zero-based agent index/);
 });
