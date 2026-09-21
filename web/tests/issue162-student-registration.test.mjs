@@ -7,7 +7,7 @@ const shell = readFileSync(new URL('../src/workspace-shell.js', import.meta.url)
 
 test('student registration is exposed without taking over the authoritative login session', () => {
   assert.match(registration, /auth\.signUp\(/);
-  assert.match(registration, /Create account/);
+  assert.match(registration, /Create Account/);
   assert.match(registration, /persistSession:\s*false/);
   assert.match(registration, /detectSessionInUrl:\s*false/);
   assert.doesNotMatch(registration, /service_role|sb_secret_/i);
