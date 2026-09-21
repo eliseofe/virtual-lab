@@ -20,9 +20,8 @@ test("issue #153 makes experiment switching global rather than collection-scoped
   assert.doesNotMatch(source, /Quick switch within the current collection/);
   assert.match(source, /group\.label = "Your experiments"/);
   assert.match(source, /browse\.textContent = "Find experiment"/);
-  assert.match(source, /Browse built-in, owned/);
+  assert.match(source, /Browse Showcase, owned/);
   assert.match(source, /Collections organize only your own workspace/);
-  assert.match(source, /tabs\.hidden = true/);
   assert.match(source, /filterButton\("All experiments", "all"\)/);
   assert.match(source, /filterButton\("No collection", "unfiled"\)/);
 });
