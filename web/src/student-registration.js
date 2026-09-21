@@ -68,6 +68,7 @@ const actions = document.createElement("div");
 actions.className = "registry-auth-actions";
 
 signIn.textContent = "Sign In";
+signIn.setAttribute("data-vlab-sign-in", "true");
 
 const createMode = document.createElement("button");
 createMode.type = "button";
