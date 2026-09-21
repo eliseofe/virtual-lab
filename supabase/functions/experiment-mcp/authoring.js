@@ -91,7 +91,18 @@ export const AUTHORING_CONTRACT = Object.freeze({
         max: ["scalar", "scalar"]
       },
       exponentiation_operator: "**",
-      capability_resolution: "Observation fields, neighbour fields, private state and action constructors are resolved from implemented capability authoring surfaces. A surface absent from the implemented registry is rejected.",
+      stochasticity: {
+        contract_version: "vlab.controller-stochasticity/1",
+        rng_contract_version: "vlab.rng/splitmix64-domain/1",
+        stream_model: "One simulator-owned deterministic controller RNG stream per agent, derived from the run SEED using the controller domain and stable agent index. Reset/replay reconstructs the exact streams; draw counts for one agent do not advance another agent's stream.",
+        distributions: {
+          "rng.uniform": "rng.uniform(a, b) -> scalar in [a, b) for finite b >= a; consumes exactly one controller-stream draw.",
+          "rng.bernoulli": "rng.bernoulli(p) -> bool for finite p in [0, 1]; consumes exactly one controller-stream draw.",
+          "rng.normal": "rng.normal(mean, stddev) -> scalar using Box-Muller for finite mean and finite non-negative stddev; consumes exactly two controller-stream draws."
+        },
+        ownership_boundary: "Authored Controller code may call only implemented stochastic distribution primitives. It cannot read raw stream state, reseed, advance arbitrary streams, or use host-language/global random APIs."
+      },
+      capability_resolution: "Observation fields, neighbour fields, private state, stochastic intrinsics and action constructors are resolved from implemented capability authoring surfaces. A surface absent from the implemented registry is rejected.",
       security_boundary: {
         forbidden_host_roots: ["filesystem", "network"]
       }
