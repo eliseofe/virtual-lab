@@ -40,12 +40,12 @@ function nowIso() { return new Date().toISOString(); }
 
 function currentExperiment() {
   const select = document.querySelector("#experiment-select");
-  const value = select?.value ?? "builtin";
+  const value = select?.value ?? "unknown";
   const title = document.querySelector(".experiment-current-title")?.textContent?.trim()
     || select?.selectedOptions?.[0]?.textContent?.trim()
     || "Experiment";
   return {
-    id: value.startsWith("registry:") ? value.slice("registry:".length) : "builtin",
+    id: value.startsWith("registry:") ? value.slice("registry:".length) : value,
     title,
     revision: document.querySelector(".metadata-panel .panel-heading strong")?.textContent?.trim() ?? null,
     build: document.querySelector('meta[name="vlab-build"]')?.content ?? "development",
