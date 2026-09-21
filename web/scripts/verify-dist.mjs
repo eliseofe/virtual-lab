@@ -68,10 +68,12 @@ if (!workspaceShell.includes('import "./student-registration.js"')) {
 }
 const studentRegistration = await readFile(path.join(assetDir, "student-registration.js"), "utf8");
 for (const required of [
-  "Create account",
+  "Sign In",
+  "Create Account",
+  "data-vlab-create-account-mode",
   "data-vlab-create-account",
+  "data-vlab-back-to-sign-in",
   "signupClient.auth.signUp",
-  "Sign in or create account",
 ]) if (!studentRegistration.includes(required)) {
   throw new Error(`built student-registration path is incomplete: ${required}`);
 }
