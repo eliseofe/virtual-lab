@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [react, chrome, management, index, responsive] = await Promise.all([
+const [react, chrome, management, index, responsive, simulationCss] = await Promise.all([
   readFile(new URL("../src/react-migration-root.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/react-chrome.css", import.meta.url), "utf8"),
   readFile(new URL("../src/experiment-management.js", import.meta.url), "utf8"),
   readFile(new URL("../src/index.html", import.meta.url), "utf8"),
   readFile(new URL("../scripts/responsive-smoke.mjs", import.meta.url), "utf8"),
+  readFile(new URL("../src/simulation-react.css", import.meta.url), "utf8"),
 ]);
 
 test("#449 restores the accepted three-destination workspace navigation", () => {
@@ -26,6 +27,10 @@ test("#449 keeps workspace navigation visible and coherent rather than phone-spe
   assert.match(chrome, /@media \(max-width: 74\.99em\)[\s\S]*\.vlab-react-nav \{[\s\S]*grid-column: 1 \/ -1/);
   assert.doesNotMatch(react, /visibleFrom="lg" className="vlab-react-nav"/);
   assert.match(react, /aria-label="Open utilities"/);
+});
+
+test("#449 keeps Simulation touch targets accessible without device-specific breakpoints", () => {
+  assert.match(simulationCss, /\[data-vlab-simulation-action\],[\s\S]*\[data-vlab-simulation-fit\] \{[\s\S]*min-height: 44px/);
 });
 
 test("#449 removes the duplicate Control Panel heading and preserves accessible naming", () => {
