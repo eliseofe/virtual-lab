@@ -10,7 +10,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.13.0`
+- MCP server: `3.13.1`
 - interface: `17`
 - authoring contract: `vlab.authoring/0.9`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -115,7 +115,7 @@ relevant extension later becomes available
     -> become unblocked only when no unsupported requirement or unresolved scientific ambiguity remains
 ```
 
-A Student can resume/revalidate their own blocked Experiment. A Professor has the same scientific blocking semantics and may additionally resume/revalidate visible blocked Experiments for supervision. Professor alone owns queue-wide approve/decline triage; that role distinction does not change what counts as supported or unsupported science.
+Resume readback treats the caller-visible closure evidence as authoritative membership. If RLS correctly hides another requester's private request row, an evidence-linked shared candidate is reconstructed from the same sanitized candidate fields exposed by neutral workspace discovery; requester identity, private draft/context, notes, and publication provenance are not synthesized or exposed. Evidence without any readable request/candidate metadata still remains visible as an unresolved linked ID rather than disappearing. Candidate presence remains unavailable to authoring/validation.\n\nA Student can resume/revalidate their own blocked Experiment. A Professor has the same scientific blocking semantics and may additionally resume/revalidate visible blocked Experiments for supervision. Professor alone owns queue-wide approve/decline triage; that role distinction does not change what counts as supported or unsupported science.
 
 Each clear request is classified as exactly one of:
 - `semantic_capability`;
@@ -167,4 +167,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 versions the connector to server `3.13.0`, interface `17`, request interface `vlab.capability-request/7`, adding Professor-controlled candidate generalization metadata without changing `vlab.authoring/0.9` or the nine-tool surface.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 established Professor-controlled candidate generalization metadata at server `3.13.0`. The capability-request integrity repairs then made clear-requirement evidence lossless, preserved exact blocked-Experiment revision snapshots, and patched shared-candidate resume readback at server `3.13.1`, without changing interface `17`, request interface `vlab.capability-request/7`, `vlab.authoring/0.9`, or the nine-tool surface.
