@@ -10,14 +10,14 @@ const [management, showcase, inbox, react, responsive] = await Promise.all([
   readFile(new URL("../scripts/responsive-smoke.mjs", import.meta.url), "utf8"),
 ]);
 
-test("#430 replaces the temporary bridge with one Professor-only research-curation section", () => {
+test("#430 replaces the temporary bridge with one Professor-only Professor controls section", () => {
   assert.match(management, /experiment-professor-section/);
-  assert.match(management, /taskHeading\("Research curation"\)/);
+  assert.match(management, /taskHeading\("Professor controls"\)/);
   assert.match(management, /professorSection\.region\.hidden = !available/);
   assert.doesNotMatch(management, /experiment-professor-compat|Temporary bridge until the final Professor integration|Professor tools/);
 });
 
-test("#430 places authoritative Showcase actions inside Research curation", () => {
+test("#430 places authoritative Showcase actions inside Professor controls", () => {
   assert.match(management, /showcaseLauncher\.textContent = "Browse"/);
   assert.match(management, /showcaseActions\.append\(showcaseLauncher, promote\)/);
   assert.match(management, /showcaseGroup\.append\(showcaseTitle, showcaseActions, curationStatus\)/);
@@ -37,7 +37,7 @@ test("#430 exposes scientific Capability requests without a generic Professor la
   assert.doesNotMatch(react, /data-vlab-nav="professor"|data-vlab-nav="showcase"/);
 });
 
-test("#430 keeps Showcase publication in Research curation rather than Current Experiment actions", () => {
+test("#430 keeps Showcase publication in Professor controls rather than Current Experiment actions", () => {
   assert.match(management, /currentActions\.append\(browseButton\)/);
   assert.match(management, /showcaseActions\.append\(showcaseLauncher, promote\)/);
   assert.doesNotMatch(management, /currentActions\.append\([^\n]*promote/);
