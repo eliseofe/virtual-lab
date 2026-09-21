@@ -149,6 +149,8 @@ test('#464 evidence remains visible even if neither private request nor candidat
     id: 'legacy',
     request_class: null,
     status: null,
+    professor_disposition: null,
+    professor_guidance: null,
     extension_key: null,
     extension_domain: null,
     extension_name: null,
