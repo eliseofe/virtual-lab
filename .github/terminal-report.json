@@ -9,7 +9,7 @@
   },
   "technical_evidence": [
     "The production canonical capability initialization.per_agent_private_state_assignment existed as implemented but had no publication-provenance row before this repair.",
-    "The repair source is the exact implemented request 2616dbb5-2134-417f-aebb-2e9e4ea0dd9c and requires its canonical binding and implemented status to match before inserting anything.",
+    "The repair derives provenance from the unique implemented request already bound to initialization.per_agent_private_state_assignment; it embeds no generated request ID and fails rather than guessing if the bound implementation source is absent or ambiguous.",
     "Existing bibliography is preserved; the migration is idempotent and does not weaken the MCP canonical-capability consistency guard.",
     "Regression coverage reproduces the missing-provenance discovery failure and proves that restored provenance satisfies the unchanged consistency guard.",
     "No capability/request lifecycle, RLS, Experiment content, authoring semantics, or pending scientific request status is changed."
