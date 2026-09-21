@@ -16,7 +16,8 @@ test("#413 keeps Experiment identity singular and uses one library entry", () =>
   assert.match(management, /experimentSelect\.hidden = true/);
   assert.match(management, /setText\(browseButton, "Browse experiments"\)/);
   assert.doesNotMatch(management, /Switch experiment/);
-  assert.match(showcase, /currentExperimentActions\.append\(browseExperiment\)/);
+  assert.doesNotMatch(showcase, /currentExperimentActions|browseExperiment\.replaceWith/);
+  assert.match(showcase, /currentExperimentMain\.append\(promote\)/);
 });
 
 test("#413 preserves the one-step Professor inbox while global chrome no longer owns it", () => {
