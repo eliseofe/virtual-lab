@@ -16,7 +16,8 @@
     "Browse experiments is the primary library/finder action and Organize remains secondary in the same action group.",
     "Professor controls preserves the existing Showcase and Capability requests functions.",
     "Responsive production smoke checks narrow phone, foldable/wider mobile, ordinary desktop and ultra-wide desktop using the shared browser harness.",
-    "Scientific/runtime, revision/Working-copy/autosave, sharing, Showcase, capability-request and collection semantics are unchanged."
+    "Scientific/runtime, revision/Working-copy/autosave, sharing, Showcase, capability-request and collection semantics are unchanged.",
+    "The production repair aligns both application-shell and responsive smoke gates with the accepted three-destination navigation and waits for the initialized Experiment finder before viewport assertions."
   ],
   "close_issue": 449
 }

@@ -43,7 +43,7 @@ try {
     await sleep(100);
   }
 
-  const requiredNav = ['simulation', 'authoring', 'help', 'account'];
+  const requiredNav = ['control-panel', 'simulation', 'edit-experiment', 'help', 'account'];
   const missingNav = requiredNav.filter((item) => !state?.nav?.includes(item));
   if (!state?.root || state.hidden || !state.mounted || !state.chrome || !state.visible || !state.legacyTopbarHidden || !state.workerContextual || missingNav.length || !state.canvasOutsideRoot || !state.runOutsideRoot || !state.experimentOutsideRoot || !state.authoringOutsideRoot) {
     throw new Error(`React/Mantine application chrome failed: ${JSON.stringify({ ...state, missingNav })}`);
