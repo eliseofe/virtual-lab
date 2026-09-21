@@ -13,18 +13,21 @@ test('student registration is exposed without taking over the authoritative logi
   assert.doesNotMatch(registration, /service_role|sb_secret_/i);
 });
 
-test('sign in and create account are peer actions in the same auth surface', () => {
-  assert.match(registration, /Sign in or create account/);
-  assert.match(registration, /createAccount\.className = signIn\.className/);
-  assert.doesNotMatch(registration, /registry-create-account/);
-  assert.match(registration, /registry-auth-actions/);
+test('sign in is the default auth flow and account creation is an explicit mode', () => {
+  assert.match(registration, /let authMode = "sign-in"/);
+  assert.match(registration, /data-vlab-create-account-mode/);
+  assert.match(registration, /data-vlab-back-to-sign-in/);
+  assert.match(registration, /nameRow\.hidden = !creating/);
+  assert.match(registration, /signIn\.hidden = creating/);
+  assert.match(registration, /createAccount\.hidden = !creating/);
+  assert.match(registration, /heading\.textContent = creating \? "Create Account" : "Sign In"/);
 });
 
 test('signed-out production chrome has a stable high-level auth presentation', () => {
   assert.match(registration, /document\.body\.dataset\.vlabAuthState = signedOut \? "signed-out" : "signed-in"/);
   assert.match(registration, /data-vlab-nav="account"/);
-  assert.match(registration, /const text = "Account"/);
-  assert.match(registration, /New accounts start with the Student role/);
+  assert.match(registration, /const text = signedOut \? "Sign In" : "Account"/);
+  assert.doesNotMatch(registration, /New accounts start with the Student role|New to Virtual Lab/);
 });
 
 test('registration watches only the auth surface and React chrome, not the whole document', () => {
