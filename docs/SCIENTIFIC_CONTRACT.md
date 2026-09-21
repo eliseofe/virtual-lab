@@ -106,7 +106,7 @@ It observes the read-only agent headings and agent count through the Metrics sna
 
 For Virtual Lab product/integration acceptance it is sampled every `0.1 s`. This cadence is explicitly an acceptance/display choice and is **not** asserted to reproduce the paper's analysis/output sampling cadence.
 
-The built-in Active Elastic also contains an owner-authorized `angular_momentum` normalized instantaneous milling complement. It may be used as the already-approved second series for generic Results acceptance; it is not claimed as a verbatim second order-parameter equation printed in Ferrante et al. PRL.
+The canonical Active Elastic Showcase/catalog fixture also contains an owner-authorized `angular_momentum` normalized instantaneous milling complement. It may be used as the already-approved second series for generic Results acceptance; it is not claimed as a verbatim second order-parameter equation printed in Ferrante et al. PRL.
 
 The deployed two-metric Results behavior using this fixture was owner-accepted on phone on 16 September 2026. This is durable accepted scientific input, not an active implementation issue.
 
