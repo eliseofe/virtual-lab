@@ -58,7 +58,7 @@ test("issue #150 mobile hierarchy keeps simulation ahead of admin utilities", as
   assert.ok(utilityDialog > workspaceEnd, "administrative utilities must sit outside the scientific page flow");
 
   assert.match(simulationCss, /@media \(max-width: 38\.75em\)[\s\S]*?\.vlab-react-simulation-actions\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(simulationCss, /@media \(max-width: 38\.75em\)[\s\S]*?\[data-vlab-simulation-action\][\s\S]*?min-height:\s*44px/);
+  assert.match(simulationCss, /\[data-vlab-simulation-action\],[\s\S]*?\[data-vlab-simulation-fit\]\s*\{[\s\S]*?min-height:\s*44px/);
 });
 
 test("issue #150 utility observer does not rewrite the mutations it watches", async () => {
