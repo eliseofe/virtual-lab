@@ -60,6 +60,8 @@ The simulator/compiler/kernel remain static code and do **not** query Supabase a
 
 In particular, controller-side random sampling remains unavailable because there is no implemented controller-RNG capability. It is not modeled as a permanent generic language prohibition. Host filesystem/network access remains a separate security boundary.
 
+Scientific randomness itself is governed by the versioned simulator contract in `RNG_CONTRACT.md`. The current contract is `vlab.rng/splitmix64-domain/1`: Initialization and simulator sensing randomness are separate deterministic domains derived from the run seed, and the controller domain is reserved but not yet authorable. A stochastic draw in one domain cannot advance another domain's stream.
+
 ## Generic scientific mathematics substrate
 
 Standard scalar mathematics is language substrate rather than a scientific capability. The bounded authoring languages expose exponentiation `**` plus `abs, sqrt, exp, log, sin, cos, tan, asin, acos, atan, atan2, floor, ceil, pow, min, max` wherever scalar expressions are supported.

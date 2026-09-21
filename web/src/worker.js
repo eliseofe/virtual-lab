@@ -252,6 +252,7 @@ async function loadWasm() {
   self.postMessage({
     type: "wasm-ready",
     kernelVersion: wasm.kernel_version(),
+    rngContractVersion: wasm.rng_contract_version(),
     neighbourStrategy: wasm.production_neighbour_strategy(),
   });
 }
@@ -290,6 +291,7 @@ self.addEventListener("message", (event) => {
       self.postMessage({
         type: "ready",
         kernelVersion: wasm.kernel_version(),
+        rngContractVersion: wasm.rng_contract_version(),
         neighbourStrategy: simulation.neighbour_strategy(),
         metricCount: simulation.metric_count(),
       });

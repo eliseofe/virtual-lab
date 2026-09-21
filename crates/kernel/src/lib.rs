@@ -7,10 +7,19 @@ mod adaptive_neighbour_index;
 mod controller_ir;
 mod environment_ir;
 mod neighbour_index;
+mod rng;
 pub use adaptive_neighbour_index::{AdaptivePeriodicBvh, PRODUCTION_NEIGHBOUR_STRATEGY};
 pub use controller_ir::IrControllerRuntime;
 pub use environment_ir::EnvironmentRuntime;
 pub use neighbour_index::PeriodicGridNeighbourIndex;
+pub use rng::{
+    derive_scientific_stream_seed,
+    ScientificRng,
+    RNG_CONTRACT_VERSION,
+    RNG_DOMAIN_CONTROLLER,
+    RNG_DOMAIN_INITIALIZATION,
+    RNG_DOMAIN_SENSING,
+};
 
 const TAU: f64 = std::f64::consts::PI * 2.0;
 
@@ -143,24 +152,6 @@ fn wrap_state(state: &mut [AgentPhysicalState], arena_size: f64) {
         agent.position.y = wrap_coordinate(agent.position.y, arena_size);
         agent.heading_angle = agent.heading_angle.rem_euclid(TAU);
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-struct DeterministicRng { state: u64 }
-
-impl DeterministicRng {
-    fn new(seed: u32) -> Self { Self { state: seed as u64 } }
-    fn next_u64(&mut self) -> u64 {
-        self.state = self.state.wrapping_add(0x9E3779B97F4A7C15);
-        let mut z = self.state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
-        z ^ (z >> 31)
-    }
-    fn unit(&mut self) -> f64 {
-        ((self.next_u64() >> 11) as f64) * (1.0 / ((1u64 << 53) as f64))
-    }
-    fn signed(&mut self) -> f64 { self.unit() * 2.0 - 1.0 }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -356,7 +347,7 @@ pub struct Simulation<C: ControllerRuntime> {
     neighbour_indices_scratch: Vec<usize>,
     environment: EnvironmentRuntime,
     controller: C,
-    rng: DeterministicRng,
+    sensing_rng: ScientificRng,
     metrics: Vec<Box<dyn MetricRuntime>>,
 }
 
@@ -396,7 +387,8 @@ impl<C: ControllerRuntime> Simulation<C> {
         controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         let mut state = initialization.build_state();
         wrap_state(&mut state, config.arena_size);
-        let rng = DeterministicRng::new(config.seed);
+        let sensing_rng = ScientificRng::for_domain(config.seed, RNG_DOMAIN_SENSING, 0)
+            .expect("static sensing RNG domain is valid");
         Ok(Self {
             actuators: vec![Action::default(); initialization.state.len()],
             initialization,
@@ -414,7 +406,7 @@ impl<C: ControllerRuntime> Simulation<C> {
             neighbour_indices_scratch: Vec::new(),
             environment,
             controller,
-            rng,
+            sensing_rng,
             metrics: Vec::new(),
         })
     }
@@ -501,7 +493,8 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.actuators = vec![Action::default(); self.state.len()];
         self.physics_ticks = 0;
         self.control_updates = 0;
-        self.rng = DeterministicRng::new(self.config.seed);
+        self.sensing_rng = ScientificRng::for_domain(self.config.seed, RNG_DOMAIN_SENSING, 0)
+            .expect("static sensing RNG domain is valid");
         self.observation_scratch.heading = Vec2::ZERO;
         self.observation_scratch.environmental_scalar = None;
         self.observation_scratch.neighbours.clear();
@@ -518,7 +511,7 @@ impl<C: ControllerRuntime> Simulation<C> {
                 self.neighbour_index.rebuild(&self.state, self.config.arena_size);
                 let noise_scale = self.config.sensor_noise * TAU;
                 for agent_index in 0..self.state.len() {
-                    let bearing_noise = self.rng.signed() * noise_scale;
+                    let bearing_noise = self.sensing_rng.signed() * noise_scale;
                     self.observation_model.observe_into(
                         &self.state,
                         agent_index,
@@ -722,6 +715,9 @@ pub fn kernel_version() -> String { env!("CARGO_PKG_VERSION").to_owned() }
 
 #[wasm_bindgen]
 pub fn production_neighbour_strategy() -> String { PRODUCTION_NEIGHBOUR_STRATEGY.to_owned() }
+
+#[wasm_bindgen]
+pub fn rng_contract_version() -> String { RNG_CONTRACT_VERSION.to_owned() }
 
 #[cfg(test)]
 mod tests {

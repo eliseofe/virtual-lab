@@ -1,21 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Five-way Professor review and same-candidate revision are available end to end",
-  "owner_impact": "The Professor review flow now supports Accept, Reject, Revise, Defer and Future instead of a binary decision. Professor guidance is preserved and exposed through sanitized candidate discovery. Revise sends the formulation back to the original requester, who can reformulate the same candidate/request identity through the existing capability-request protocol; evidence and history are preserved and the item returns to Pending for another Professor review. Defer and Future leave the item reviewed but unavailable, so they do not clutter the pending inbox or get rediscovered as duplicates. No Sergio request is classified by this deployment.",
+  "outcome": "Scientific randomness now has one deterministic domain-separated foundation",
+  "owner_impact": "Virtual Lab now uses one documented SplitMix64-based scientific RNG contract. Existing seeded Initialization results are preserved bit-for-bit, while simulator sensing randomness has its own deterministic domain stream. Scientific domains cannot advance each other's random sequence, reset/replay reconstructs streams from the run seed, and the controller domain is reserved for the next stochastic-controller capability. This ticket does not yet let Controller code draw probabilities.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved non-binary Professor-review scope is complete and is being closed. The parent capability-request queue remains a living operational domain for future requests. Applying the scientific decisions to the currently pending Sergio requests is a separate owner action: first review the agreed classification table, then apply only the decisions the owner confirms."
+    "kind": "epic_continues",
+    "issue": 306,
+    "text": "Next is controller stochasticity with generic deterministic probability/distribution primitives. It will use the controller domain established here so aggregation controllers can make reproducible probabilistic decisions without host random APIs. That successor has not started."
   },
   "technical_evidence": [
-    "The Professor inbox exposes exactly five current decisions: Accept, Reject, Revise, Defer and Future; Pending is the unreviewed system state.",
-    "Revise requires Professor guidance and preserves an append-only review record.",
-    "Only the original requester may reformulate a Revise candidate; shared-candidate reuse does not grant rewrite authority.",
-    "Requester revision updates the same request/candidate identity, increments candidate revision history, preserves linked evidence, and returns disposition to Pending without making the candidate authorable.",
-    "Neutral MCP discovery and RLS-safe closure readback expose only sanitized Professor disposition/guidance, not private requester context or internal notes.",
-    "Capability-request protocol advances to vlab.capability-request/8 and MCP server 3.14.0 while the exact nine-tool surface and authoring contract remain unchanged.",
-    "Production browser smoke is registered for the deployed five-way Professor review artifact using the shared smoke-browser harness."
+    "RNG contract vlab.rng/splitmix64-domain/1 is implemented in byte-identical browser/edge JavaScript plus the Rust/WASM kernel.",
+    "Root seed 2026 has fixed cross-runtime conformance vectors for initialization, sensing and reserved controller streams.",
+    "Initialization stream index 0 intentionally preserves the historical root SplitMix64 sequence, keeping existing seeded initial conditions unchanged.",
+    "Sensing noise now uses its own derived stream; future per-agent controller streams have a reserved independently derived domain.",
+    "The worker reports the active RNG contract version from the WASM kernel; raw stream state is not exposed to authoring/UI."
   ],
-  "close_issue": 472
+  "close_issue": 305
 }
