@@ -125,7 +125,7 @@ mod tests {
     use crate::{BruteForceNeighbourIndex, Vec2};
 
     fn state_for(arena_size: f64, count: usize) -> Vec<AgentPhysicalState> {
-        let mut rng = crate::DeterministicRng::new(9917);
+        let mut rng = crate::ScientificRng::for_domain(9917, crate::RNG_DOMAIN_INITIALIZATION, 0).unwrap();
         let half = arena_size / 2.0;
         (0..count).map(|_| AgentPhysicalState {
             position: Vec2::new(
