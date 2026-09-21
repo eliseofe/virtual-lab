@@ -356,11 +356,12 @@ function buildManagementRegion(currentActions) {
 
   const signIn = document.createElement("button");
   signIn.type = "button";
-  signIn.className = "experiment-sign-in-save primary";
-  signIn.textContent = "Sign in to save";
+  signIn.className = "experiment-sign-in primary";
+  signIn.textContent = "Sign In";
   signIn.addEventListener("click", () => accountButton.click());
+  currentActions.append(signIn);
 
-  region.append(status, actions, slot, signIn);
+  region.append(status, actions, slot);
   return { region, status, actions, slot, signIn, saveAsNew, shareOpen };
 }
 
