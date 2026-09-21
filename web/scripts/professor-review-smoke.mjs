@@ -49,7 +49,7 @@ try {
       oldApproveControl: deployedJs.includes('approve.textContent = "Approve"'),
       oldDeclineControl: deployedJs.includes('decline.textContent = "Decline"'),
       signedOutProfessorHidden: Boolean(panel?.hidden),
-      toolSurfaceMarker: deployedJs.includes("request_capability") && deployedJs.includes("revalidate_capability_closure"),
+      hasTriageRpc: deployedJs.includes("triage_extension_request"),
       width: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
     });
@@ -59,7 +59,7 @@ try {
   if (Object.values(result.decisions).some((present) => !present)) {
     throw new Error(`deployed Professor decision artifact is incomplete: ${JSON.stringify(result)}`);
   }
-  if (!result.hasGuidance || !result.hasDisposition || !result.hasReviseGuard || !result.signedOutProfessorHidden || !result.toolSurfaceMarker) {
+  if (!result.hasGuidance || !result.hasDisposition || !result.hasReviseGuard || !result.signedOutProfessorHidden || !result.hasTriageRpc) {
     throw new Error(`deployed Professor review contract is incomplete: ${JSON.stringify(result)}`);
   }
   if (result.oldApproveControl || result.oldDeclineControl) {
