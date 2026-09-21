@@ -289,7 +289,7 @@ begin
     end if;
 
     if v_target_contract_path !~
-      '^(runtime_contract|artifacts\\.(configuration|initialization|controller|metrics)|artifact_execution|diagnostic_model|execution_boundary|results_presentation)(\\.|$)' then
+      '^(runtime_contract|artifacts\.(configuration|initialization|controller|metrics)|artifact_execution|diagnostic_model|execution_boundary|results_presentation)(\.|$)' then
       raise exception 'revised candidate_contract_delta target_contract_path does not reference the stable authoring/platform contract.';
     end if;
 
