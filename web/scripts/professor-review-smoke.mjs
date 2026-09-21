@@ -27,43 +27,29 @@ try {
   await cdp.send("Runtime.enable");
   await waitReady(cdp.send);
 
-  const expression = `(async () => {
-    const resources = performance.getEntriesByType("resource")
-      .map((entry) => entry.name)
-      .filter((name) => /\\.js(?:\\?|$)/.test(name));
-    const texts = [];
-    for (const resource of resources) {
-      try {
-        const response = await fetch(resource, { cache: "no-store" });
-        if (response.ok) texts.push(await response.text());
-      } catch {}
-    }
-    const deployedJs = texts.join("\\n");
-    const decisions = ["Accept", "Reject", "Revise", "Defer", "Future"];
+  const expression = `JSON.stringify((() => {
     const panel = document.querySelector(".professor-panel");
-    return JSON.stringify({
-      decisions: Object.fromEntries(decisions.map((label) => [label, deployedJs.includes(label)])),
-      hasGuidance: deployedJs.includes("Professor guidance"),
-      hasDisposition: deployedJs.includes("professor_disposition"),
-      hasReviseGuard: deployedJs.includes("Revise requires Professor guidance"),
-      oldApproveControl: deployedJs.includes('approve.textContent = "Approve"'),
-      oldDeclineControl: deployedJs.includes('decline.textContent = "Decline"'),
+    const dialog = document.querySelector("#professor-extension-inbox");
+    return {
+      contract: panel?.dataset.vlabProfessorReviewContract ?? null,
+      decisions: panel?.dataset.vlabProfessorReviewDecisions ?? null,
+      reviseGuidanceRequired: panel?.dataset.vlabProfessorReviseGuidanceRequired ?? null,
       signedOutProfessorHidden: Boolean(panel?.hidden),
-      hasTriageRpc: deployedJs.includes("triage_extension_request"),
+      dialogReady: Boolean(dialog),
       width: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
-    });
-  })()`;
+    };
+  })())`;
   const result = JSON.parse(await evaluate(cdp.send, expression));
 
-  if (Object.values(result.decisions).some((present) => !present)) {
-    throw new Error(`deployed Professor decision artifact is incomplete: ${JSON.stringify(result)}`);
-  }
-  if (!result.hasGuidance || !result.hasDisposition || !result.hasReviseGuard || !result.signedOutProfessorHidden || !result.hasTriageRpc) {
+  if (
+    result.contract !== "vlab.professor-review/2"
+    || result.decisions !== "accepted,revise,deferred,future,rejected"
+    || result.reviseGuidanceRequired !== "true"
+    || !result.signedOutProfessorHidden
+    || !result.dialogReady
+  ) {
     throw new Error(`deployed Professor review contract is incomplete: ${JSON.stringify(result)}`);
-  }
-  if (result.oldApproveControl || result.oldDeclineControl) {
-    throw new Error(`legacy binary Professor controls remain in deployed artifact: ${JSON.stringify(result)}`);
   }
   if (result.scrollWidth > result.width + 1) {
     throw new Error(`Professor review deployment introduced page overflow: ${JSON.stringify(result)}`);
@@ -71,7 +57,7 @@ try {
   if (cdp.exceptions.length) throw new Error(`browser exceptions: ${JSON.stringify(cdp.exceptions)}`);
 
   console.log(JSON.stringify(result, null, 2));
-  console.log("Professor review smoke verified the deployed five-way review artifact and signed-out access boundary.");
+  console.log("Professor review smoke verified the live five-way review contract marker and signed-out access boundary.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);

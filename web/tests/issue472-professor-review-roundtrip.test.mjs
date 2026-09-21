@@ -18,6 +18,7 @@ const linked = readFileSync(
 );
 const inbox = readFileSync(new URL("../src/professor-inbox.js", import.meta.url), "utf8");
 const manifest = JSON.parse(readFileSync(new URL("../product-surface.json", import.meta.url), "utf8"));
+const smoke = readFileSync(new URL("../scripts/professor-review-smoke.mjs", import.meta.url), "utf8");
 
 test("#472 keeps exactly five Professor decisions plus pending as system state", () => {
   for (const pair of [
@@ -32,6 +33,9 @@ test("#472 keeps exactly five Professor decisions plus pending as system state",
   assert.match(inbox, /Revise requires Professor guidance/);
   assert.doesNotMatch(inbox, /approve\.textContent = "Approve"/);
   assert.doesNotMatch(inbox, /decline\.textContent = "Decline"/);
+  assert.match(inbox, /vlab\.professor-review\/2/);
+  assert.match(inbox, /vlabProfessorReviewDecisions/);
+  assert.match(inbox, /vlabProfessorReviseGuidanceRequired/);
 });
 
 test("#472 Professor decision is distinct from implementation lifecycle", () => {
@@ -99,9 +103,13 @@ test("#472 duplicate safety survives every disposition", () => {
   assert.match(mcp, /reuse_when_candidate_covers: true/);
 });
 
-test("#472 production manifest includes browser smoke for Professor review", () => {
+test("#472 production manifest includes deterministic live-contract browser smoke for Professor review", () => {
   const surface = manifest.surfaces.find((item) => item.id === "professor-review");
   assert.ok(surface);
   assert.equal(surface.state, "active");
   assert.equal(surface.smoke[0].script, "web/scripts/professor-review-smoke.mjs");
+  assert.match(smoke, /dataset\.vlabProfessorReviewContract/);
+  assert.match(smoke, /accepted,revise,deferred,future,rejected/);
+  assert.match(smoke, /vlabProfessorReviseGuidanceRequired/);
+  assert.doesNotMatch(smoke, /performance\.getEntriesByType\("resource"\)/);
 });
