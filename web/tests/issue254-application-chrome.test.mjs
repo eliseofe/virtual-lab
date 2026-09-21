@@ -14,11 +14,11 @@ function hiddenSelectors(css) {
 }
 
 test("#254 React owns product chrome and true global navigation", () => {
+  assert.match(reactRoot, /data-vlab-react-chrome="mounted"/);
   for (const marker of [
-    'data-vlab-react-chrome="mounted"',
-    'data-vlab-nav="control-panel"',
-    'data-vlab-nav="simulation"',
-    'data-vlab-nav="edit-experiment"',
+    "'control-panel', '#control-panel', 'Control Panel'",
+    "'simulation', '#simulation', 'Simulation'",
+    "'edit-experiment', '#authoring-workbench', 'Edit Experiment'",
     'data-vlab-nav="account"',
   ]) assert.ok(reactRoot.includes(marker), marker);
 
