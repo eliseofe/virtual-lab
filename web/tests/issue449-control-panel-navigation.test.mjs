@@ -15,7 +15,7 @@ test("#449 restores the accepted three-destination workspace navigation", () => 
   assert.match(index, /id="control-panel" class="panel experiment-panel" aria-label="Control Panel"/);
   assert.match(react, /'control-panel', '#control-panel', 'Control Panel'/);
   assert.match(react, /'simulation', '#simulation', 'Simulation'/);
-  assert.match(react, /'edit-experiment', '#authoring-workbench', 'Edit Experiment'/);
+  assert.match(react, /'edit-experiment', '#authoring-workbench', 'Experiment Authoring'/);
   assert.match(react, /aria-current=\{activeSection === section \? 'location' : undefined\}/);
   assert.match(react, /data-active=\{String\(activeSection === section\)\}/);
   assert.doesNotMatch(react, /data-vlab-nav="authoring"/);
@@ -37,7 +37,8 @@ test("#449 keeps touch targets accessible without device-specific breakpoints", 
 });
 
 test("#449 removes the duplicate Control Panel heading and preserves accessible naming", () => {
-  assert.match(management, /experimentPanel\.setAttribute\("aria-label", "Control Panel"\)/);
+  assert.match(management, /panelTitle\.textContent = "Control Panel"/);
+  assert.match(management, /experimentPanel\.setAttribute\("aria-labelledby", panelTitle\.id\)/);
   assert.doesNotMatch(management, /experiment-control-head|experiment-control-kicker|experiment-control-title/);
   assert.doesNotMatch(management, /kicker\.textContent = "Experiment"|title\.textContent = "Control panel"/);
 });

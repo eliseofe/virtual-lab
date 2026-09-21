@@ -91,10 +91,7 @@ export function SimulationPresentation() {
     <Paper className="vlab-react-simulation" radius="md" p="md" data-vlab-react-simulation="mounted">
       <Stack gap="md">
         <Group justify="space-between" align="flex-start" gap="md" className="vlab-react-simulation-heading">
-          <Box>
-            <Text size="xs" fw={800} tt="uppercase" c="cyan.8" lts="0.12em">Simulation</Text>
-            <Title order={2} size="h3">Arena</Title>
-          </Box>
+          <Title id="vlab-react-simulation-heading" order={2} size="h3" className="vlab-workspace-card-title">Simulation</Title>
           <Group gap="xs" wrap="wrap">
             <Badge
               variant="light"

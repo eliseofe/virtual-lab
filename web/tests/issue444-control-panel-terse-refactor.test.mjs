@@ -9,7 +9,8 @@ const [management, registry, showcase] = await Promise.all([
 ]);
 
 test("#444 removes prose from the four primary Control Panel areas", () => {
-  assert.match(management, /taskHeading\("Current Experiment"\)/);
+  assert.doesNotMatch(management, /taskHeading\("Current Experiment"\)/);
+  assert.match(management, /panelTitle\.textContent = "Control Panel"/);
   assert.match(management, /taskHeading\("Revisions"\)/);
   assert.match(management, /taskHeading\("Save & share"\)/);
   assert.match(management, /taskHeading\("Professor controls"\)/);

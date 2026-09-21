@@ -65,7 +65,7 @@ async function structure(send) {
     const experimentSelect = document.querySelector('#experiment-select');
     const legacyPersistence = document.querySelector('#authoring-persistence');
     const redundantLocation = document.querySelector('.experiment-location');
-    const signInSave = document.querySelector('.experiment-sign-in-save');
+    const signInSave = document.querySelector('.experiment-sign-in');
     const browse = document.querySelector('.experiment-browse');
     const before = (left, right) => Boolean(left && right && (left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING));
     const visible = (element) => Boolean(element && !element.hidden && getComputedStyle(element).display !== 'none' && element.getClientRects().length);
@@ -96,8 +96,8 @@ async function structure(send) {
         selectVisible: visible(experimentSelect),
         legacyPersistenceVisible: visible(legacyPersistence),
         redundantLocationVisible: (locationText === 'Built-in' || locationText === 'No collection') && visible(redundantLocation),
-        signInSaveVisible: visible(signInSave),
-        signInSaveHeight: Math.round(signInSave?.getBoundingClientRect().height ?? 0),
+        signInVisible: visible(signInSave),
+        signInHeight: Math.round(signInSave?.getBoundingClientRect().height ?? 0),
         browseLabel: browse?.textContent?.trim() ?? null,
         browseInActionGroup: Boolean(document.querySelector('.experiment-current-actions .experiment-browse')),
         browseInTitleRow: Boolean(document.querySelector('.experiment-current-main .experiment-browse')),
@@ -106,7 +106,8 @@ async function structure(send) {
         metaInContext: Boolean(document.querySelector('.experiment-current-context')?.contains(document.querySelector('.experiment-current-meta'))),
         contextBeforeActions: before(document.querySelector('.experiment-current-context'), document.querySelector('.experiment-current-actions')),
         duplicateControlHeading: Boolean(document.querySelector('.experiment-control-head, .experiment-control-title, .experiment-control-kicker')),
-        panelLabel: experiment?.getAttribute('aria-label') ?? null,
+        panelTitle: document.querySelector('#control-panel > .vlab-workspace-card-title')?.textContent?.trim() ?? null,
+        panelLabelledBy: experiment?.getAttribute('aria-labelledby') ?? null,
         statusText: document.querySelector('.experiment-management-status')?.textContent?.trim() ?? '',
       },
       controlHeights: {
@@ -119,6 +120,11 @@ async function structure(send) {
         browse: height('.experiment-browse')
       },
       tabHeights: authoringTabs.map((tab) => Math.round(tab.getBoundingClientRect().height)),
+      cardTitles: [
+        document.querySelector('#control-panel > .vlab-workspace-card-title')?.textContent?.trim() ?? '',
+        document.querySelector('[data-vlab-react-simulation="mounted"] .vlab-workspace-card-title')?.textContent?.trim() ?? '',
+        document.querySelector('[data-vlab-react-authoring="mounted"] .vlab-workspace-card-title')?.textContent?.trim() ?? '',
+      ],
       ribbon: {
         brandTitle: document.querySelector('.vlab-react-brand-title')?.textContent?.trim() ?? '',
         brandByline: document.querySelector('.vlab-react-brand-byline')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
@@ -172,23 +178,27 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
   }
   if (
     !state.managementTasks.current
-    || !state.managementTasks.saveShare
-    || state.experimentManagement.panelLabel !== "Control Panel"
+    || state.managementTasks.saveShare
+    || state.experimentManagement.panelTitle !== "Control Panel"
+    || state.experimentManagement.panelLabelledBy !== "control-panel-heading"
     || state.experimentManagement.duplicateControlHeading
   ) {
     throw new Error(`${label}: Control Panel hierarchy is incomplete or duplicated: ${JSON.stringify({ management: state.managementTasks, experiment: state.experimentManagement })}`);
   }
   if (state.managementTasks.taskSubtitleCount !== 0 || state.managementTasks.controlHelpPresent || state.managementTasks.staticProfessorProseCount !== 0 || !state.managementTasks.saveShareActionBar) {
-    throw new Error(`${label}: Control Panel prose or Save & share structure regressed: ${JSON.stringify(state.managementTasks)}`);
+    throw new Error(`${label}: Control Panel prose or signed-in management structure regressed: ${JSON.stringify(state.managementTasks)}`);
   }
   if (state.managementTasks.professorCompatPresent || state.managementTasks.professorSectionVisible || state.managementTasks.showcaseVisible || state.managementTasks.capabilityRequestsVisible || state.managementTasks.promoteInCurrentExperiment) {
     throw new Error(`${label}: signed-out Professor hierarchy leaked or legacy placement remains: ${JSON.stringify(state.managementTasks)}`);
   }
+  if (JSON.stringify(state.cardTitles) !== JSON.stringify(["Control Panel", "Simulation", "Experiment Authoring"])) {
+    throw new Error(`${label}: workspace card titles are inconsistent: ${JSON.stringify(state.cardTitles)}`);
+  }
   if (!touch) {
-    if (state.controlHeights.browse !== 44 || state.experimentManagement.signInSaveHeight !== 44) {
+    if (state.controlHeights.browse !== 44 || state.experimentManagement.signInHeight !== 44) {
       throw new Error(`${label}: Control Panel action heights are unbalanced: ${JSON.stringify({
         browse: state.controlHeights.browse,
-        signInSave: state.experimentManagement.signInSaveHeight,
+        signIn: state.experimentManagement.signInHeight,
       })}`);
     }
     if (state.ribbon.brandTitle !== "Virtual Lab" || state.ribbon.brandByline !== "Eliseo Ferrante · Swarm robotics") {
@@ -211,7 +221,7 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
     throw new Error(`${label}: Current Experiment hierarchy regressed: ${JSON.stringify(state.experimentManagement)}`);
   }
   if (
-    JSON.stringify(state.ribbon.workspaceLabels) !== JSON.stringify(["Control Panel", "Simulation", "Edit Experiment"])
+    JSON.stringify(state.ribbon.workspaceLabels) !== JSON.stringify(["Control Panel", "Simulation", "Experiment Authoring"])
     || state.ribbon.activeWorkspaceCount !== 1
     || state.ribbon.forbiddenVisible
   ) {
@@ -220,15 +230,15 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
   if (state.experimentManagement.statusText) {
     throw new Error(`${label}: routine prose leaked into signed-out Save & share: ${JSON.stringify(state.experimentManagement)}`);
   }
-  if (!state.experimentManagement.signInSaveVisible) {
-    throw new Error(`${label}: signed-out Experiment surface lacks direct sign-in-to-save action: ${JSON.stringify(state.experimentManagement)}`);
+  if (!state.experimentManagement.signInVisible) {
+    throw new Error(`${label}: signed-out Experiment surface lacks direct sign-in action: ${JSON.stringify(state.experimentManagement)}`);
   }
   if (touch) {
     for (const [name, controlHeight] of Object.entries(state.controlHeights)) {
       if (controlHeight < 44) throw new Error(`${label}: ${name} touch target is ${controlHeight}px, expected at least 44px`);
     }
-    if (state.experimentManagement.signInSaveHeight < 44) {
-      throw new Error(`${label}: sign-in-to-save touch target is ${state.experimentManagement.signInSaveHeight}px, expected at least 44px`);
+    if (state.experimentManagement.signInHeight < 44) {
+      throw new Error(`${label}: sign-in touch target is ${state.experimentManagement.signInHeight}px, expected at least 44px`);
     }
     if (state.tabHeights.some((tabHeight) => tabHeight < 44)) {
       throw new Error(`${label}: authoring tab touch target below 44px: ${JSON.stringify(state.tabHeights)}`);
@@ -362,7 +372,7 @@ try {
   await verifyAuthoringKeyboard(cdp.send);
 
   console.log(JSON.stringify(states, null, 2));
-  console.log("Responsive smoke verified Control Panel / Simulation / Edit Experiment navigation and Current Experiment hierarchy on phone, foldable, desktop and ultra-wide viewports.");
+  console.log("Responsive smoke verified consistent Control Panel / Simulation / Experiment Authoring titles and signed-out Control Panel hierarchy on phone, foldable, desktop and ultra-wide viewports.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);

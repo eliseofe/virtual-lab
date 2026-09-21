@@ -20,8 +20,9 @@ const password = auth?.querySelector('input[type="password"]');
 const signIn = auth?.querySelector("button.primary");
 const message = panel?.querySelector(".registry-message");
 const heading = panel?.querySelector(".registry-heading .field-label");
+const account = panel?.querySelector(".registry-account");
 
-if (!panel || !auth || !email || !password || !signIn || !message || !heading) {
+if (!panel || !auth || !email || !password || !signIn || !message || !heading || !account) {
   throw new Error("Student registration UI mismatch.");
 }
 
@@ -30,15 +31,12 @@ function installStyles() {
   const style = document.createElement("style");
   style.dataset.vlabStudentRegistration = "";
   style.textContent = `
-    .registry-auth-intro { margin: 0 0 2px; color: #52656d; font-size: 12px; line-height: 1.45; }
     .registry-signup-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .registry-auth input { width: 100%; }
     .registry-auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .registry-auth-actions > button { width: 100%; }
-    .registry-auth-note { margin: 0; color: #78888e; font-size: 10.5px; line-height: 1.4; }
+    .registry-auth-actions > button { width: 100%; min-height: 44px; }
     @media (max-width: 460px) {
       .registry-signup-name-row, .registry-auth-actions { grid-template-columns: 1fr; }
-      .registry-auth-actions > button { min-height: 44px; }
     }
   `;
   document.head.append(style);
@@ -49,26 +47,16 @@ function setMessage(text, state = "idle") {
   message.dataset.state = state;
 }
 
-function setBusy(busy) {
-  firstName.disabled = busy;
-  lastName.disabled = busy;
-  email.disabled = busy;
-  password.disabled = busy;
-  signIn.disabled = busy;
-  createAccount.disabled = busy;
-}
-
-const intro = document.createElement("p");
-intro.className = "registry-auth-intro";
-intro.textContent = "New to Virtual Lab? Create an account here. Already registered? Sign in.";
-
 const nameRow = document.createElement("div");
 nameRow.className = "registry-signup-name-row";
+nameRow.hidden = true;
+
 const firstName = document.createElement("input");
 firstName.type = "text";
 firstName.autocomplete = "given-name";
 firstName.placeholder = "First name";
 firstName.setAttribute("aria-label", "First name");
+
 const lastName = document.createElement("input");
 lastName.type = "text";
 lastName.autocomplete = "family-name";
@@ -78,20 +66,71 @@ nameRow.append(firstName, lastName);
 
 const actions = document.createElement("div");
 actions.className = "registry-auth-actions";
+
+signIn.textContent = "Sign In";
+signIn.setAttribute("data-vlab-sign-in", "true");
+
+const createMode = document.createElement("button");
+createMode.type = "button";
+createMode.textContent = "Create Account";
+createMode.setAttribute("data-vlab-create-account-mode", "true");
+
 const createAccount = document.createElement("button");
 createAccount.type = "button";
-createAccount.className = signIn.className;
-createAccount.textContent = "Create account";
+createAccount.className = "primary";
+createAccount.textContent = "Create Account";
 createAccount.setAttribute("data-vlab-create-account", "true");
+createAccount.hidden = true;
 
-actions.append(signIn, createAccount);
-auth.prepend(intro, nameRow);
+const backToSignIn = document.createElement("button");
+backToSignIn.type = "button";
+backToSignIn.textContent = "Sign In";
+backToSignIn.setAttribute("data-vlab-back-to-sign-in", "true");
+backToSignIn.hidden = true;
+
+actions.append(signIn, createMode, createAccount, backToSignIn);
+auth.prepend(nameRow);
 auth.append(actions);
 
-const note = document.createElement("p");
-note.className = "registry-auth-note";
-note.textContent = "Your name identifies your work in Virtual Lab. New accounts start with the Student role.";
-auth.append(note);
+let authMode = "sign-in";
+
+function setBusy(busy) {
+  firstName.disabled = busy;
+  lastName.disabled = busy;
+  email.disabled = busy;
+  password.disabled = busy;
+  signIn.disabled = busy;
+  createMode.disabled = busy;
+  createAccount.disabled = busy;
+  backToSignIn.disabled = busy;
+}
+
+function applyAuthMode({ focus = false, clearMessage = false } = {}) {
+  const creating = authMode === "create";
+  auth.dataset.mode = authMode;
+  nameRow.hidden = !creating;
+  signIn.hidden = creating;
+  createMode.hidden = creating;
+  createAccount.hidden = !creating;
+  backToSignIn.hidden = !creating;
+  password.autocomplete = creating ? "new-password" : "current-password";
+
+  if (!auth.hidden) {
+    heading.textContent = creating ? "Create Account" : "Sign In";
+    panel.setAttribute("aria-label", heading.textContent);
+  }
+
+  if (clearMessage) setMessage("");
+
+  if (focus) {
+    (creating ? firstName : email).focus();
+  }
+}
+
+function setAuthMode(nextMode, options = {}) {
+  authMode = nextMode;
+  applyAuthMode(options);
+}
 
 async function signUp() {
   const given = firstName.value.trim();
@@ -104,7 +143,7 @@ async function signUp() {
   }
 
   setBusy(true);
-  setMessage("Creating your account…");
+  setMessage("Creating account…");
   try {
     const { data, error } = await signupClient.auth.signUp({
       email: value,
@@ -118,12 +157,16 @@ async function signUp() {
       },
     });
     if (error) throw error;
+
     password.value = "";
+    firstName.value = "";
+    lastName.value = "";
+    setAuthMode("sign-in", { focus: false, clearMessage: false });
 
     if (data.session) {
       setMessage("Account created. Sign in to continue.", "success");
     } else {
-      setMessage("Account created. Check your email to confirm it, then return here and sign in.", "success");
+      setMessage("Account created. Check your email to confirm it, then sign in.", "success");
     }
   } catch (error) {
     console.error(error);
@@ -133,22 +176,50 @@ async function signUp() {
   }
 }
 
+createMode.addEventListener("click", () => {
+  setAuthMode("create", { focus: true, clearMessage: true });
+});
+
+backToSignIn.addEventListener("click", () => {
+  setAuthMode("sign-in", { focus: true, clearMessage: true });
+});
+
 createAccount.addEventListener("click", signUp);
+
+// The registry owns ordinary sign-in Enter handling. Registration mode intercepts
+// Enter before that listener so the two authentication paths cannot cross.
+password.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || authMode !== "create") return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  signUp();
+}, { capture: true });
 
 function syncAuthPresentation() {
   const signedOut = !auth.hidden;
   document.body.dataset.vlabAuthState = signedOut ? "signed-out" : "signed-in";
 
-  const headingText = signedOut ? "Sign in or create account" : "Account";
+  if (!signedOut && authMode !== "sign-in") {
+    setAuthMode("sign-in", { focus: false, clearMessage: false });
+  }
+
+  const headingText = signedOut
+    ? (authMode === "create" ? "Create Account" : "Sign In")
+    : "Account";
   if (heading.textContent !== headingText) heading.textContent = headingText;
+
+  account.hidden = signedOut;
+  panel.setAttribute("aria-label", signedOut ? headingText : "Virtual Lab account");
 
   for (const selector of ['[data-vlab-nav="account"]', '[data-vlab-nav="account-mobile"]']) {
     for (const button of document.querySelectorAll(selector)) {
-      const text = "Account";
+      const text = signedOut ? "Sign In" : "Account";
       if (button.textContent !== text) button.textContent = text;
       if (button.getAttribute("aria-label") !== text) button.setAttribute("aria-label", text);
     }
   }
+
+  if (signedOut && message.dataset.state === "idle") setMessage("");
 }
 
 const authObserver = new MutationObserver(syncAuthPresentation);
@@ -167,5 +238,6 @@ if (chromeRoot) {
 }
 
 installStyles();
+applyAuthMode();
 syncAuthPresentation();
 panel.setAttribute("data-vlab-student-registration", "ready");

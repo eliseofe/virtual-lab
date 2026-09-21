@@ -80,6 +80,7 @@ function installStyles() {
     .registry-auth input, .registry-new-form input, .registry-new-form select, .registry-move-select, .registry-share-select, .experiment-browser-search { width: 100%; min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; color: #172127; background: #fff; }
     .registry-auth input:focus, .registry-new-form input:focus, .registry-new-form select:focus, .registry-move-select:focus, .registry-share-select:focus, .experiment-browser-search:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
     .registry-message { margin: 0; min-height: 1.4em; font-size: 11.5px; line-height: 1.4; color: #64757c; }
+    .registry-message:empty { display: none; }
     .registry-message[data-state="error"] { color: #9e2d29; }
     .registry-message[data-state="success"] { color: #246240; }
     .registry-note { margin: 0; color: #78888e; font-size: 10.5px; line-height: 1.4; }
@@ -356,16 +357,17 @@ function buildCurrentExperimentUi() {
 function buildAccountPanel() {
   const panel = document.createElement("section");
   panel.className = "panel registry-panel";
-  panel.setAttribute("aria-label", "Virtual Lab account");
+  panel.setAttribute("aria-label", "Sign In");
 
   const heading = document.createElement("div");
   heading.className = "registry-heading";
   const label = document.createElement("span");
   label.className = "field-label";
   label.style.margin = "0";
-  label.textContent = "Account";
+  label.textContent = "Sign In";
   const account = document.createElement("div");
   account.className = "registry-account";
+  account.hidden = true;
   const identity = document.createElement("strong");
   identity.textContent = "Signed out";
   const signOut = document.createElement("button");
@@ -389,13 +391,13 @@ function buildAccountPanel() {
   password.setAttribute("aria-label", "Password");
   const signIn = document.createElement("button");
   signIn.className = "primary";
-  signIn.textContent = "Sign in";
+  signIn.textContent = "Sign In";
   auth.append(email, password, signIn);
 
   const message = document.createElement("p");
   message.className = "registry-message";
   message.setAttribute("role", "status");
-  message.textContent = "Sign in to open and save your private experiments.";
+  message.textContent = "";
 
   const saveRow = document.createElement("div");
   saveRow.className = "registry-save-row";

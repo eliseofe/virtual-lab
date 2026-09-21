@@ -96,7 +96,7 @@ function WorkspaceNav({
     <>
       {item('control-panel', '#control-panel', 'Control Panel')}
       {item('simulation', '#simulation', 'Simulation')}
-      {item('edit-experiment', '#authoring-workbench', 'Edit Experiment')}
+      {item('edit-experiment', '#authoring-workbench', 'Experiment Authoring')}
     </>
   );
 }

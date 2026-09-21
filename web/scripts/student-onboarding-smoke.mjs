@@ -11,10 +11,16 @@ async function evaluate(send, expression) {
 
 async function state(send) {
   const raw = await evaluate(send, `JSON.stringify((() => {
+    const visible = (element) => Boolean(element && !element.hidden && element.getClientRects().length > 0);
     const panel = document.querySelector('.registry-panel');
     const auth = panel?.querySelector('.registry-auth');
     const heading = panel?.querySelector('.registry-heading .field-label');
+    const signIn = panel?.querySelector('[data-vlab-sign-in]');
+    const createMode = panel?.querySelector('[data-vlab-create-account-mode]');
     const create = panel?.querySelector('[data-vlab-create-account]');
+    const backToSignIn = panel?.querySelector('[data-vlab-back-to-sign-in]');
+    const firstName = panel?.querySelector('input[autocomplete="given-name"]');
+    const lastName = panel?.querySelector('input[autocomplete="family-name"]');
     const help = document.querySelector('[data-vlab-nav="help"]');
     const helpPanel = document.querySelector('#vlab-student-help');
     const grok = helpPanel?.querySelector('[data-vlab-provider="grok"]');
@@ -25,8 +31,14 @@ async function state(send) {
       worker: document.querySelector('#worker-status')?.dataset.state ?? null,
       registrationReady: panel?.getAttribute('data-vlab-student-registration') ?? null,
       authHidden: Boolean(auth?.hidden),
+      authMode: auth?.dataset.mode ?? null,
       heading: heading?.textContent?.trim() ?? null,
-      createAccount: Boolean(create),
+      signInVisible: visible(signIn),
+      createModeVisible: visible(createMode),
+      createAccountVisible: visible(create),
+      backToSignInVisible: visible(backToSignIn),
+      firstNameVisible: visible(firstName),
+      lastNameVisible: visible(lastName),
       help: Boolean(help),
       helpPanel: Boolean(helpPanel),
       helpHidden: Boolean(helpPanel?.hidden),
@@ -58,8 +70,49 @@ try {
   await cdp.send("Runtime.enable");
 
   const initial = await waitReady(cdp.send);
-  if (initial.authHidden || initial.heading !== "Sign in or create account" || !initial.createAccount || initial.accountText !== "Account") {
-    throw new Error(`signed-out student registration surface is incorrect: ${JSON.stringify(initial)}`);
+  if (
+    initial.authHidden
+    || initial.authMode !== "sign-in"
+    || initial.heading !== "Sign In"
+    || !initial.signInVisible
+    || !initial.createModeVisible
+    || initial.createAccountVisible
+    || initial.backToSignInVisible
+    || initial.firstNameVisible
+    || initial.lastNameVisible
+    || initial.accountText !== "Sign In"
+  ) {
+    throw new Error(`signed-out Sign In surface is incorrect: ${JSON.stringify(initial)}`);
+  }
+
+  await evaluate(cdp.send, `document.querySelector('[data-vlab-create-account-mode]').click()`);
+  await sleep(30);
+  const createAccountMode = await state(cdp.send);
+  if (
+    createAccountMode.authMode !== "create"
+    || createAccountMode.heading !== "Create Account"
+    || createAccountMode.signInVisible
+    || createAccountMode.createModeVisible
+    || !createAccountMode.createAccountVisible
+    || !createAccountMode.backToSignInVisible
+    || !createAccountMode.firstNameVisible
+    || !createAccountMode.lastNameVisible
+  ) {
+    throw new Error(`Create Account mode is incorrect: ${JSON.stringify(createAccountMode)}`);
+  }
+
+  await evaluate(cdp.send, `document.querySelector('[data-vlab-back-to-sign-in]').click()`);
+  await sleep(30);
+  const returnedToSignIn = await state(cdp.send);
+  if (
+    returnedToSignIn.authMode !== "sign-in"
+    || returnedToSignIn.heading !== "Sign In"
+    || !returnedToSignIn.signInVisible
+    || !returnedToSignIn.createModeVisible
+    || returnedToSignIn.firstNameVisible
+    || returnedToSignIn.lastNameVisible
+  ) {
+    throw new Error(`return to Sign In is incorrect: ${JSON.stringify(returnedToSignIn)}`);
   }
 
   await evaluate(cdp.send, `document.querySelector('[data-vlab-nav="help"]').click()`);
@@ -125,7 +178,7 @@ try {
       registrationReady: document.querySelector('.registry-panel')?.getAttribute('data-vlab-student-registration') ?? null,
     });
   })()`));
-  if (observerStress.heading !== "Sign in or create account" || observerStress.accountText !== "Account" || observerStress.registrationReady !== "ready") {
+  if (observerStress.heading !== "Sign In" || observerStress.accountText !== "Sign In" || observerStress.registrationReady !== "ready") {
     throw new Error(`registration observer stress regressed: ${JSON.stringify(observerStress)}`);
   }
 
@@ -157,7 +210,7 @@ try {
   }
 
   if (cdp.exceptions.length) throw new Error(`browser exceptions: ${JSON.stringify(cdp.exceptions)}`);
-  console.log(JSON.stringify({ initial, opened, providerState, mobilePanel, observerStress, autoOpened }, null, 2));
+  console.log(JSON.stringify({ initial, createAccountMode, returnedToSignIn, opened, providerState, mobilePanel, observerStress, autoOpened }, null, 2));
   console.log("Student registration and Getting started verified in production, including mobile scrollability and bounded observer-freeze regression coverage.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
