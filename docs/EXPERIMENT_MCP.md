@@ -10,7 +10,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.13.0`
+- MCP server: `3.13.1` (source candidate; requires Edge Function deployment)
 - interface: `17`
 - authoring contract: `vlab.authoring/0.9`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -114,6 +114,15 @@ relevant extension later becomes available
     -> revalidate the entire intended Experiment against the current contract
     -> become unblocked only when no unsupported requirement or unresolved scientific ambiguity remains
 ```
+
+Request integrity in server `3.13.1` also requires migration `20260921170000_capability_request_integrity.sql`:
+
+- Every clear unsupported requirement must have request evidence. An unchanged key and summary can retain its historical link to an active request in the same blocked Experiment; a new or changed requirement needs an explicit link. Incomplete submissions/revalidations roll back atomically. Ambiguity-only drafts remain supported.
+- Each `existing_request_id` may appear only once per call. Combine all covered `requirement_keys` in that entry and retain `relationship: generalization_needed` with its note if any requirement needs generalization. Duplicate entries are rejected before evidence is written.
+- Automatic blocked-draft reuse requires the same originating Experiment revision. An explicit blocked ID with a conflicting origin is rejected; omit that blocked ID to preserve the new revision. A blocked-ID-only continuation keeps the saved origin and artifacts.
+- Resume enumerates evidence-linked request IDs, including shared candidates whose private request rows are hidden by RLS. Those entries contain public candidate metadata and visible closure evidence, without private requester or draft fields. A link without readable candidate metadata remains present with null metadata.
+
+These source changes do not establish a production deployment. GitHub Pages CI does not apply Supabase migrations or deploy `experiment-mcp`.
 
 A Student can resume/revalidate their own blocked Experiment. A Professor has the same scientific blocking semantics and may additionally resume/revalidate visible blocked Experiments for supervision. Professor alone owns queue-wide approve/decline triage; that role distinction does not change what counts as supported or unsupported science.
 

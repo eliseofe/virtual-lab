@@ -1,28 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Signed-in and signed-out workspace presentation now share one hierarchy, and authentication separates Sign In from Create Account",
-  "owner_impact": "The three primary workspace surfaces now use the same names in navigation and card titles: Control Panel, Simulation and Experiment Authoring. Each surface has one prominent primary title instead of kicker/title pairs. Signed-out Control Panel keeps the same experiment context but replaces the Save & share card with a direct Sign In action. The authentication surface defaults to Sign In with only email and password; Create Account is a separate mode that reveals first and last name only when needed.",
+  "outcome": "Capability request integrity repair prepared in source; Supabase rollout remains required",
+  "owner_impact": "The candidate requires complete request coverage, rejects duplicate reuse entries before evidence can be lost, preserves matching revision snapshots, and retains shared candidate links during resume. These behaviors become available only after the SQL migration and experiment-mcp deployment; a Pages deployment alone does not activate them.",
   "next": {
     "kind": "scope_complete",
-    "disposition": "dormant",
+    "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "This concrete #273 UI/UX correction is finished. The UI/UX domain returns to living/dormant status with no automatic successor; future work requires new product-use evidence."
+    "text": "The requested PR preparation scope is finished. Review and merge the candidate, then apply migration 20260921170000_capability_request_integrity.sql and deploy experiment-mcp 3.13.1 before verifying the request flow in the live Lab. Production request-flow verification is pending; the separate provenance PR #461 remains independent."
   },
   "technical_evidence": [
-    "Workspace navigation and primary card titles use the exact same labels: Control Panel, Simulation and Experiment Authoring.",
-    "Control Panel has one peer-level visible title; Current experiment remains an accessible inner region without competing as the card title.",
-    "Simulation removes the Simulation/Arena kicker-title pair and uses one Simulation title.",
-    "Experiment Authoring removes the Authoring/Experiment source kicker-title pair and uses one Experiment Authoring title.",
-    "Signed-out Control Panel hides the signed-in Save & share region and exposes a direct Sign In action beside the ordinary experiment actions.",
-    "Signed-in Control Panel preserves the existing Save & share functions.",
-    "Signed-out authentication defaults to Sign In with email and password only.",
-    "Create Account is an explicit second mode; first name and last name are visible only in that mode, with a direct return to Sign In.",
-    "Signed-out account navigation is labelled Sign In; signed-in navigation remains Account.",
-    "Production responsive smoke verifies workspace hierarchy on phone, foldable, desktop and ultra-wide viewports.",
-    "Production student-onboarding smoke verifies both Sign In and Create Account presentation without creating a real account.",
-    "Scientific runtime, authoring/compiler behavior, revisions, autosave, sharing semantics, Showcase and Professor functions are unchanged.",
-    "Signed-out responsive smoke treats the Save & share region as intentionally hidden while requiring the direct Sign In action to remain visible in Control Panel.",
-    "Authentication production smoke opens the Sign In utility before asserting visible email/password and mode controls, then exercises Create Account and return-to-Sign-In presentation."
-  ],
-  "close_issue": 458
+    "Three disposable PostgreSQL regression suites execute the real closure functions against a minimal relational fixture; they do not certify the complete Supabase schema or RLS policies.",
+    "Readback unit tests cover private request rows omitted by RLS, shared semantic candidates and contract deltas, historical evidence, and links without readable metadata.",
+    "Existing RLS policies remain in force; the resume fallback uses only readable candidate metadata and visible evidence.",
+    "No Supabase production mutation, Edge Function deployment, or PR merge was performed while preparing this candidate.",
+    "Historical lost evidence is not reconstructed, and requested scientific capabilities remain unavailable until separately implemented."
+  ]
 }

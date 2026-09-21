@@ -59,6 +59,9 @@ jobs:
       - name: Test browser/compiler contracts
         run: node --test web/tests/*.test.mjs
 
+      - name: Test capability request database integrity
+        run: node supabase/tests/run-request-integrity.mjs
+
       - name: Typecheck frontend
         working-directory: web
         run: npm run typecheck
