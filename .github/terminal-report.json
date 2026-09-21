@@ -1,22 +1,22 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Experiment Control panel is now balanced by product structure rather than fixed card dimensions",
-  "owner_impact": "Save & share no longer fills its card with routine registry prose. Experiments now sits with Organize in the Current Experiment action area instead of floating beside the title. Revisions, Save & share, Showcase and Capability requests use shared intrinsic action rules, so peer cards and buttons fill available space coherently without forced card heights. Capability requests and Showcase also use shorter action labels.",
+  "outcome": "The accepted Control Panel and workspace-navigation design is implemented across phone through ultra-wide layouts",
+  "owner_impact": "The workspace now has three clear peer destinations: Control Panel, Simulation and Edit Experiment. The duplicate EXPERIMENT / Control panel heading is gone. Current Experiment now reads in one stable order: title, only meaningful exceptional access state, collection metadata, then Browse experiments and Organize. Normal ownership is implicit instead of shown as My Experiment. Research curation is renamed Professor controls while preserving Showcase and Capability requests.",
   "next": {
     "kind": "scope_complete",
     "disposition": "dormant",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "This screenshot-driven #273 correction is complete. Review the live Control panel visually; #273 returns to living/dormant status and no broader redesign or refactor has started."
+    "text": "This accepted #273 design correction is finished. The UI/UX domain returns to living/dormant status until new concrete use evidence appears."
   },
   "technical_evidence": [
-    "Routine registry success messages are no longer mirrored into Save & share; descriptive error feedback remains available.",
-    "Current Experiment now has a dedicated intrinsic toolbar: metadata on one side and Experiments/Organize actions in one action group.",
-    "The collection organizer targets the Current Experiment action group when it exists and keeps its previous metadata fallback.",
-    "Revisions and Save & share no longer use fixed card minimum heights; Save & share buttons flex equally and retain minimum touch-target height.",
-    "Research curation groups no longer use a fixed minimum height; one or two actions flex to available width using the same rule.",
-    "The compact revision trigger no longer has a fixed maximum width and retains bare-number display plus accessibility context.",
-    "Focused #446 source contracts and responsive production smoke cover the new hierarchy and prose suppression.",
-    "Science/runtime, auth, revisions, Working copy/autosave, sharing, Showcase, capability requests and collection semantics are unchanged."
+    "Workspace navigation exposes Control Panel, Simulation and Edit Experiment with one active destination and keeps Help/Account as utilities.",
+    "Navigation remains visible and single-line across responsive layouts; narrow layouts reflow the workspace nav beneath the brand instead of hiding it in the utility drawer.",
+    "The visible duplicate Control Panel heading was removed while the panel retains accessible naming.",
+    "Current Experiment uses a stable title → access → collection → actions hierarchy; owned/editable state is hidden as the default.",
+    "Browse experiments is the primary library/finder action and Organize remains secondary in the same action group.",
+    "Professor controls preserves the existing Showcase and Capability requests functions.",
+    "Responsive production smoke checks narrow phone, foldable/wider mobile, ordinary desktop and ultra-wide desktop using the shared browser harness.",
+    "Scientific/runtime, revision/Working-copy/autosave, sharing, Showcase, capability-request and collection semantics are unchanged."
   ],
-  "close_issue": 446
+  "close_issue": 449
 }
