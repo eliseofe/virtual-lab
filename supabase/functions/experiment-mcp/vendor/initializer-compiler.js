@@ -266,7 +266,11 @@ function evaluate(expr, scope) {
     }
     if (expr.path === "rng.uniform") {
       if (args.length !== 2) throw new InitializerCompileError("rng.uniform expects two arguments", expr.line);
-      return scope.rng.uniform(args[0], args[1]);
+      try {
+        return scope.rng.uniform(args[0], args[1]);
+      } catch (error) {
+        throw new InitializerCompileError(error instanceof Error ? error.message : String(error), expr.line);
+      }
     }
     if (expr.path === "place") { scope.place(...args); return null; }
     if (expr.path === "set_agent_state") { scope.setAgentState(...args); return null; }
