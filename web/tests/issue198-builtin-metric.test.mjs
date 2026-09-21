@@ -5,35 +5,37 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { compileMetrics } from "../src/metrics/compiler.js";
-import { BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE } from "../src/builtin-active-elastic-metrics-source.js";
+import { DEFAULT_CATALOG_EXPERIMENT } from "../src/experiment-catalog.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "../..");
-const installer = await readFile(path.join(repo, "web/src/builtin-active-elastic-metrics.js"), "utf8");
 const bridge = await readFile(path.join(repo, "web/src/metrics-runtime-bridge.js"), "utf8");
 const html = await readFile(path.join(repo, "web/src/index.html"), "utf8");
 const artifacts = await readFile(path.join(repo, "web/src/experiment-artifacts.js"), "utf8");
+const catalogWorkspace = await readFile(path.join(repo, "web/src/catalog-workspace.js"), "utf8");
 
-test("#198 built-in Active Elastic ships two owner-authorized live metrics", () => {
-  assert.match(BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE, /@metric\(id="polarization", name="Polarization order parameter"/);
-  assert.match(BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE, /@metric\(id="angular_momentum", name="Angular momentum order parameter"/);
-  assert.match(BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE, /rotation \+= cross2\(radial_hat, agent\.heading\)/);
-  const ir = compileMetrics(BUILTIN_ACTIVE_ELASTIC_METRICS_SOURCE);
+const metricsSource = DEFAULT_CATALOG_EXPERIMENT.artifacts.find((artifact) => artifact.id === "metrics")?.content ?? "";
+
+test("#198 Active Elastic catalog content retains the two owner-authorized live metrics", () => {
+  assert.match(metricsSource, /@metric\(id="polarization", name="Polarization order parameter"/);
+  assert.match(metricsSource, /@metric\(id="angular_momentum", name="Angular momentum order parameter"/);
+  assert.match(metricsSource, /rotation \+= cross2\(radial_hat, agent\.heading\)/);
+  const ir = compileMetrics(metricsSource);
   assert.deepEqual(ir.metrics.map((metric) => metric.id), ["polarization", "angular_momentum"]);
   assert.match(JSON.stringify(ir.metrics[1]), /"name":"cross2"/);
 });
 
-test("#198 built-in Metrics uses the generic artifact contract without an emergency DOM fixture", () => {
+test("#481 Metrics reaches the editor through the generic Experiment artifact contract", () => {
   assert.match(html, /id="metrics-source"/);
   assert.match(html, /data-artifact-id="metrics"/);
   assert.match(artifacts, /id: "metrics"[\s\S]*editorSelector: null/);
-  assert.doesNotMatch(installer, /createElement|append\(/);
-  assert.match(installer, /document\.querySelector\("#metrics-source"\)/);
+  assert.match(catalogWorkspace, /applyExperimentArtifacts\(experiment\)/);
+  assert.doesNotMatch(bridge, /builtin-active-elastic-metrics/);
 });
 
-test("#198 built-in source is installed before Results/runtime bridge initialization", () => {
-  const builtinImport = bridge.indexOf('import "./builtin-active-elastic-metrics.js";');
+test("#481 catalog workspace is initialized before Results/runtime bridge initialization", () => {
+  const catalogImport = bridge.indexOf('import "./catalog-workspace.js";');
   const resultsImport = bridge.indexOf('import "./results-ui.js";');
-  assert.ok(builtinImport >= 0);
-  assert.ok(resultsImport > builtinImport);
+  assert.ok(catalogImport >= 0);
+  assert.ok(resultsImport > catalogImport);
 });
