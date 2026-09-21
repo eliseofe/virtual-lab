@@ -26,6 +26,15 @@ let busyRequestId = null;
 
 const CANDIDATE_ARTIFACTS = ["configuration", "initialization", "controller", "metrics", "environment", "runtime"];
 
+const PROFESSOR_REVIEW_CONTRACT = "vlab.professor-review/2";
+const PROFESSOR_REVIEW_DECISIONS = Object.freeze([
+  ["Accept", "accepted", true],
+  ["Revise", "revise", false],
+  ["Defer", "deferred", false],
+  ["Future", "future", false],
+  ["Reject", "rejected", false],
+]);
+
 function installStyles() {
   if (document.querySelector("style[data-vlab-professor-inbox]")) return;
   const style = document.createElement("style");
@@ -103,6 +112,9 @@ function buildUi() {
   const panel = document.createElement("section");
   panel.className = "panel professor-panel";
   panel.hidden = true;
+  panel.dataset.vlabProfessorReviewContract = PROFESSOR_REVIEW_CONTRACT;
+  panel.dataset.vlabProfessorReviewDecisions = PROFESSOR_REVIEW_DECISIONS.map(([, decision]) => decision).join(",");
+  panel.dataset.vlabProfessorReviseGuidanceRequired = "true";
   panel.setAttribute("aria-label", "Professor extension requests");
 
   const head = document.createElement("div");
@@ -583,15 +595,8 @@ function render() {
 
       const actions = document.createElement("div");
       actions.className = "professor-request-actions";
-      const decisions = [
-        ["Accept", "accepted", true],
-        ["Revise", "revise", false],
-        ["Defer", "deferred", false],
-        ["Future", "future", false],
-        ["Reject", "rejected", false],
-      ];
       const busy = busyRequestId === request.id;
-      for (const [label, decision, primary] of decisions) {
+      for (const [label, decision, primary] of PROFESSOR_REVIEW_DECISIONS) {
         const button = document.createElement("button");
         if (primary) button.className = "primary";
         button.textContent = label;
