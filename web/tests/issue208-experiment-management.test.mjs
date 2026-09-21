@@ -26,7 +26,7 @@ assert.match(management, /function setText\(element, text\)/);
 assert.match(management, /if \(element && element\.textContent !== text\) element\.textContent = text/);
 assert.match(management, /setText\(browseButton, "Browse experiments"\)/);
 assert.doesNotMatch(management, /browseButton\.textContent = "Browse experiments"/);
-assert.match(management, /signIn\.textContent = "Sign in to save"/);
+assert.match(management, /signIn\.textContent = "Sign In"/);
 assert.match(management, /accountButton\.click\(\)/);
 assert.match(management, /setText\(saveRevision, "Save Revision"\)/);
 assert.match(management, /setText\(management\.saveAsNew, "Save as new…"\)/);
