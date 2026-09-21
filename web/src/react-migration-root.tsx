@@ -105,10 +105,22 @@ function ApplicationChrome() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [utilityOpen, setUtilityOpen] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceSection>('control-panel');
+  const [authState, setAuthState] = useState(() => document.body.dataset.vlabAuthState ?? 'signed-out');
 
   useEffect(() => {
     document.body.classList.add('vlab-react-chrome-mounted');
     return () => document.body.classList.remove('vlab-react-chrome-mounted');
+  }, []);
+
+  useEffect(() => {
+    const syncAuthState = () => setAuthState(document.body.dataset.vlabAuthState ?? 'signed-out');
+    const observer = new MutationObserver(syncAuthState);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['data-vlab-auth-state'],
+    });
+    syncAuthState();
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -168,6 +180,7 @@ function ApplicationChrome() {
     'aria-controls': 'workspace-utilities',
     'aria-expanded': utilityOpen,
   };
+  const accountLabel = authState === 'signed-in' ? 'Account' : 'Sign In';
   const navigateWorkspace = (section: WorkspaceSection, selector: string) => {
     setActiveWorkspace(section);
     scrollTo(selector);
@@ -189,7 +202,7 @@ function ApplicationChrome() {
             </Group>
 
             <Group gap="xs" wrap="nowrap" className="vlab-react-utilities">
-              <Button className="vlab-react-account-button" visibleFrom="sm" variant="outline" color="gray" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account" {...accountA11y}>Account</Button>
+              <Button className="vlab-react-account-button" visibleFrom="sm" variant="outline" color="gray" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account" aria-label={accountLabel} {...accountA11y}>{accountLabel}</Button>
               <Burger hiddenFrom="lg" opened={mobileOpen} onClick={() => setMobileOpen((value) => !value)} color="white" aria-label="Open utilities" data-vlab-nav-toggle="true" />
             </Group>
           </Group>
@@ -200,7 +213,7 @@ function ApplicationChrome() {
         <Stack gap="xs">
           <Text size="xs" c="dimmed"><strong>Eliseo Ferrante</strong> · Swarm robotics</Text>
           <Button variant="light" color="gray" onClick={() => { proxyClick('[data-vlab-nav="help"]'); setMobileOpen(false); }} data-vlab-nav="help-mobile">Help</Button>
-          <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile" {...accountA11y}>Account</Button>
+          <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile" aria-label={accountLabel} {...accountA11y}>{accountLabel}</Button>
         </Stack>
       </Drawer>
     </Box>

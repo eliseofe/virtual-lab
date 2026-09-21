@@ -52,6 +52,10 @@ test("#458 makes Sign In the default auth mode and reveals names only for accoun
   assert.match(registration, /createAccount\.hidden = !creating/);
   assert.match(registration, /headingText = signedOut[\s\S]*"Create Account"[\s\S]*"Sign In"[\s\S]*: "Account"/);
   assert.match(registration, /const text = signedOut \? "Sign In" : "Account"/);
+  assert.match(react, /document\.body\.dataset\.vlabAuthState \?\? 'signed-out'/);
+  assert.match(react, /attributeFilter: \['data-vlab-auth-state'\]/);
+  assert.match(react, /const accountLabel = authState === 'signed-in' \? 'Account' : 'Sign In'/);
+  assert.match(react, /data-vlab-nav="account-mobile" aria-label=\{accountLabel\}/);
   assert.doesNotMatch(registration, /New to Virtual Lab|New accounts start with the Student role|Sign in or create account/);
   assert.match(onboarding, /data-vlab-nav=\"account\"/);
   assert.match(onboarding, /initial\.heading !== "Sign In"/);
