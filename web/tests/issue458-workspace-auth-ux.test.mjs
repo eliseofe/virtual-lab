@@ -41,6 +41,7 @@ test("#458 signed-out Control Panel exposes Sign In without a Save & share card"
   assert.match(management, /management\.signIn\.hidden = isSignedIn/);
   assert.doesNotMatch(management, /Sign in to save/);
   assert.match(responsive, /state\.managementTasks\.saveShare/);
+  assert.match(responsive, /state\.experimentManagement\.visible/);
   assert.match(responsive, /state\.experimentManagement\.signInVisible/);
 });
 
@@ -52,6 +53,7 @@ test("#458 makes Sign In the default auth mode and reveals names only for accoun
   assert.match(registration, /headingText = signedOut[\s\S]*"Create Account"[\s\S]*"Sign In"[\s\S]*: "Account"/);
   assert.match(registration, /const text = signedOut \? "Sign In" : "Account"/);
   assert.doesNotMatch(registration, /New to Virtual Lab|New accounts start with the Student role|Sign in or create account/);
+  assert.match(onboarding, /data-vlab-nav=\"account\"/);
   assert.match(onboarding, /initial\.heading !== "Sign In"/);
   assert.match(onboarding, /createAccountMode\.heading !== "Create Account"/);
   assert.match(onboarding, /initial\.firstNameVisible|createAccountMode\.firstNameVisible/);

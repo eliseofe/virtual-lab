@@ -69,7 +69,10 @@ try {
   cdp = session.cdp;
   await cdp.send("Runtime.enable");
 
-  const initial = await waitReady(cdp.send);
+  await waitReady(cdp.send);
+  await evaluate(cdp.send, `document.querySelector('[data-vlab-nav="account"]').click()`);
+  await sleep(50);
+  const initial = await state(cdp.send);
   if (
     initial.authHidden
     || initial.authMode !== "sign-in"
@@ -82,9 +85,8 @@ try {
     || initial.lastNameVisible
     || initial.accountText !== "Sign In"
   ) {
-    throw new Error(`signed-out Sign In surface is incorrect: ${JSON.stringify(initial)}`);
+    throw new Error(`signed-out Sign In surface is incorrect after opening it: ${JSON.stringify(initial)}`);
   }
-
   await evaluate(cdp.send, `document.querySelector('[data-vlab-create-account-mode]').click()`);
   await sleep(30);
   const createAccountMode = await state(cdp.send);
@@ -115,6 +117,8 @@ try {
     throw new Error(`return to Sign In is incorrect: ${JSON.stringify(returnedToSignIn)}`);
   }
 
+  await evaluate(cdp.send, `document.querySelector('#workspace-utilities')?.close()`);
+  await sleep(30);
   await evaluate(cdp.send, `document.querySelector('[data-vlab-nav="help"]').click()`);
   await sleep(50);
   const opened = await state(cdp.send);

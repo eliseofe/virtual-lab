@@ -205,8 +205,8 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
       throw new Error(`${label}: product identity regressed: ${JSON.stringify(state.ribbon)}`);
     }
   }
-  if (!state.experimentManagement.visible || state.experimentManagement.selectVisible || state.experimentManagement.legacyPersistenceVisible) {
-    throw new Error(`${label}: Experiment identity/persistence is not unified: ${JSON.stringify(state.experimentManagement)}`);
+  if (state.experimentManagement.visible || state.experimentManagement.selectVisible || state.experimentManagement.legacyPersistenceVisible) {
+    throw new Error(`${label}: signed-out persistence controls leaked into Control Panel: ${JSON.stringify(state.experimentManagement)}`);
   }
   if (
     state.experimentManagement.redundantLocationVisible
@@ -278,7 +278,7 @@ async function verifyUtilityDialog(send) {
       .filter((element) => !element.hidden && getComputedStyle(element).display !== 'none' && element.getClientRects().length)
       .map((element) => element.textContent?.trim() ?? '')
   )`));
-  if (JSON.stringify(drawerLabels) !== JSON.stringify(["Help", "Account"])) {
+  if (JSON.stringify(drawerLabels) !== JSON.stringify(["Help", "Sign In"])) {
     throw new Error(`mobile utility drawer hierarchy regressed: ${JSON.stringify(drawerLabels)}`);
   }
   await evaluate(send, "document.querySelector('[data-vlab-nav=\"account-mobile\"]').click()");
@@ -294,7 +294,7 @@ async function verifyUtilityDialog(send) {
     };
   })())`));
   if (!opened.open || !opened.focusInside || opened.expanded !== "true" || opened.closeHeight < 44) {
-    throw new Error(`mobile React Account dialog failed: ${JSON.stringify(opened)}`);
+    throw new Error(`mobile React Sign In dialog failed: ${JSON.stringify(opened)}`);
   }
   await evaluate(send, "document.querySelector('#workspace-utilities').close()");
   await sleep(100);
