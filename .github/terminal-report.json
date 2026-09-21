@@ -1,18 +1,20 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Capability closure now preserves the exact Experiment revision snapshot it analyzed",
-  "owner_impact": "Continuing capability analysis on the same Experiment revision reuses the same preserved blocked snapshot. If the Experiment has advanced to a newer revision, automatic continuation creates a new snapshot instead of silently attaching the new analysis to old artifacts. Explicitly forcing an old blocked snapshot against a newer supplied revision is rejected atomically. Continuing by blocked-snapshot ID alone keeps that snapshot's original Experiment ID, revision and artifacts. This changes snapshot integrity only; it does not approve, reject, generalize, or scientifically validate any pending capability request.",
+  "outcome": "Shared capability candidates no longer disappear when a closure is resumed under normal privacy rules",
+  "owner_impact": "A student or professor resuming a blocked Experiment now sees every capability candidate linked by evidence they are allowed to read, even when the underlying request belongs to another user and its private request row is correctly hidden. The fallback contains only sanitized shared candidate metadata and visible evidence; it does not reveal requester identity, private drafts, context, notes, or publication provenance. Candidate items remain unavailable to authoring. This repair makes no scientific judgment about Sergio's pending requests.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 464,
-    "text": "One final repair remains from the Sergio-PR-derived defect review: shared-candidate readback under permissions. It will make a reused candidate remain visible when resuming a closure even if the caller cannot read the other requester's private request row. It has not started yet."
+    "kind": "scope_complete",
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The approved capability-request/MCP repair scope derived from Sergio's PR is complete and is being closed. No further Sergio-PR-derived technical repair is scheduled. Reviewing Sergio's scientific capability requests and resuming the paused aggregation RNG work are separate owner decisions; neither starts automatically."
   },
   "technical_evidence": [
-    "Automatic blocked-snapshot reuse now requires both the same origin Experiment and the same origin revision.",
-    "Supplying an explicit blocked snapshot together with a conflicting current origin revision raises SQLSTATE 22023 before a new closure analysis can persist.",
-    "Capability request rows now inherit origin_experiment_id and origin_experiment_revision from the immutable blocked snapshot rather than from an optional current-origin lookup.",
-    "A disposable PostgreSQL regression covers same-revision reuse, new-revision snapshot creation, stale explicit reuse rollback, and blocked-ID-only continuation preserving revision-one artifacts.",
-    "No RLS policy, candidate semantics, capability lifecycle, scientific triage state, or request decision state changes in this ticket."
+    "Closure readback membership is now driven by caller-visible capability_request_evidence rather than by whichever private capability_requests rows survive RLS.",
+    "Shared semantic candidates and contract deltas are reconstructed only from the same explicit sanitized field allowlists used by neutral workspace discovery.",
+    "The reconstruction helper strips unexpected candidate fields defensively, so broadening a future database query cannot silently expose requester identity, private context, draft artifacts, publication identity, notes, or generalized_by through the fallback.",
+    "Readable own/professor-visible request rows retain their normal full RLS-authorized details; only hidden requests use the sanitized fallback.",
+    "Evidence with no readable request or candidate metadata remains represented by request ID plus visible evidence instead of disappearing.",
+    "No RLS policy, request lifecycle, candidate availability, compiler acceptance, tool count, or authoring contract changes in this ticket."
   ],
-  "close_issue": 465
+  "close_issue": 464
 }
