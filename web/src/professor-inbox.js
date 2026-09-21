@@ -486,7 +486,7 @@ function setMessage(text, state = "idle") {
 }
 
 function pendingCount() {
-  return requests.filter((request) => request.status === "requested").length;
+  return requests.filter((request) => request.professor_disposition === "pending").length;
 }
 
 function render() {
@@ -504,8 +504,8 @@ function render() {
   }
 
   const ordered = [...requests].sort((left, right) => {
-    const leftPending = left.status === "requested" ? 0 : 1;
-    const rightPending = right.status === "requested" ? 0 : 1;
+    const leftPending = left.professor_disposition === "pending" ? 0 : 1;
+    const rightPending = right.professor_disposition === "pending" ? 0 : 1;
     if (leftPending !== rightPending) return leftPending - rightPending;
     return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
   });
@@ -565,7 +565,7 @@ function render() {
     const generalizationEditor = buildGeneralizationEditor(request);
     if (generalizationEditor) card.append(generalizationEditor);
 
-    if (request.status === "requested") {
+    if (request.professor_disposition === "pending") {
       const noteLabel = document.createElement("label");
       noteLabel.className = "professor-request-note-label";
       noteLabel.textContent = "Professor note";
@@ -574,7 +574,7 @@ function render() {
       note.maxLength = 20000;
       note.placeholder = "Optional note";
       note.setAttribute("aria-label", `Professor note for ${request.extension_name || request.capability_name}`);
-      note.value = request.professor_notes || "";
+      note.value = request.professor_guidance || "";
       noteLabel.append(note);
 
       const actions = document.createElement("div");
@@ -597,8 +597,9 @@ function render() {
       const review = document.createElement("p");
       review.className = "professor-request-review";
       const parts = [];
-      if (request.reviewed_at) parts.push(formatDate(request.reviewed_at));
-      if (request.professor_notes) parts.push(`Professor note: ${request.professor_notes}`);
+      if (request.professor_disposition && request.professor_disposition !== "pending") parts.push(`Professor decision: ${request.professor_disposition.replaceAll("_", " ")}`);
+      if (request.professor_disposition_reviewed_at || request.reviewed_at) parts.push(formatDate(request.professor_disposition_reviewed_at || request.reviewed_at));
+      if (request.professor_guidance || request.professor_notes) parts.push(`Professor note: ${request.professor_guidance || request.professor_notes}`);
       review.textContent = parts.join(" · ") || "No Professor note.";
       card.append(review);
     }
@@ -693,7 +694,7 @@ async function loadRequests() {
 
   const requestResult = await supabase
     .from("capability_requests")
-    .select("id, draft_title, draft_description, draft_artifacts, capability_domain, capability_name, context, requested_artifact_type, requested_lifecycle_hook, status, professor_notes, reviewed_at, created_at, request_class, extension_domain, extension_name, extension_definition, publication_identifier, publication_title")
+    .select("id, draft_title, draft_description, draft_artifacts, capability_domain, capability_name, context, requested_artifact_type, requested_lifecycle_hook, status, professor_disposition, professor_guidance, professor_disposition_reviewed_at, professor_notes, reviewed_at, created_at, request_class, extension_domain, extension_name, extension_definition, publication_identifier, publication_title")
     .order("created_at", { ascending: false });
 
   ui.refresh.disabled = false;
@@ -744,7 +745,7 @@ async function generalizeCandidate(request, candidate, payload, resolveEvidence,
 }
 
 async function triage(request, status, note) {
-  if (profile?.role !== "professor" || request.status !== "requested") return;
+  if (profile?.role !== "professor" || request.status !== "requested" || request.professor_disposition !== "pending") return;
   busyRequestId = request.id;
   render();
   setMessage(`${status === "approved" ? "Approving" : "Declining"} request…`);
