@@ -95,7 +95,7 @@ async function structure(send) {
         visible: visible(management),
         selectVisible: visible(experimentSelect),
         legacyPersistenceVisible: visible(legacyPersistence),
-        redundantLocationVisible: (locationText === 'Built-in' || locationText === 'No collection') && visible(redundantLocation),
+        redundantLocationVisible: (locationText === 'Showcase' || locationText === 'No collection') && visible(redundantLocation),
         signInVisible: visible(signInSave),
         signInHeight: Math.round(signInSave?.getBoundingClientRect().height ?? 0),
         browseLabel: browse?.textContent?.trim() ?? null,
