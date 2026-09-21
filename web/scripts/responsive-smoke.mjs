@@ -331,6 +331,7 @@ try {
   cdp = session.cdp;
   await cdp.send("Runtime.enable");
   await cdp.send("Page.enable");
+  await waitReady(cdp.send);
 
   const viewports = [
     { label: "desktop", width: 1366, height: 900, mobile: false, touch: false },
