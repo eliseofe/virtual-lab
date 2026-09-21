@@ -41,8 +41,8 @@ test("#413 Showcase curation remains authoritative while #430 owns its final pla
   assert.doesNotMatch(placement, /MutationObserver|placeShowcaseCuration/);
 });
 
-test("#413 leaves Arena and Experiment Source structure outside this cleanup", () => {
-  assert.match(index, /id="arena-heading"/);
+test("#413 keeps the authoritative Simulation and Authoring workspace anchors", () => {
+  assert.match(index, /id="arena-heading" class="vlab-workspace-card-title">Simulation<\/h2>/);
   assert.match(index, /id="authoring-workbench"/);
-  assert.match(index, /id="authoring-heading"/);
+  assert.match(index, /id="authoring-heading" class="vlab-workspace-card-title">Experiment Authoring<\/h2>/);
 });
