@@ -8,6 +8,7 @@ import { withRequiredClaims } from 'npm:@supabase/server/middleware/required-cla
 import { withSupabaseClient } from 'npm:@supabase/server/middleware/client'
 import { z } from 'npm:zod@4.1.13'
 
+import { buildClosureLinkedRequests } from './closure-linked-requests.js'
 import { CANONICAL_CAPABILITY_BINDINGS } from './canonical-capability-bindings.js'
 import { validateCanonicalCapabilitySurface } from './canonical-capability-consistency.js'
 import {
@@ -721,7 +722,7 @@ function registerExperimentTools(
 
           const { data: candidateCapabilities, error: candidateCapabilitiesError } = await supabase
             .from('candidate_capabilities')
-            .select('*')
+            .select('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at')
             .in('request_id', requestIds)
           if (candidateCapabilitiesError) {
             return toolError('Could not read linked candidate capabilities.', candidateCapabilitiesError.message)
@@ -729,25 +730,18 @@ function registerExperimentTools(
 
           const { data: candidateContractDeltas, error: candidateContractDeltasError } = await supabase
             .from('candidate_contract_deltas')
-            .select('*')
+            .select('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, request_created_at, request_updated_at, generalization_revision, generalized_at')
             .in('request_id', requestIds)
           if (candidateContractDeltasError) {
             return toolError('Could not read linked candidate contract deltas.', candidateContractDeltasError.message)
           }
 
-          const candidateCapabilityByRequest = new Map(
-            (candidateCapabilities ?? []).map((candidate: { request_id: string }) => [candidate.request_id, candidate]),
+          linkedRequests = buildClosureLinkedRequests(
+            evidence ?? [],
+            requests ?? [],
+            candidateCapabilities ?? [],
+            candidateContractDeltas ?? [],
           )
-          const candidateContractDeltaByRequest = new Map(
-            (candidateContractDeltas ?? []).map((candidate: { request_id: string }) => [candidate.request_id, candidate]),
-          )
-
-          linkedRequests = (requests ?? []).map((request: { id: string }) => ({
-            ...request,
-            candidate_capability: candidateCapabilityByRequest.get(request.id) ?? null,
-            candidate_contract_delta: candidateContractDeltaByRequest.get(request.id) ?? null,
-            evidence: (evidence ?? []).filter((link: { request_id: string }) => link.request_id === request.id),
-          }))
         }
       }
 
