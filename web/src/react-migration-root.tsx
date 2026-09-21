@@ -55,8 +55,11 @@ const theme = createTheme({
 function scrollTo(selector: string) {
   const target = document.querySelector<HTMLElement>(selector);
   if (!target) return;
+  const chrome = document.querySelector<HTMLElement>('[data-vlab-react-chrome="mounted"]');
+  const offset = (chrome?.getBoundingClientRect().height ?? 0) + 12;
+  const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - offset);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  target.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+  window.scrollTo({ top, behavior: reducedMotion ? 'auto' : 'smooth' });
 }
 
 function proxyClick(selector: string) {
@@ -67,15 +70,33 @@ function visible(element: HTMLElement | null) {
   return Boolean(element && !element.hidden && element.getClientRects().length > 0);
 }
 
-function WorkspaceNav({ closeMobile }: { closeMobile?: () => void }) {
-  const action = (callback: () => void) => () => {
-    callback();
-    closeMobile?.();
-  };
+type WorkspaceSection = 'control-panel' | 'simulation' | 'edit-experiment';
+
+function WorkspaceNav({
+  activeSection,
+  onNavigate,
+}: {
+  activeSection: WorkspaceSection;
+  onNavigate: (section: WorkspaceSection, selector: string) => void;
+}) {
+  const item = (section: WorkspaceSection, selector: string, label: string) => (
+    <Button
+      className="vlab-react-nav-button"
+      variant="subtle"
+      color="gray"
+      onClick={() => onNavigate(section, selector)}
+      data-vlab-nav={section}
+      data-active={String(activeSection === section)}
+      aria-current={activeSection === section ? 'location' : undefined}
+    >
+      {label}
+    </Button>
+  );
   return (
     <>
-      <Button className="vlab-react-nav-button" variant="subtle" color="gray" onClick={action(() => scrollTo('#simulation'))} data-vlab-nav="simulation">Simulation</Button>
-      <Button className="vlab-react-nav-button" variant="subtle" color="gray" onClick={action(() => scrollTo('#authoring-workbench'))} data-vlab-nav="authoring">Authoring</Button>
+      {item('control-panel', '#control-panel', 'Control Panel')}
+      {item('simulation', '#simulation', 'Simulation')}
+      {item('edit-experiment', '#authoring-workbench', 'Edit Experiment')}
     </>
   );
 }
@@ -83,10 +104,36 @@ function WorkspaceNav({ closeMobile }: { closeMobile?: () => void }) {
 function ApplicationChrome() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [utilityOpen, setUtilityOpen] = useState(false);
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceSection>('control-panel');
 
   useEffect(() => {
     document.body.classList.add('vlab-react-chrome-mounted');
     return () => document.body.classList.remove('vlab-react-chrome-mounted');
+  }, []);
+
+  useEffect(() => {
+    const sections: Array<[WorkspaceSection, string]> = [
+      ['control-panel', '#control-panel'],
+      ['simulation', '#simulation'],
+      ['edit-experiment', '#authoring-workbench'],
+    ];
+    const syncActiveWorkspace = () => {
+      const chrome = document.querySelector<HTMLElement>('[data-vlab-react-chrome="mounted"]');
+      const marker = (chrome?.getBoundingClientRect().height ?? 0) + 24;
+      let active: WorkspaceSection = 'control-panel';
+      for (const [section, selector] of sections) {
+        const target = document.querySelector<HTMLElement>(selector);
+        if (target && target.getBoundingClientRect().top <= marker) active = section;
+      }
+      setActiveWorkspace(active);
+    };
+    syncActiveWorkspace();
+    window.addEventListener('scroll', syncActiveWorkspace, { passive: true });
+    window.addEventListener('resize', syncActiveWorkspace);
+    return () => {
+      window.removeEventListener('scroll', syncActiveWorkspace);
+      window.removeEventListener('resize', syncActiveWorkspace);
+    };
   }, []);
 
   useEffect(() => {
@@ -121,11 +168,15 @@ function ApplicationChrome() {
     'aria-controls': 'workspace-utilities',
     'aria-expanded': utilityOpen,
   };
+  const navigateWorkspace = (section: WorkspaceSection, selector: string) => {
+    setActiveWorkspace(section);
+    scrollTo(selector);
+  };
   return (
     <Box data-vlab-react-foundation="mounted" data-vlab-react-chrome="mounted">
       <Paper component="header" className="vlab-react-chrome" radius={0} shadow="sm">
         <Container size="xl" py={8}>
-          <Group justify="space-between" gap="md" wrap="nowrap">
+          <Group justify="space-between" gap="md" wrap="nowrap" className="vlab-react-header-layout">
             <Box className="vlab-react-brand">
               <Title order={1} size="h3" c="white" className="vlab-react-brand-title">Virtual Lab</Title>
               <Text size="xs" c="gray.3" className="vlab-react-brand-byline">
@@ -133,22 +184,21 @@ function ApplicationChrome() {
               </Text>
             </Box>
 
-            <Group gap={2} wrap="nowrap" visibleFrom="lg" className="vlab-react-nav">
-              <WorkspaceNav />
+            <Group component="nav" aria-label="Workspace" gap={2} wrap="nowrap" className="vlab-react-nav">
+              <WorkspaceNav activeSection={activeWorkspace} onNavigate={navigateWorkspace} />
             </Group>
 
-            <Group gap="xs" wrap="nowrap">
+            <Group gap="xs" wrap="nowrap" className="vlab-react-utilities">
               <Button className="vlab-react-account-button" visibleFrom="sm" variant="outline" color="gray" onClick={() => proxyClick('#account-menu')} data-vlab-nav="account" {...accountA11y}>Account</Button>
-              <Burger hiddenFrom="lg" opened={mobileOpen} onClick={() => setMobileOpen((value) => !value)} color="white" aria-label="Open workspace navigation" data-vlab-nav-toggle="true" />
+              <Burger hiddenFrom="lg" opened={mobileOpen} onClick={() => setMobileOpen((value) => !value)} color="white" aria-label="Open utilities" data-vlab-nav-toggle="true" />
             </Group>
           </Group>
         </Container>
       </Paper>
 
-      <Drawer opened={mobileOpen} onClose={() => setMobileOpen(false)} title="Virtual Lab" position="right" size="xs">
+      <Drawer opened={mobileOpen} onClose={() => setMobileOpen(false)} title="Utilities" position="right" size="xs">
         <Stack gap="xs">
           <Text size="xs" c="dimmed"><strong>Eliseo Ferrante</strong> · Swarm robotics</Text>
-          <WorkspaceNav closeMobile={() => setMobileOpen(false)} />
           <Button variant="light" color="gray" onClick={() => { proxyClick('[data-vlab-nav="help"]'); setMobileOpen(false); }} data-vlab-nav="help-mobile">Help</Button>
           <Button variant="filled" color="dark" onClick={() => { proxyClick('#account-menu'); setMobileOpen(false); }} data-vlab-nav="account-mobile" {...accountA11y}>Account</Button>
         </Stack>
