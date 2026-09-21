@@ -68,8 +68,11 @@ test("#346 stores publication identity separately and makes canonical provenance
 test("#346 typed request identity remains Professor-triaged after later decision-only UI cleanup", () => {
   assert.match(inbox, /triage_extension_request/);
   assert.match(inbox, /REQUEST_CLASS_LABELS/);
-  assert.match(inbox, /approve\.textContent = "Approve"/);
-  assert.match(inbox, /decline\.textContent = "Decline"/);
+  assert.ok(inbox.includes('["Accept", "accepted", true]'));
+  assert.ok(inbox.includes('["Reject", "rejected", false]'));
+  assert.ok(inbox.includes('["Revise", "revise", false]'));
+  assert.ok(inbox.includes('["Defer", "deferred", false]'));
+  assert.ok(inbox.includes('["Future", "future", false]'));
   assert.doesNotMatch(inbox, /Create new canonical capability|Bind existing:|list_canonical_capability_registry/);
   assert.match(migration, /Only a Professor may triage extension requests/i);
 });
