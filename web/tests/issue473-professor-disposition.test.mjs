@@ -67,6 +67,5 @@ test("#473 pending Professor inbox semantics use disposition, while visual redes
   assert.match(inbox, /left\.professor_disposition === "pending"/);
   assert.match(inbox, /request\.professor_disposition !== "pending"/);
   assert.match(inbox, /professor_disposition, professor_guidance, professor_disposition_reviewed_at/);
-  assert.match(inbox, /approve\.textContent = "Approve"/);
-  assert.match(inbox, /decline\.textContent = "Decline"/);
+  for (const decision of ["Accept", "Reject", "Revise", "Defer", "Future"]) assert.match(inbox, new RegExp(`button\\.textContent = \\"${decision}\\"|\\[\"'${decision}\"'`));
 });
