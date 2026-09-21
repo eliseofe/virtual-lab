@@ -111,19 +111,13 @@ function buildUi() {
   head.append(title, headActions);
 
   const currentExperimentMain = experimentPanel.querySelector(".experiment-current-main");
-  const browseExperiment = currentExperimentMain?.querySelector(".experiment-browse");
-  if (!currentExperimentMain || !browseExperiment) throw new Error("Showcase current-Experiment UI mismatch.");
-
-  const currentExperimentActions = document.createElement("div");
-  currentExperimentActions.className = "experiment-current-actions";
-  browseExperiment.replaceWith(currentExperimentActions);
-  currentExperimentActions.append(browseExperiment);
+  if (!currentExperimentMain) throw new Error("Showcase current-Experiment UI mismatch.");
 
   const promote = document.createElement("button");
   promote.type = "button";
   promote.className = "primary showcase-promote-current";
   promote.hidden = true;
-  currentExperimentActions.append(promote);
+  currentExperimentMain.append(promote);
 
   const curationStatus = document.createElement("p");
   curationStatus.className = "showcase-curation-status";
