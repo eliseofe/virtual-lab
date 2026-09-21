@@ -486,7 +486,7 @@ function simplifyIdentity() {
       setText(origin, "Shared · Read-only");
     } else if (!owned && locationText.startsWith("Supervised · ")) {
       setText(origin, locationText + " · Read-only");
-    } else if (!owned && locationText !== "Built-in") {
+    } else if (!owned && locationText !== "Showcase") {
       setText(origin, "Read-only");
     }
   }
