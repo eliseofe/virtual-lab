@@ -87,6 +87,17 @@
           "timeout_seconds": 60
         }
       ]
+    },
+    {
+      "id": "professor-review",
+      "name": "Professor capability-request review",
+      "state": "active",
+      "smoke": [
+        {
+          "script": "web/scripts/professor-review-smoke.mjs",
+          "timeout_seconds": 60
+        }
+      ]
     }
   ]
 }
