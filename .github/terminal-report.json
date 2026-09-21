@@ -22,7 +22,8 @@
     "Production student-onboarding smoke verifies both Sign In and Create Account presentation without creating a real account.",
     "Scientific runtime, authoring/compiler behavior, revisions, autosave, sharing semantics, Showcase and Professor functions are unchanged.",
     "Signed-out responsive smoke treats the Save & share region as intentionally hidden while requiring the direct Sign In action to remain visible in Control Panel.",
-    "Authentication production smoke opens the Sign In utility before asserting visible email/password and mode controls, then exercises Create Account and return-to-Sign-In presentation."
+    "Authentication production smoke opens the Sign In utility before asserting visible email/password and mode controls, then exercises Create Account and return-to-Sign-In presentation.",
+    "React chrome now observes the authoritative body authentication state directly, so both desktop and portal-rendered mobile Account controls show Sign In while signed out and Account while signed in."
   ],
   "close_issue": 458
 }
