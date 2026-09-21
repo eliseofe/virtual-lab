@@ -118,9 +118,10 @@ test("#467 missing heterogeneous-initialization provenance blocks discovery and 
     errors: [],
   });
 
-  assert.match(repairMigration, /2616dbb5-2134-417f-aebb-2e9e4ea0dd9c/);
-  assert.match(repairMigration, /v_request\.status <> 'implemented'/);
-  assert.match(repairMigration, /v_request\.canonical_capability_id is distinct from v_capability_id/);
+  assert.match(repairMigration, /canonical_capability_id = v_capability_id/);
+  assert.match(repairMigration, /status = 'implemented'/);
+  assert.match(repairMigration, /v_source_count <> 1/);
+  assert.doesNotMatch(repairMigration, /2616dbb5-2134-417f-aebb-2e9e4ea0dd9c/);
   assert.match(repairMigration, /insert into public\.capability_publication_provenance/);
   assert.doesNotMatch(repairMigration, /update public\.canonical_capabilities/i);
   assert.doesNotMatch(repairMigration, /delete from public\.capability_publication_provenance/i);
