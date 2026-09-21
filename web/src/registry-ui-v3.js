@@ -34,7 +34,6 @@ if (!experimentSelect || !experimentPanel || !experimentLabel || !metadataRevisi
   throw new Error("Registry integration UI mismatch.");
 }
 
-const DEFAULT_CATALOG_VALUE = catalogSelectValue(DEFAULT_CATALOG_EXPERIMENT.key);
 const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 
 const AI_CLIENT_LABELS = Object.freeze({
