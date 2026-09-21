@@ -187,7 +187,7 @@ These are structural absences from the interface.
 
 ## MCP authoring alignment
 
-Production `experiment-mcp` is server `3.13.0`, interface `17`, authoring contract `vlab.authoring/0.9`.
+The `experiment-mcp` source candidate is server `3.13.1`, interface `17`, authoring contract `vlab.authoring/0.9`.
 
 The MCP can author the complete four-artifact Experiment plus fine-grained Metrics definitions and Results bindings. Unsupported capabilities produce diagnostics and, for Professor users, the explicit capability-request path.
 

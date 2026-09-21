@@ -67,7 +67,7 @@ Production endpoint:
 
 Current deployed contract:
 
-- MCP server `3.13.0`
+- MCP server `3.13.1` (source candidate; deployment pending)
 - interface `17`
 - authoring `vlab.authoring/0.9`
 - capability requests `vlab.capability-request/7`
