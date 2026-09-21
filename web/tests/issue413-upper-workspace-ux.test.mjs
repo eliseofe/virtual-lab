@@ -14,7 +14,7 @@ const [management, showcase, shell, inbox, react, index, placement] = await Prom
 
 test("#413 keeps Experiment identity singular and uses one library entry", () => {
   assert.match(management, /experimentSelect\.hidden = true/);
-  assert.match(management, /setText\(browseButton, "Experiments"\)/);
+  assert.match(management, /setText\(browseButton, "Browse experiments"\)/);
   assert.doesNotMatch(management, /Switch experiment/);
   assert.match(showcase, /currentExperimentActions\.append\(browseExperiment\)/);
 });

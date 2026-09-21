@@ -12,7 +12,7 @@ test("#444 removes prose from the four primary Control Panel areas", () => {
   assert.match(management, /taskHeading\("Current Experiment"\)/);
   assert.match(management, /taskHeading\("Revisions"\)/);
   assert.match(management, /taskHeading\("Save & share"\)/);
-  assert.match(management, /taskHeading\("Research curation"\)/);
+  assert.match(management, /taskHeading\("Professor controls"\)/);
   assert.doesNotMatch(management, /experiment-control-help/);
   assert.doesNotMatch(management, /Identity, access and organization|Working copy and numbered history|Save, copy and share|Showcase publication and scientific capability requests/);
   assert.doesNotMatch(management, /showcaseHelp|capabilityHelp|Browse curated Experiments|Review scientific needs/);

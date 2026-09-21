@@ -7,12 +7,13 @@ const [management, organization] = await Promise.all([
   readFile(new URL("../src/collection-organization.js", import.meta.url), "utf8"),
 ]);
 
-test("#446 gives Current Experiment a title-first toolbar instead of a floating library action", () => {
-  assert.match(management, /currentToolbar\.className = "experiment-current-toolbar"/);
+test("#446 gives Current Experiment one title-first identity flow followed by its action group", () => {
+  assert.match(management, /currentContext\.className = "experiment-current-context"/);
   assert.match(management, /currentActions\.className = "experiment-current-actions"/);
-  assert.match(management, /currentToolbar\.append\(currentMeta, currentActions\)/);
+  assert.match(management, /currentMain\.after\(currentContext, currentActions\)/);
+  assert.match(management, /currentContext\.append\(currentMeta\)/);
   assert.match(management, /currentActions\.append\(browseButton\)/);
-  assert.doesNotMatch(management, /currentMain\.querySelector\("\.experiment-current-actions"\)/);
+  assert.doesNotMatch(management, /experiment-current-toolbar/);
   assert.match(organization, /const actions = document\.querySelector\("\.experiment-current-actions"\)/);
   assert.match(organization, /const host = actions \|\| meta/);
   assert.match(organization, /organizeButton\.parentElement !== host/);

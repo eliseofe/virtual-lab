@@ -24,25 +24,6 @@ function installStyles() {
   const style = document.createElement("style");
   style.dataset.vlabExperimentManagement = "";
   style.textContent = `
-    .experiment-control-head {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 14px;
-      padding-bottom: 13px;
-      border-bottom: 1px solid #e2e8ea;
-    }
-    .experiment-control-heading { display: grid; gap: 2px; min-width: 0; }
-    .experiment-control-kicker {
-      margin: 0;
-      color: #17758d;
-      font-size: 10.5px;
-      font-weight: 800;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-    .experiment-control-title { margin: 0; color: #172127; font-size: 18px; line-height: 1.2; }
     .experiment-control-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -66,22 +47,18 @@ function installStyles() {
     .experiment-current-main {
       display: block !important;
     }
-    .experiment-current-toolbar {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      min-width: 0;
-    }
-    .experiment-current-toolbar .experiment-current-meta {
-      flex: 1 1 auto;
+    .experiment-current-context {
+      display: grid;
+      gap: 5px;
       min-width: 0;
     }
     .experiment-current-actions {
       display: flex;
+      flex-wrap: wrap;
       align-items: stretch;
       gap: 8px;
-      margin-inline-start: auto;
+      width: fit-content;
+      max-width: 100%;
     }
     .experiment-task-heading {
       display: flex;
@@ -97,10 +74,39 @@ function installStyles() {
       text-transform: uppercase;
     }
     .experiment-current { margin: 0 !important; padding: 0 !important; border: 0 !important; }
-    .experiment-current-title { font-size: 15px !important; }
-    .experiment-current-meta { gap: 7px !important; }
-    .experiment-location[data-management-redundant="true"] { display: none !important; }
-    .experiment-origin, .experiment-location { min-height: 26px !important; }
+    .experiment-current-title {
+      display: block;
+      max-width: 70ch;
+      font-size: 15px !important;
+      line-height: 1.35;
+    }
+    .experiment-current-meta {
+      display: grid !important;
+      justify-items: start;
+      gap: 4px !important;
+    }
+    .experiment-origin,
+    .experiment-location {
+      min-height: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      font-size: 10.75px !important;
+      line-height: 1.35;
+    }
+    .experiment-origin {
+      color: #687980 !important;
+      font-weight: 700 !important;
+    }
+    .experiment-origin[data-management-default="true"],
+    .experiment-location[data-management-redundant="true"] {
+      display: none !important;
+    }
+    .experiment-location {
+      color: #64757c !important;
+      font-weight: 600 !important;
+    }
     .experiment-browse,
     .experiment-organize {
       min-height: 44px !important;
@@ -108,6 +114,9 @@ function installStyles() {
       border-radius: 10px !important;
       font-size: 11.5px !important;
       white-space: nowrap;
+    }
+    .experiment-browse {
+      font-weight: 700 !important;
     }
     .experiment-quick-hint { display: none !important; }
     .experiment-revision-workflow {
@@ -239,22 +248,21 @@ function installStyles() {
     .experiment-professor-section .showcase-curation-status { margin: 0; }
     .experiment-professor-section .showcase-curation-status:empty { display: none; }
     @media (max-width: 680px) {
-      .experiment-control-head { align-items: stretch; flex-direction: column; gap: 6px; }
       .experiment-control-grid { grid-template-columns: 1fr; }
       .experiment-task-current, .experiment-professor-section { grid-column: auto; }
-      .experiment-current-toolbar { align-items: stretch; }
-      .experiment-current-toolbar .experiment-current-meta { flex-basis: 100%; }
-      .experiment-current-actions { width: 100%; margin-inline-start: 0; }
-      .experiment-current-actions button { flex: 1 1 0; }
+      .experiment-current-actions {
+        width: 100%;
+      }
+      .experiment-current-actions button {
+        flex: 1 1 150px;
+      }
       .experiment-browse,
       .experiment-sign-in-save,
       .experiment-revision-actions button,
       .experiment-management-slot .registry-new-actions button,
       .experiment-management-slot .registry-share-form button,
       .experiment-professor-actions button { min-height: 44px !important; }
-      .experiment-browse,
       .experiment-sign-in-save { width: 100%; }
-      .experiment-current-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
       .experiment-revision-top { grid-template-columns: 1fr; }
       .experiment-revision-trigger { width: 100% !important; }
       .experiment-revision-actions,
@@ -281,18 +289,7 @@ function taskHeading(title) {
 }
 
 function buildControlPanel() {
-  const head = document.createElement("header");
-  head.className = "experiment-control-head";
-  const heading = document.createElement("div");
-  heading.className = "experiment-control-heading";
-  const kicker = document.createElement("p");
-  kicker.className = "experiment-control-kicker";
-  kicker.textContent = "Experiment";
-  const title = document.createElement("h2");
-  title.className = "experiment-control-title";
-  title.textContent = "Control panel";
-  heading.append(kicker, title);
-  head.append(heading);
+  experimentPanel.setAttribute("aria-label", "Control Panel");
 
   const grid = document.createElement("div");
   grid.className = "experiment-control-grid";
@@ -303,12 +300,13 @@ function buildControlPanel() {
     currentExperiment.firstChild,
   );
 
-  const currentToolbar = document.createElement("div");
-  currentToolbar.className = "experiment-current-toolbar";
+  const currentContext = document.createElement("div");
+  currentContext.className = "experiment-current-context";
   const currentActions = document.createElement("div");
   currentActions.className = "experiment-current-actions";
-  currentMain.after(currentToolbar);
-  currentToolbar.append(currentMeta, currentActions);
+  currentMain.after(currentContext, currentActions);
+  currentContext.append(currentMeta);
+  browseButton.classList.add("primary");
   currentActions.append(browseButton);
 
   const revisionTask = document.createElement("section");
@@ -319,10 +317,9 @@ function buildControlPanel() {
     revisionWorkflow,
   );
 
-  experimentPanel.prepend(head);
   grid.append(currentExperiment, revisionTask);
   experimentPanel.append(grid);
-  return { head, grid, revisionTask };
+  return { grid, revisionTask };
 }
 
 function buildManagementRegion() {
@@ -371,8 +368,8 @@ function buildProfessorSection() {
   const region = document.createElement("section");
   region.className = "experiment-task-card experiment-professor-section";
   region.hidden = true;
-  region.setAttribute("aria-label", "Research curation");
-  region.append(taskHeading("Research curation"));
+  region.setAttribute("aria-label", "Professor controls");
+  region.append(taskHeading("Professor controls"));
 
   const groups = document.createElement("div");
   groups.className = "experiment-professor-groups";
@@ -464,18 +461,28 @@ function simplifyIdentity() {
   experimentSelect.hidden = true;
   experimentSelect.setAttribute("aria-hidden", "true");
   if (quickHint) quickHint.hidden = true;
-  setText(browseButton, "Experiments");
+  setText(browseButton, "Browse experiments");
 
   const origin = document.querySelector(".experiment-origin");
   const location = document.querySelector(".experiment-location");
   const locationText = location?.textContent?.trim() || "";
-  if (location) {
-    const redundant = String(locationText === "Built-in" || locationText === "No collection");
-    if (location.dataset.managementRedundant !== redundant) location.dataset.managementRedundant = redundant;
+  const owned = origin?.dataset.kind === "owned";
+
+  if (origin) {
+    origin.dataset.managementDefault = String(Boolean(owned));
+    if (!owned && locationText === "Shared with me") {
+      setText(origin, "Shared · Read-only");
+    } else if (!owned && locationText.startsWith("Supervised · ")) {
+      setText(origin, locationText + " · Read-only");
+    } else if (!owned && locationText !== "Built-in") {
+      setText(origin, "Read-only");
+    }
   }
 
-  if (origin?.dataset.kind === "owned") setText(origin, "My Experiment");
-  else if (origin?.dataset.kind === "readonly" && locationText !== "Built-in") setText(origin, "Read-only");
+  if (location) {
+    const usefulCollection = owned && locationText.startsWith("Collection · ");
+    location.dataset.managementRedundant = String(!usefulCollection);
+  }
 
   const saveRevision = document.querySelector(".experiment-revision-actions .primary");
   if (saveRevision) setText(saveRevision, "Save Revision");

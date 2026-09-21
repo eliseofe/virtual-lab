@@ -101,6 +101,11 @@ async function structure(send) {
         browseLabel: browse?.textContent?.trim() ?? null,
         browseInActionGroup: Boolean(document.querySelector('.experiment-current-actions .experiment-browse')),
         browseInTitleRow: Boolean(document.querySelector('.experiment-current-main .experiment-browse')),
+        browsePrimary: Boolean(browse?.classList.contains('primary')),
+        currentTitleBeforeMeta: before(document.querySelector('.experiment-current-main'), document.querySelector('.experiment-current-meta')),
+        metaBeforeActions: before(document.querySelector('.experiment-current-meta'), document.querySelector('.experiment-current-actions')),
+        duplicateControlHeading: Boolean(document.querySelector('.experiment-control-head, .experiment-control-title, .experiment-control-kicker')),
+        panelLabel: experiment?.getAttribute('aria-label') ?? null,
         statusText: document.querySelector('.experiment-management-status')?.textContent?.trim() ?? '',
       },
       controlHeights: {
@@ -116,15 +121,16 @@ async function structure(send) {
       ribbon: {
         brandTitle: document.querySelector('.vlab-react-brand-title')?.textContent?.trim() ?? '',
         brandByline: document.querySelector('.vlab-react-brand-byline')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
-        globalLabels: [...document.querySelectorAll('[data-vlab-nav="simulation"], [data-vlab-nav="authoring"], [data-vlab-nav="help"], [data-vlab-nav="account"]')]
+        workspaceLabels: [...document.querySelectorAll('[data-vlab-nav="control-panel"], [data-vlab-nav="simulation"], [data-vlab-nav="edit-experiment"]')]
           .filter(visible)
           .map((element) => element.textContent?.trim() ?? ''),
-        forbiddenVisible: [...document.querySelectorAll('[data-vlab-nav="experiment"], [data-vlab-nav="results"], [data-vlab-nav="showcase"], [data-vlab-nav="professor"]')]
+        activeWorkspaceCount: [...document.querySelectorAll('[data-vlab-nav="control-panel"], [data-vlab-nav="simulation"], [data-vlab-nav="edit-experiment"]')]
+          .filter((element) => visible(element) && element.getAttribute('aria-current') === 'location').length,
+        forbiddenVisible: [...document.querySelectorAll('[data-vlab-nav="experiment"], [data-vlab-nav="authoring"], [data-vlab-nav="results"], [data-vlab-nav="showcase"], [data-vlab-nav="professor"]')]
           .some(visible),
         workerStatusVisible: visible(document.querySelector('[data-vlab-worker-status]')),
       },
       managementTasks: {
-        heading: document.querySelector('.experiment-control-title')?.textContent?.trim() ?? '',
         current: visible(document.querySelector('.experiment-task-current')),
         revisions: visible(document.querySelector('.experiment-task-revisions')),
         saveShare: visible(document.querySelector('.experiment-management')),
@@ -163,8 +169,13 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
   if (!state.simulatorReadinessVisible || state.ribbon.workerStatusVisible) {
     throw new Error(`${label}: simulator readiness is not contextualized inside Simulation: ${JSON.stringify(state.ribbon)}`);
   }
-  if (state.managementTasks.heading !== "Control panel" || !state.managementTasks.current || !state.managementTasks.saveShare) {
-    throw new Error(`${label}: task-based Experiment management is incomplete: ${JSON.stringify(state.managementTasks)}`);
+  if (
+    !state.managementTasks.current
+    || !state.managementTasks.saveShare
+    || state.experimentManagement.panelLabel !== "Control Panel"
+    || state.experimentManagement.duplicateControlHeading
+  ) {
+    throw new Error(`${label}: Control Panel hierarchy is incomplete or duplicated: ${JSON.stringify({ management: state.managementTasks, experiment: state.experimentManagement })}`);
   }
   if (state.managementTasks.taskSubtitleCount !== 0 || state.managementTasks.controlHelpPresent || state.managementTasks.staticProfessorProseCount !== 0 || !state.managementTasks.saveShareActionBar) {
     throw new Error(`${label}: Control Panel prose or Save & share structure regressed: ${JSON.stringify(state.managementTasks)}`);
@@ -182,23 +193,27 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
     if (state.ribbon.brandTitle !== "Virtual Lab" || state.ribbon.brandByline !== "Eliseo Ferrante · Swarm robotics") {
       throw new Error(`${label}: product identity regressed: ${JSON.stringify(state.ribbon)}`);
     }
-    if (JSON.stringify(state.ribbon.globalLabels) !== JSON.stringify(["Simulation", "Authoring", "Help", "Account"])) {
-      throw new Error(`${label}: global ribbon hierarchy regressed: ${JSON.stringify(state.ribbon)}`);
-    }
-    if (state.ribbon.forbiddenVisible) {
-      throw new Error(`${label}: Experiment/Results/Showcase/Professor re-entered global navigation`);
-    }
   }
   if (!state.experimentManagement.visible || state.experimentManagement.selectVisible || state.experimentManagement.legacyPersistenceVisible) {
     throw new Error(`${label}: Experiment identity/persistence is not unified: ${JSON.stringify(state.experimentManagement)}`);
   }
   if (
     state.experimentManagement.redundantLocationVisible
-    || state.experimentManagement.browseLabel !== "Experiments"
+    || state.experimentManagement.browseLabel !== "Browse experiments"
     || !state.experimentManagement.browseInActionGroup
     || state.experimentManagement.browseInTitleRow
+    || !state.experimentManagement.browsePrimary
+    || !state.experimentManagement.currentTitleBeforeMeta
+    || !state.experimentManagement.metaBeforeActions
   ) {
-    throw new Error(`${label}: Experiment library entry or identity hierarchy regressed: ${JSON.stringify(state.experimentManagement)}`);
+    throw new Error(`${label}: Current Experiment hierarchy regressed: ${JSON.stringify(state.experimentManagement)}`);
+  }
+  if (
+    JSON.stringify(state.ribbon.workspaceLabels) !== JSON.stringify(["Control Panel", "Simulation", "Edit Experiment"])
+    || state.ribbon.activeWorkspaceCount !== 1
+    || state.ribbon.forbiddenVisible
+  ) {
+    throw new Error(`${label}: workspace navigation hierarchy regressed: ${JSON.stringify(state.ribbon)}`);
   }
   if (state.experimentManagement.statusText) {
     throw new Error(`${label}: routine prose leaked into signed-out Save & share: ${JSON.stringify(state.experimentManagement)}`);
@@ -247,12 +262,12 @@ async function verifyUtilityDialog(send) {
   await evaluate(send, "document.querySelector('[data-vlab-nav-toggle=\"true\"]').click()");
   await sleep(100);
   const drawerLabels = JSON.parse(await evaluate(send, `JSON.stringify(
-    [...document.querySelectorAll('[data-vlab-nav="simulation"], [data-vlab-nav="authoring"], [data-vlab-nav="help-mobile"], [data-vlab-nav="account-mobile"]')]
+    [...document.querySelectorAll('[data-vlab-nav="help-mobile"], [data-vlab-nav="account-mobile"]')]
       .filter((element) => !element.hidden && getComputedStyle(element).display !== 'none' && element.getClientRects().length)
       .map((element) => element.textContent?.trim() ?? '')
   )`));
-  if (JSON.stringify(drawerLabels) !== JSON.stringify(["Simulation", "Authoring", "Help", "Account"])) {
-    throw new Error(`mobile global navigation hierarchy regressed: ${JSON.stringify(drawerLabels)}`);
+  if (JSON.stringify(drawerLabels) !== JSON.stringify(["Help", "Account"])) {
+    throw new Error(`mobile utility drawer hierarchy regressed: ${JSON.stringify(drawerLabels)}`);
   }
   await evaluate(send, "document.querySelector('[data-vlab-nav=\"account-mobile\"]').click()");
   await sleep(100);
@@ -317,32 +332,34 @@ try {
   await cdp.send("Runtime.enable");
   await cdp.send("Page.enable");
 
-  await waitReady(cdp.send);
-  const desktop = await structure(cdp.send);
-  assertCoreLayout(desktop, "desktop");
+  const viewports = [
+    { label: "desktop", width: 1366, height: 900, mobile: false, touch: false },
+    { label: "ultra-wide", width: 1920, height: 1080, mobile: false, touch: false },
+    { label: "foldable", width: 820, height: 1180, mobile: true, touch: true },
+    { label: "mobile", width: 390, height: 844, mobile: true, touch: true },
+  ];
+  const states = {};
+  for (const viewport of viewports) {
+    await cdp.send("Emulation.setDeviceMetricsOverride", {
+      width: viewport.width,
+      height: viewport.height,
+      deviceScaleFactor: 1,
+      mobile: viewport.mobile,
+      screenWidth: viewport.width,
+      screenHeight: viewport.height,
+    });
+    await sleep(120);
+    const state = await structure(cdp.send);
+    assertCoreLayout(state, viewport.label, { touch: viewport.touch });
+    states[viewport.label] = state;
+  }
 
-  await cdp.send("Emulation.setDeviceMetricsOverride", {
-    width: 390,
-    height: 844,
-    deviceScaleFactor: 1,
-    mobile: true,
-    screenWidth: 390,
-    screenHeight: 844,
-  });
-  const mobileReloadToken = "vlab-responsive-before-mobile-reload";
-  await evaluate(cdp.send, `window.__vlabResponsiveSmokeReloadToken = ${JSON.stringify(mobileReloadToken)}`);
-  await cdp.send("Page.reload", { ignoreCache: true });
-  await waitForFreshDocument(cdp.send, mobileReloadToken);
-  await waitReady(cdp.send);
-
-  const mobile = await structure(cdp.send);
-  assertCoreLayout(mobile, "mobile", { touch: true });
   await verifyFinder(cdp.send);
   await verifyUtilityDialog(cdp.send);
   await verifyAuthoringKeyboard(cdp.send);
 
-  console.log(JSON.stringify({ desktop, mobile }, null, 2));
-  console.log("Responsive smoke verified unified Experiment management, simulation-first hierarchy, migrated Simulation/Authoring touch targets, authoring keyboard semantics, and React Account dialog focus entry/return.");
+  console.log(JSON.stringify(states, null, 2));
+  console.log("Responsive smoke verified Control Panel / Simulation / Edit Experiment navigation and Current Experiment hierarchy on phone, foldable, desktop and ultra-wide viewports.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
