@@ -18,7 +18,7 @@ test("#254 React owns product chrome and true global navigation", () => {
   for (const marker of [
     "'control-panel', '#control-panel', 'Control Panel'",
     "'simulation', '#simulation', 'Simulation'",
-    "'edit-experiment', '#authoring-workbench', 'Edit Experiment'",
+    "'edit-experiment', '#authoring-workbench', 'Experiment Authoring'",
     'data-vlab-nav="account"',
   ]) assert.ok(reactRoot.includes(marker), marker);
 
