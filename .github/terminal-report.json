@@ -1,19 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Capability closure now rejects incomplete or lossy request evidence instead of silently accepting it",
-  "owner_impact": "When the research AI identifies clear unsupported requirements, each one must now be accounted for by a new or reused candidate before the closure can commit. One reused candidate can cover several requirements in one grouped link, but repeating the same candidate in separate links is rejected before evidence can be silently lost. Unchanged requirements may retain valid historical links, while changed or new requirements need explicit routing. Ambiguous requirements can still remain unresolved without creating requests. This changes request integrity only; it does not approve, reject, merge, generalize, or scientifically validate Sergio's pending requests.",
+  "outcome": "Capability closure now preserves the exact Experiment revision snapshot it analyzed",
+  "owner_impact": "Continuing capability analysis on the same Experiment revision reuses the same preserved blocked snapshot. If the Experiment has advanced to a newer revision, automatic continuation creates a new snapshot instead of silently attaching the new analysis to old artifacts. Explicitly forcing an old blocked snapshot against a newer supplied revision is rejected atomically. Continuing by blocked-snapshot ID alone keeps that snapshot's original Experiment ID, revision and artifacts. This changes snapshot integrity only; it does not approve, reject, generalize, or scientifically validate any pending capability request.",
   "next": {
     "kind": "epic_continues",
-    "issue": 465,
-    "text": "Next is the blocked-Experiment revision-snapshot repair: make capability closure preserve the exact Experiment revision it came from, so continuing a newer revision cannot silently reuse an older snapshot. It has not started yet."
+    "issue": 464,
+    "text": "One final repair remains from the Sergio-PR-derived defect review: shared-candidate readback under permissions. It will make a reused candidate remain visible when resuming a closure even if the caller cannot read the other requester's private request row. It has not started yet."
   },
   "technical_evidence": [
-    "Coverage is enforced by a deferred database constraint after request/evidence writes, so an uncovered clear requirement aborts the whole transaction rather than leaving partial rows.",
-    "Coverage may inherit evidence only from the same blocked Experiment when requirement key, summary, and clear resolution are unchanged and the linked request remains in the durable active/historical candidate catalog.",
-    "The structured candidate converter rejects repeated existing_request_id entries before writes; callers must group all requirement_keys for one reused candidate into one evidence link.",
-    "Ambiguity-only analyses require no request evidence and therefore do not manufacture capability requests.",
-    "The existing submit/revalidate RPC implementations are intentionally not replaced in this ticket; revision-snapshot and shared-readback behavior remain separate successor repairs.",
-    "A real PostgreSQL regression runs automatically under the existing web test glob and covers rollback, grouped reuse, retained historical coverage, changed/new requirements, ambiguity-only closure, and duplicate reuse rejection."
+    "Automatic blocked-snapshot reuse now requires both the same origin Experiment and the same origin revision.",
+    "Supplying an explicit blocked snapshot together with a conflicting current origin revision raises SQLSTATE 22023 before a new closure analysis can persist.",
+    "Capability request rows now inherit origin_experiment_id and origin_experiment_revision from the immutable blocked snapshot rather than from an optional current-origin lookup.",
+    "A disposable PostgreSQL regression covers same-revision reuse, new-revision snapshot creation, stale explicit reuse rollback, and blocked-ID-only continuation preserving revision-one artifacts.",
+    "No RLS policy, candidate semantics, capability lifecycle, scientific triage state, or request decision state changes in this ticket."
   ],
-  "close_issue": 466
+  "close_issue": 465
 }
