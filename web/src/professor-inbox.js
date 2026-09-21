@@ -123,7 +123,7 @@ function buildUi() {
 
   const note = document.createElement("p");
   note.className = "professor-panel-note";
-  note.textContent = "Review classified research requests. Approval does not authorize implementation.";
+  note.textContent = "Review classified research requests. A review decision does not authorize implementation.";
   panel.append(head, open, note);
   accountPanel.insertAdjacentElement("afterend", panel);
 
