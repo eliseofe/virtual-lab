@@ -9,10 +9,10 @@ import {
   RNG_DOMAINS,
   ScientificRng,
   deriveScientificStreamSeed,
-} from "../src/rng.js";
+} from "../src/initializer/rng.js";
 
 const rust = readFileSync(new URL("../../crates/kernel/src/rng.rs", import.meta.url), "utf8");
-const browserRng = readFileSync(new URL("../src/rng.js", import.meta.url), "utf8");
+const browserRng = readFileSync(new URL("../src/initializer/rng.js", import.meta.url), "utf8");
 const edgeRng = readFileSync(
   new URL("../../supabase/functions/experiment-mcp/vendor/rng.js", import.meta.url),
   "utf8",
