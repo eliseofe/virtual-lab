@@ -32,9 +32,11 @@ try {
     "--env", "POSTGRES_HOST_AUTH_METHOD=trust",
     "--mount", `type=bind,src=${root},dst=/repo,readonly`, "postgres:15-alpine"]);
   started = true;
+  // The image initializes through a temporary socket-only server. Wait for
+  // TCP on the final server so the fixture cannot race that server restart.
   let ready = false;
   for (let attempt = 0; attempt < 80; attempt += 1) {
-    if (spawnSync("docker", ["exec", container, "pg_isready", "-U", "postgres"], { stdio: "ignore" }).status === 0) {
+    if (spawnSync("docker", ["exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres"], { stdio: "ignore" }).status === 0) {
       ready = true;
       break;
     }

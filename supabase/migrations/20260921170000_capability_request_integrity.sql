@@ -207,6 +207,14 @@ begin
       raise exception 'Blocked Experiment was not found, is not owned by the caller, or is no longer blocked.';
     end if;
 
+    if p_origin_experiment_id is not null and (
+      v_draft.origin_experiment_id is distinct from v_origin.id
+      or v_draft.origin_experiment_revision is distinct from v_origin.revision
+    ) then
+      raise exception 'Blocked Experiment origin revision conflict. Omit blocked_experiment_id to preserve a new revision snapshot.'
+        using errcode = '22023';
+    end if;
+
     if v_draft.publication_identifier is distinct from btrim(p_publication_identifier)
        or v_draft.publication_title is distinct from btrim(p_publication_title) then
       raise exception 'A blocked Experiment keeps one stable source publication identity.';
@@ -219,6 +227,7 @@ begin
     where d.requester_id = v_user_id
       and d.lifecycle = 'blocked'
       and d.origin_experiment_id = p_origin_experiment_id
+      and d.origin_experiment_revision = v_origin.revision
       and d.publication_identifier = btrim(p_publication_identifier)
     order by d.created_at asc
     limit 1
@@ -448,8 +457,8 @@ begin
       values (
         v_user_id,
         v_role,
-        v_origin.id,
-        v_origin.revision,
+        v_draft.origin_experiment_id,
+        v_draft.origin_experiment_revision,
         v_draft.title,
         v_draft.description,
         v_draft.artifacts,
