@@ -1,38 +1,10 @@
+import { RNG_DOMAINS, ScientificRng } from "./rng.js";
+
 export class InitializerCompileError extends Error {
   constructor(message, line = null) {
     super(line == null ? message : `line ${line}: ${message}`);
     this.name = "InitializerCompileError";
     this.line = line;
-  }
-}
-
-const MASK64 = (1n << 64n) - 1n;
-const SPLITMIX_GAMMA = 0x9E3779B97F4A7C15n;
-const SPLITMIX_MUL1 = 0xBF58476D1CE4E5B9n;
-const SPLITMIX_MUL2 = 0x94D049BB133111EBn;
-const TWO_POW_53 = 9007199254740992;
-
-class SimulatorRng {
-  constructor(seed) {
-    if (!Number.isInteger(seed) || seed < 0) throw new InitializerCompileError("SEED must be a non-negative integer");
-    this.state = BigInt(seed) & MASK64;
-  }
-
-  nextU64() {
-    this.state = (this.state + SPLITMIX_GAMMA) & MASK64;
-    let z = this.state;
-    z = ((z ^ (z >> 30n)) * SPLITMIX_MUL1) & MASK64;
-    z = ((z ^ (z >> 27n)) * SPLITMIX_MUL2) & MASK64;
-    return (z ^ (z >> 31n)) & MASK64;
-  }
-
-  unit() {
-    return Number(this.nextU64() >> 11n) / TWO_POW_53;
-  }
-
-  uniform(a, b) {
-    if (!Number.isFinite(a) || !Number.isFinite(b)) throw new InitializerCompileError("rng.uniform bounds must be finite");
-    return a + (b - a) * this.unit();
   }
 }
 
@@ -339,7 +311,12 @@ export function compileInitializer(source, config) {
   const n = config.values.N;
   const seed = config.values.SEED;
   if (!Number.isInteger(n) || n <= 0) throw new InitializerCompileError("N must be a positive integer");
-  const rng = new SimulatorRng(seed);
+  let rng;
+  try {
+    rng = ScientificRng.forDomain(seed, RNG_DOMAINS.initialization);
+  } catch (error) {
+    throw new InitializerCompileError(error instanceof Error ? error.message : String(error));
+  }
   const state = new Array(n);
   const privateState = Array.from({ length: n }, () => new Map());
   const place = (index, x, y, heading) => {
