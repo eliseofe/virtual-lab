@@ -366,9 +366,13 @@ body.vlab-react-chrome-mounted {
 
 .vlab-react-authoring-tab {
   flex: 0 0 auto;
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 9px;
   white-space: nowrap;
+}
+
+[data-vlab-authoring-apply] {
+  min-height: 44px;
 }
 
 .vlab-react-authoring-tab[data-dirty="true"] {
@@ -504,10 +508,6 @@ body.vlab-react-chrome-mounted .utility-dialog-head {
     align-self: flex-start;
   }
 
-  [data-vlab-authoring-apply],
-  .vlab-react-authoring-tab {
-    min-height: 44px;
-  }
 }
 
 @media (max-width: 35.99em) {

@@ -29,8 +29,11 @@ test("#449 keeps workspace navigation visible and coherent rather than phone-spe
   assert.match(react, /aria-label="Open utilities"/);
 });
 
-test("#449 keeps Simulation touch targets accessible without device-specific breakpoints", () => {
+test("#449 keeps touch targets accessible without device-specific breakpoints", () => {
   assert.match(simulationCss, /\[data-vlab-simulation-action\],[\s\S]*\[data-vlab-simulation-fit\] \{[\s\S]*min-height: 44px/);
+  const globalChrome = chrome.split("@media (max-width: 38.75em)")[0];
+  assert.match(globalChrome, /\.vlab-react-authoring-tab \{[^}]*min-height: 44px/);
+  assert.match(globalChrome, /\[data-vlab-authoring-apply\] \{[^}]*min-height: 44px/);
 });
 
 test("#449 removes the duplicate Control Panel heading and preserves accessible naming", () => {

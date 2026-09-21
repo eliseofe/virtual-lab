@@ -43,8 +43,10 @@ test('#262 preserves one-active-editor and keyboard-tab semantics', () => {
   assert.match(presentation, /requestAnimationFrame/);
 });
 
-test('#262 preserves mobile touch targets', () => {
-  assert.match(css, /\[data-vlab-authoring-apply\],[\s\S]*\.vlab-react-authoring-tab[\s\S]*min-height: 44px/);
+test('#262 preserves authoring touch targets', () => {
+  const globalCss = css.split('@media (max-width: 38.75em)')[0];
+  assert.match(globalCss, /\.vlab-react-authoring-tab \{[^}]*min-height: 44px/);
+  assert.match(globalCss, /\[data-vlab-authoring-apply\] \{[^}]*min-height: 44px/);
 });
 
 test('#262 keeps the migrated Authoring surface active in the production smoke registry', () => {
