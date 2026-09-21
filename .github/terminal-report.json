@@ -1,20 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Shared capability candidates no longer disappear when a closure is resumed under normal privacy rules",
-  "owner_impact": "A student or professor resuming a blocked Experiment now sees every capability candidate linked by evidence they are allowed to read, even when the underlying request belongs to another user and its private request row is correctly hidden. The fallback contains only sanitized shared candidate metadata and visible evidence; it does not reveal requester identity, private drafts, context, notes, or publication provenance. Candidate items remain unavailable to authoring. This repair makes no scientific judgment about Sergio's pending requests.",
+  "outcome": "Professor review now has an independent five-way scientific disposition model",
+  "owner_impact": "Capability requests can now store Professor judgment independently from technical implementation lifecycle: Accept, Reject, Revise, Defer, or Future, with Pending reserved for unreviewed requests. Existing request IDs, evidence, candidate identities, provenance, approved/declined compatibility, in-progress work, and implemented capabilities remain intact. Professor guidance is stored separately from internal notes, and reviewed Revise/Defer/Future candidates remain unavailable but discoverable so they are not recreated as duplicates. This ticket does not yet replace the two-button inbox or expose the new semantics through the research-AI MCP.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved capability-request/MCP repair scope derived from Sergio's PR is complete and is being closed. No further Sergio-PR-derived technical repair is scheduled. Reviewing Sergio's scientific capability requests and resuming the paused aggregation RNG work are separate owner decisions; neither starts automatically."
+    "kind": "epic_continues",
+    "issue": 472,
+    "text": "Next is the Professor review interaction and MCP round-trip: replace the binary inbox controls with Accept, Reject, Revise, Defer and Future; expose sanitized decisions/guidance to research AI; and let Revise update the same candidate identity and return it to Pending. That work has not started yet."
   },
   "technical_evidence": [
-    "Closure readback membership is now driven by caller-visible capability_request_evidence rather than by whichever private capability_requests rows survive RLS.",
-    "Shared semantic candidates and contract deltas are reconstructed only from the same explicit sanitized field allowlists used by neutral workspace discovery.",
-    "The reconstruction helper strips unexpected candidate fields defensively, so broadening a future database query cannot silently expose requester identity, private context, draft artifacts, publication identity, notes, or generalized_by through the fallback.",
-    "Readable own/professor-visible request rows retain their normal full RLS-authorized details; only hidden requests use the sanitized fallback.",
-    "Evidence with no readable request or candidate metadata remains represented by request ID plus visible evidence instead of disappearing.",
-    "No RLS policy, request lifecycle, candidate availability, compiler acceptance, tool count, or authoring contract changes in this ticket."
+    "Professor disposition is stored separately from capability_requests.status and is constrained to pending, accepted, rejected, revise, deferred or future.",
+    "Legacy approved/in-progress/implemented rows backfill as accepted; declined rows as rejected; requested rows as pending.",
+    "A durable review-history table records each non-pending Professor decision without changing request or candidate identity.",
+    "Candidate capability and contract-delta surfaces synchronize only intentionally shareable Professor disposition/guidance while remaining candidate_unavailable until implementation.",
+    "Professor-only RLS and a restrictive insert policy prevent researchers from self-approving or creating pre-reviewed requests.",
+    "The existing triage RPC keeps approved/declined aliases compatible while accepting all five new decisions."
   ],
-  "close_issue": 464
+  "close_issue": 473
 }
