@@ -75,6 +75,33 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
     ],
   }),
   freezeBinding({
+    canonical_capability_id: "1c8ae3f7-15bd-4d01-b320-6ca166989d22",
+    capability_key: "controller.stochastic_distributions",
+    surfaces: [
+      {
+        artifact: "controller",
+        kind: "intrinsic",
+        symbol: "rng.uniform",
+        syntax: "rng.uniform(a, b)",
+        signature: { args: ["scalar", "scalar"], result: "scalar" },
+      },
+      {
+        artifact: "controller",
+        kind: "intrinsic",
+        symbol: "rng.bernoulli",
+        syntax: "rng.bernoulli(p)",
+        signature: { args: ["scalar"], result: "bool" },
+      },
+      {
+        artifact: "controller",
+        kind: "intrinsic",
+        symbol: "rng.normal",
+        syntax: "rng.normal(mean, stddev)",
+        signature: { args: ["scalar", "scalar"], result: "scalar" },
+      },
+    ],
+  }),
+  freezeBinding({
     canonical_capability_id: "624eb86c-65ee-4a15-abd4-9fd331c55956",
     capability_key: "controller.private_scalar_state",
     surfaces: [
