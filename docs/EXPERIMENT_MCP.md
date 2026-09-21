@@ -10,7 +10,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.13.1`
+- MCP server: `3.14.0`
 - interface: `17`
 - authoring contract: `vlab.authoring/0.9`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -18,7 +18,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
 - Results presentation: `vlab.results-presentation/1`
-- capability requests: `vlab.capability-request/7`
+- capability requests: `vlab.capability-request/8`
 
 A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is the only Experiment-authoring input. All four core artifacts are supplied explicitly; Metrics may be empty.
 
@@ -95,7 +95,7 @@ The browser loads a saved `vlab.results-presentation/1` layout for registry Expe
 
 ## Durable extension closure and request submission
 
-Student and Professor profiles share `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure` under `vlab.capability-request/7`.
+Student and Professor profiles share `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure` under `vlab.capability-request/8`.
 
 The authoring continuation is deterministic:
 
@@ -167,4 +167,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 established Professor-controlled candidate generalization metadata at server `3.13.0`. The capability-request integrity repairs then made clear-requirement evidence lossless, preserved exact blocked-Experiment revision snapshots, and patched shared-candidate resume readback at server `3.13.1`, without changing interface `17`, request interface `vlab.capability-request/7`, `vlab.authoring/0.9`, or the nine-tool surface.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 established Professor-controlled candidate generalization metadata at server `3.13.0`. The capability-request integrity repairs then made clear-requirement evidence lossless, preserved exact blocked-Experiment revision snapshots, and patched shared-candidate resume readback at server `3.14.0`, without changing interface `17`, request interface `vlab.capability-request/8`, `vlab.authoring/0.9`, or the nine-tool surface.
