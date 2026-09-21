@@ -2,7 +2,10 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use serde::Deserialize;
 
-use crate::{Action, ControllerRuntime, NeighbourObservation, Observation, Vec2};
+use crate::{
+    Action, ControllerRuntime, NeighbourObservation, Observation, ScientificRng, Vec2,
+    RNG_DOMAIN_CONTROLLER,
+};
 
 #[derive(Debug, Clone, Copy)]
 enum Value {
@@ -143,10 +146,11 @@ fn validate_expression(
         }
         Expression::Call { name, args, line } => {
             let arity = match name.as_str() {
-                "Vec2" | "dot" | "atan2" | "pow" | "min" | "max" | "Motion" => 2,
+                "Vec2" | "dot" | "atan2" | "pow" | "min" | "max" | "Motion"
+                | "rng.uniform" | "rng.normal" => 2,
                 "perpendicular" | "norm" | "abs" | "sqrt" | "exp" | "log"
                 | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"
-                | "floor" | "ceil" => 1,
+                | "floor" | "ceil" | "rng.bernoulli" => 1,
                 _ => return Err(at_line(*line, format!("unsupported call '{name}'"))),
             };
             if args.len() != arity { return Err(at_line(*line, format!("{name} expects {arity} arguments"))); }
@@ -268,7 +272,8 @@ enum BooleanOp { And, Or }
 enum Intrinsic {
     Vec2, Dot, Perpendicular, Norm,
     Abs, Sqrt, Exp, Log, Sin, Cos, Tan, Asin, Acos, Atan, Atan2, Floor, Ceil,
-    Pow, Min, Max, Motion
+    Pow, Min, Max, Motion,
+    RngUniform, RngBernoulli, RngNormal,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -474,6 +479,9 @@ fn emit_expression(
                 "min" => Intrinsic::Min,
                 "max" => Intrinsic::Max,
                 "Motion" => Intrinsic::Motion,
+                "rng.uniform" => Intrinsic::RngUniform,
+                "rng.bernoulli" => Intrinsic::RngBernoulli,
+                "rng.normal" => Intrinsic::RngNormal,
                 _ => unreachable!("validated intrinsic"),
             };
             ops.push(EvalOp::Intrinsic(intrinsic));
@@ -611,7 +619,7 @@ fn push_load(
     });
 }
 
-fn execute_intrinsic(intrinsic: Intrinsic, stack: &mut Vec<Value>) {
+fn execute_intrinsic(intrinsic: Intrinsic, stack: &mut Vec<Value>, rng: &mut ScientificRng) {
     match intrinsic {
         Intrinsic::Vec2 => {
             let y = stack.pop().expect("validated Vec2 y").scalar();
@@ -705,6 +713,35 @@ fn execute_intrinsic(intrinsic: Intrinsic, stack: &mut Vec<Value>) {
             assert!(forward.is_finite() && turning.is_finite(), "controller Motion requires finite scalar arguments");
             stack.push(Value::Action(Action { forward, turning }));
         }
+        Intrinsic::RngUniform => {
+            let upper = stack.pop().expect("validated rng.uniform upper").scalar();
+            let lower = stack.pop().expect("validated rng.uniform lower").scalar();
+            assert!(lower.is_finite() && upper.is_finite(), "rng.uniform bounds must be finite");
+            assert!(upper >= lower, "rng.uniform requires upper >= lower");
+            let value = lower + (upper - lower) * rng.unit();
+            assert!(value.is_finite(), "rng.uniform produced a non-finite result");
+            stack.push(Value::Scalar(value));
+        }
+        Intrinsic::RngBernoulli => {
+            let probability = stack.pop().expect("validated rng.bernoulli probability").scalar();
+            assert!(
+                probability.is_finite() && (0.0..=1.0).contains(&probability),
+                "rng.bernoulli probability must be finite and in [0, 1]"
+            );
+            stack.push(Value::Bool(rng.unit() < probability));
+        }
+        Intrinsic::RngNormal => {
+            let stddev = stack.pop().expect("validated rng.normal stddev").scalar();
+            let mean = stack.pop().expect("validated rng.normal mean").scalar();
+            assert!(mean.is_finite(), "rng.normal mean must be finite");
+            assert!(stddev.is_finite() && stddev >= 0.0, "rng.normal stddev must be finite and non-negative");
+            let u1 = 1.0 - rng.unit();
+            let u2 = rng.unit();
+            let z = (-2.0 * u1.ln()).sqrt() * (std::f64::consts::TAU * u2).cos();
+            let value = mean + stddev * z;
+            assert!(value.is_finite(), "rng.normal produced a non-finite result");
+            stack.push(Value::Scalar(value));
+        }
     }
 }
 
@@ -715,6 +752,7 @@ fn evaluate(
     locals: &[Value],
     observation: &Observation,
     neighbour: Option<&NeighbourObservation>,
+    rng: &mut ScientificRng,
     stack: &mut Vec<Value>,
 ) -> Value {
     stack.clear();
@@ -753,7 +791,7 @@ fn evaluate(
                 let left = stack.pop().expect("validated binary left");
                 stack.push(binary(op, left, right));
             }
-            EvalOp::Intrinsic(intrinsic) => execute_intrinsic(intrinsic, stack),
+            EvalOp::Intrinsic(intrinsic) => execute_intrinsic(intrinsic, stack, rng),
         }
     }
     debug_assert_eq!(stack.len(), 1);
@@ -789,19 +827,20 @@ fn execute_statements(
     locals: &mut [Value],
     observation: &Observation,
     neighbour: Option<&NeighbourObservation>,
+    rng: &mut ScientificRng,
     eval_stack: &mut Vec<Value>,
 ) -> Option<Action> {
     for statement in body {
         match statement {
             PreparedStatement::Assign { target, value } => {
                 let result = evaluate(
-                    value, parameters, private_state, locals, observation, neighbour, eval_stack,
+                    value, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
                 );
                 assign(*target, result, private_state, locals);
             }
             PreparedStatement::AugAssign { target, value } => {
                 let right = evaluate(
-                    value, parameters, private_state, locals, observation, neighbour, eval_stack,
+                    value, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
                 );
                 match target {
                     PreparedTarget::PrivateState(slot) => private_state[*slot] += right.scalar(),
@@ -811,7 +850,7 @@ fn execute_statements(
             PreparedStatement::ForEachNeighbour { body } => {
                 for current in &observation.neighbours {
                     if let Some(action) = execute_statements(
-                        body, parameters, private_state, locals, observation, Some(current), eval_stack,
+                        body, parameters, private_state, locals, observation, Some(current), rng, eval_stack,
                     ) { return Some(action); }
                 }
             }
@@ -819,24 +858,24 @@ fn execute_statements(
                 let mut matched = false;
                 for branch in branches {
                     if evaluate(
-                        &branch.condition, parameters, private_state, locals, observation, neighbour, eval_stack,
+                        &branch.condition, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
                     ).boolean() {
                         matched = true;
                         if let Some(action) = execute_statements(
-                            &branch.body, parameters, private_state, locals, observation, neighbour, eval_stack,
+                            &branch.body, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
                         ) { return Some(action); }
                         break;
                     }
                 }
                 if !matched {
                     if let Some(action) = execute_statements(
-                        else_body, parameters, private_state, locals, observation, neighbour, eval_stack,
+                        else_body, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
                     ) { return Some(action); }
                 }
             }
             PreparedStatement::Return { value } => {
                 return Some(evaluate(
-                    value, parameters, private_state, locals, observation, neighbour, eval_stack,
+                    value, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
                 ).action());
             }
         }
@@ -850,6 +889,8 @@ pub struct IrControllerRuntime {
     private_initial: Vec<f64>,
     private_state_slots: HashMap<String, usize>,
     private_state: Vec<Vec<f64>>,
+    root_seed: u32,
+    controller_rngs: Vec<ScientificRng>,
     scratch_locals: Vec<Value>,
     scratch_eval_stack: Vec<Value>,
 }
@@ -906,6 +947,8 @@ impl IrControllerRuntime {
             private_initial,
             private_state_slots: state_slots,
             private_state: Vec::new(),
+            root_seed: 0,
+            controller_rngs: Vec::new(),
             scratch_locals: vec![Value::Scalar(f64::NAN); local_slots.len()],
             scratch_eval_stack: Vec::with_capacity(eval_stack_capacity),
         })
@@ -913,6 +956,10 @@ impl IrControllerRuntime {
 }
 
 impl ControllerRuntime for IrControllerRuntime {
+    fn set_run_seed(&mut self, seed: u32) {
+        self.root_seed = seed;
+    }
+
     fn reset(&mut self, agent_count: usize) {
         let profiles = vec![BTreeMap::new(); agent_count];
         self.reset_with_private_state(agent_count, &profiles)
@@ -946,6 +993,15 @@ impl ControllerRuntime for IrControllerRuntime {
                 self.private_state[agent_index][slot] = *value;
             }
         }
+        self.controller_rngs = (0..agent_count)
+            .map(|agent_index| {
+                ScientificRng::for_domain(
+                    self.root_seed,
+                    RNG_DOMAIN_CONTROLLER,
+                    agent_index as u64,
+                ).expect("static controller RNG domain is valid")
+            })
+            .collect();
         self.scratch_locals.fill(Value::Scalar(f64::NAN));
         self.scratch_eval_stack.clear();
         Ok(())
@@ -961,6 +1017,7 @@ impl ControllerRuntime for IrControllerRuntime {
             &mut self.scratch_locals,
             observation,
             None,
+            &mut self.controller_rngs[agent_index],
             &mut self.scratch_eval_stack,
         ).expect("validated controller always returns an action")
     }
@@ -1198,12 +1255,14 @@ mod tests {
     fn standard_scalar_math_intrinsics_use_native_f64_operations() {
         fn unary(intrinsic: Intrinsic, input: f64) -> f64 {
             let mut stack = vec![Value::Scalar(input)];
-            execute_intrinsic(intrinsic, &mut stack);
+            let mut rng = ScientificRng::for_domain(0, RNG_DOMAIN_CONTROLLER, 0).unwrap();
+            execute_intrinsic(intrinsic, &mut stack, &mut rng);
             stack.pop().unwrap().scalar()
         }
         fn binary(intrinsic: Intrinsic, left: f64, right: f64) -> f64 {
             let mut stack = vec![Value::Scalar(left), Value::Scalar(right)];
-            execute_intrinsic(intrinsic, &mut stack);
+            let mut rng = ScientificRng::for_domain(0, RNG_DOMAIN_CONTROLLER, 0).unwrap();
+            execute_intrinsic(intrinsic, &mut stack, &mut rng);
             stack.pop().unwrap().scalar()
         }
 
@@ -1229,7 +1288,8 @@ mod tests {
     #[should_panic(expected = "controller Motion requires finite scalar arguments")]
     fn non_finite_controller_action_fails_loudly() {
         let mut stack = vec![Value::Scalar(f64::NAN), Value::Scalar(0.0)];
-        execute_intrinsic(Intrinsic::Motion, &mut stack);
+        let mut rng = ScientificRng::for_domain(0, RNG_DOMAIN_CONTROLLER, 0).unwrap();
+        execute_intrinsic(Intrinsic::Motion, &mut stack, &mut rng);
     }
 
     #[test]
