@@ -1,29 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Signed-in and signed-out workspace presentation now share one hierarchy, and authentication separates Sign In from Create Account",
-  "owner_impact": "The three primary workspace surfaces now use the same names in navigation and card titles: Control Panel, Simulation and Experiment Authoring. Each surface has one prominent primary title instead of kicker/title pairs. Signed-out Control Panel keeps the same experiment context but replaces the Save & share card with a direct Sign In action. The authentication surface defaults to Sign In with only email and password; Create Account is a separate mode that reveals first and last name only when needed.",
+  "outcome": "Authenticated MCP workspace discovery can validate the implemented heterogeneous-initialization capability again",
+  "owner_impact": "Research AI can discover the Virtual Lab workspace without the canonical-capability consistency guard failing on missing bibliography for heterogeneous per-agent initialization. The repair restores only the exact preserved source publication for that already-implemented capability. It does not approve, reject, generalize, or implement any pending capability request.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "dormant",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "This concrete #273 UI/UX correction is finished. The UI/UX domain returns to living/dormant status with no automatic successor; future work requires new product-use evidence."
+    "kind": "epic_continues",
+    "issue": 466,
+    "text": "Next is #466 — enforce complete and lossless capability-request evidence. That repair will harden closure coverage and grouped candidate reuse without making any scientific judgment about Sergio's pending requests. It has not started yet."
   },
   "technical_evidence": [
-    "Workspace navigation and primary card titles use the exact same labels: Control Panel, Simulation and Experiment Authoring.",
-    "Control Panel has one peer-level visible title; Current experiment remains an accessible inner region without competing as the card title.",
-    "Simulation removes the Simulation/Arena kicker-title pair and uses one Simulation title.",
-    "Experiment Authoring removes the Authoring/Experiment source kicker-title pair and uses one Experiment Authoring title.",
-    "Signed-out Control Panel hides the signed-in Save & share region and exposes a direct Sign In action beside the ordinary experiment actions.",
-    "Signed-in Control Panel preserves the existing Save & share functions.",
-    "Signed-out authentication defaults to Sign In with email and password only.",
-    "Create Account is an explicit second mode; first name and last name are visible only in that mode, with a direct return to Sign In.",
-    "Signed-out account navigation is labelled Sign In; signed-in navigation remains Account.",
-    "Production responsive smoke verifies workspace hierarchy on phone, foldable, desktop and ultra-wide viewports.",
-    "Production student-onboarding smoke verifies both Sign In and Create Account presentation without creating a real account.",
-    "Scientific runtime, authoring/compiler behavior, revisions, autosave, sharing semantics, Showcase and Professor functions are unchanged.",
-    "Signed-out responsive smoke treats the Save & share region as intentionally hidden while requiring the direct Sign In action to remain visible in Control Panel.",
-    "Authentication production smoke opens the Sign In utility before asserting visible email/password and mode controls, then exercises Create Account and return-to-Sign-In presentation.",
-    "React chrome now observes the authoritative body authentication state directly, so both desktop and portal-rendered mobile Account controls show Sign In while signed out and Account while signed in."
+    "The production canonical capability initialization.per_agent_private_state_assignment existed as implemented but had no publication-provenance row before this repair.",
+    "The repair derives provenance from the unique implemented request already bound to initialization.per_agent_private_state_assignment; it embeds no generated request ID and fails rather than guessing if the bound implementation source is absent or ambiguous.",
+    "Existing bibliography is preserved; the migration is idempotent and does not weaken the MCP canonical-capability consistency guard.",
+    "Regression coverage reproduces the missing-provenance discovery failure and proves that restored provenance satisfies the unchanged consistency guard.",
+    "No capability/request lifecycle, RLS, Experiment content, authoring semantics, or pending scientific request status is changed."
   ],
-  "close_issue": 458
+  "close_issue": 467
 }
