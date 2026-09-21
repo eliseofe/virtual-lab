@@ -58,7 +58,7 @@ The stable Controller language therefore describes forms such as `step(self, obs
 
 The simulator/compiler/kernel remain static code and do **not** query Supabase at runtime. Browser and edge validation consume byte-identical static implemented-capability bindings, while production discovery checks those bindings against the canonical registry. A surface absent from the implemented capability set is rejected.
 
-In particular, controller-side random sampling remains unavailable because there is no implemented controller-RNG capability. It is not modeled as a permanent generic language prohibition. Host filesystem/network access remains a separate security boundary.
+Controller stochastic sampling is available only through the implemented simulator-owned capability `controller.stochastic_distributions`. Its versioned distribution contract is `vlab.controller-stochasticity/1`: `rng.uniform(a, b)`, `rng.bernoulli(p)`, and `rng.normal(mean, stddev)`. Each agent has an independent deterministic controller stream derived from the run seed under `vlab.rng/splitmix64-domain/1`; reset/replay reconstructs the exact streams. Raw stream access, reseeding and host-language/global random APIs remain forbidden. Host filesystem/network access remains a separate security boundary.
 
 Scientific randomness itself is governed by the versioned simulator contract in `RNG_CONTRACT.md`. The current contract is `vlab.rng/splitmix64-domain/1`: Initialization and simulator sensing randomness are separate deterministic domains derived from the run seed, and the controller domain is reserved but not yet authorable. A stochastic draw in one domain cannot advance another domain's stream.
 
