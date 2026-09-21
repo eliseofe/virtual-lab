@@ -21,7 +21,8 @@
     "Responsive smoke verifies metadata ownership inside the Current Experiment context block and the context-before-actions relationship, matching the implemented hierarchy without relying on a brittle nested-node ordering comparison.",
     "The obsolete Showcase-era Current Experiment action wrapper is removed after its controls are relocated, leaving one authoritative action group for responsive hierarchy verification.",
     "Any remaining legacy Current Experiment action children, including Organize, are migrated into the authoritative action group before the obsolete wrapper is removed.",
-    "Simulation Run/Pause/Restart/New seed/Fit controls keep a 44px minimum target at every viewport width, including foldable-width touch layouts, without device-specific sizing."
+    "Simulation Run/Pause/Restart/New seed/Fit controls keep a 44px minimum target at every viewport width, including foldable-width touch layouts, without device-specific sizing.",
+    "Edit Experiment Apply and artifact-tab controls keep a 44px minimum target at every viewport width, including foldable-width touch layouts, without device-specific sizing."
   ],
   "close_issue": 449
 }
