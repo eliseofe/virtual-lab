@@ -2,10 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { CANONICAL_CAPABILITY_BINDINGS } from "../../supabase/functions/experiment-mcp/canonical-capability-bindings.js";
 import { validateCanonicalCapabilitySurface } from "../../supabase/functions/experiment-mcp/canonical-capability-consistency.js";
 
-const migration = readFileSync(
+const originMigration = readFileSync(
   new URL("../../supabase/migrations/20260919102500_capability_origin_symmetry.sql", import.meta.url),
+  "utf8",
+);
+const repairMigration = readFileSync(
+  new URL("../../supabase/migrations/20260921160000_restore_initialization_capability_provenance.sql", import.meta.url),
   "utf8",
 );
 const mcp = readFileSync(
@@ -72,14 +77,14 @@ test("#354 allows a non-implemented canonical capability with provenance and no 
 });
 
 test("#354 migration normalizes old capabilities without inventing workflow history", () => {
-  assert.match(migration, /git:10bdfe63a9af0c3eedc4896682fda7bfddf71d89/);
-  assert.match(migration, /2026-09-19T05:58:01Z/);
-  assert.match(migration, /canonical_capabilities_implemented_metadata_complete/);
-  assert.match(migration, /implementation_version text/);
-  assert.match(migration, /implemented_at timestamptz/);
-  assert.match(migration, /Optional trusted-development workflow history/);
-  assert.doesNotMatch(migration, /update public\.canonical_capabilities[\s\S]*github_issue_number\s*=/i);
-  assert.doesNotMatch(migration, /insert into public\.capability_requests/i);
+  assert.match(originMigration, /git:10bdfe63a9af0c3eedc4896682fda7bfddf71d89/);
+  assert.match(originMigration, /2026-09-19T05:58:01Z/);
+  assert.match(originMigration, /canonical_capabilities_implemented_metadata_complete/);
+  assert.match(originMigration, /implementation_version text/);
+  assert.match(originMigration, /implemented_at timestamptz/);
+  assert.match(originMigration, /Optional trusted-development workflow history/);
+  assert.doesNotMatch(originMigration, /update public\.canonical_capabilities[\s\S]*github_issue_number\s*=/i);
+  assert.doesNotMatch(originMigration, /insert into public\.capability_requests/i);
 });
 
 test("#354 neutral discovery enforces live canonical/binding consistency", () => {
@@ -89,4 +94,34 @@ test("#354 neutral discovery enforces live canonical/binding consistency", () =>
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '\d+'/);
   assert.match(tools, /contract_version: 'vlab\.authoring\/0\.9'/);
+});
+
+test("#467 missing heterogeneous-initialization provenance blocks discovery and the repair restores only trusted source provenance", () => {
+  const key = "initialization.per_agent_private_state_assignment";
+  const registry = CANONICAL_CAPABILITY_BINDINGS.map((entry) => ({
+    ...implemented,
+    id: entry.canonical_capability_id,
+    capability_key: entry.capability_key,
+    publication_provenance: entry.capability_key === key ? [] : implemented.publication_provenance,
+  }));
+  const heterogeneous = registry.find((entry) => entry.capability_key === key);
+  assert.ok(heterogeneous, "the deployed heterogeneous-state binding must be covered");
+
+  assert.deepEqual(validateCanonicalCapabilitySurface(registry, CANONICAL_CAPABILITY_BINDINGS), {
+    valid: false,
+    errors: [`Canonical capability lacks publication provenance: ${key}`],
+  });
+
+  heterogeneous.publication_provenance = implemented.publication_provenance;
+  assert.deepEqual(validateCanonicalCapabilitySurface(registry, CANONICAL_CAPABILITY_BINDINGS), {
+    valid: true,
+    errors: [],
+  });
+
+  assert.match(repairMigration, /2616dbb5-2134-417f-aebb-2e9e4ea0dd9c/);
+  assert.match(repairMigration, /v_request\.status <> 'implemented'/);
+  assert.match(repairMigration, /v_request\.canonical_capability_id is distinct from v_capability_id/);
+  assert.match(repairMigration, /insert into public\.capability_publication_provenance/);
+  assert.doesNotMatch(repairMigration, /update public\.canonical_capabilities/i);
+  assert.doesNotMatch(repairMigration, /delete from public\.capability_publication_provenance/i);
 });
