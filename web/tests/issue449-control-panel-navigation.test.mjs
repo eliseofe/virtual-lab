@@ -15,7 +15,7 @@ test("#449 restores the accepted three-destination workspace navigation", () => 
   assert.match(index, /id="control-panel" class="panel experiment-panel" aria-label="Control Panel"/);
   assert.match(react, /'control-panel', '#control-panel', 'Control Panel'/);
   assert.match(react, /'simulation', '#simulation', 'Simulation'/);
-  assert.match(react, /'edit-experiment', '#authoring-workbench', 'Edit Experiment'/);
+  assert.match(react, /'edit-experiment', '#authoring-workbench', 'Experiment Authoring'/);
   assert.match(react, /aria-current=\{activeSection === section \? 'location' : undefined\}/);
   assert.match(react, /data-active=\{String\(activeSection === section\)\}/);
   assert.doesNotMatch(react, /data-vlab-nav="authoring"/);
