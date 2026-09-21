@@ -491,8 +491,10 @@ begin
 end;
 $function$;
 
+revoke all on function public.submit_structured_extension_closure_v8(uuid, uuid, bigint, text, text, jsonb, text, text, text, text, text, jsonb, jsonb, jsonb) from public;
 revoke all on function public.submit_structured_extension_closure_v8(uuid, uuid, bigint, text, text, jsonb, text, text, text, text, text, jsonb, jsonb, jsonb) from anon;
 grant execute on function public.submit_structured_extension_closure_v8(uuid, uuid, bigint, text, text, jsonb, text, text, text, text, text, jsonb, jsonb, jsonb) to authenticated;
 
+revoke all on function public.revalidate_structured_extension_closure_v8(uuid, bigint, text, text, jsonb, jsonb, jsonb) from public;
 revoke all on function public.revalidate_structured_extension_closure_v8(uuid, bigint, text, text, jsonb, jsonb, jsonb) from anon;
 grant execute on function public.revalidate_structured_extension_closure_v8(uuid, bigint, text, text, jsonb, jsonb, jsonb) to authenticated;
