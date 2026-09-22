@@ -18,8 +18,8 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.9",
-  experiment_interface_version: "9",
+  contract_version: "vlab.authoring/0.10",
+  experiment_interface_version: "10",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
   invalid_write_policy: "reject",
@@ -46,7 +46,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
       parameter_policy: "Configuration names beyond the stable runtime requirements are experiment-defined or capability-owned. Implemented capability bindings advertise any additional simulator-owned configuration symbols."
     },
     initialization: {
-      compiled_version: "vlab.initializer-state/0.3",
+      compiled_version: "vlab.initializer-state/0.4",
       syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Implemented capability surfaces may additionally assign deterministic per-agent initial controller-private scalar state. Additional callable/member surfaces and optional entries are capability-owned.",
       entry: "initialize(config, rng, place)",
       simulator_owned_inputs: ["config", "rng", "place"],
@@ -338,8 +338,9 @@ export function validateExperimentSources({ config_source, initializer_source, c
   let controller;
   const parameters = numericParameters(config);
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
+  const references = initializer.world_references?.references?.map(({ name }) => name) ?? [];
   try {
-    controller = compileController(controller_source, { parameters: parameterTypes });
+    controller = compileController(controller_source, { parameters: parameterTypes, references });
     validateEnvironmentControllerPair(environment, controller);
   } catch (error) { diagnostics.push(errorDiagnostic("controller", error)); return invalid(diagnostics); }
 
@@ -347,7 +348,7 @@ export function validateExperimentSources({ config_source, initializer_source, c
   catch (error) { diagnostics.push(errorDiagnostic("initializer", error)); return invalid(diagnostics); }
 
   let metrics;
-  try { metrics = compileMetrics(metrics_source, { parameters: parameterTypes }); }
+  try { metrics = compileMetrics(metrics_source, { parameters: parameterTypes, references }); }
   catch (error) { diagnostics.push(errorDiagnostic("metrics", error)); return invalid(diagnostics); }
 
   return {
