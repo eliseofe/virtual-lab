@@ -978,7 +978,7 @@ mod tests {
           }]
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
-        metrics.observe_due(&state(), 10, 0.1).unwrap();
+        metrics.observe_due(&state(), &BTreeMap::new(), 10, 0.1).unwrap();
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 1.0);
     }
@@ -1010,7 +1010,7 @@ mod tests {
             baseline.advance_physics_ticks(1);
             measured.advance_physics_ticks(1);
             let tick = measured.physics_ticks();
-            metrics.observe_due(&measured.state, tick, measured.scientific_time()).unwrap();
+            metrics.observe_due(&measured.state, &BTreeMap::new(), tick, measured.scientific_time()).unwrap();
             if tick % 7 == 0 { let _ = metrics.drain_json(2).unwrap(); }
         }
         assert_eq!(baseline.snapshot(), measured.snapshot());
@@ -1024,7 +1024,8 @@ mod tests {
                 line: None,
             };
             let parameters = BTreeMap::new();
-            let context = EvaluationContext { state: &[], scientific_time: 0.0, parameters: &parameters };
+            let references = BTreeMap::new();
+            let context = EvaluationContext { state: &[], references: &references, scientific_time: 0.0, parameters: &parameters };
             eval_expression(&expression, &context, &HashMap::new(), &HashMap::new())
                 .unwrap()
                 .scalar("test")
@@ -1079,7 +1080,7 @@ mod tests {
             AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.5 },
         ];
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
-        metrics.finalize(&state, 1.0).unwrap();
+        metrics.finalize(&state, &BTreeMap::new(), 1.0).unwrap();
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 2.0);
     }
@@ -1105,7 +1106,7 @@ mod tests {
           }]
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
-        metrics.finalize(&state(), 1.0).unwrap();
+        metrics.finalize(&state(), &BTreeMap::new(), 1.0).unwrap();
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 1.0);
     }
@@ -1184,7 +1185,7 @@ mod tests {
           }]
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(metrics_ir, "{}", 0.01).unwrap();
-        metrics.finalize(&state(), 1.0).unwrap();
+        metrics.finalize(&state(), &BTreeMap::new(), 1.0).unwrap();
         let batch: serde_json::Value =
             serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 2.0);
