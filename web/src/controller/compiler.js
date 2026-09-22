@@ -672,6 +672,35 @@ function parseClassState(lines, start, classIndent) {
   return { state, next: i };
 }
 
+export function controllerStructure(source) {
+  const lines = meaningfulLines(source);
+  if (lines.length < 3) throw new ControllerCompileError("syntax", "controller requires class, step method, and body");
+  const classMatch = lines[0].text.match(/^class\s+([A-Za-z_][A-Za-z0-9_]*)\(Agent\):$/);
+  if (!classMatch || lines[0].indent !== 0) throw new ControllerCompileError("syntax", "controller must start with 'class Name(Agent):'", lines[0].line);
+
+  const classIndent = lines[1].indent;
+  if (classIndent <= 0) throw new ControllerCompileError("syntax", "class body must be indented", lines[1].line);
+  const parsedState = parseClassState(lines, 1, classIndent);
+  const method = lines[parsedState.next];
+  if (!method || method.indent !== classIndent || method.text !== "def step(self, obs):") {
+    throw new ControllerCompileError("syntax", "controller entry point must be 'def step(self, obs):'", method?.line ?? lines.at(-1).line);
+  }
+
+  const firstStatement = lines[parsedState.next + 1];
+  if (!firstStatement || firstStatement.indent <= method.indent) throw new ControllerCompileError("syntax", "step method requires an indented body", method.line);
+  const parsed = parseStatements(lines, parsedState.next + 1, firstStatement.indent);
+  if (parsed.next !== lines.length) throw new ControllerCompileError("syntax", "unexpected content after step body", lines[parsed.next].line);
+
+  return {
+    language: "python-vlab/0.1",
+    symbols: [
+      { kind: "class", name: classMatch[1], line: lines[0].line },
+      ...parsedState.state.map((entry) => ({ kind: "state", name: entry.name, line: entry.line })),
+      { kind: "method", name: "step", line: method.line },
+    ],
+  };
+}
+
 export function compileController(source, options = {}) {
   const parameterObject = options.parameters ?? {};
   const parameters = new Map(Object.entries(parameterObject));
