@@ -19,6 +19,24 @@ declare global {
 }
 
 let acePromise: Promise<AceRuntime> | null = null;
+const editors = new Map<string, any>();
+
+export function focusArtifactLine(id: string, line: number): boolean {
+  const editor = editors.get(id);
+  if (!editor || !Number.isFinite(line)) return false;
+  editor.gotoLine(Math.max(1, Math.trunc(line)), 0, true);
+  editor.focus();
+  return true;
+}
+
+export function openArtifactSearch(id: string): boolean {
+  const editor = editors.get(id);
+  if (!editor) return false;
+  editor.focus();
+  editor.execCommand('find');
+  return true;
+}
+
 
 function loadAce(): Promise<AceRuntime> {
   if (window.ace) return Promise.resolve(window.ace);
@@ -96,10 +114,13 @@ export function ArtifactCodeEditor({
 
         editor = ace.edit(host);
         editorRef.current = editor;
+        editors.set(id, editor);
         editor.setOptions({
           fontSize: '13px',
           showPrintMargin: false,
           showGutter: true,
+          showFoldWidgets: true,
+          fadeFoldWidgets: false,
           highlightActiveLine: true,
           highlightSelectedWord: true,
           displayIndentGuides: true,
@@ -111,6 +132,7 @@ export function ArtifactCodeEditor({
         });
         editor.renderer.setShowGutter(true);
         editor.session.setUseWorker(false);
+        editor.session.setFoldStyle?.('markbeginend');
         if (pythonLike(format)) editor.session.setMode('ace/mode/python');
         editor.setReadOnly(source.readOnly);
         editor.setValue(source.value, -1);
@@ -178,6 +200,7 @@ export function ArtifactCodeEditor({
         editor.destroy();
         host.replaceChildren();
       }
+      editors.delete(id);
       editorRef.current = null;
       delete source.dataset.vlabEditorEnhanced;
       delete host.dataset.vlabCodeEditorReady;

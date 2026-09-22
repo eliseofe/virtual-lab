@@ -1,20 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Experiment Authoring now has a real syntax-highlighted code editor foundation",
-  "owner_impact": "Configuration, Initialization, Controller and Metrics are edited through an Ace code-editor surface with line numbers, Python syntax highlighting, normal selection/undo/redo/clipboard behavior and preserved responsive styling. The existing artifact textareas remain the authoritative source buffers underneath, so dirty-state, autosave, Apply & restart, revision history and read-only Experiment behavior keep their established semantics.",
+  "outcome": "Experiment Authoring now has compiler-derived navigation, folding and in-artifact search",
+  "owner_impact": "Configuration, Initialization, Controller and Metrics now expose a compact Outline built from the same parsers/compilers that define each artifact language. Selecting a symbol jumps to its real definition line, Find opens Ace's in-artifact search, and Python-like blocks expose fold widgets. The navigation stays secondary to the active editor and remains compact on narrow screens; source, dirty-state, autosave, revision and runtime semantics are unchanged.",
   "next": {
     "kind": "epic_continues",
-    "issue": 204,
-    "text": "#204 is the next code-authoring ergonomics ticket. It adds parser-derived outline/symbol navigation, folding and reliable in-artifact search on top of this editor foundation. It has not started yet."
+    "issue": 205,
+    "text": "#205 is the next and final currently approved code-authoring ergonomics ticket. It will connect compiler diagnostics to source locations and add constrained-language completion. It has not started yet."
   },
   "technical_evidence": [
-    "Ace 1.44.0 is loaded as one standalone zero-dependency browser editor runtime; the existing textarea remains the fallback if editor initialization fails.",
-    "The deployed Python-like artifact formats use Ace Python mode for syntax highlighting; no Virtual Lab scientific names are hardcoded as fake semantic tokens.",
-    "Ace edits mirror into the authoritative textareas through the existing input contract, while authoritative Experiment/revision loads reset editor content and undo history without manufacturing dirty edits.",
-    "Read-only state is mirrored from the existing artifact textareas into Ace.",
-    "The existing interaction-boundary autosave logic treats the Ace surface as inside the artifact editor.",
-    "Production browser smoke requires four ready Ace surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens, and reports exact editor initialization errors.",
-    "Production browser smoke reads readiness and engine identity from the actual Ace surface inside the React portal mount, while still verifying hidden authoritative textarea, line numbers and highlighted tokens."
+    "Configuration parameters, Initializer functions, Controller class/state/step symbols and Metrics declarations are exposed by their existing compiler/parser modules rather than inferred from comments or decorative headings.",
+    "React consumes one artifactStructureSafe model and renders a compact Outline selector; symbol selection calls the Ace editor's gotoLine command.",
+    "Find uses Ace's native search command rather than a second search implementation.",
+    "Ace Python mode fold widgets remain enabled and are production-smoked on the Initializer artifact.",
+    "Outline recomputation is debounced while editing and becomes unavailable rather than inventing structure when the current source no longer parses.",
+    "Production browser smoke requires a populated Configuration outline, opens the real Ace search UI, switches to Initialization and verifies exactly three compiler-derived functions plus visible fold widgets."
   ],
-  "close_issue": 203
+  "close_issue": 204
 }

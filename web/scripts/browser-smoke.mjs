@@ -38,6 +38,16 @@ async function state(send) {
         content: surface?.querySelector('.ace_text-layer')?.textContent ?? null,
         editable: editor?.querySelector('.ace_text-input')?.getAttribute('readonly') ?? null,
       };
+    })(),
+    authoringNavigation: (() => {
+      const outline = document.querySelector('[data-vlab-authoring-outline="configuration"]');
+      const find = document.querySelector('[data-vlab-authoring-find="configuration"]');
+      return {
+        outlineState: outline?.dataset.vlabOutlineState ?? null,
+        outlineCount: Number(outline?.dataset.vlabOutlineSymbolCount ?? 0),
+        outlineDisabled: outline?.querySelector('input')?.disabled ?? null,
+        findVisible: Boolean(find && getComputedStyle(find).display !== 'none'),
+      };
     })()
   })`;
   const result = await send("Runtime.evaluate", { expression, returnByValue: true });
@@ -98,6 +108,53 @@ try {
       ) {
         throw new Error(`Ace authoring foundation is not visibly rendering the authoritative configuration source: ${JSON.stringify(latest)}`);
       }
+      if (
+        latest.authoringNavigation?.outlineState !== "ready"
+        || latest.authoringNavigation?.outlineCount < 10
+        || latest.authoringNavigation?.outlineDisabled
+        || !latest.authoringNavigation?.findVisible
+      ) {
+        throw new Error(`compiler-derived Configuration outline is not available: ${JSON.stringify(latest)}`);
+      }
+
+      await cdp.send("Runtime.evaluate", {
+        expression: "document.querySelector('[data-vlab-authoring-find=\"configuration\"]').click()",
+      });
+      await sleep(120);
+      const searchVisible = await cdp.send("Runtime.evaluate", {
+        expression: "Boolean(document.querySelector('.ace_search') && getComputedStyle(document.querySelector('.ace_search')).display !== 'none')",
+        returnByValue: true,
+      });
+      if (!searchVisible?.result?.value) throw new Error("Ace Find control did not open the in-artifact search UI.");
+      await cdp.send("Runtime.evaluate", {
+        expression: "document.querySelector('.ace_searchbtn_close')?.click()",
+      });
+
+      await cdp.send("Runtime.evaluate", {
+        expression: "document.querySelector('[data-vlab-authoring-tab=\"initialization\"]').click()",
+      });
+      await sleep(120);
+      const initializerNavigation = await cdp.send("Runtime.evaluate", {
+        expression: `JSON.stringify((() => {
+          const outline = document.querySelector('[data-vlab-authoring-outline="initialization"]');
+          const root = document.querySelector('[data-vlab-code-editor-root="initialization"]');
+          const surface = root?.querySelector('[data-vlab-artifact-editor-surface="true"]');
+          return {
+            outlineState: outline?.dataset.vlabOutlineState ?? null,
+            outlineCount: Number(outline?.dataset.vlabOutlineSymbolCount ?? 0),
+            foldWidgets: surface?.querySelectorAll('.ace_fold-widget').length ?? 0,
+          };
+        })())`,
+        returnByValue: true,
+      });
+      const initializerNavigationState = JSON.parse(initializerNavigation?.result?.value ?? "null");
+      if (
+        initializerNavigationState?.outlineState !== "ready"
+        || initializerNavigationState?.outlineCount !== 3
+        || initializerNavigationState?.foldWidgets < 1
+      ) {
+        throw new Error(`Initializer outline/folding is not available: ${JSON.stringify(initializerNavigationState)}`);
+      }
 
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#run').click()" });
       await sleep(700);
@@ -143,7 +200,7 @@ try {
       if (replayRandomized?.runSeed !== randomizedSeed || Number(replayRandomized?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve the new seed: ${JSON.stringify(replayRandomized)}`);
 
       console.log(JSON.stringify(replayRandomized, null, 2));
-      console.log("Browser reached simulator ready with Ace authoring, the metrics runtime bridge, measured speed controls, and same-seed/new-seed restart controls.");
+      console.log("Browser reached simulator ready with Ace authoring, compiler-derived Outline, Find, folding, metrics runtime bridge, measured speed controls, and restart controls.");
       succeeded = true;
       break;
     }

@@ -1,7 +1,8 @@
-import { Badge, Button, Group, Paper, Stack, Title } from '@mantine/core';
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { Badge, Button, Group, Paper, Select, Stack, Title } from '@mantine/core';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { ArtifactCodeEditor } from './authoring-code-editor';
+import { ArtifactCodeEditor, focusArtifactLine, openArtifactSearch } from './authoring-code-editor';
+import { artifactStructureSafe, symbolLabel } from './authoring-structure.js';
 import {
   applyAuthoringChanges,
   readAuthoringPresentation,
@@ -20,6 +21,7 @@ function statusColor(state: string) {
 
 export function AuthoringPresentation() {
   const [snapshot, setSnapshot] = useState<AuthoringPresentationSnapshot | null>(() => readAuthoringPresentation());
+  const [sourceVersion, setSourceVersion] = useState(0);
   const sync = () => setSnapshot(readAuthoringPresentation());
   const syncSoon = () => queueMicrotask(sync);
 
@@ -39,6 +41,29 @@ export function AuthoringPresentation() {
       else snapshot.workbench.removeAttribute('aria-labelledby');
     };
   }, [snapshot?.workbench]);
+
+  const selectedArtifact = snapshot?.artifacts.find((artifact) => artifact.selected) ?? null;
+
+  useEffect(() => {
+    const source = selectedArtifact?.source;
+    if (!source) return;
+    let timer: number | null = null;
+    const onInput = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => setSourceVersion((value) => value + 1), 120);
+    };
+    source.addEventListener('input', onInput);
+    return () => {
+      source.removeEventListener('input', onInput);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [selectedArtifact?.source]);
+
+  const selectedStructure = useMemo(() => {
+    if (!selectedArtifact?.source) return null;
+    void sourceVersion;
+    return artifactStructureSafe(selectedArtifact.id, selectedArtifact.source.value);
+  }, [selectedArtifact?.id, selectedArtifact?.source, sourceVersion]);
 
   if (!snapshot) return null;
 
@@ -88,28 +113,69 @@ export function AuthoringPresentation() {
     snapshot.headMount,
   );
 
+  const outlineData = selectedStructure?.symbols.map((symbol, index) => ({
+    value: String(index),
+    label: `${symbolLabel(symbol)} · L${symbol.line}`,
+  })) ?? [];
+
   const tabs = createPortal(
     <Paper className="vlab-react-authoring-tabs-shell" radius="md" p="xs">
-      <Group role="tablist" aria-label="Experiment artifacts" gap={6} wrap="nowrap" className="vlab-react-authoring-tabs">
-        {snapshot.artifacts.map((artifact) => (
-          <Button
-            key={artifact.id}
-            role="tab"
-            variant={artifact.selected ? 'light' : 'subtle'}
-            color={artifact.selected ? 'cyan' : 'gray'}
-            aria-selected={artifact.selected}
-            aria-controls={artifact.controls}
-            tabIndex={artifact.selected ? 0 : -1}
-            onClick={() => activate(artifact.id)}
-            onKeyDown={(event) => onTabKeyDown(event, artifact.id)}
-            data-vlab-authoring-tab={artifact.id}
-            data-dirty={artifact.dirty ? 'true' : undefined}
-            className="vlab-react-authoring-tab"
-          >
-            {artifact.label}{artifact.dirty ? ' •' : ''}
-          </Button>
-        ))}
-      </Group>
+      <Stack gap={8}>
+        <Group role="tablist" aria-label="Experiment artifacts" gap={6} wrap="nowrap" className="vlab-react-authoring-tabs">
+          {snapshot.artifacts.map((artifact) => (
+            <Button
+              key={artifact.id}
+              role="tab"
+              variant={artifact.selected ? 'light' : 'subtle'}
+              color={artifact.selected ? 'cyan' : 'gray'}
+              aria-selected={artifact.selected}
+              aria-controls={artifact.controls}
+              tabIndex={artifact.selected ? 0 : -1}
+              onClick={() => activate(artifact.id)}
+              onKeyDown={(event) => onTabKeyDown(event, artifact.id)}
+              data-vlab-authoring-tab={artifact.id}
+              data-dirty={artifact.dirty ? 'true' : undefined}
+              className="vlab-react-authoring-tab"
+            >
+              {artifact.label}{artifact.dirty ? ' •' : ''}
+            </Button>
+          ))}
+        </Group>
+        {selectedArtifact && (
+          <Group gap={8} wrap="nowrap" className="vlab-react-authoring-navigation">
+            <div
+              className="vlab-react-authoring-outline"
+              data-vlab-authoring-outline={selectedArtifact.id}
+              data-vlab-outline-symbol-count={outlineData.length}
+              data-vlab-outline-state={selectedStructure?.error ? 'unavailable' : 'ready'}
+            >
+              <Select
+                aria-label={`${selectedArtifact.label} outline`}
+                placeholder={selectedStructure?.error ? 'Outline unavailable' : 'Outline'}
+                data={outlineData}
+                value={null}
+                disabled={Boolean(selectedStructure?.error) || outlineData.length === 0}
+                searchable={outlineData.length > 10}
+                clearable={false}
+                onChange={(value) => {
+                  if (value == null || !selectedStructure) return;
+                  const symbol = selectedStructure.symbols[Number(value)];
+                  if (symbol) focusArtifactLine(selectedArtifact.id, symbol.line);
+                }}
+              />
+            </div>
+            <Button
+              variant="subtle"
+              color="gray"
+              onClick={() => openArtifactSearch(selectedArtifact.id)}
+              data-vlab-authoring-find={selectedArtifact.id}
+              className="vlab-react-authoring-find"
+            >
+              Find
+            </Button>
+          </Group>
+        )}
+      </Stack>
     </Paper>,
     snapshot.tabsMount,
   );

@@ -60,6 +60,18 @@ export function compileConfig(source) {
   return { version: "vlab.config/0.2", values };
 }
 
+export function configStructure(source) {
+  const compiled = compileConfig(source);
+  const lines = source.split(/\r?\n/);
+  const symbols = [];
+  for (const name of Object.keys(compiled.values)) {
+    const pattern = new RegExp("^\\s*" + name + "\\s*=");
+    const index = lines.findIndex((line) => pattern.test(stripComment(line)));
+    if (index >= 0) symbols.push({ kind: "parameter", name, line: index + 1 });
+  }
+  return { language: "python-vlab-config/0.2", symbols };
+}
+
 export function numericParameters(config) {
   return Object.fromEntries(Object.entries(config.values).filter(([, value]) => typeof value === "number" && Number.isFinite(value)));
 }
