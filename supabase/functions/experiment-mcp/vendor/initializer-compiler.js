@@ -287,6 +287,8 @@ function evaluate(expr, scope) {
     }
     if (expr.path === "place") { scope.place(...args); return null; }
     if (expr.path === "set_agent_state") { scope.setAgentState(...args); return null; }
+    if (expr.path === "define_reference") { scope.defineReference(...args); return null; }
+    if (expr.path === "set_agent_reference_sensor") { scope.setAgentReferenceSensor(...args); return null; }
     if (scope.functions.has(expr.path)) return executeFunction(expr.path, args, scope);
     throw new InitializerCompileError(`unsupported call '${expr.path}'`, expr.line);
   }
@@ -336,6 +338,8 @@ export function compileInitializer(source, config) {
   }
   const state = new Array(n);
   const privateState = Array.from({ length: n }, () => new Map());
+  const references = new Map();
+  const referenceSensors = Array.from({ length: n }, () => new Map());
   const place = (index, x, y, heading) => {
     if (!Number.isInteger(index) || index < 0 || index >= n) throw new InitializerCompileError(`place index ${index} is outside [0, N)`);
     if ([x, y, heading].some((value) => typeof value !== "number" || !Number.isFinite(value))) throw new InitializerCompileError("place coordinates and heading must be finite numbers");
@@ -349,14 +353,75 @@ export function compileInitializer(source, config) {
     if (privateState[index].has(name)) throw new InitializerCompileError(`agent ${index} private state '${name}' was assigned more than once`);
     privateState[index].set(name, value);
   };
-  const root = { functions, config, rng, place, setAgentState, locals: new Map() };
+  const defineReference = (name, x, y) => {
+    if (typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+      throw new InitializerCompileError("define_reference name must be an identifier string");
+    }
+    if ([x, y].some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+      throw new InitializerCompileError("define_reference coordinates must be finite numbers");
+    }
+    const arenaSize = Number(config.values.ARENA_SIZE);
+    if (Number.isFinite(arenaSize) && arenaSize > 0 && (Math.abs(x) > arenaSize / 2 || Math.abs(y) > arenaSize / 2)) {
+      throw new InitializerCompileError(`reference '${name}' must fit inside ARENA_SIZE=${arenaSize}`);
+    }
+    if (references.has(name)) throw new InitializerCompileError(`reference '${name}' was defined more than once`);
+    references.set(name, { x, y });
+  };
+  const setAgentReferenceSensor = (index, name, maxRange) => {
+    if (!Number.isInteger(index) || index < 0 || index >= n) {
+      throw new InitializerCompileError(`set_agent_reference_sensor index ${index} is outside [0, N)`);
+    }
+    if (typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+      throw new InitializerCompileError("set_agent_reference_sensor reference name must be an identifier string");
+    }
+    if (maxRange !== null && (typeof maxRange !== "number" || !Number.isFinite(maxRange) || maxRange <= 0)) {
+      throw new InitializerCompileError("set_agent_reference_sensor max_range must be None or a finite positive scalar");
+    }
+    if (referenceSensors[index].has(name)) {
+      throw new InitializerCompileError(`agent ${index} reference sensor '${name}' was assigned more than once`);
+    }
+    referenceSensors[index].set(name, maxRange);
+  };
+  const root = {
+    functions,
+    config,
+    rng,
+    place,
+    setAgentState,
+    defineReference,
+    setAgentReferenceSensor,
+    locals: new Map(),
+  };
   executeFunction("initialize", [config, rng, place], root);
   const missing = state.findIndex((entry) => entry === undefined);
   if (missing !== -1) throw new InitializerCompileError(`initializer did not place agent ${missing}; all N agents must be placed`);
+  for (let agentIndex = 0; agentIndex < referenceSensors.length; agentIndex += 1) {
+    for (const name of referenceSensors[agentIndex].keys()) {
+      if (!references.has(name)) {
+        throw new InitializerCompileError(`agent ${agentIndex} reference sensor '${name}' names an undefined reference`);
+      }
+    }
+  }
   const compiledState = state.map((agent, index) => privateState[index].size
     ? { ...agent, private_state: Object.fromEntries(privateState[index]) }
     : agent);
-  return { version: "vlab.initializer-state/0.3", method: String(config.values.INITIALIZATION_METHOD ?? ""), state: compiledState };
+  const compareNames = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+  const worldReferences = {
+    schema: "vlab.world-references/0.1",
+    references: [...references.entries()]
+      .sort(([a], [b]) => compareNames(a, b))
+      .map(([name, position]) => ({ name, ...position })),
+    sensors: referenceSensors.flatMap((sensors, agent_index) =>
+      [...sensors.entries()]
+        .sort(([a], [b]) => compareNames(a, b))
+        .map(([name, max_range]) => ({ agent_index, name, max_range }))),
+  };
+  return {
+    version: "vlab.initializer-state/0.4",
+    method: String(config.values.INITIALIZATION_METHOD ?? ""),
+    state: compiledState,
+    world_references: worldReferences,
+  };
 }
 
 export function validateInitializerControllerPrivateState(initializer, controller) {
