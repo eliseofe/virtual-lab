@@ -5,7 +5,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function evaluate(send, expression) {
   const result = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
-  if (result?.exceptionDetails) throw new Error(result.exceptionDetails.text || "Runtime evaluation failed");
+  if (result?.exceptionDetails) {
+    const detail = result.exceptionDetails.exception?.description || result.exceptionDetails.text || "Runtime evaluation failed";
+    throw new Error(detail);
+  }
   return result?.result?.value;
 }
 
