@@ -239,7 +239,7 @@ export function AuthoringPresentation() {
       <ArtifactCodeEditor
         id={artifact.id}
         label={artifact.label}
-        format={artifact.format}
+        language={artifact.language}
         source={artifact.source}
         selected={artifact.selected}
         diagnostics={authoringSupport.diagnostics[artifact.id] ?? []}
