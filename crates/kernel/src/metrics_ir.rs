@@ -1111,6 +1111,31 @@ mod tests {
         assert_eq!(batch["samples"][0]["value"], 1.0);
     }
 
+
+    #[test]
+    fn metrics_reads_named_reference_position_from_read_only_snapshot() {
+        let ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "references":["goal"],
+          "metrics":[{
+            "id":"reference.norm","name":"Reference norm","unit":null,
+            "sampling":{"kind":"final"},
+            "function":"reference_norm",
+            "body":[{"kind":"return","value":{"kind":"call","name":"norm","args":[
+              {"kind":"load","path":"snapshot.references.goal.position"}
+            ]}}]
+          }]
+        }"#;
+        let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
+        let mut references = BTreeMap::new();
+        references.insert("goal".to_owned(), Vec2::new(3.0, 4.0));
+        metrics.finalize(&state(), &references, 1.0).unwrap();
+        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        assert_eq!(batch["samples"][0]["value"], 5.0);
+    }
+
     #[test]
     fn completed_bare_bones_language_executes_in_rust_runtime() {
         let controller_ir = r#"{
