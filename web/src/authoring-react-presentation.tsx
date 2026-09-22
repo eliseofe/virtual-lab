@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, Select, Stack, Title } from '@mantine/core';
+import { Badge, Button, Group, Paper, Stack, TextInput, Title } from '@mantine/core';
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ArtifactCodeEditor, focusArtifactLine, openArtifactSearch } from './authoring-code-editor';
@@ -8,7 +8,6 @@ import {
   type AuthoringCompletionItem,
   type AuthoringDiagnostic,
 } from './authoring-language-support.js';
-import { artifactStructureSafe, symbolLabel } from './authoring-structure.js';
 import {
   applyAuthoringChanges,
   readAuthoringPresentation,
@@ -28,6 +27,7 @@ function statusColor(state: string) {
 export function AuthoringPresentation() {
   const [snapshot, setSnapshot] = useState<AuthoringPresentationSnapshot | null>(() => readAuthoringPresentation());
   const [sourceVersion, setSourceVersion] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   const sync = () => setSnapshot(readAuthoringPresentation());
   const syncSoon = () => queueMicrotask(sync);
 
@@ -51,6 +51,10 @@ export function AuthoringPresentation() {
   const selectedArtifact = snapshot?.artifacts.find((artifact) => artifact.selected) ?? null;
 
   useEffect(() => {
+    setSearchQuery('');
+  }, [selectedArtifact?.id]);
+
+  useEffect(() => {
     const source = selectedArtifact?.source;
     if (!source) return;
     let timer: number | null = null;
@@ -64,12 +68,6 @@ export function AuthoringPresentation() {
       if (timer !== null) window.clearTimeout(timer);
     };
   }, [selectedArtifact?.source]);
-
-  const selectedStructure = useMemo(() => {
-    if (!selectedArtifact?.source) return null;
-    void sourceVersion;
-    return artifactStructureSafe(selectedArtifact.id, selectedArtifact.source.value);
-  }, [selectedArtifact?.id, selectedArtifact?.source, sourceVersion]);
 
   const authoringSupport = useMemo<{
     diagnostics: Record<string, AuthoringDiagnostic[]>;
@@ -135,10 +133,6 @@ export function AuthoringPresentation() {
     snapshot.headMount,
   );
 
-  const outlineData = selectedStructure?.symbols.map((symbol, index) => ({
-    value: String(index),
-    label: `${symbolLabel(symbol)} · L${symbol.line}`,
-  })) ?? [];
   const selectedDiagnostics = selectedArtifact
     ? (authoringSupport.diagnostics[selectedArtifact.id] ?? [])
     : [];
@@ -175,35 +169,28 @@ export function AuthoringPresentation() {
         </Group>
         {selectedArtifact && (
           <Group gap={8} wrap="nowrap" className="vlab-react-authoring-navigation">
-            <div
-              className="vlab-react-authoring-outline"
-              data-vlab-authoring-outline={selectedArtifact.id}
-              data-vlab-outline-symbol-count={outlineData.length}
-              data-vlab-outline-state={selectedStructure?.error ? 'unavailable' : 'ready'}
-            >
-              <Select
-                aria-label={`${selectedArtifact.label} outline`}
-                placeholder={selectedStructure?.error ? 'Outline unavailable' : 'Outline'}
-                data={outlineData}
-                value={null}
-                disabled={Boolean(selectedStructure?.error) || outlineData.length === 0}
-                searchable={outlineData.length > 10}
-                clearable={false}
-                onChange={(value) => {
-                  if (value == null || !selectedStructure) return;
-                  const symbol = selectedStructure.symbols[Number(value)];
-                  if (symbol) focusArtifactLine(selectedArtifact.id, symbol.line);
-                }}
-              />
-            </div>
+            <TextInput
+              className="vlab-react-authoring-search-input"
+              aria-label={`Search ${selectedArtifact.label}`}
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' || !searchQuery.trim()) return;
+                event.preventDefault();
+                openArtifactSearch(selectedArtifact.id, searchQuery);
+              }}
+              data-vlab-authoring-search-input={selectedArtifact.id}
+            />
             <Button
               variant="subtle"
               color="gray"
-              onClick={() => openArtifactSearch(selectedArtifact.id)}
-              data-vlab-authoring-find={selectedArtifact.id}
-              className="vlab-react-authoring-find"
+              disabled={!searchQuery.trim()}
+              onClick={() => openArtifactSearch(selectedArtifact.id, searchQuery)}
+              data-vlab-authoring-search={selectedArtifact.id}
+              className="vlab-react-authoring-search"
             >
-              Find
+              Search
             </Button>
           </Group>
         )}
