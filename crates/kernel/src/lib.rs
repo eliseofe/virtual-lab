@@ -1196,6 +1196,48 @@ mod tests {
         ).is_err());
     }
 
+
+    struct ReferenceVisibilityController;
+    impl ControllerRuntime for ReferenceVisibilityController {
+        fn reset(&mut self, _agent_count: usize) {}
+        fn step(&mut self, _agent_index: usize, observation: &Observation) -> Action {
+            Action {
+                forward: if observation.references.contains_key("goal") { 1.0 } else { 0.0 },
+                turning: 0.0,
+            }
+        }
+    }
+
+    #[test]
+    fn named_reference_sensing_is_per_agent_range_gated_and_uses_minimum_image_geometry() {
+        let references = parse_world_reference_state(
+            r#"{"references":[{"name":"goal","x":4.9,"y":0.0}],"sensors":[{"agent_index":0,"name":"goal","max_range":null},{"agent_index":1,"name":"goal","max_range":0.1}]}"#,
+            2,
+            10.0,
+        ).unwrap();
+        let init = SwarmInitialization {
+            state: vec![
+                AgentPhysicalState { position: Vec2::new(-4.9, 0.0), heading_angle: 0.0 },
+                AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+            ],
+        };
+        let mut cfg = config();
+        cfg.physics_dt = 0.1;
+        cfg.control_dt = 0.1;
+        cfg.metric_dt = 0.1;
+        let mut sim = Simulation::new_with_environment_private_state_and_references(
+            init,
+            vec![BTreeMap::new(); 2],
+            references,
+            cfg,
+            ReferenceVisibilityController,
+            EnvironmentRuntime::default(),
+        ).unwrap();
+        sim.advance_physics_ticks(1);
+        assert!((sim.state[0].position.x + 4.8).abs() < 1e-12);
+        assert_eq!(sim.state[1].position.x, 0.0);
+    }
+
     #[test]
     fn positions_wrap_across_periodic_boundaries() {
         let mut cfg = config();
