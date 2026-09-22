@@ -18,8 +18,8 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.10",
-  experiment_interface_version: "10",
+  contract_version: "vlab.authoring/0.9",
+  experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
   invalid_write_policy: "reject",
