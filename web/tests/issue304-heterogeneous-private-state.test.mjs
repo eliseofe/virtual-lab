@@ -51,7 +51,7 @@ function compilePair() {
 
 test("#304 initializer assigns controller-private scalar state per agent", () => {
   const { initializer } = compilePair();
-  assert.equal(initializer.version, "vlab.initializer-state/0.3");
+  assert.equal(initializer.version, "vlab.initializer-state/0.4");
   assert.deepEqual(initializer.state, [
     { x: 0, y: 0, heading: 0, private_state: { role: 1 } },
     { x: 1, y: 0, heading: 0, private_state: { role: 1 } },
@@ -132,7 +132,7 @@ SENSOR_NOISE = 0.0
     metrics_source: "",
   });
   assert.equal(valid.valid, true);
-  assert.equal(valid.compiled.initializer, "vlab.initializer-state/0.3");
+  assert.equal(valid.compiled.initializer, "vlab.initializer-state/0.4");
 
   const invalid = validateExperimentSources({
     config_source: configuration,
