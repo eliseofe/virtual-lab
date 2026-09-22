@@ -10,7 +10,7 @@ test("#240 Showcase contains no synthetic built-in publication exception", () =>
   assert.doesNotMatch(showcase, /builtinEntry/);
   assert.doesNotMatch(showcase, /entry\.builtin/);
   assert.doesNotMatch(showcase, /Built-in · Public example/);
-  assert.match(showcase, /entries = Array\.isArray\(data\) \? data : \[\]/);
+  assert.match(showcase, /entries = Array\.isArray\(entryResult\.data\) \? entryResult\.data : \[\]/);
 });
 
 test("#240 Professor promotion is one action for registry and catalog sources", () => {
@@ -28,7 +28,9 @@ test("#240 Showcase follows the relocated #208 save state instead of the old acc
 });
 
 test("#240 curation stays out of Account and Professor administration while remaining tied to Showcase publication", () => {
-  assert.match(showcase, /shell\.append\(head, message, list\)/);
+  assert.match(showcase, /shell\.append\(head, message, manager, list\)/);
+  assert.match(showcase, /launcher\.textContent = "Manage Showcase"/);
+  assert.match(showcase, /profile\?\.role !== "professor"/);
   assert.match(showcase, /promote\.className = "primary showcase-promote-current"/);
   assert.match(showcase, /currentExperimentActions\.append\(promote\)/);
   assert.doesNotMatch(showcase, /accountPanel\.append\(promote\)/);
