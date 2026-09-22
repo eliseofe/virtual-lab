@@ -1,14 +1,24 @@
 import { METRICS_LANGUAGE } from "./metrics/compiler.js";
 
 export const EXPERIMENT_ARTIFACTS = Object.freeze([
-  Object.freeze({ id: "configuration", type: "configuration", label: "Configuration", format: "python-vlab", order: 10, registryField: "config_source", editorSelector: "#experiment-config" }),
-  Object.freeze({ id: "initialization", type: "initialization", label: "Initialization", format: "python-vlab", order: 20, registryField: "initializer_source", editorSelector: "#initializer-source" }),
-  Object.freeze({ id: "controller", type: "controller", label: "Controller", format: "python-vlab", order: 30, registryField: "controller_source", editorSelector: "#controller-source" }),
-  Object.freeze({ id: "metrics", type: "metrics", label: "Metrics", format: METRICS_LANGUAGE, order: 40, registryField: null, editorSelector: null }),
+  Object.freeze({ id: "configuration", type: "configuration", label: "Configuration", format: "python-vlab", language: "python", order: 10, registryField: "config_source" }),
+  Object.freeze({ id: "initialization", type: "initialization", label: "Initialization", format: "python-vlab", language: "python", order: 20, registryField: "initializer_source" }),
+  Object.freeze({ id: "controller", type: "controller", label: "Controller", format: "python-vlab", language: "python", order: 30, registryField: "controller_source" }),
+  Object.freeze({ id: "metrics", type: "metrics", label: "Metrics", format: METRICS_LANGUAGE, language: "python", order: 40, registryField: null }),
 ]);
 
 const CORE_BY_ID = new Map(EXPERIMENT_ARTIFACTS.map((descriptor) => [descriptor.id, descriptor]));
+const CORE_BY_TYPE = new Map(EXPERIMENT_ARTIFACTS.map((descriptor) => [descriptor.type, descriptor]));
 const GENERIC_TEXT_FORMATS = new Set(["python-vlab", METRICS_LANGUAGE, "text/plain", "text/markdown", "markdown"]);
+
+export function artifactEditorLanguage(artifact) {
+  const core = CORE_BY_TYPE.get(artifact?.type);
+  if (core?.language) return core.language;
+  const format = typeof artifact?.format === "string" ? artifact.format.trim() : "";
+  if (format === "text/markdown" || format === "markdown") return "markdown";
+  if (format === "python-vlab" || format.startsWith("python-vlab-") || format.startsWith("python-vlab/")) return "python";
+  return "plain";
+}
 
 const SOURCE_REPLACED_EVENT = "vlab:artifact-source-replaced";
 
@@ -17,14 +27,7 @@ function notifyAuthoritativeSourceReplaced(editor) {
   editor.dispatchEvent(new CustomEvent(SOURCE_REPLACED_EVENT));
 }
 
-function editorFor(root, descriptor) {
-  if (!descriptor.editorSelector) return null;
-  const editor = root.querySelector(descriptor.editorSelector);
-  if (!editor) throw new Error(`Virtual Lab artifact UI mismatch: missing '${descriptor.id}' editor.`);
-  return editor;
-}
-
-function dynamicEditorFor(root, id) {
+function artifactEditorFor(root, id) {
   const selector = `[data-experiment-artifact-editor="true"][data-experiment-artifact-id="${id}"]`;
   const declared = root.querySelector?.(selector);
   if (declared) return declared;
@@ -90,6 +93,7 @@ function applyArtifactMetadata(editor, artifact) {
   editor.dataset.experimentArtifactType = artifact.type;
   editor.dataset.experimentArtifactLabel = artifact.label;
   editor.dataset.experimentArtifactFormat = artifact.format;
+  editor.dataset.experimentArtifactLanguage = artifactEditorLanguage(artifact);
   editor.dataset.experimentArtifactOrder = String(artifact.order);
 }
 
@@ -119,7 +123,7 @@ function renderGenericArtifact(root, container, artifact) {
 export function captureExperimentArtifactArray(root = document) {
   const artifacts = [];
   for (const descriptor of EXPERIMENT_ARTIFACTS) {
-    const editor = editorFor(root, descriptor) ?? dynamicEditorFor(root, descriptor.id);
+    const editor = artifactEditorFor(root, descriptor.id);
     artifacts.push({
       id: editor?.dataset.experimentArtifactId || descriptor.id,
       type: editor?.dataset.experimentArtifactType || descriptor.type,
@@ -145,8 +149,7 @@ export function applyExperimentArtifacts(experiment, root = document) {
   const artifacts = experimentArtifactArray(experiment);
   const container = clearAdditionalArtifacts(root);
   for (const artifact of artifacts) {
-    const descriptor = CORE_BY_ID.get(artifact.id);
-    const editor = descriptor ? (editorFor(root, descriptor) ?? dynamicEditorFor(root, artifact.id)) : dynamicEditorFor(root, artifact.id);
+    const editor = artifactEditorFor(root, artifact.id);
     if (editor) {
       editor.value = artifact.content;
       applyArtifactMetadata(editor, artifact);

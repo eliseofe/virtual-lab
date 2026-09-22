@@ -7,6 +7,7 @@ export type AuthoringArtifactPresentation = {
   source: HTMLTextAreaElement | null;
   editorMount: HTMLElement | null;
   format: string;
+  language: string;
 };
 
 export type AuthoringPresentationSnapshot = {
@@ -49,6 +50,10 @@ function artifactFormat(id: string, source: HTMLTextAreaElement | null): string 
   return id === 'metrics' ? 'python-vlab-metrics/0.1' : 'python-vlab';
 }
 
+function artifactLanguage(source: HTMLTextAreaElement | null): string {
+  return source?.dataset.experimentArtifactLanguage?.trim() || 'plain';
+}
+
 export function readAuthoringPresentation(): AuthoringPresentationSnapshot | null {
   const workbench = document.querySelector<HTMLElement>('#authoring-workbench');
   const legacyHead = workbench?.querySelector<HTMLElement>('.authoring-workbench-head') ?? null;
@@ -72,6 +77,7 @@ export function readAuthoringPresentation(): AuthoringPresentationSnapshot | nul
       source,
       editorMount: source ? ensureEditorMount(source, id) : null,
       format: artifactFormat(id, source),
+      language: artifactLanguage(source),
     }];
   });
 

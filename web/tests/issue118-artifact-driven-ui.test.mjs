@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   EXPERIMENT_ARTIFACTS,
   applyExperimentArtifacts,
+  artifactEditorLanguage,
   artifactWritePayload,
 } from "../src/experiment-artifacts.js";
 
@@ -28,11 +29,7 @@ function fakeElement() {
 }
 
 function rootForPresentationProbe() {
-  const editors = new Map(
-    EXPERIMENT_ARTIFACTS
-      .filter((descriptor) => descriptor.editorSelector)
-      .map((descriptor) => [descriptor.editorSelector, fakeElement()]),
-  );
+  const editors = new Map(EXPERIMENT_ARTIFACTS.map((descriptor) => [descriptor.id, fakeElement()]));
   const extraContainer = fakeElement();
   extraContainer.replaceChildren = function replaceChildren() { this.children = []; };
   const ownerDocument = { createElement: fakeElement };
@@ -40,7 +37,8 @@ function rootForPresentationProbe() {
     ownerDocument,
     querySelector(selector) {
       if (selector === "#additional-experiment-artifacts") return extraContainer;
-      return editors.get(selector) ?? null;
+      const match = selector.match(/data-experiment-artifact-id="([^"]+)"/);
+      return match ? editors.get(match[1]) ?? null : null;
     },
   };
 }
@@ -52,14 +50,15 @@ const coreArtifacts = [
   { id: "metrics", type: "metrics", label: "Metrics", format: "python-vlab-metrics/0.1", order: 40, content: "" },
 ];
 
-test("#118/#196 Experiment artifact UI retains three specialized editors plus compulsory generic Metrics", () => {
+test("#118/#196 core artifact UI uses one metadata-driven editor contract", () => {
   assert.deepEqual(EXPERIMENT_ARTIFACTS.map(({ id }) => id), ["configuration", "initialization", "controller", "metrics"]);
-  assert.deepEqual(EXPERIMENT_ARTIFACTS.map(({ editorSelector }) => editorSelector), [
-    "#experiment-config",
-    "#initializer-source",
-    "#controller-source",
-    null,
-  ]);
+  assert.deepEqual(EXPERIMENT_ARTIFACTS.map(({ language }) => language), ["python", "python", "python", "python"]);
+  assert.equal(EXPERIMENT_ARTIFACTS.some((descriptor) => "editorSelector" in descriptor), false);
+  assert.equal(artifactEditorLanguage({ type: "configuration", format: "vlab.config/0.2" }), "python");
+  assert.equal(artifactEditorLanguage({ type: "initialization", format: "vlab.initializer-state/0.2" }), "python");
+  assert.equal(artifactEditorLanguage({ type: "controller", format: "python-vlab/0.1" }), "python");
+  assert.equal(artifactEditorLanguage({ type: "metrics", format: "python-vlab-metrics/0.1" }), "python");
+  assert.equal(artifactEditorLanguage({ type: "documentation", format: "text/markdown" }), "markdown");
 });
 
 test("#118 unsupported artifact presentation fails explicitly instead of silently dropping content", () => {

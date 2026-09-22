@@ -180,6 +180,33 @@ try {
         expression: "document.querySelector('.ace_searchbtn_close')?.click()",
       });
 
+      const legacyHydrationFormats = {
+        configuration: "vlab.config/0.2",
+        initialization: "vlab.initializer-state/0.2",
+        controller: "python-vlab/0.1",
+      };
+      await cdp.send("Runtime.evaluate", {
+        expression: `(() => {
+          const formats = ${JSON.stringify(legacyHydrationFormats)};
+          for (const [artifactId, format] of Object.entries(formats)) {
+            const source = document.querySelector(
+              '[data-experiment-artifact-editor="true"][data-experiment-artifact-id="' + artifactId + '"]'
+            );
+            if (!source) throw new Error('Missing artifact source while simulating legacy hydration: ' + artifactId);
+            source.dataset.experimentArtifactFormat = format;
+            source.dispatchEvent(new CustomEvent('vlab:artifact-source-replaced'));
+          }
+        })()`,
+      });
+      await cdp.send("Runtime.evaluate", {
+        expression: "document.querySelector('[data-vlab-authoring-tab=\"metrics\"]').click()",
+      });
+      await sleep(120);
+      await cdp.send("Runtime.evaluate", {
+        expression: "document.querySelector('[data-vlab-authoring-tab=\"configuration\"]').click()",
+      });
+      await sleep(120);
+
       for (const pass of [1, 2]) {
         for (const artifactId of ["configuration", "initialization", "controller", "metrics"]) {
           await cdp.send("Runtime.evaluate", {
@@ -208,10 +235,15 @@ try {
                 .filter(Boolean);
               const distinctRenderedColors = [...new Set(renderedTokenColors)];
               const visiblyHighlightedColors = distinctRenderedColors.filter((color) => color !== baseColor);
+              const source = document.querySelector(
+                '[data-experiment-artifact-editor="true"][data-experiment-artifact-id="${artifactId}"]'
+              );
               return {
                 modeId: editor.session.$modeId ?? null,
                 datasetModeId: surface.dataset.vlabAceModeId ?? null,
                 syntaxMode: surface.dataset.vlabSyntaxMode ?? null,
+                sourceLanguage: source?.dataset.experimentArtifactLanguage ?? null,
+                sourceFormat: source?.dataset.experimentArtifactFormat ?? null,
                 highlightedTokens,
                 baseColor,
                 distinctRenderedColors,
@@ -226,6 +258,8 @@ try {
             highlighting?.modeId !== "ace/mode/python"
             || highlighting?.datasetModeId !== "ace/mode/python"
             || highlighting?.syntaxMode !== "python"
+            || highlighting?.sourceLanguage !== "python"
+            || (legacyHydrationFormats[artifactId] && highlighting?.sourceFormat !== legacyHydrationFormats[artifactId])
             || highlighting?.highlightedTokens < 1
             || !Array.isArray(highlighting?.visiblyHighlightedColors)
             || highlighting.visiblyHighlightedColors.length < 1

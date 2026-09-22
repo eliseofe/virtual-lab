@@ -124,7 +124,7 @@
               <h3>Configuration</h3>
               <p class="muted">Parameters used by the initializer, controller, and simulator runtime.</p>
             </div>
-            <textarea id="experiment-config" class="code-editor config-editor" spellcheck="false" aria-label="Experiment configuration"></textarea>
+            <textarea id="experiment-config" class="code-editor config-editor" spellcheck="false" aria-label="Experiment configuration" data-experiment-artifact-editor="true" data-experiment-artifact-id="configuration" data-experiment-artifact-type="configuration" data-experiment-artifact-label="Configuration" data-experiment-artifact-format="python-vlab" data-experiment-artifact-language="python" data-experiment-artifact-order="10"></textarea>
             <div id="setup-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
             <p id="setup-error" class="error" role="alert"></p>
             <button id="apply-setup" class="primary" type="button" disabled hidden tabindex="-1" aria-hidden="true">Apply &amp; restart</button>
@@ -135,7 +135,7 @@
               <h3>Initialization</h3>
               <p class="muted">Defines initial agent positions, headings, and supported environment setup.</p>
             </div>
-            <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initializer source"></textarea>
+            <textarea id="initializer-source" class="code-editor initializer-editor" spellcheck="false" aria-label="Initializer source" data-experiment-artifact-editor="true" data-experiment-artifact-id="initialization" data-experiment-artifact-type="initialization" data-experiment-artifact-label="Initialization" data-experiment-artifact-format="python-vlab" data-experiment-artifact-language="python" data-experiment-artifact-order="20"></textarea>
           </section>
 
           <section id="authoring-pane-controller" class="authoring-pane" role="tabpanel" data-authoring-artifact-pane="controller" hidden>
@@ -143,7 +143,7 @@
               <h3>Controller</h3>
               <p class="muted">Defines each agent's action from its local observation.</p>
             </div>
-            <textarea id="controller-source" class="code-editor controller-editor" spellcheck="false" aria-label="Controller source"></textarea>
+            <textarea id="controller-source" class="code-editor controller-editor" spellcheck="false" aria-label="Controller source" data-experiment-artifact-editor="true" data-experiment-artifact-id="controller" data-experiment-artifact-type="controller" data-experiment-artifact-label="Controller" data-experiment-artifact-format="python-vlab" data-experiment-artifact-language="python" data-experiment-artifact-order="30"></textarea>
             <div id="compile-feedback" class="feedback" data-state="idle" role="status">No pending changes.</div>
             <p id="compile-error" class="error" role="alert"></p>
             <button id="compile" class="primary" type="button" disabled hidden tabindex="-1" aria-hidden="true">Apply &amp; restart</button>
@@ -154,7 +154,7 @@
               <h3>Metrics</h3>
               <p class="muted">Defines read-only scientific measurements collected from the running experiment.</p>
             </div>
-            <textarea id="metrics-source" class="code-editor metrics-editor" spellcheck="false" aria-label="Metrics source" data-experiment-artifact-editor="true" data-experiment-artifact-id="metrics" data-experiment-artifact-type="metrics" data-experiment-artifact-label="Metrics" data-experiment-artifact-format="python-vlab-metrics/0.1" data-experiment-artifact-order="40"></textarea>
+            <textarea id="metrics-source" class="code-editor metrics-editor" spellcheck="false" aria-label="Metrics source" data-experiment-artifact-editor="true" data-experiment-artifact-id="metrics" data-experiment-artifact-type="metrics" data-experiment-artifact-label="Metrics" data-experiment-artifact-format="python-vlab-metrics/0.1" data-experiment-artifact-language="python" data-experiment-artifact-order="40"></textarea>
           </section>
 
           <div id="additional-experiment-artifacts" aria-label="Additional experiment artifacts"></div>
