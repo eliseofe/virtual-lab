@@ -51,13 +51,12 @@ async function state(send) {
       };
     })(),
     authoringNavigation: (() => {
-      const outline = document.querySelector('[data-vlab-authoring-outline="configuration"]');
-      const find = document.querySelector('[data-vlab-authoring-find="configuration"]');
+      const input = document.querySelector('[data-vlab-authoring-search-input="configuration"]');
+      const search = document.querySelector('[data-vlab-authoring-search="configuration"]');
       return {
-        outlineState: outline?.dataset.vlabOutlineState ?? null,
-        outlineCount: Number(outline?.dataset.vlabOutlineSymbolCount ?? 0),
-        outlineDisabled: outline?.querySelector('input')?.disabled ?? null,
-        findVisible: Boolean(find && getComputedStyle(find).display !== 'none'),
+        searchInputVisible: Boolean(input && getComputedStyle(input).display !== 'none'),
+        searchButtonVisible: Boolean(search && getComputedStyle(search).display !== 'none'),
+        outlinePresent: Boolean(document.querySelector('[data-vlab-authoring-outline]')),
       };
     })(),
     authoringDiagnostics: (() => {
@@ -133,54 +132,95 @@ try {
         continue;
       }
       if (
-        latest.authoringNavigation?.outlineState !== "ready"
-        || latest.authoringNavigation?.outlineCount < 10
-        || latest.authoringNavigation?.outlineDisabled
-        || !latest.authoringNavigation?.findVisible
+        !latest.authoringNavigation?.searchInputVisible
+        || !latest.authoringNavigation?.searchButtonVisible
+        || latest.authoringNavigation?.outlinePresent
       ) {
-        throw new Error(`compiler-derived Configuration outline is not available: ${JSON.stringify(latest)}`);
+        throw new Error(`unified Configuration Search control is not available or legacy Outline remains: ${JSON.stringify(latest)}`);
       }
       if (latest.authoringDiagnostics?.total !== 0 || latest.authoringDiagnostics?.completionSurfaces < 3) {
         throw new Error(`compiler-linked diagnostics/completion support did not initialize cleanly: ${JSON.stringify(latest)}`);
       }
 
       await cdp.send("Runtime.evaluate", {
-        expression: "document.querySelector('[data-vlab-authoring-find=\"configuration\"]').click()",
+        expression: `(() => {
+          const input = document.querySelector('[data-vlab-authoring-search-input="configuration"]');
+          const nativeInput = input?.querySelector('input') ?? input;
+          if (!nativeInput) throw new Error('Configuration Search input is unavailable');
+          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+          setter.call(nativeInput, 'ARENA_SIZE');
+          nativeInput.dispatchEvent(new Event('input', { bubbles: true }));
+          nativeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        })()`,
+      });
+      await sleep(60);
+      await cdp.send("Runtime.evaluate", {
+        expression: "document.querySelector('[data-vlab-authoring-search=\"configuration\"]').click()",
       });
       await sleep(120);
-      const searchVisible = await cdp.send("Runtime.evaluate", {
-        expression: "Boolean(document.querySelector('.ace_search') && getComputedStyle(document.querySelector('.ace_search')).display !== 'none')",
-        returnByValue: true,
-      });
-      if (!searchVisible?.result?.value) throw new Error("Ace Find control did not open the in-artifact search UI.");
-      await cdp.send("Runtime.evaluate", {
-        expression: "document.querySelector('.ace_searchbtn_close')?.click()",
-      });
-
-      await cdp.send("Runtime.evaluate", {
-        expression: "document.querySelector('[data-vlab-authoring-tab=\"initialization\"]').click()",
-      });
-      await sleep(120);
-      const initializerNavigation = await cdp.send("Runtime.evaluate", {
+      const searchStateResult = await cdp.send("Runtime.evaluate", {
         expression: `JSON.stringify((() => {
-          const outline = document.querySelector('[data-vlab-authoring-outline="initialization"]');
-          const root = document.querySelector('[data-vlab-code-editor-root="initialization"]');
-          const surface = root?.querySelector('[data-vlab-artifact-editor-surface="true"]');
+          const aceSearch = document.querySelector('.ace_search');
+          const aceField = aceSearch?.querySelector('.ace_search_field');
+          const surface = document.querySelector('[data-vlab-code-editor-root="configuration"] [data-vlab-artifact-editor-surface="true"]');
+          const editor = surface && window.ace ? window.ace.edit(surface) : null;
           return {
-            outlineState: outline?.dataset.vlabOutlineState ?? null,
-            outlineCount: Number(outline?.dataset.vlabOutlineSymbolCount ?? 0),
-            foldWidgets: surface?.querySelectorAll('.ace_fold-widget').length ?? 0,
+            visible: Boolean(aceSearch && getComputedStyle(aceSearch).display !== 'none'),
+            query: aceField?.value ?? null,
+            selection: editor?.getSelectedText?.() ?? null,
           };
         })())`,
         returnByValue: true,
       });
-      const initializerNavigationState = JSON.parse(initializerNavigation?.result?.value ?? "null");
-      if (
-        initializerNavigationState?.outlineState !== "ready"
-        || initializerNavigationState?.outlineCount !== 3
-        || initializerNavigationState?.foldWidgets < 1
-      ) {
-        throw new Error(`Initializer outline/folding is not available: ${JSON.stringify(initializerNavigationState)}`);
+      const searchState = JSON.parse(searchStateResult?.result?.value ?? "null");
+      if (!searchState?.visible || searchState?.query !== "ARENA_SIZE" || searchState?.selection !== "ARENA_SIZE") {
+        throw new Error(`Search did not prefill and execute Ace find: ${JSON.stringify(searchState)}`);
+      }
+      await cdp.send("Runtime.evaluate", {
+        expression: "document.querySelector('.ace_searchbtn_close')?.click()",
+      });
+
+      for (const pass of [1, 2]) {
+        for (const artifactId of ["configuration", "initialization", "controller", "metrics"]) {
+          await cdp.send("Runtime.evaluate", {
+            expression: `document.querySelector('[data-vlab-authoring-tab="${artifactId}"]').click()`,
+          });
+          await sleep(120);
+          const highlightingResult = await cdp.send("Runtime.evaluate", {
+            expression: `JSON.stringify((() => {
+              const surface = document.querySelector('[data-vlab-code-editor-root="${artifactId}"] [data-vlab-artifact-editor-surface="true"]');
+              const editor = surface && window.ace ? window.ace.edit(surface) : null;
+              if (!editor) return null;
+              let highlightedTokens = 0;
+              const rowCount = Math.min(editor.session.getLength(), 80);
+              for (let row = 0; row < rowCount; row += 1) {
+                for (const token of editor.session.getTokens(row)) {
+                  if (/^(?:keyword|comment|string|constant\\.numeric|numeric)/.test(token.type ?? '')) highlightedTokens += 1;
+                }
+              }
+              return {
+                modeId: editor.session.$modeId ?? null,
+                datasetModeId: surface.dataset.vlabAceModeId ?? null,
+                syntaxMode: surface.dataset.vlabSyntaxMode ?? null,
+                highlightedTokens,
+                foldWidgets: surface.querySelectorAll('.ace_fold-widget').length,
+              };
+            })())`,
+            returnByValue: true,
+          });
+          const highlighting = JSON.parse(highlightingResult?.result?.value ?? "null");
+          if (
+            highlighting?.modeId !== "ace/mode/python"
+            || highlighting?.datasetModeId !== "ace/mode/python"
+            || highlighting?.syntaxMode !== "python"
+            || highlighting?.highlightedTokens < 1
+          ) {
+            throw new Error(`Syntax highlighting failed after tab switch pass ${pass} for ${artifactId}: ${JSON.stringify(highlighting)}`);
+          }
+          if (artifactId === "initialization" && highlighting.foldWidgets < 1) {
+            throw new Error(`Initializer folding disappeared while verifying highlighting: ${JSON.stringify(highlighting)}`);
+          }
+        }
       }
 
       await cdp.send("Runtime.evaluate", {
