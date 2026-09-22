@@ -12,7 +12,8 @@
     "Initialization validates stable identifier names, finite/in-arena reference positions, agent indices, duplicate definitions/assignments, undefined reference links, and finite positive or unlimited sensor ranges.",
     "Rust owns separate initial and current WorldReferenceState values; reset reconstructs current state from the initial state, leaving a clean future dynamics seam without implementing dynamics.",
     "Named-reference relative geometry reuses the simulator minimum-image helper; no neighbour-search/world-discovery path, Controller observation, Metrics surface, optional executable artifact, or paper-specific behavior is introduced.",
-    "The implemented-capability registry remains unchanged, so observation.named_reference_relative_position stays candidate_unavailable until #504."
+    "The implemented-capability registry remains unchanged, so observation.named_reference_relative_position stays candidate_unavailable until #504.",
+    "Production highlighting smoke validates Ace session tokenizer output rather than viewport-dependent rendered token spans, preserving the syntax-highlighting assertion for hidden/inactive editor surfaces."
   ],
   "close_issue": 503
 }
