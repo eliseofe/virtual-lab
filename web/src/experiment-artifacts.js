@@ -149,7 +149,6 @@ export function applyExperimentArtifacts(experiment, root = document) {
   const artifacts = experimentArtifactArray(experiment);
   const container = clearAdditionalArtifacts(root);
   for (const artifact of artifacts) {
-    const descriptor = CORE_BY_ID.get(artifact.id);
     const editor = artifactEditorFor(root, artifact.id);
     if (editor) {
       editor.value = artifact.content;
