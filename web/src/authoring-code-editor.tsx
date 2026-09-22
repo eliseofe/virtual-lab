@@ -65,7 +65,7 @@ export function openArtifactSearch(id: string, query = ''): boolean {
   editor.execCommand('find');
   if (needle) {
     requestAnimationFrame(() => {
-      const field = editor.container.querySelector<HTMLInputElement>('.ace_search_field');
+      const field = editor.container.querySelector('.ace_search_field') as HTMLInputElement | null;
       if (!field) return;
       field.value = needle;
       field.dispatchEvent(new Event('input', { bubbles: true }));
