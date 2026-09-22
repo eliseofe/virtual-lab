@@ -1,36 +1,30 @@
 import { useEffect, useRef } from 'react';
 
-const CODEMIRROR_URL = 'https://esm.sh/codemirror@6.0.2';
-const CODEMIRROR_VIEW_URL = 'https://esm.sh/@codemirror/view@6.43.12';
-const CODEMIRROR_STATE_URL = 'https://esm.sh/@codemirror/state@6.7.5';
-const CODEMIRROR_PYTHON_URL = 'https://esm.sh/@codemirror/lang-python@6.2.1';
+const CODEMIRROR_URL = 'https://esm.sh/codemirror@6.0.2?bundle';
 const SOURCE_REPLACED_EVENT = 'vlab:artifact-source-replaced';
 
 type CodeMirrorRuntime = {
   EditorView: any;
   EditorState: any;
   Compartment: any;
+  Decoration: any;
+  ViewPlugin: any;
   minimalSetup: any;
   lineNumbers: () => any;
-  python: () => any;
 };
 
 let runtimePromise: Promise<CodeMirrorRuntime> | null = null;
 
 function loadCodeMirror(): Promise<CodeMirrorRuntime> {
   if (!runtimePromise) {
-    runtimePromise = Promise.all([
-      import(/* @vite-ignore */ CODEMIRROR_URL),
-      import(/* @vite-ignore */ CODEMIRROR_VIEW_URL),
-      import(/* @vite-ignore */ CODEMIRROR_STATE_URL),
-      import(/* @vite-ignore */ CODEMIRROR_PYTHON_URL),
-    ]).then(([core, view, state, python]) => ({
+    runtimePromise = import(/* @vite-ignore */ CODEMIRROR_URL).then((core) => ({
       EditorView: core.EditorView,
-      EditorState: state.EditorState,
-      Compartment: state.Compartment,
+      EditorState: core.EditorState,
+      Compartment: core.Compartment,
+      Decoration: core.Decoration,
+      ViewPlugin: core.ViewPlugin,
       minimalSetup: core.minimalSetup,
-      lineNumbers: view.lineNumbers,
-      python: python.python,
+      lineNumbers: core.lineNumbers,
     }));
   }
   return runtimePromise;
@@ -43,6 +37,38 @@ function pythonLike(format: string) {
 function emitInteractionBoundary(source: HTMLTextAreaElement) {
   source.dispatchEvent(new FocusEvent('blur'));
   source.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+}
+
+function pythonLikeSyntax(runtime: CodeMirrorRuntime) {
+  const token = /#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:def|class|if|elif|else|for|while|in|return|and|or|not|is|None|True|False|import|from|as|pass|break|continue)\b|\b(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\b/g;
+
+  const buildDecorations = (view: any) => {
+    const ranges: any[] = [];
+    const text = view.state.doc.toString();
+    token.lastIndex = 0;
+    for (let match = token.exec(text); match; match = token.exec(text)) {
+      const value = match[0];
+      let className = 'vlab-syntax-keyword';
+      if (value.startsWith('#')) className = 'vlab-syntax-comment';
+      else if (value.startsWith('"') || value.startsWith("'")) className = 'vlab-syntax-string';
+      else if (/^(?:\d|\.)/.test(value)) className = 'vlab-syntax-number';
+      ranges.push(runtime.Decoration.mark({ class: className }).range(match.index, match.index + value.length));
+    }
+    return runtime.Decoration.set(ranges, true);
+  };
+
+  return runtime.ViewPlugin.fromClass(
+    class {
+      decorations: any;
+      constructor(view: any) {
+        this.decorations = buildDecorations(view);
+      }
+      update(update: any) {
+        if (update.docChanged) this.decorations = buildDecorations(update.view);
+      }
+    },
+    { decorations: (plugin: any) => plugin.decorations },
+  );
 }
 
 export function ArtifactCodeEditor({
@@ -108,7 +134,7 @@ export function ArtifactCodeEditor({
         const extensions = () => [
           runtime.minimalSetup,
           runtime.lineNumbers(),
-          ...(pythonLike(format) ? [runtime.python()] : []),
+          ...(pythonLike(format) ? [pythonLikeSyntax(runtime)] : []),
           readOnly.of(readOnlyExtension()),
           updateListener,
           interactionBoundary,
@@ -150,12 +176,14 @@ export function ArtifactCodeEditor({
 
         source.dataset.vlabEditorEnhanced = 'true';
         host.dataset.vlabCodeEditorReady = 'true';
-        host.dataset.vlabSyntaxMode = pythonLike(format) ? 'python' : 'plain';
+        host.dataset.vlabSyntaxMode = pythonLike(format) ? 'python-like' : 'plain';
         host.dataset.vlabCodeEditorReadonly = String(source.readOnly);
+        delete host.dataset.vlabCodeEditorError;
         view.requestMeasure();
       } catch (error) {
         delete source.dataset.vlabEditorEnhanced;
         host.dataset.vlabCodeEditorReady = 'error';
+        host.dataset.vlabCodeEditorError = error instanceof Error ? error.message : String(error);
         console.error(`Virtual Lab code editor failed to initialize for '${id}'.`, error);
       }
     };
@@ -172,6 +200,7 @@ export function ArtifactCodeEditor({
       delete host.dataset.vlabCodeEditorReady;
       delete host.dataset.vlabSyntaxMode;
       delete host.dataset.vlabCodeEditorReadonly;
+      delete host.dataset.vlabCodeEditorError;
     };
   }, [format, id, label, source]);
 

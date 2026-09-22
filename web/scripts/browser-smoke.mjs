@@ -23,6 +23,7 @@ async function state(send) {
     metricRuntimeBridge: Boolean(globalThis.__vlabMetricRuntime),
     codeEditorsReady: document.querySelectorAll('[data-vlab-code-editor-ready="true"]').length,
     codeEditorErrors: document.querySelectorAll('[data-vlab-code-editor-ready="error"]').length,
+    codeEditorErrorMessages: [...document.querySelectorAll('[data-vlab-code-editor-ready="error"]')].map((node) => node.dataset.vlabCodeEditorError || "unknown"),
     configurationEditor: (() => {
       const source = document.querySelector('#experiment-config');
       const root = document.querySelector('[data-vlab-code-editor-root="configuration"]');
