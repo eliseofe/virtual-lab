@@ -388,6 +388,28 @@ body.vlab-react-chrome-mounted {
   font-weight: 700;
 }
 
+.vlab-react-authoring-navigation {
+  min-width: 0;
+  padding-top: 7px;
+  border-top: 1px solid #e4eaec;
+}
+
+.vlab-react-authoring-outline {
+  flex: 1 1 20rem;
+  min-width: 0;
+  max-width: 34rem;
+}
+
+.vlab-react-authoring-outline .mantine-Input-input {
+  min-height: 38px;
+  font-size: 12px;
+}
+
+.vlab-react-authoring-find {
+  flex: 0 0 auto;
+  min-height: 38px;
+}
+
 .vlab-react-chrome-mounted .authoring-pane-head {
   margin: 14px 1px 10px;
 }
@@ -562,6 +584,20 @@ body.vlab-react-chrome-mounted .utility-dialog-head {
   .vlab-react-authoring-status {
     max-width: none;
     align-self: flex-start;
+  }
+
+  .vlab-react-authoring-navigation {
+    align-items: stretch;
+    flex-wrap: wrap !important;
+  }
+
+  .vlab-react-authoring-outline {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .vlab-react-authoring-find {
+    min-height: 44px;
   }
 
   .vlab-code-editor-host {
