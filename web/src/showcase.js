@@ -18,14 +18,13 @@ const experimentSelect = document.querySelector("#experiment-select");
 const experimentPanel = experimentSelect?.closest(".experiment-panel");
 const accountPanel = document.querySelector(".registry-panel");
 const registrySaveState = document.querySelector(".registry-save-state");
-const applySetup = document.querySelector("#apply-setup");
 const setupFeedback = document.querySelector("#setup-feedback");
 const runButton = document.querySelector("#run");
 const runState = document.querySelector("#run-state");
 const metadataRevision = document.querySelector(".metadata-panel .panel-heading strong");
 const utilityLaunchers = document.querySelector(".utility-launchers");
 
-if (!experimentSelect || !experimentPanel || !accountPanel || !registrySaveState || !applySetup || !setupFeedback || !runButton || !runState || !metadataRevision || !utilityLaunchers) {
+if (!experimentSelect || !experimentPanel || !accountPanel || !registrySaveState || !setupFeedback || !runButton || !runState || !metadataRevision || !utilityLaunchers) {
   throw new Error("Showcase integration UI mismatch.");
 }
 
@@ -570,17 +569,6 @@ function hasUnsavedPrivateEdits() {
   return currentRegistryDirtyState() === "dirty" || currentRegistryDirtyState() === "conflict";
 }
 
-function navigateToShowcase(showcaseId) {
-  const url = new URL(window.location.href);
-  url.searchParams.set(SHOWCASE_QUERY, showcaseId);
-  window.location.assign(url);
-}
-
-function openEntry(entry) {
-  if (hasUnsavedPrivateEdits() && !window.confirm("Discard the unsaved changes to the current experiment and open this Showcase revision?")) return;
-  navigateToShowcase(entry.showcase_id);
-}
-
 function clearShowcaseLocation() {
   const url = new URL(window.location.href);
   url.searchParams.delete(SHOWCASE_QUERY);
@@ -595,22 +583,6 @@ async function waitForRegistryReady() {
     if (!sessionUser && accountIdentity === "Signed out") return;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-}
-
-async function forceCatalogWorkspace() {
-  const catalog = [...experimentSelect.options].find((option) => isCatalogSelectValue(option.value));
-  if (!catalog) return;
-  if (experimentSelect.value !== catalog.value) {
-    experimentSelect.value = catalog.value;
-    experimentSelect.dispatchEvent(new Event("change", { bubbles: true }));
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-}
-
-async function waitForSimulatorReady() {
-  const deadline = performance.now() + 15000;
-  while (applySetup.disabled && performance.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
-  if (applySetup.disabled) throw new Error("Simulator is not ready yet.");
 }
 
 async function waitForSetupApplied() {
