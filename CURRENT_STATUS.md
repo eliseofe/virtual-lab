@@ -32,13 +32,14 @@ The capability-request pipeline under living epic #58 is operational. The author
 
 ### Current nonterminal capability queue
 
-As verified in production on 22 September 2026:
+As verified in production on 22 September 2026, four requests are nonterminal:
 
-1. `0971db0e-015a-4f1f-b640-8cc6b428fdb7` — **implemented / Professor accepted + owner-authorized** — `observation.named_reference_relative_position`. Static named point references are defined in Initialization; sensing is assigned per agent with finite or unlimited range; Controller receives availability plus local minimum-image relative position only when sensed; Metrics reads the same canonical reference position globally and read-only. Dynamic reference motion remains deferred.
-2. `69a4e63a-b763-46db-93ba-ee4a4f29ad4d` — **requested / revise** — typed populations with independent role-filtered sensing. Professor guidance requires separating public population identity from what a controller is allowed to observe.
-3. `532d318d-2a4c-4754-acbe-e2bbe819c1b0` — **requested / revise** — population lifecycle/events. Professor guidance requires a generic per-agent participation/lifecycle state rather than attacker/defender/capture-specific semantics.
-4. `f76373f1-a919-45fb-94b3-ccfc0458a285` — **requested / revise** — population/outcome Metrics support. Professor guidance requires identifying only genuinely missing reusable primitive observables/state rather than adding a bespoke analysis capability.
-5. `2f8e266f-f5ce-41f6-9678-a96b68754eea` — **requested / future** — bounded multirotor rigid-body 3-D backend. Valid long-term direction, intentionally outside the current implementation horizon.
+1. `69a4e63a-b763-46db-93ba-ee4a4f29ad4d` — **requested / Professor decision pending** — population identity with explicitly enabled local population recognition.
+2. `532d318d-2a4c-4754-acbe-e2bbe819c1b0` — **requested / Professor decision pending** — per-agent participation/lifecycle state with retained identity and outcome.
+3. `f76373f1-a919-45fb-94b3-ccfc0458a285` — **requested / Professor decision pending** — remaining Metrics/observation primitive, currently represented in production as read-only measured planar velocity.
+4. `2f8e266f-f5ce-41f6-9678-a96b68754eea` — **requested / future** — bounded multirotor rigid-body 3-D backend. Valid long-term direction, intentionally outside the current implementation horizon.
+
+The accepted named world-reference capability is implemented and no longer belongs in the nonterminal queue. The first three rows above are the current Professor-decision set; the 3-D request is intentionally parked future work.
 
 Professor acceptance or approval is queue/design state only. It does **not** authorize implementation.
 
@@ -46,14 +47,15 @@ The implemented `initialization.per_agent_private_state_assignment` capability h
 
 ## Capability-flow acceptance state
 
-The scientific-neutrality/candidate-architecture acceptance chain remains intentionally unfinished, not forgotten:
+The scientific-neutrality/candidate-architecture acceptance history is retained as a **dormant recurring validation lane**, not as a standing blocker:
 
-- #330 remains the umbrella for the scientific-neutrality acceptance closeout.
-- #336 / #371 are the current owner-driven black-box acceptance path. Earlier runs exposed real defects that were repaired; the final acceptance itself has not subsequently been rerun to green.
-- #325 and #326 remain paused until that acceptance path is completed.
+- the deployed MCP/research-AI flow is currently usable;
+- #330 remains the umbrella for this validation history;
+- #336 / #371 can be reactivated for a fresh black-box check when useful or when new evidence warrants it;
+- #325 and #326 remain paused behind that validation chain, but their pause blocks no unrelated roadmap work;
 - Living epic #58 remains open independently because new capability requests can arrive at any time.
 
-Do not infer that an open acceptance umbrella is an implementation task. It is owner-selected validation work.
+Do not report this dormant validation lane as work blocked by the owner merely because a fresh rerun has not been scheduled.
 
 ## Living domains and immediate selectable work
 
@@ -62,7 +64,7 @@ Do not infer that an open acceptance umbrella is an implementation task. It is o
 - **#273 UI/UX refinement** — living domain, currently dormant after the completed Control Panel, responsive cleanup and unified Experiment Library work through #480.
 - **#425 Refactoring / technical debt** — living domain, currently dormant after Active Elastic/Built-in de-specialization and the 22 September project-state/backlog reconciliation.
 - **#56 Simulator performance** and **#65 World/environment capabilities** — living domains with no automatically active child.
-- **#3 Studies** — still owner-gated. The earlier prerequisite work is complete, but Studies do not start until the owner explicitly activates that lane.
+- **#3 Studies** — technically ready and selectable. The earlier prerequisite work is complete; choosing Studies is a prioritization decision, not resolution of a blocker.
 - **#124 optional executable artifact dispatch** — foundation exists; runtime dispatch waits for a concrete owner-approved use case.
 - **#102 numerics**, native/HPC, richer physics and other future science remain parked/on-demand.
 
