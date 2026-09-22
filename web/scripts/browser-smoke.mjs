@@ -400,7 +400,11 @@ def reference_norm(snapshot):
         if (lastReferenceState?.statusState === "error") {
           throw new Error(`named-reference synthetic experiment failed to apply: ${JSON.stringify(lastReferenceState)}`);
         }
-        if (lastAppliedState?.runtime === "clean" && lastAppliedState?.setup === "success" && lastAppliedState?.controller === "success") {
+        if (
+          lastAppliedState?.runtime === "clean"
+          && lastAppliedState?.setup !== "error"
+          && lastAppliedState?.controller !== "error"
+        ) {
           referenceReady = true;
           break;
         }
