@@ -72,6 +72,10 @@ test("#203 mirrors source read-only state and retains textarea fallback", async 
   assert.match(css, /textarea\.code-editor\[data-vlab-editor-enhanced="true"\]/);
   assert.match(css, /\.vlab-code-editor-host \.ace_editor/);
   assert.match(css, /\.vlab-code-editor-host \.ace_gutter/);
+  assert.match(css, /\.vlab-code-editor-host \.ace_editor \.ace_keyword/);
+  assert.match(css, /\.vlab-code-editor-host \.ace_editor \.ace_string/);
+  assert.match(css, /\.vlab-code-editor-host \.ace_editor \.ace_comment/);
+  assert.match(css, /\.vlab-code-editor-host \.ace_editor \.ace_constant\.ace_numeric/);
 });
 
 test("#203 production smoke reads readiness from the actual editor surface inside the React portal mount", async () => {
@@ -82,7 +86,9 @@ test("#203 production smoke reads readiness from the actual editor surface insid
   assert.match(smoke, /engine: surface\?\.dataset\.vlabEditorEngine/);
   assert.match(smoke, /aceEditor\.session\.getTokens\(row\)/);
   assert.match(smoke, /constant\\\.numeric/);
-  assert.doesNotMatch(smoke, /querySelectorAll\('\.ace_keyword, \.ace_comment, \.ace_string, \.ace_numeric'\)/);
+  assert.match(smoke, /getComputedStyle\(editor\.container\)\.color/);
+  assert.match(smoke, /visiblyHighlightedColors/);
+  assert.match(smoke, /Rendered syntax highlighting failed/);
 });
 
 test("#203 does not hardcode Virtual Lab scientific symbols as fake semantic highlighting", async () => {
