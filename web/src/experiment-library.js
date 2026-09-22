@@ -1188,6 +1188,11 @@ ui.results.addEventListener("scroll", () => {
 }, { passive: true });
 
 window.addEventListener("vlab-open-experiment-library", () => run(openLibrary));
+window.addEventListener("vlab-refresh-experiment-library", () => run(async () => {
+  if (!ui.dialog.open) return;
+  await loadData();
+  render();
+}));
 supabase.auth.onAuthStateChange((_event, session) => {
   const nextId = session?.user?.id ?? null;
   if (nextId !== sessionUser?.id) {
