@@ -34,7 +34,18 @@ async function state(send) {
         engine: surface?.dataset.vlabEditorEngine ?? null,
         sourceHidden: source ? getComputedStyle(source).display === 'none' : false,
         lineNumbers: surface?.querySelectorAll('.ace_gutter-cell').length ?? 0,
-        highlightedTokens: surface?.querySelectorAll('.ace_keyword, .ace_comment, .ace_string, .ace_numeric').length ?? 0,
+        highlightedTokens: (() => {
+          if (!surface || !window.ace) return 0;
+          const aceEditor = window.ace.edit(surface);
+          const rowCount = Math.min(aceEditor.session.getLength(), 40);
+          let count = 0;
+          for (let row = 0; row < rowCount; row += 1) {
+            for (const token of aceEditor.session.getTokens(row)) {
+              if (/^(?:keyword|comment|string|constant\.numeric|numeric)/.test(token.type ?? '')) count += 1;
+            }
+          }
+          return count;
+        })(),
         content: surface?.querySelector('.ace_text-layer')?.textContent ?? null,
         editable: editor?.querySelector('.ace_text-input')?.getAttribute('readonly') ?? null,
       };
