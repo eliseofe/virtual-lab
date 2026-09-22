@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const registryUrl = new URL("../src/registry-ui-v3.js", import.meta.url);
+const libraryUrl = new URL("../src/experiment-library.js", import.meta.url);
 
 test("issue #153 restores the last owned experiment for the authenticated account", async () => {
   const source = await readFile(registryUrl, "utf8");
@@ -13,15 +14,17 @@ test("issue #153 restores the last owned experiment for the authenticated accoun
   assert.match(source, /rememberCurrentWorkspace\(\);/);
 });
 
-test("issue #153 makes experiment switching global rather than collection-scoped", async () => {
+test("issue #153 makes experiment switching global while #480 gives browsing source-specific hierarchy", async () => {
   const source = await readFile(registryUrl, "utf8");
+  const library = await readFile(libraryUrl, "utf8");
   assert.match(source, /experimentLabel\.textContent = "Experiment"/);
   assert.match(source, /experimentSelect\.setAttribute\("aria-label", "Switch experiment"\)/);
   assert.doesNotMatch(source, /Quick switch within the current collection/);
   assert.match(source, /group\.label = "Your experiments"/);
-  assert.match(source, /browse\.textContent = "Find experiment"/);
-  assert.match(source, /Browse Showcase, owned/);
-  assert.match(source, /Collections organize only your own workspace/);
-  assert.match(source, /filterButton\("All experiments", "all"\)/);
-  assert.match(source, /filterButton\("No collection", "unfiled"\)/);
+  assert.match(source, /browse\.textContent = "Browse experiments"/);
+  assert.match(source, /vlab-open-experiment-library/);
+  assert.match(library, /"All Showcase"/);
+  assert.match(library, /"All in Mine"/);
+  assert.match(library, /"All shared"/);
+  assert.doesNotMatch(library, /"All experiments"/);
 });
