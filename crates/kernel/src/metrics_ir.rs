@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    parse_initial_state, simulation_config, Action, AgentPhysicalState, ControllerRuntime,
+    parse_initial_state, parse_world_reference_state, simulation_config, Action, AgentPhysicalState, ControllerRuntime,
     EnvironmentRuntime, IrControllerRuntime, Simulation, Vec2,
 };
 
@@ -660,6 +660,7 @@ impl MetricProbeSimulation {
     #[wasm_bindgen(constructor)]
     pub fn new(
         initial_state_json: &str,
+        world_references_json: &str,
         seed: u32,
         physics_dt: f64,
         control_dt: f64,
@@ -679,15 +680,21 @@ impl MetricProbeSimulation {
             seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size,
             sensor_noise, max_forward_speed, max_angular_speed,
         );
+        let references = parse_world_reference_state(
+            world_references_json,
+            parsed.initialization.state.len(),
+            arena_size,
+        ).map_err(|message| JsValue::from_str(&message))?;
         let environment = EnvironmentRuntime::from_json(environment_ir_json)
             .map_err(|message| JsValue::from_str(&message))?;
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
             .map_err(|message| JsValue::from_str(&message))?;
         let metrics = IrMetricsRuntime::from_json(metrics_ir_json, parameters_json, physics_dt)
             .map_err(|message| JsValue::from_str(&message))?;
-        let simulation = Simulation::new_with_environment_and_private_state(
+        let simulation = Simulation::new_with_environment_private_state_and_references(
             parsed.initialization,
             parsed.controller_private_state,
+            references,
             config,
             controller,
             environment,
@@ -698,6 +705,7 @@ impl MetricProbeSimulation {
     pub fn set_setup(
         &mut self,
         initial_state_json: &str,
+        world_references_json: &str,
         seed: u32,
         physics_dt: f64,
         control_dt: f64,
@@ -716,13 +724,19 @@ impl MetricProbeSimulation {
             seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size,
             sensor_noise, max_forward_speed, max_angular_speed,
         );
+        let references = parse_world_reference_state(
+            world_references_json,
+            parsed.initialization.state.len(),
+            arena_size,
+        ).map_err(|message| JsValue::from_str(&message))?;
         let environment = EnvironmentRuntime::from_json(environment_ir_json)
             .map_err(|message| JsValue::from_str(&message))?;
         let metrics = IrMetricsRuntime::from_json(metrics_ir_json, parameters_json, physics_dt)
             .map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_setup_with_environment_and_private_state(
+        self.simulation.replace_setup_with_environment_private_state_and_references(
             parsed.initialization,
             parsed.controller_private_state,
+            references,
             config,
             environment,
         ).map_err(|message| JsValue::from_str(&message))?;
@@ -733,6 +747,7 @@ impl MetricProbeSimulation {
     pub fn set_experiment(
         &mut self,
         initial_state_json: &str,
+        world_references_json: &str,
         seed: u32,
         physics_dt: f64,
         control_dt: f64,
@@ -752,15 +767,21 @@ impl MetricProbeSimulation {
             seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size,
             sensor_noise, max_forward_speed, max_angular_speed,
         );
+        let references = parse_world_reference_state(
+            world_references_json,
+            parsed.initialization.state.len(),
+            arena_size,
+        ).map_err(|message| JsValue::from_str(&message))?;
         let environment = EnvironmentRuntime::from_json(environment_ir_json)
             .map_err(|message| JsValue::from_str(&message))?;
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
             .map_err(|message| JsValue::from_str(&message))?;
         let metrics = IrMetricsRuntime::from_json(metrics_ir_json, parameters_json, physics_dt)
             .map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_setup_and_controller(
+        self.simulation.replace_setup_controller_and_references(
             parsed.initialization,
             parsed.controller_private_state,
+            references,
             config,
             environment,
             controller,
