@@ -100,6 +100,14 @@ if (!workspaceShell.includes('import "./student-registration.js"')) {
 if (!workspaceShell.includes('import "./experiment-library.js"')) {
   throw new Error("production workspace does not load the unified Experiment Library");
 }
+const registryUi = await readFile(path.join(assetDir, "registry-ui-v3.js"), "utf8");
+if (!registryUi.includes("const browser = null;")) {
+  throw new Error("retired flat Experiment browser is still constructed");
+}
+const hardeningUi = await readFile(path.join(assetDir, "ux-hardening.js"), "utf8");
+if (!hardeningUi.includes('{ selector: ".vlab-library", triggers: [".experiment-browse"]')) {
+  throw new Error("Browse experiments accessibility binding does not target the unified library");
+}
 const experimentLibrary = await readFile(path.join(assetDir, "experiment-library.js"), "utf8");
 for (const required of [
   'showcase: "Showcase"',
