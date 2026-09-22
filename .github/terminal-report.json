@@ -14,7 +14,8 @@
     "Shared browsing groups by owner without exposing the owner's private collection structure.",
     "Open loads an Experiment without running it; Open & run is an explicit secondary action in Details.",
     "Production smoke covers browse-first Showcase discovery at phone, foldable, desktop and ultra-wide widths using the shared browser harness.",
-    "The retired flat finder is no longer constructed; Browse experiments accessibility/focus and collection refresh wiring target the unified library only."
+    "The retired flat finder is no longer constructed; Browse experiments accessibility/focus and collection refresh wiring target the unified library only.",
+    "Production Experiment Library smoke re-establishes the real Browse control after viewport/navigation transitions before clicking, avoiding false readiness races while still requiring the deployed UI to open and render Showcase rows."
   ],
   "close_issue": 480
 }
