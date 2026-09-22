@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
   "outcome": "Experiment Authoring now has a real syntax-highlighted code editor foundation",
-  "owner_impact": "Configuration, Initialization, Controller and Metrics are edited through a CodeMirror surface with line numbers, Python-like syntax highlighting, normal selection/undo/redo/clipboard behavior and preserved responsive styling. The existing artifact textareas remain the authoritative source buffers underneath, so dirty-state, autosave, Apply & restart, revision history and read-only Experiment behavior keep their established semantics.",
+  "owner_impact": "Configuration, Initialization, Controller and Metrics are edited through an Ace code-editor surface with line numbers, Python syntax highlighting, normal selection/undo/redo/clipboard behavior and preserved responsive styling. The existing artifact textareas remain the authoritative source buffers underneath, so dirty-state, autosave, Apply & restart, revision history and read-only Experiment behavior keep their established semantics.",
   "next": {
     "kind": "epic_continues",
     "issue": 204,
     "text": "#204 is the next code-authoring ergonomics ticket. It adds parser-derived outline/symbol navigation, folding and reliable in-artifact search on top of this editor foundation. It has not started yet."
   },
   "technical_evidence": [
-    "CodeMirror is loaded from one pinned bundled browser module, avoiding duplicate CodeMirror state/view instances; the existing textarea remains the fallback if initialization fails.",
-    "The deployed Python-like artifact formats receive lexical syntax highlighting for comments, strings, numbers and Python control/declaration keywords; no Virtual Lab scientific names are hardcoded as fake semantic tokens.",
-    "CodeMirror edits mirror into the authoritative textareas through the existing input contract, while authoritative Experiment/revision loads reset editor state without manufacturing dirty edits.",
-    "Read-only state is mirrored from the existing artifact textareas into CodeMirror.",
-    "The existing interaction-boundary autosave logic treats the CodeMirror surface as inside the artifact editor.",
-    "Production browser smoke requires four ready CodeMirror surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens, and now reports exact editor initialization errors."
+    "Ace 1.44.0 is loaded as one standalone zero-dependency browser editor runtime; the existing textarea remains the fallback if editor initialization fails.",
+    "The deployed Python-like artifact formats use Ace Python mode for syntax highlighting; no Virtual Lab scientific names are hardcoded as fake semantic tokens.",
+    "Ace edits mirror into the authoritative textareas through the existing input contract, while authoritative Experiment/revision loads reset editor content and undo history without manufacturing dirty edits.",
+    "Read-only state is mirrored from the existing artifact textareas into Ace.",
+    "The existing interaction-boundary autosave logic treats the Ace surface as inside the artifact editor.",
+    "Production browser smoke requires four ready Ace surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens, and reports exact editor initialization errors."
   ],
   "close_issue": 203
 }
