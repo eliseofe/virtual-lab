@@ -145,13 +145,15 @@ function compileSetup({ seed = activeSeed, configSource = ui.config.value, initi
     agentCount: initializer.state.length,
     arenaSize: runtime.arenaSize,
     environment: environment ? { schema: environment.schema, entry: environment.entry } : null,
+    referenceCount: initializer.world_references?.references?.length ?? 0,
+    referenceSensorCount: initializer.world_references?.sensors?.length ?? 0,
     firstAgents: initializer.state.slice(0, 5),
   }, null, 2);
 
   return {
     config,
     environment,
-    setup: simulationSetupFromRuntime(runtime, seed, initializer.state, environment),
+    setup: simulationSetupFromRuntime(runtime, seed, initializer.state, environment, initializer.world_references),
   };
 }
 

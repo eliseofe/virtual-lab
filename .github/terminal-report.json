@@ -1,19 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Experiment Authoring now links compiler diagnostics to source and offers constrained completion",
-  "owner_impact": "Configuration, Initialization, Controller and Metrics errors now remain attached to their artifact and appear in the active editor with source-line gutter markers where the compiler provides a location. Selecting a diagnostic jumps to that source line. Controller, Metrics and Initialization expose lightweight completion derived only from implemented compiler/capability/configuration surfaces; no unrestricted Python language server or AI code generation was added. Existing source, dirty-state, autosave, revision and runtime semantics are unchanged.",
+  "outcome": "Static named world-reference state and Initialization authoring foundation are deployed",
+  "owner_impact": "Initialization can now define validated named static reference points and assign per-agent reference sensors with finite or unlimited range. The simulator stores one canonical initial reference state and reconstructs current reference state on reset, with periodic relative-position geometry already centralized for the next step. This ticket deliberately does not expose or advertise reference observations to Controller or Metrics yet, so existing Experiments and currently available authoring capabilities remain unchanged.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The currently approved #202 code-authoring ergonomics epic is complete with #205. No further ticket in this epic is approved or queued."
+    "kind": "epic_continues",
+    "issue": 504,
+    "text": "Epic #501 continues with #504 — add selective per-agent Controller reference sensing, expose the same reference state read-only to Metrics, then advertise and mark the capability implemented. #504 has not started yet."
   },
   "technical_evidence": [
-    "Authoring diagnostics are produced by the existing Configuration, Initializer, Controller, Environment, Metrics and runtime validators, normalized only for presentation, and retained by artifact identity.",
-    "Ace consumes exact compiler line/column locations through session annotations; the visible diagnostic detail is keyboard-accessible and selection reuses the existing source-line navigation path.",
-    "Controller completion is exported from the compiler's implemented call signatures, observations and active numeric parameters; Metrics completion uses compiler call signatures and directly insertable snapshot fields; Initializer completion uses parsed functions and active config parameters.",
-    "Browser and MCP Controller/Metrics compiler copies remain byte-identical after exposing completion metadata.",
-    "Production smoke opens Ace completion, injects a temporary Controller syntax error, verifies the linked gutter annotation and diagnostic jump, restores the source, and requires the annotation to clear before continuing runtime smoke."
+    "Browser and MCP Initializer compilers remain byte-identical and emit vlab.initializer-state/0.4 with a vlab.world-references/0.1 payload.",
+    "Initialization validates stable identifier names, finite/in-arena reference positions, agent indices, duplicate definitions/assignments, undefined reference links, and finite positive or unlimited sensor ranges.",
+    "Rust owns separate initial and current WorldReferenceState values; reset reconstructs current state from the initial state, leaving a clean future dynamics seam without implementing dynamics.",
+    "Named-reference relative geometry reuses the simulator minimum-image helper; no neighbour-search/world-discovery path, Controller observation, Metrics surface, optional executable artifact, or paper-specific behavior is introduced.",
+    "The implemented-capability registry remains unchanged, so observation.named_reference_relative_position stays candidate_unavailable until #504."
   ],
-  "close_issue": 205
+  "close_issue": 503
 }

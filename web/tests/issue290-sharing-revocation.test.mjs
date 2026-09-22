@@ -53,8 +53,8 @@ test("#290 preserves copy and supervision as independent mechanisms", () => {
 });
 
 test("#290 leaves the collaboration scope classified as completed baseline after later tickets", () => {
-  assert.match(status, /#287–#290/);
-  assert.doesNotMatch(roadmap, /\*\*Started and unfinished:\*\* #45/);
-  assert.match(roadmap, /\*\*Completed baseline:\*\* #45/);
+  assert.match(status, /Professor supervision, explicit read-only sharing/i);
+  assert.doesNotMatch(roadmap, /Started and unfinished[^\n]*#45/i);
+  assert.match(roadmap, /### Completed baseline[\s\S]*#45 Access \/ sharing \/ curation \/ Showcase/i);
   assert.equal(report.schema, "vlab.terminal-report/2");
 });

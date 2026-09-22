@@ -325,6 +325,58 @@ impl SwarmInitialization {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct WorldReferenceState {
+    positions: BTreeMap<String, Vec2>,
+    agent_sensors: Vec<BTreeMap<String, Option<f64>>>,
+}
+
+impl WorldReferenceState {
+    fn empty(agent_count: usize) -> Self {
+        Self { positions: BTreeMap::new(), agent_sensors: vec![BTreeMap::new(); agent_count] }
+    }
+
+    fn validate(&self, agent_count: usize, arena_size: f64) -> Result<(), String> {
+        if self.agent_sensors.len() != agent_count {
+            return Err(format!("reference-sensor profile count {} does not match agent count {agent_count}", self.agent_sensors.len()));
+        }
+        let half = arena_size / 2.0;
+        for (name, position) in &self.positions {
+            if !position.x.is_finite() || !position.y.is_finite() {
+                return Err(format!("reference '{name}' position must be finite"));
+            }
+            if position.x.abs() > half || position.y.abs() > half {
+                return Err(format!("reference '{name}' must fit inside arena size {arena_size}"));
+            }
+        }
+        for (agent_index, sensors) in self.agent_sensors.iter().enumerate() {
+            for (name, max_range) in sensors {
+                if !self.positions.contains_key(name) {
+                    return Err(format!("agent {agent_index} reference sensor '{name}' names an undefined reference"));
+                }
+                if let Some(range) = max_range {
+                    if !range.is_finite() || *range <= 0.0 {
+                        return Err(format!("agent {agent_index} reference sensor '{name}' range must be finite and positive"));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn reference_position(&self, name: &str) -> Option<Vec2> {
+        self.positions.get(name).copied()
+    }
+
+    pub(crate) fn sensor_range(&self, agent_index: usize, name: &str) -> Option<Option<f64>> {
+        self.agent_sensors.get(agent_index)?.get(name).copied()
+    }
+
+    pub(crate) fn relative_position(&self, name: &str, origin: Vec2, arena_size: f64) -> Option<Vec2> {
+        self.reference_position(name).map(|position| minimum_image(position - origin, arena_size))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct Snapshot {
     pub scientific_time: f64,
     pub physics_ticks: u32,
@@ -334,6 +386,8 @@ pub struct Snapshot {
 pub struct Simulation<C: ControllerRuntime> {
     initialization: SwarmInitialization,
     controller_private_state: Vec<BTreeMap<String, f64>>,
+    reference_initialization: WorldReferenceState,
+    reference_state: WorldReferenceState,
     config: SimulationConfig,
     control_stride: u32,
     metric_stride: u32,
@@ -377,6 +431,20 @@ impl<C: ControllerRuntime> Simulation<C> {
         initialization: SwarmInitialization,
         controller_private_state: Vec<BTreeMap<String, f64>>,
         config: SimulationConfig,
+        controller: C,
+        environment: EnvironmentRuntime,
+    ) -> Result<Self, String> {
+        let references = WorldReferenceState::empty(initialization.state.len());
+        Self::new_with_environment_private_state_and_references(
+            initialization, controller_private_state, references, config, controller, environment,
+        )
+    }
+
+    pub fn new_with_environment_private_state_and_references(
+        initialization: SwarmInitialization,
+        controller_private_state: Vec<BTreeMap<String, f64>>,
+        reference_initialization: WorldReferenceState,
+        config: SimulationConfig,
         mut controller: C,
         environment: EnvironmentRuntime,
     ) -> Result<Self, String> {
@@ -385,16 +453,20 @@ impl<C: ControllerRuntime> Simulation<C> {
         if controller_private_state.len() != initialization.state.len() {
             return Err("controller private-state profile count must match initial agent count".to_owned());
         }
+        reference_initialization.validate(initialization.state.len(), config.arena_size)?;
         controller.set_run_seed(config.seed);
         controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         let mut state = initialization.build_state();
         wrap_state(&mut state, config.arena_size);
         let sensing_rng = ScientificRng::for_domain(config.seed, RNG_DOMAIN_SENSING, 0)
             .expect("static sensing RNG domain is valid");
+        let reference_state = reference_initialization.clone();
         Ok(Self {
             actuators: vec![Action::default(); initialization.state.len()],
             initialization,
             controller_private_state,
+            reference_initialization,
+            reference_state,
             config,
             control_stride,
             metric_stride,
@@ -441,15 +513,32 @@ impl<C: ControllerRuntime> Simulation<C> {
         config: SimulationConfig,
         environment: EnvironmentRuntime,
     ) -> Result<(), String> {
+        let references = WorldReferenceState::empty(initialization.state.len());
+        self.replace_setup_with_environment_private_state_and_references(
+            initialization, controller_private_state, references, config, environment,
+        )
+    }
+
+    pub fn replace_setup_with_environment_private_state_and_references(
+        &mut self,
+        initialization: SwarmInitialization,
+        controller_private_state: Vec<BTreeMap<String, f64>>,
+        reference_initialization: WorldReferenceState,
+        config: SimulationConfig,
+        environment: EnvironmentRuntime,
+    ) -> Result<(), String> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
         if controller_private_state.len() != initialization.state.len() {
             return Err("controller private-state profile count must match initial agent count".to_owned());
         }
+        reference_initialization.validate(initialization.state.len(), config.arena_size)?;
         self.controller.set_run_seed(config.seed);
         self.controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         self.initialization = initialization;
         self.controller_private_state = controller_private_state;
+        self.reference_initialization = reference_initialization.clone();
+        self.reference_state = reference_initialization;
         self.config = config;
         self.environment = environment;
         self.control_stride = control_stride;
@@ -464,6 +553,21 @@ impl<C: ControllerRuntime> Simulation<C> {
         controller_private_state: Vec<BTreeMap<String, f64>>,
         config: SimulationConfig,
         environment: EnvironmentRuntime,
+        controller: C,
+    ) -> Result<(), String> {
+        let references = WorldReferenceState::empty(initialization.state.len());
+        self.replace_setup_controller_and_references(
+            initialization, controller_private_state, references, config, environment, controller,
+        )
+    }
+
+    pub fn replace_setup_controller_and_references(
+        &mut self,
+        initialization: SwarmInitialization,
+        controller_private_state: Vec<BTreeMap<String, f64>>,
+        reference_initialization: WorldReferenceState,
+        config: SimulationConfig,
+        environment: EnvironmentRuntime,
         mut controller: C,
     ) -> Result<(), String> {
         initialization.validate()?;
@@ -471,10 +575,13 @@ impl<C: ControllerRuntime> Simulation<C> {
         if controller_private_state.len() != initialization.state.len() {
             return Err("controller private-state profile count must match initial agent count".to_owned());
         }
+        reference_initialization.validate(initialization.state.len(), config.arena_size)?;
         controller.set_run_seed(config.seed);
         controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         self.initialization = initialization;
         self.controller_private_state = controller_private_state;
+        self.reference_initialization = reference_initialization.clone();
+        self.reference_state = reference_initialization;
         self.config = config;
         self.environment = environment;
         self.controller = controller;
@@ -494,6 +601,7 @@ impl<C: ControllerRuntime> Simulation<C> {
 
     pub fn reset(&mut self) {
         self.state = self.initialization.build_state();
+        self.reference_state = self.reference_initialization.clone();
         wrap_state(&mut self.state, self.config.arena_size);
         self.actuators = vec![Action::default(); self.state.len()];
         self.physics_ticks = 0;
@@ -605,6 +713,78 @@ fn parse_initial_state(json: &str) -> Result<ParsedInitialState, String> {
     let initialization = SwarmInitialization { state };
     initialization.validate()?;
     Ok(ParsedInitialState { initialization, controller_private_state })
+}
+
+#[derive(Deserialize)]
+struct WorldReferenceJson {
+    name: String,
+    x: f64,
+    y: f64,
+}
+
+#[derive(Deserialize)]
+struct ReferenceSensorJson {
+    agent_index: usize,
+    name: String,
+    max_range: Option<f64>,
+}
+
+#[derive(Deserialize, Default)]
+struct WorldReferencesJson {
+    #[serde(default)]
+    references: Vec<WorldReferenceJson>,
+    #[serde(default)]
+    sensors: Vec<ReferenceSensorJson>,
+}
+
+fn valid_reference_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(first) if first == '_' || first.is_ascii_alphabetic() => {}
+        _ => return false,
+    }
+    chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+}
+
+pub(crate) fn parse_world_reference_state(
+    json: &str,
+    agent_count: usize,
+    arena_size: f64,
+) -> Result<WorldReferenceState, String> {
+    if json.trim().is_empty() || json.trim() == "null" {
+        return Ok(WorldReferenceState::empty(agent_count));
+    }
+    let payload: WorldReferencesJson = serde_json::from_str(json)
+        .map_err(|error| format!("invalid world-reference JSON: {error}"))?;
+    let mut positions = BTreeMap::new();
+    for reference in payload.references {
+        if !valid_reference_name(&reference.name) {
+            return Err(format!("reference '{}' name must be an identifier", reference.name));
+        }
+        if positions.contains_key(&reference.name) {
+            return Err(format!("reference '{}' was defined more than once", reference.name));
+        }
+        positions.insert(reference.name, Vec2::new(reference.x, reference.y));
+    }
+    let mut agent_sensors = vec![BTreeMap::new(); agent_count];
+    for sensor in payload.sensors {
+        if sensor.agent_index >= agent_count {
+            return Err(format!("reference sensor agent index {} is outside [0, {agent_count})", sensor.agent_index));
+        }
+        if !valid_reference_name(&sensor.name) {
+            return Err(format!("reference sensor '{}' name must be an identifier", sensor.name));
+        }
+        if agent_sensors[sensor.agent_index].contains_key(&sensor.name) {
+            return Err(format!(
+                "agent {} reference sensor '{}' was assigned more than once",
+                sensor.agent_index, sensor.name
+            ));
+        }
+        agent_sensors[sensor.agent_index].insert(sensor.name, sensor.max_range);
+    }
+    let state = WorldReferenceState { positions, agent_sensors };
+    state.validate(agent_count, arena_size)?;
+    Ok(state)
 }
 
 fn simulation_config(
@@ -922,6 +1102,57 @@ mod tests {
         let grid = sim.sample_environment_grid(2);
         assert_eq!(grid.len(), 4);
         assert_eq!(grid, vec![-5.0, 0.0, 0.0, 5.0]);
+    }
+
+    #[test]
+    fn world_reference_state_validates_geometry_and_resets() {
+        let references = parse_world_reference_state(
+            r#"{"references":[{"name":"goal","x":4.9,"y":0.0}],"sensors":[{"agent_index":0,"name":"goal","max_range":null},{"agent_index":1,"name":"goal","max_range":2.0}]}"#,
+            3,
+            10.0,
+        ).unwrap();
+        assert_eq!(references.reference_position("goal"), Some(Vec2::new(4.9, 0.0)));
+        assert_eq!(references.sensor_range(0, "goal"), Some(None));
+        assert_eq!(references.sensor_range(1, "goal"), Some(Some(2.0)));
+        let relative = references.relative_position("goal", Vec2::new(-4.9, 0.0), 10.0).unwrap();
+        assert!((relative.x + 0.2).abs() < 1e-12);
+        assert!(relative.y.abs() < 1e-12);
+
+        let init = initialization(0.0, 3);
+        let initial_agents = init.state.clone();
+        let private_state = vec![BTreeMap::new(); 3];
+        let mut sim = Simulation::new_with_environment_private_state_and_references(
+            init,
+            private_state,
+            references.clone(),
+            config(),
+            LocalCentroidProbeController::new(0.0, 0.0, 0.0),
+            EnvironmentRuntime::default(),
+        ).unwrap();
+        sim.reference_state.positions.get_mut("goal").unwrap().x = 1.0;
+        sim.advance_physics_ticks(5);
+        sim.reset();
+        assert_eq!(sim.state, initial_agents);
+        assert_eq!(sim.reference_state, references);
+    }
+
+    #[test]
+    fn world_reference_state_rejects_invalid_definitions_and_links() {
+        assert!(parse_world_reference_state(
+            r#"{"references":[{"name":"goal","x":6.0,"y":0.0}],"sensors":[]}"#,
+            1,
+            10.0,
+        ).is_err());
+        assert!(parse_world_reference_state(
+            r#"{"references":[],"sensors":[{"agent_index":0,"name":"missing","max_range":null}]}"#,
+            1,
+            10.0,
+        ).is_err());
+        assert!(parse_world_reference_state(
+            r#"{"references":[{"name":"goal","x":0.0,"y":0.0}],"sensors":[{"agent_index":0,"name":"goal","max_range":0.0}]}"#,
+            1,
+            10.0,
+        ).is_err());
     }
 
     #[test]

@@ -34,7 +34,7 @@ The capability-request pipeline under living epic #58 is operational. The author
 
 As verified in production on 22 September 2026:
 
-1. `0971db0e-015a-4f1f-b640-8cc6b428fdb7` — **in progress / Professor accepted + owner implementation-authorized** — `observation.named_reference_relative_position` — generic static named world references with per-agent selective local sensing and read-only Metrics access. Architecture is frozen in #502; #503 is the next implementation ticket and has not started. The capability remains unavailable to authors until #504 activates it after production verification.
+1. `0971db0e-015a-4f1f-b640-8cc6b428fdb7` — **in progress / Professor accepted + owner implementation-authorized** — `observation.named_reference_relative_position`. #503 establishes the deployed static named-reference state and Initialization authoring foundation; the capability remains unavailable to Controller/Metrics until #504 completes and activates it.
 2. `69a4e63a-b763-46db-93ba-ee4a4f29ad4d` — **requested / revise** — typed populations with independent role-filtered sensing. Professor guidance requires separating public population identity from what a controller is allowed to observe.
 3. `532d318d-2a4c-4754-acbe-e2bbe819c1b0` — **requested / revise** — population lifecycle/events. Professor guidance requires a generic per-agent participation/lifecycle state rather than attacker/defender/capture-specific semantics.
 4. `f76373f1-a919-45fb-94b3-ccfc0458a285` — **requested / revise** — population/outcome Metrics support. Professor guidance requires identifying only genuinely missing reusable primitive observables/state rather than adding a bespoke analysis capability.
@@ -57,7 +57,7 @@ Do not infer that an open acceptance umbrella is an implementation task. It is o
 
 ## Living domains and immediate selectable work
 
-- **#501 Static named world references** — active capability implementation lane. #502 froze the generalized contract; #503 is the known next ticket and has not started. Dynamic reference motion and optional executable-artifact dispatch are outside this scope.
+- **#501 Static named world references** — active capability implementation lane. #502 froze the contract and #503 establishes the static reference-state/Initialization foundation. Known successor #504 adds selective Controller sensing, Metrics exposure and final capability activation. Dynamic reference motion and optional executable-artifact dispatch remain outside this scope.
 - **#301 Security / identity / authorization** — living domain. Audit child #302 is defined and ready but not started. It is audit-only and does not silently change enrollment/OAuth/role policy.
 - **#273 UI/UX refinement** — living domain, currently dormant after the completed Control Panel, responsive cleanup and unified Experiment Library work through #480.
 - **#425 Refactoring / technical debt** — living domain, currently dormant after Active Elastic/Built-in de-specialization and the 22 September project-state/backlog reconciliation.
