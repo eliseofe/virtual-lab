@@ -103,10 +103,12 @@ test("#196 database migration backfills Metrics without revision bump and enforc
   assert.ok(disableSync >= 0 && disableSync < backfill && backfill < enableSync, "legacy artifact sync must be disabled only around the v3 backfill");
 });
 
-test("#196 browser artifact adapter recognizes Metrics as core while using generic editor presentation", async () => {
+test("#196 browser artifact adapter gives Metrics the same metadata-driven editor contract as other core artifacts", async () => {
   const browser = await text("web/src/experiment-artifacts.js");
   assert.match(browser, /id: "metrics"/);
   assert.match(browser, /type: "metrics"/);
-  assert.match(browser, /editorSelector: null/);
-  assert.match(browser, /dynamicEditorFor/);
+  assert.match(browser, /language: "python"/);
+  assert.match(browser, /artifactEditorFor/);
+  assert.doesNotMatch(browser, /editorSelector/);
+  assert.doesNotMatch(browser, /dynamicEditorFor/);
 });
