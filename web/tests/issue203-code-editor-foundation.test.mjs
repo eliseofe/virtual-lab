@@ -19,12 +19,13 @@ test("#203 mounts a real CodeMirror foundation through React without replacing s
   assert.match(adapter, /ensureEditorMount/);
 
   assert.match(editor, /codemirror@6\.0\.2/);
-  assert.match(editor, /@codemirror\/view@6\.43\.12/);
-  assert.match(editor, /@codemirror\/state@6\.7\.5/);
-  assert.match(editor, /@codemirror\/lang-python@6\.2\.1/);
+  assert.match(editor, /codemirror@6\.0\.2\?bundle/);
   assert.match(editor, /runtime\.minimalSetup/);
   assert.match(editor, /runtime\.lineNumbers\(\)/);
-  assert.match(editor, /runtime\.python\(\)/);
+  assert.match(editor, /pythonLikeSyntax\(runtime\)/);
+  assert.match(editor, /runtime\.ViewPlugin\.fromClass/);
+  assert.match(editor, /runtime\.Decoration\.mark/);
+  assert.doesNotMatch(editor, /@codemirror\/view@|@codemirror\/state@|@codemirror\/lang-python@/);
   assert.doesNotMatch(editor, /basicSetup/);
 });
 
