@@ -233,7 +233,12 @@ impl ObservationModel for LocalObservationModel {
         bearing_noise: f64,
     ) -> Observation {
         let mut neighbour_indices = Vec::new();
-        let mut observation = Observation { heading: Vec2::ZERO, neighbours: Vec::new(), environmental_scalar: None };
+        let mut observation = Observation {
+            heading: Vec2::ZERO,
+            neighbours: Vec::new(),
+            environmental_scalar: None,
+            references: BTreeMap::new(),
+        };
         self.observe_into(
             state,
             agent_index,
