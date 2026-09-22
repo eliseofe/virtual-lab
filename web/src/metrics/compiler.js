@@ -42,7 +42,9 @@ export const METRIC_OBSERVATION_FIELDS = [
 export function metricsCompletionItems({ parameters = {} } = {}) {
   const items = [
     ...Object.keys(CALL_SIGNATURES).map((value) => ({ value, caption: value, score: 900, meta: "supported function" })),
-    ...METRIC_OBSERVATION_FIELDS.map((value) => ({ value, caption: value, score: 1000, meta: "snapshot field" })),
+    ...METRIC_OBSERVATION_FIELDS
+      .filter((value) => !value.includes("[]"))
+      .map((value) => ({ value, caption: value, score: 1000, meta: "snapshot field" })),
     ...Object.keys(parameters).map((value) => ({ value, caption: value, score: 800, meta: "parameter" })),
   ];
   return [...new Map(items.map((item) => [item.value, item])).values()];
