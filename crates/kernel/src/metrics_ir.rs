@@ -1183,6 +1183,7 @@ mod tests {
                 heading: Vec2::new(1.0, 0.0),
                 neighbours: vec![],
                 environmental_scalar: None,
+                references: BTreeMap::new(),
             },
         );
         assert!(action.forward.is_finite());
