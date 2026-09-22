@@ -142,10 +142,11 @@ export function validateInitialStateForRuntime(state, runtime) {
   return state;
 }
 
-export function simulationSetupFromRuntime(runtime, seed, initialState, environment = null) {
+export function simulationSetupFromRuntime(runtime, seed, initialState, environment = null, worldReferences = null) {
   return {
     initialState,
     environment,
+    worldReferences: worldReferences ?? { schema: "vlab.world-references/0.1", references: [], sensors: [] },
     simulation: {
       seed,
       physicsDt: runtime.physicsDt,
