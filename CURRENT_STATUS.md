@@ -1,68 +1,92 @@
 # Virtual Lab — Current Status
 
-Updated: 20 September 2026
+Updated: 22 September 2026
 
-This file answers **where the project is now**. Development procedure lives in `DEVELOPMENT_WORKFLOW.md`; longer-term direction lives in `ROADMAP.md`; detailed technical/scientific contracts live in `docs/`.
+This file answers **where the project is now**. Development procedure lives in `DEVELOPMENT_WORKFLOW.md`; longer-term direction lives in `ROADMAP.md`; scientific/technical contracts live in `docs/`.
 
-## Current position
+## Current product baseline
 
-Virtual Lab is back in normal operations after the 17 September closed-loop recovery.
+Virtual Lab is in normal production operation at https://eliseofe.github.io/virtual-lab/.
 
-The frontend architecture migration to **Vite + React + TypeScript + Mantine** is complete. The current visual system is an accepted clean, functional baseline, not a permanently finished UI/UX endpoint.
+The deployed baseline includes:
 
-The student self-registration and Getting started work is complete and production-verified. At least one real student has successfully registered, confirmed the account and signed in. The production Lab provides one normal student journey with self-registration/sign-in, Getting started/Help, and Grok/Claude connector guidance.
+- browser Rust/WASM scientific execution;
+- constrained Configuration, Initialization, Controller and Metrics authoring;
+- Vite + React + TypeScript + Mantine presentation;
+- authenticated Supabase Experiment Registry and provider-independent MCP authoring;
+- student self-registration/sign-in and Getting started/Help;
+- Professor supervision, explicit read-only sharing, independent copy-to-workspace, collections and Showcase curation;
+- numbered immutable Experiment revisions plus one autosaved unnumbered Working copy and explicit **Save Revision**;
+- one unified Experiment Library with **Showcase · Mine · Shared · Supervised**, collection-aware navigation and no user-facing Built-in category;
+- generic catalog/Showcase execution with Active Elastic retained only as ordinary canonical scientific content;
+- scientific-code editor ergonomics across all four authored artifacts: highlighting, line numbers, folding/search, parser-derived navigation, source-linked compiler diagnostics and constrained contract-derived completion;
+- live multi-metric Results, local-first result persistence and whole-Experiment export.
 
-OAuth authorization for AI clients is hosted inside the production Virtual Lab artifact at `/oauth/consent/` and shares the normal Lab browser session. The former standalone mock-sim site is historical infrastructure and is not part of the active product path once Supabase Auth points at the production Lab authorization route.
+The accepted top-level workspace hierarchy is **Control Panel · Simulation · Experiment Authoring**. Help and Account remain utilities. The current responsive baseline is verified across phone, wider/foldable mobile, ordinary desktop and ultra-wide desktop.
 
-The approved **#45 — Access, sharing, curation and Showcase** research-collaboration scope is complete through #287–#290 and is now a completed baseline. Professor accounts have automatic read-only supervision access to student/researcher Experiments; readable non-owned Experiments can be copied into an independent owned workspace; explicit ordinary sharing is read-only and revocable; student-to-student sharing is available for collaboration while redundant student-to-Professor sharing is excluded because Professor supervision already provides that access; Showcase remains a separate explicit curator action.
+## Research-AI / capability system
 
-Research-AI Lab discovery is now scientifically neutral by default. A no-ID `read_workspace` returns the complete formal authoring/runtime contract plus the global canonical capability registry; it does not automatically inject Experiment summaries or historical capability-request discourse. Experiment discovery remains available only through explicit `include_workspace_index=true` and stays governed by the authenticated user's existing RLS permissions; explicit Experiment reads remain RLS-governed.
+Research-AI Lab discovery is scientifically neutral by default. A no-ID `read_workspace` exposes the formal authoring/runtime contract plus implemented/candidate capability surfaces without automatically injecting arbitrary Experiment history. Explicit workspace indexing and Experiment reads remain authenticated and RLS-governed.
 
-The bounded **#392 — Experiment revision time and actor provenance**, **#394 — Human identity**, and owner-authorized **#396 — Experiment working copy and navigable revision history** passes are complete. Numbered revisions are retained immutable snapshots; human edits autosave into one unnumbered Working copy; explicit **Save Revision** crystallizes the next chronological revision; revision history is navigable from the Experiment header with All/Mine/AI filtering; and newer AI revisions remain visible without replacing or destroying human work. The evidence-driven **#409** follow-up under living UI/UX lane #273 makes reopening an Experiment land on its newest numbered revision while preserving any Working copy for explicit recovery, and adds an explicit owner-only **Discard Working copy** action.
+The capability-request pipeline under living epic #58 is operational. The authoritative backlog is the production Supabase `capability_requests` table, not GitHub issue state.
 
+### Current nonterminal capability queue
 
-The Professor capability-request system is a **living operational queue** under #58, not a completed one-shot epic. #348 establishes a clean-slate production baseline: the two historical aggregation requests for controller stochasticity/RNG and heterogeneous agent initialization/state are retired rather than migrated, and the old implemented scalar request row is retired as capability truth. The queue therefore has no nonterminal legacy request at this cutover. This does **not** implement RNG or heterogeneous state; fresh scientific acceptance may rediscover and resubmit genuinely missing requirements through the new typed workflow. The scalar Environment capability remains implemented and represented in the canonical registry independently of request history.
+As verified in production on 22 September 2026:
 
-The aggregation case exposed both capability-flow defects and a scientific-context problem. #310–#312, #323/#324/#327/#328, the canonical-capability transition #343–#348, #354 and the #335 production re-audit are complete. The fresh scientific-acceptance follow-up produced #359–#362 and the exact connector cutover #367. The subsequent two-paper acceptance exposed duplicate request creation across overlapping papers. #376 reset that failed acceptance state; #375–#373 completed the candidate architecture and Professor generalization repair. #371 then exposed #380, now complete: the JavaScript/MCP authoring wall and Rust runtime are aligned for the discovered IR-boundary defects. **#382 — Bare-bones scientific authoring language completeness** is complete through #383–#386. A fresh Constant Bearing retry after that cutover produced valid Grok and Claude Experiments; Claude then reached two genuinely semantic gaps for the informed-agent variant. The owner explicitly selected the generic heterogeneous-state gap for implementation. **#304 — generic per-agent initialization of Controller private scalar state is complete and production-green.** The separate experiment-defined target observation request remains requested and is not implementation-authorized. #325/#326 remain paused.
+1. `0971db0e-015a-4f1f-b640-8cc6b428fdb7` — **approved / Professor accepted** — `observation.target_relative_position` — Experiment-defined target observable by Controller and Metrics. It remains unavailable until the owner explicitly authorizes implementation.
+2. `69a4e63a-b763-46db-93ba-ee4a4f29ad4d` — **requested / revise** — typed populations with independent role-filtered sensing. Professor guidance requires separating public population identity from what a controller is allowed to observe.
+3. `532d318d-2a4c-4754-acbe-e2bbe819c1b0` — **requested / revise** — population lifecycle/events. Professor guidance requires a generic per-agent participation/lifecycle state rather than attacker/defender/capture-specific semantics.
+4. `f76373f1-a919-45fb-94b3-ccfc0458a285` — **requested / revise** — population/outcome Metrics support. Professor guidance requires identifying only genuinely missing reusable primitive observables/state rather than adding a bespoke analysis capability.
+5. `2f8e266f-f5ce-41f6-9678-a96b68754eea` — **requested / future** — bounded multirotor rigid-body 3-D backend. Valid long-term direction, intentionally outside the current implementation horizon.
 
-**#301 — Virtual Lab security, identity and authorization** is now explicitly classified as a **living / ongoing security domain**. Its audit child **#302** remains defined but not started; no broader enrollment, OAuth/client-admission or security remediation policy has been frozen.
+Professor acceptance or approval is queue/design state only. It does **not** authorize implementation.
 
-**#425 — Refactoring and technical-debt reduction** is now a **living / ongoing maintenance domain**. It is currently dormant and has no authorized child; it exists as the durable home for evidence-driven structural cleanup rather than as permission for cleanup churn.
+The implemented `initialization.per_agent_private_state_assignment` capability has its publication provenance restored in production, and there are currently **zero implemented canonical capabilities without publication provenance**. Historical issue #467 remained open only because one exact authenticated end-user `read_workspace` verification was not performed in that old turn; the repair itself was merged, deployed and database-verified. That stale verification residue is no longer treated as executable repair backlog.
 
-The living **#273 — UI/UX refinement** lane has completed the Product Design activation through #423–#430 plus the evidence-driven refinements #437, #440, #444, #446 and #449. The accepted top-level workspace hierarchy is now **Control Panel · Simulation · Edit Experiment**, with Help and Account remaining utilities. The Control Panel no longer repeats an EXPERIMENT/Control panel heading; Current Experiment reads consistently as title → exceptional access state when relevant → collection metadata → Browse experiments / Organize. Normal owned/editable state is implicit, while read-only/shared/supervised states remain explicit. The Professor-only area is labeled **Professor controls**. The responsive contract is verified across phone, foldable/wider mobile, ordinary desktop and ultra-wide desktop without device-specific layout choreography. #273 is **dormant / living** until new concrete usage evidence appears; #425 remains dormant and no repo-wide refactor has been activated.
+## Capability-flow acceptance state
 
-## Immediate frontier
+The scientific-neutrality/candidate-architecture acceptance chain remains intentionally unfinished, not forgotten:
 
-1. **#273 UI/UX is dormant / living after the completed Control-panel activation and direct-use refinements through #449.** No UI/UX child is currently executable; future work should be triggered by concrete use evidence rather than an automatic redesign successor.
-2. **#58 capability-flow remains operationally active.** The heterogeneous-state request `2616dbb5-2134-417f-aebb-2e9e4ea0dd9c` is implemented through #304. The separate target-observation request `0971db0e-015a-4f1f-b640-8cc6b428fdb7` remains requested and unavailable. #371 has not restarted.
-3. **#301 Security** is a living maintenance domain; #302 remains queued and not started.
-4. **#425 Refactoring** is a living maintenance domain and currently dormant with no authorized child.
-5. Studies and other parked/not-started lanes remain separately gated.
+- #330 remains the umbrella for the scientific-neutrality acceptance closeout.
+- #336 / #371 are the current owner-driven black-box acceptance path. Earlier runs exposed real defects that were repaired; the final acceptance itself has not subsequently been rerun to green.
+- #325 and #326 remain paused until that acceptance path is completed.
+- Living epic #58 remains open independently because new capability requests can arrive at any time.
 
-Do not invent a maintenance phase, a second Lab, another broad redesign, a duplicate collaboration mechanism, or an automatic successor to the completed #45 scope.
+Do not infer that an open acceptance umbrella is an implementation task. It is owner-selected validation work.
 
-## Explicit gates and parked work
+## Living domains and immediate selectable work
 
-**Studies are not authorized yet.** Student onboarding, real student use, elapsed time, issue state or apparent technical readiness do not activate Studies. Only a later explicit owner instruction does.
+- **#301 Security / identity / authorization** — living domain. Audit child #302 is defined and ready but not started. It is audit-only and does not silently change enrollment/OAuth/role policy.
+- **#273 UI/UX refinement** — living domain, currently dormant after the completed Control Panel, responsive cleanup and unified Experiment Library work through #480.
+- **#425 Refactoring / technical debt** — living domain, currently dormant after Active Elastic/Built-in de-specialization and the 22 September project-state/backlog reconciliation.
+- **#56 Simulator performance** and **#65 World/environment capabilities** — living domains with no automatically active child.
+- **#3 Studies** — still owner-gated. The earlier prerequisite work is complete, but Studies do not start until the owner explicitly activates that lane.
+- **#124 optional executable artifact dispatch** — foundation exists; runtime dispatch waits for a concrete owner-approved use case.
+- **#102 numerics**, native/HPC, richer physics and other future science remain parked/on-demand.
 
-Other parked/gated work includes:
-- #285 Research submission snapshots — foundation exists, but there is no current distinct research use case; do not implement a submission workflow until the owner identifies one that is not already served by supervision visibility, sharing, copying or Showcase;
-- deterministic RNG service implementation — requires explicit owner authorization;
-- optional executable artifact dispatch — requires a concrete approved use case;
-- numerical-integrator evaluation — requires owner scientific/numerical activation;
-- native/HPC, richer physics/heterogeneous swarms, living environment/performance/validation umbrellas — future/on-demand.
+There is no automatic “next ticket” merely because an issue is open.
+
+## Backlog hygiene
+
+Open GitHub issues fall into one of three legitimate classes:
+
+- living/ongoing domains;
+- explicitly parked/gated/future work;
+- a bounded currently selected task or acceptance.
+
+Historical residue that no longer represents any of those should be closed rather than left to masquerade as current backlog. The 22 September reconciliation closes the obsolete #427 design-handoff residue and #467 historical verification residue without pretending that unperformed historical checks occurred.
 
 ## Production pointers
 
 - Production Lab: https://eliseofe.github.io/virtual-lab/
 - AI authorization UI: https://eliseofe.github.io/virtual-lab/oauth/consent/
-- Hosting: GitHub Pages.
-- Frontend: Vite + React + TypeScript + Mantine.
-- Scientific/runtime authority: Rust/WASM kernel plus worker/runtime/compiler modules.
-- Registry/Auth/MCP backend: Supabase.
-- Production MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`.
-- Runnable Experiment artifacts: Configuration, Initialization, Controller, Metrics; empty Metrics is valid.
-- Results presentation state is separate from scientific Experiment revision state.
+- Hosting: GitHub Pages
+- Registry/Auth/MCP backend: Supabase
+- Production MCP endpoint: `https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp`
+- Runnable Experiment artifacts: Configuration, Initialization, Controller, Metrics
+- Empty Metrics is valid
+- Results presentation state is separate from scientific Experiment revision state
 
 ## Accepted storage direction
 
@@ -73,6 +97,4 @@ Other parked/gated work includes:
 - There is no extra `runs/` directory inside a Study and no directory per simulation run.
 - Raw scientific output remains local-first.
 
-Scientific invariants and owner-authorized scientific definitions are maintained in `docs/SCIENTIFIC_CONTRACT.md` and the relevant technical contract documents, not duplicated here.
-
-For the strategic map of major epics and whether they are unfinished, living, waiting for a use case, or not started, see `ROADMAP.md`.
+Scientific invariants and owner-authorized scientific definitions live in `docs/SCIENTIFIC_CONTRACT.md` and the relevant technical contract documents, not here.
