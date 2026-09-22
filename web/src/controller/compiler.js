@@ -58,10 +58,15 @@ const CALL_SIGNATURES = {
   ...CAPABILITY_CALL_SIGNATURES,
 };
 
-export function controllerCompletionItems({ parameters = {} } = {}) {
+export function controllerCompletionItems({ parameters = {}, references = [] } = {}) {
+  const referenceItems = references.flatMap((name) => [
+    { value: `obs.references.${name}.available`, caption: `obs.references.${name}.available`, score: 1000, meta: "reference observation" },
+    { value: `obs.references.${name}.relative_position`, caption: `obs.references.${name}.relative_position`, score: 1000, meta: "reference observation" },
+  ]);
   const items = [
     ...Object.keys(CALL_SIGNATURES).map((value) => ({ value, caption: value, score: 900, meta: "supported function" })),
     ...[...OBSERVATION_TYPES.keys()].map((value) => ({ value, caption: value, score: 1000, meta: "observation" })),
+    ...referenceItems,
     ...Object.keys(parameters).map((value) => ({ value, caption: value, score: 800, meta: "parameter" })),
   ];
   return [...new Map(items.map((item) => [item.value, item])).values()];
@@ -447,6 +452,13 @@ function inferExpression(expr, scope) {
   }
   if (expr.kind === "load") {
     if (OBSERVATION_TYPES.has(expr.path)) return OBSERVATION_TYPES.get(expr.path);
+    const referenceMatch = expr.path.match(/^obs\.references\.([A-Za-z_][A-Za-z0-9_]*)\.(available|relative_position)$/);
+    if (referenceMatch) {
+      if (!scope.references.has(referenceMatch[1])) {
+        throw new ControllerCompileError("invalid-observation-field", `unknown world reference '${referenceMatch[1]}'`, expr.line);
+      }
+      return referenceMatch[2] === "available" ? "bool" : "vec2";
+    }
     if (expr.path.startsWith("obs.")) {
       throw new ControllerCompileError("invalid-observation-field", `observation capability '${expr.path}' is not implemented`, expr.line);
     }
@@ -519,6 +531,7 @@ function checkStatements(body, scope) {
       if (scope.loopVariables.size) throw new ControllerCompileError("unsupported-feature", "nested neighbour loops are not in python-vlab/0.1", statement.line);
       const nested = {
         parameters: scope.parameters,
+        references: scope.references,
         state: scope.state,
         locals: new Map(scope.locals),
         loopVariables: new Map([[statement.variable, "neighbour"]]),
@@ -536,6 +549,7 @@ function checkStatements(body, scope) {
         if (conditionType !== "bool") throw new ControllerCompileError("type", `if/elif condition must be bool, got ${conditionType}`, branch.line ?? statement.line);
         const nested = {
           parameters: scope.parameters,
+          references: scope.references,
           state: scope.state,
           locals: new Map(scope.locals),
           loopVariables: new Map(scope.loopVariables),
@@ -548,6 +562,7 @@ function checkStatements(body, scope) {
       if (statement.else_body.length) {
         const nested = {
           parameters: scope.parameters,
+          references: scope.references,
           state: scope.state,
           locals: new Map(scope.locals),
           loopVariables: new Map(scope.loopVariables),
@@ -558,6 +573,7 @@ function checkStatements(body, scope) {
       } else {
         continuingScopes.push({
           parameters: scope.parameters,
+          references: scope.references,
           state: scope.state,
           locals: new Map(scope.locals),
           loopVariables: new Map(scope.loopVariables),
@@ -713,6 +729,12 @@ export function controllerStructure(source) {
 export function compileController(source, options = {}) {
   const parameterObject = options.parameters ?? {};
   const parameters = new Map(Object.entries(parameterObject));
+  const referenceNames = [...(options.references ?? [])];
+  const references = new Set(referenceNames);
+  if (references.size !== referenceNames.length) throw new ControllerCompileError("configuration", "world reference names must be unique");
+  for (const name of references) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new ControllerCompileError("configuration", `invalid world reference name '${name}'`);
+  }
   for (const [name, type] of parameters) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new ControllerCompileError("configuration", `invalid parameter name '${name}'`);
     if (type !== "scalar") throw new ControllerCompileError("configuration", `python-vlab/0.1 parameter '${name}' must be scalar`);
@@ -741,7 +763,7 @@ export function compileController(source, options = {}) {
   }
   const stateMap = new Map(parsedState.state.map((entry) => [entry.name, entry.type]));
   if (stateMap.size !== parsedState.state.length) throw new ControllerCompileError("type", "private state names must be unique");
-  const scope = { parameters, state: stateMap, locals: new Map(), loopVariables: new Map() };
+  const scope = { parameters, references, state: stateMap, locals: new Map(), loopVariables: new Map() };
   if (!checkStatements(parsed.body, scope)) throw new ControllerCompileError("type", "step method must return a Motion/action");
 
   return {
@@ -750,6 +772,7 @@ export function compileController(source, options = {}) {
     controller: classMatch[1],
     entry: "step",
     parameters: Object.fromEntries(parameters),
+    references: referenceNames,
     state: parsedState.state.map(({ name, type, initial }) => ({ name, type, initial })),
     body: lowerNeighbourIterableAliases(parsed.body),
   };
