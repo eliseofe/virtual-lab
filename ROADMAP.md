@@ -33,9 +33,9 @@ A living domain may be dormant. Its open state is not authorization to execute a
 - **#124 Artifact capability registry / lifecycle hooks** — optional executable dispatch waits for an approved executable-artifact use case.
 - **#285 Research submission snapshots** — preservation foundation exists; do not invent a submission workflow without a distinct research use case.
 
-### Owner-gated / dependency-gated lanes
+### Selectable / dependency-gated lanes
 
-- **#3 Studies** — the historical frontend/onboarding/real-student prerequisites are satisfied; the remaining gate is explicit owner activation.
+- **#3 Studies** — technically ready and selectable like Security or other major feature lanes. It starts when the owner chooses it; this is prioritization, not a blocker.
 - **#6 Selected Study results → AI handoff** — depends on stable Study/result identities.
 - **#119 Research Notes / Research Documents** — intended after or alongside a stable Study/result model.
 - **#179 persistent neighbour-search benchmark Study** — hard-depends on mature Studies/results.
@@ -57,11 +57,12 @@ Professor approval/acceptance does not itself authorize implementation.
 
 ### Current queue snapshot — 22 September 2026
 
-- **Implemented:** `observation.named_reference_relative_position` — static named point references with per-agent selective local relative-position sensing, finite/unlimited range, and read-only Metrics access are completed through #502–#504. Dynamic reference evolution is intentionally not part of this capability.
-- **Requested / revise:** typed populations / role-aware sensing — must be decomposed into reusable population identity and optional sensing semantics.
-- **Requested / revise:** per-agent lifecycle/participation state — must be generic rather than capture/attacker/defender specific.
-- **Requested / revise:** Metrics population/outcome request — reduce to genuinely missing primitive observables/state.
+- **Requested / Professor decision:** population identity with explicitly enabled local population recognition.
+- **Requested / Professor decision:** per-agent participation/lifecycle state with retained identity and outcome.
+- **Requested / Professor decision:** the remaining Metrics/observation primitive request, currently represented in production as read-only measured planar velocity.
 - **Requested / future:** bounded multirotor rigid-body 3-D backend — intentionally outside the current implementation horizon.
+
+The previously accepted named world-reference capability is implemented and is no longer part of the nonterminal queue.
 
 This snapshot is descriptive only; query production before making a later backlog decision.
 
@@ -72,8 +73,8 @@ There is deliberately no global automatic ordering. The owner can select one bou
 1. **Security audit #302** — inspect enrollment, roles, OAuth/MCP, RLS, client/session and privileged boundaries. Audit only; policy/remediation comes back for owner decision.
 2. **Static named world references #501** — completed through #502–#504. No further ticket in this approved scope remains; dynamic reference evolution would require a separate future activation.
 3. **Capability-request refinement** — revisit the three Professor-`revise` Swarm-vs-Swarm requests and split them into minimal reusable primitives before any implementation.
-4. **Black-box capability-flow acceptance #371** — owner-driven fresh research-AI acceptance when useful; #325/#326 stay paused until the scientific-neutrality/candidate acceptance chain is green.
-5. **Studies #3** — may be activated only by an explicit owner decision.
+4. **Black-box capability-flow acceptance #371** — recurring validation that can be reactivated when useful or when new evidence warrants it. It is not a standing blocker while the deployed MCP flow is working.
+5. **Studies #3** — selectable feature work. Choosing it activates the lane; no unresolved prerequisite currently blocks it.
 
 The 3-D multirotor request is future work, not a near-term implementation candidate.
 
@@ -87,13 +88,14 @@ The 3-D multirotor request is future work, not a near-term implementation candid
 
 ## Capability-flow acceptance
 
-The long-running #313 / #330 acceptance history is not current feature backlog.
+The long-running #313 / #330 acceptance history is a **recurring validation lane**, not a standing blocker.
 
-- Repair infrastructure and canonical capability architecture are deployed.
-- #336/#371 remain the unresolved owner-driven black-box acceptance closeout.
-- #325 and #326 remain paused behind that closeout.
+- Repair infrastructure and canonical capability architecture are deployed and the MCP flow is currently usable.
+- #336/#371 remain available for a fresh black-box rerun when useful, when the owner chooses to validate again, or when new evidence suggests regression risk.
+- #325 and #326 remain paused until that validation chain is deliberately reactivated and brought green; their pause does not block unrelated roadmap work.
+- Do not repeatedly report this dormant validation lane as owner-blocked work.
 - Do not reopen completed repair tickets from historical chronology.
-- The existence of this unfinished acceptance does not erase or replace the current Supabase capability queue.
+- The existence of this unfinished validation history does not erase or replace the current Supabase capability queue.
 
 ## Backlog hygiene rule
 
