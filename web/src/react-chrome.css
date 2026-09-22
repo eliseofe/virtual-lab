@@ -477,6 +477,46 @@ body.vlab-react-chrome-mounted {
   border-color: #7faeba;
 }
 
+/* Virtual Lab owns the authoring syntax palette. Do not depend on an Ace theme
+   module or browser/CDN timing to make token classes visibly distinct. */
+.vlab-code-editor-host .ace_editor .ace_keyword,
+.vlab-code-editor-host .ace_editor .ace_storage {
+  color: #7a3e9d;
+  font-weight: 650;
+}
+
+.vlab-code-editor-host .ace_editor .ace_string {
+  color: #0a6b50;
+}
+
+.vlab-code-editor-host .ace_editor .ace_comment {
+  color: #6f7d84;
+  font-style: italic;
+}
+
+.vlab-code-editor-host .ace_editor .ace_constant.ace_numeric,
+.vlab-code-editor-host .ace_editor .ace_numeric {
+  color: #b14b00;
+}
+
+.vlab-code-editor-host .ace_editor .ace_constant.ace_language {
+  color: #8a3f8f;
+}
+
+.vlab-code-editor-host .ace_editor .ace_support.ace_function,
+.vlab-code-editor-host .ace_editor .ace_entity.ace_name.ace_function {
+  color: #0b65a1;
+}
+
+.vlab-code-editor-host .ace_editor .ace_variable.ace_parameter {
+  color: #8a4b08;
+}
+
+.vlab-code-editor-host .ace_editor .ace_invalid {
+  color: #8f1d18;
+  background: #fff0ef;
+}
+
 .vlab-code-editor-host .ace_gutter {
   border-right: 1px solid #e2e8ea;
   background: #f3f6f7;
