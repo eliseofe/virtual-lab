@@ -77,6 +77,9 @@ test("#203 production smoke reads readiness from the actual editor surface insid
   assert.match(smoke, /data-vlab-artifact-editor-surface="true"/);
   assert.match(smoke, /ready: surface\?\.dataset\.vlabCodeEditorReady/);
   assert.match(smoke, /engine: surface\?\.dataset\.vlabEditorEngine/);
+  assert.match(smoke, /aceEditor\.session\.getTokens\(row\)/);
+  assert.match(smoke, /constant\\\.numeric/);
+  assert.doesNotMatch(smoke, /querySelectorAll\('\.ace_keyword, \.ace_comment, \.ace_string, \.ace_numeric'\)/);
 });
 
 test("#203 does not hardcode Virtual Lab scientific symbols as fake semantic highlighting", async () => {
