@@ -142,6 +142,8 @@ try {
   await cdp.send("Runtime.enable");
   await cdp.send("Page.enable");
 
+  await waitReady(cdp.send);
+
   const states = {};
   for (const viewport of viewports) {
     await cdp.send("Emulation.setDeviceMetricsOverride", {
@@ -152,8 +154,7 @@ try {
       screenWidth: viewport.width,
       screenHeight: viewport.height,
     });
-    await cdp.send("Page.reload", { ignoreCache: true });
-    await waitReady(cdp.send);
+    await sleep(120);
     states[viewport.label] = await inspectLibrary(cdp.send, viewport.label, viewport.twoPane);
   }
 
