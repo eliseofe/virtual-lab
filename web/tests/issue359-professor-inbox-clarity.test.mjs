@@ -7,7 +7,7 @@ const inbox = readFileSync(new URL("../src/professor-inbox.js", import.meta.url)
 test("#359 keeps the default Professor card compact and science-oriented", () => {
   assert.match(inbox, /title\.textContent = candidateName\(request\)/);
   assert.match(inbox, /REQUEST_CLASS_LABELS\[request\.request_class\]/);
-  assert.match(inbox, /status\.textContent = request\.professor_disposition\.replaceAll/);
+  assert.match(inbox, /status\.textContent = currentState\.replaceAll/);
   assert.match(inbox, /definition\.textContent = candidateDefinition\(request\)/);
   assert.match(inbox, /Professor guidance/);
   assert.match(inbox, /\["Accept", "accepted", true\]/);

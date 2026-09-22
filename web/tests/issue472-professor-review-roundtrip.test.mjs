@@ -28,7 +28,7 @@ test("#472 keeps exactly five Professor decisions plus pending as system state",
     '["Defer", "deferred", false]',
     '["Future", "future", false]',
   ]) assert.ok(inbox.includes(pair), pair);
-  assert.match(inbox, /request\.professor_disposition === "pending"/);
+  assert.match(inbox, /requestCurrentState\(request\) === "pending"/);
   assert.match(inbox, /Professor guidance/);
   assert.match(inbox, /Revise requires Professor guidance/);
   assert.doesNotMatch(inbox, /approve\.textContent = "Approve"/);

@@ -13,7 +13,8 @@
     "Development claim/completion functions clear the live accepted disposition automatically while append-only Professor review history remains unchanged.",
     "Existing implemented requests are reconciled to implemented-only current state.",
     "Professor inbox renders the canonical current lifecycle, and MCP capability-request interface v9 declares request_status as the current-state authority.",
-    "Every MCP capability-request contract reference is aligned on vlab.capability-request/9."
+    "Every MCP capability-request contract reference is aligned on vlab.capability-request/9.",
+    "Historical regression tests were advanced from the superseded v8/3.15 and disposition-as-current-state contract to the v9/3.16 single-current-lifecycle contract."
   ],
   "close_issue": 522
 }

@@ -63,8 +63,10 @@ test("#473 keeps reviewed non-binary candidates unavailable and discoverable", (
 });
 
 test("#473 pending Professor inbox semantics use disposition, while visual redesign remains for successor", () => {
-  assert.match(inbox, /request\.professor_disposition === "pending"/);
-  assert.match(inbox, /left\.professor_disposition === "pending"/);
+  assert.match(inbox, /function requestCurrentState\(request\)/);
+  assert.match(inbox, /requestCurrentState\(request\) === "pending"/);
+  assert.match(inbox, /requestCurrentState\(left\) === "pending"/);
+  assert.match(inbox, /requestCurrentState\(right\) === "pending"/);
   assert.match(inbox, /request\.professor_disposition !== "pending"/);
   assert.match(inbox, /professor_disposition, professor_guidance, professor_disposition_reviewed_at/);
   for (const pair of ['["Accept", "accepted", true]', '["Reject", "rejected", false]', '["Revise", "revise", false]', '["Defer", "deferred", false]', '["Future", "future", false]']) assert.ok(inbox.includes(pair), pair);
