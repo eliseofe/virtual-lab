@@ -30,6 +30,26 @@ export const METRICS_LANGUAGE = "python-vlab-metrics/0.1";
 export const METRICS_IR_SCHEMA = "vlab.metrics-ir/0.1";
 export const METRIC_MEASUREMENT_PHASE = "post-physics-wrapped-state/1";
 
+export const METRIC_OBSERVATION_FIELDS = [
+  "snapshot.scientific_time",
+  "snapshot.agent_count",
+  "snapshot.agents",
+  "snapshot.agents[].position",
+  "snapshot.agents[].heading",
+  "snapshot.agents[].heading_angle",
+];
+
+export function metricsCompletionItems({ parameters = {} } = {}) {
+  const items = [
+    ...Object.keys(CALL_SIGNATURES).map((value) => ({ value, caption: value, score: 900, meta: "supported function" })),
+    ...METRIC_OBSERVATION_FIELDS
+      .filter((value) => !value.includes("[]"))
+      .map((value) => ({ value, caption: value, score: 1000, meta: "snapshot field" })),
+    ...Object.keys(parameters).map((value) => ({ value, caption: value, score: 800, meta: "parameter" })),
+  ];
+  return [...new Map(items.map((item) => [item.value, item])).values()];
+}
+
 export class MetricsCompileError extends Error {
   constructor(category, message, line = null, column = null) {
     const location = line == null ? "" : `line ${line}${column == null ? "" : `:${column}`}: `;
@@ -833,7 +853,7 @@ export function compileMetrics(source, { parameters = {} } = {}) {
     measurement_phase: METRIC_MEASUREMENT_PHASE,
     observation_contract: {
       mode: "read-only-global-snapshot",
-      fields: ["snapshot.scientific_time", "snapshot.agent_count", "snapshot.agents[].position", "snapshot.agents[].heading", "snapshot.agents[].heading_angle"],
+      fields: [...METRIC_OBSERVATION_FIELDS.filter((field) => field !== "snapshot.agents")],
     },
     metrics,
   };
