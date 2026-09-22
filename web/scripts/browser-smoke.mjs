@@ -379,13 +379,18 @@ def reference_norm(snapshot):
         await sleep(100);
         const referenceState = await state(cdp.send);
         const authoringState = await cdp.send("Runtime.evaluate", {
-          expression: "document.querySelector('#authoring-runtime-state')?.dataset.state ?? null",
+          expression: `JSON.stringify({
+            runtime: document.querySelector('#authoring-runtime-state')?.dataset.state ?? null,
+            setup: document.querySelector('#setup-feedback')?.dataset.state ?? null,
+            controller: document.querySelector('#compile-feedback')?.dataset.state ?? null,
+          })`,
           returnByValue: true,
         });
+        const appliedState = JSON.parse(authoringState?.result?.value ?? "null");
         if (referenceState?.statusState === "error") {
           throw new Error(`named-reference synthetic experiment failed to apply: ${JSON.stringify(referenceState)}`);
         }
-        if (authoringState?.result?.value === "clean" && referenceState?.setupFeedback?.includes("valid")) {
+        if (appliedState?.runtime === "clean" && appliedState?.setup === "success" && appliedState?.controller === "success") {
           referenceReady = true;
           break;
         }
