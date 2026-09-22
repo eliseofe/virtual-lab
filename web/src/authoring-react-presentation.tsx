@@ -2,6 +2,7 @@ import { Badge, Button, Group, Paper, Select, Stack, Title } from '@mantine/core
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ArtifactCodeEditor, focusArtifactLine, openArtifactSearch } from './authoring-code-editor';
+import { artifactCompletionItems, collectArtifactDiagnostics } from './authoring-language-support.js';
 import { artifactStructureSafe, symbolLabel } from './authoring-structure.js';
 import {
   applyAuthoringChanges,
@@ -65,6 +66,19 @@ export function AuthoringPresentation() {
     return artifactStructureSafe(selectedArtifact.id, selectedArtifact.source.value);
   }, [selectedArtifact?.id, selectedArtifact?.source, sourceVersion]);
 
+  const authoringSupport = useMemo(() => {
+    if (!snapshot) return { diagnostics: {}, completions: {} };
+    void sourceVersion;
+    const sources = Object.fromEntries(
+      snapshot.artifacts.map((artifact) => [artifact.id, artifact.source?.value ?? '']),
+    );
+    const diagnostics = collectArtifactDiagnostics(sources);
+    const completions = Object.fromEntries(
+      snapshot.artifacts.map((artifact) => [artifact.id, artifactCompletionItems(artifact.id, sources)]),
+    );
+    return { diagnostics, completions };
+  }, [snapshot, sourceVersion]);
+
   if (!snapshot) return null;
 
   const activate = (id: string, focus = false) => {
@@ -117,6 +131,9 @@ export function AuthoringPresentation() {
     value: String(index),
     label: `${symbolLabel(symbol)} · L${symbol.line}`,
   })) ?? [];
+  const selectedDiagnostics = selectedArtifact
+    ? (authoringSupport.diagnostics[selectedArtifact.id] ?? [])
+    : [];
 
   const tabs = createPortal(
     <Paper className="vlab-react-authoring-tabs-shell" radius="md" p="xs">
@@ -135,9 +152,16 @@ export function AuthoringPresentation() {
               onKeyDown={(event) => onTabKeyDown(event, artifact.id)}
               data-vlab-authoring-tab={artifact.id}
               data-dirty={artifact.dirty ? 'true' : undefined}
+              data-vlab-diagnostic-count={authoringSupport.diagnostics[artifact.id]?.length ?? 0}
+              aria-label={`${artifact.label}${artifact.dirty ? ', unsaved changes' : ''}${authoringSupport.diagnostics[artifact.id]?.length ? `, ${authoringSupport.diagnostics[artifact.id].length} error${authoringSupport.diagnostics[artifact.id].length === 1 ? '' : 's'}` : ''}`}
               className="vlab-react-authoring-tab"
             >
               {artifact.label}{artifact.dirty ? ' •' : ''}
+              {(authoringSupport.diagnostics[artifact.id]?.length ?? 0) > 0 && (
+                <Badge size="xs" color="red" variant="filled" ml={6}>
+                  {authoringSupport.diagnostics[artifact.id].length}
+                </Badge>
+              )}
             </Button>
           ))}
         </Group>
@@ -175,6 +199,40 @@ export function AuthoringPresentation() {
             </Button>
           </Group>
         )}
+        {selectedArtifact && selectedDiagnostics.length > 0 && (
+          <Stack
+            gap={4}
+            role="alert"
+            aria-live="polite"
+            data-vlab-authoring-diagnostics={selectedArtifact.id}
+            data-vlab-authoring-diagnostic-count={selectedDiagnostics.length}
+            className="vlab-react-authoring-diagnostics"
+          >
+            {selectedDiagnostics.map((diagnostic, index) => {
+              const location = diagnostic.line == null
+                ? 'Source'
+                : `L${diagnostic.line}${diagnostic.column == null ? '' : `:${diagnostic.column}`}`;
+              return (
+                <Button
+                  key={`${diagnostic.artifact}-${diagnostic.line ?? 'global'}-${index}`}
+                  variant="light"
+                  color={diagnostic.severity === 'warning' ? 'yellow' : 'red'}
+                  size="compact-sm"
+                  justify="flex-start"
+                  onClick={() => {
+                    if (diagnostic.line != null) focusArtifactLine(selectedArtifact.id, diagnostic.line);
+                  }}
+                  data-vlab-authoring-diagnostic
+                  data-vlab-diagnostic-line={diagnostic.line ?? ''}
+                  data-vlab-diagnostic-column={diagnostic.column ?? ''}
+                  aria-label={`${location}: ${diagnostic.message}`}
+                >
+                  {location} · {diagnostic.message}
+                </Button>
+              );
+            })}
+          </Stack>
+        )}
       </Stack>
     </Paper>,
     snapshot.tabsMount,
@@ -189,6 +247,8 @@ export function AuthoringPresentation() {
         format={artifact.format}
         source={artifact.source}
         selected={artifact.selected}
+        diagnostics={authoringSupport.diagnostics[artifact.id] ?? []}
+        completionItems={authoringSupport.completions[artifact.id] ?? []}
       />,
       artifact.editorMount,
       `authoring-editor-${artifact.id}`,
