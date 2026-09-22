@@ -24,7 +24,9 @@ test("#203 mounts a real Ace foundation through React without replacing source a
   assert.match(editor, /ACE_PYTHON_MODE_SCRIPT_URL/);
   assert.match(editor, /vlabAcePythonMode/);
   assert.match(editor, /ace\.require\?\.\('ace\/mode\/python'\)/);
-  assert.match(editor, /applySyntaxMode\(editor, host, format\)/);
+  assert.match(editor, /applySyntaxMode\(editor, host, language\)/);
+  assert.match(editor, /vlabArtifactLanguage/);
+  assert.doesNotMatch(editor, /pythonLike\(format\)/);
   assert.match(editor, /session\.setUseWorker\(false\)/);
   assert.match(editor, /showGutter: true/);
   assert.doesNotMatch(editor, /codemirror|CodeMirror|@codemirror/);
@@ -60,9 +62,11 @@ test("#203 authoritative revision loads reset editor state without manufacturing
 });
 
 test("#203 mirrors source read-only state and retains textarea fallback", async () => {
-  const [editor, css] = await Promise.all([
+  const [editor, css, html, artifacts] = await Promise.all([
     text("../src/authoring-code-editor.tsx"),
     text("../src/react-chrome.css"),
+    text("../src/index.html"),
+    text("../src/experiment-artifacts.js"),
   ]);
 
   assert.match(editor, /editor\.setReadOnly\(source\.readOnly\)/);
@@ -76,6 +80,11 @@ test("#203 mirrors source read-only state and retains textarea fallback", async 
   assert.match(css, /\.vlab-code-editor-host \.ace_editor \.ace_string/);
   assert.match(css, /\.vlab-code-editor-host \.ace_editor \.ace_comment/);
   assert.match(css, /\.vlab-code-editor-host \.ace_editor \.ace_constant\.ace_numeric/);
+  for (const id of ["configuration", "initialization", "controller", "metrics"]) {
+    assert.match(html, new RegExp(`data-experiment-artifact-id="${id}"[^>]*data-experiment-artifact-language="python"`));
+  }
+  assert.match(artifacts, /experimentArtifactLanguage = artifactEditorLanguage\(artifact\)/);
+  assert.doesNotMatch(artifacts, /editorSelector/);
 });
 
 test("#203 production smoke reads readiness from the actual editor surface inside the React portal mount", async () => {
@@ -89,6 +98,10 @@ test("#203 production smoke reads readiness from the actual editor surface insid
   assert.match(smoke, /getComputedStyle\(editor\.container\)\.color/);
   assert.match(smoke, /visiblyHighlightedColors/);
   assert.match(smoke, /Rendered syntax highlighting failed/);
+  assert.match(smoke, /vlab\.config\/0\.2/);
+  assert.match(smoke, /vlab\.initializer-state\/0\.2/);
+  assert.match(smoke, /python-vlab\/0\.1/);
+  assert.match(smoke, /sourceLanguage/);
 });
 
 test("#203 does not hardcode Virtual Lab scientific symbols as fake semantic highlighting", async () => {
