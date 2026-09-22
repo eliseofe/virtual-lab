@@ -13,8 +13,8 @@
     "Rust generates Controller reference observations only for configured agent-reference sensor links that pass their finite/unlimited range rule; relative geometry reuses the simulator minimum-image helper and an unavailable reference has no vector entry.",
     "Controller exposes obs.references.<name>.available and obs.references.<name>.relative_position; Metrics exposes snapshot.references.<name>.position from the same simulator-owned reference state.",
     "Unit regressions cover informed/uninformed availability, finite range, periodic minimum-image geometry, Controller relative-position execution and Metrics reference-position reads.",
-    "Production browser smoke applies and runs an isolated synthetic named-reference Experiment and verifies a live Metric computed from the canonical reference position without modifying a stored user Experiment.",
-    "Dynamic references, optional executable-artifact dispatch, arbitrary world-object discovery and paper-specific pursuit/capture behavior remain outside this completed scope."
+    "Dynamic references, optional executable-artifact dispatch, arbitrary world-object discovery and paper-specific pursuit/capture behavior remain outside this completed scope.",
+    "Production browser smoke applies and runs an isolated synthetic named-reference Experiment, waits on the actual runtime/setup/controller success states, and verifies a live Metric computed from the canonical reference position without modifying a stored user Experiment."
   ],
   "close_issue": 504
 }
