@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.111.0";
-import { applyExperimentArtifacts, captureExperimentArtifacts } from "./experiment-artifacts.js";
+import { captureExperimentArtifacts } from "./experiment-artifacts.js";
 import { isCatalogSelectValue } from "./experiment-catalog.js";
 
 const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
@@ -641,8 +641,8 @@ function decorateShowcaseSource(entry) {
     origin.dataset.kind = "readonly";
     origin.textContent = "Showcase · Read-only";
   }
-  if (location) location.textContent = "Showcase";
-  metadataRevision.textContent = entry.source_revision == null ? "showcase · curated snapshot" : `showcase · source r${entry.source_revision}`;
+  if (location) location.textContent = `Showcase / ${entry.showcase_collection_name || "Uncategorized"}`;
+  metadataRevision.textContent = entry.source_revision == null ? "Showcase · Catalog" : `Showcase · R${entry.source_revision}`;
   ui.current.hidden = false;
   ui.currentTitle.textContent = entry.title;
   ui.currentMeta.textContent = entry.source_revision == null ? "Curated snapshot." : `Curated revision ${entry.source_revision}.`;
@@ -659,10 +659,10 @@ async function loadShowcaseFromLocation() {
   }
 
   await waitForRegistryReady();
-  await forceCatalogWorkspace();
-  applyExperimentArtifacts({ artifacts: entry.artifacts });
-  await waitForSimulatorReady();
-  applySetup.click();
+  const library = window.vlabExperimentLibraryBridge;
+  if (!library) throw new Error("Experiment Library bridge is not ready.");
+  const opened = await library.openShowcase(entry);
+  if (opened === false) return;
   decorateShowcaseSource(entry);
   await waitForSetupApplied();
   await startShowcaseRun();
