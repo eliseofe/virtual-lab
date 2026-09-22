@@ -119,7 +119,7 @@ This UI remains an Experiment/product administration surface. It does not embed 
 
 ## Research-AI request action — deployed
 
-Authenticated Student and Professor MCP sessions expose the durable closure path under `vlab.capability-request/7`: `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure`.
+Authenticated Student and Professor MCP sessions expose the durable closure path under `vlab.capability-request/9`: `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure`.
 
 Normal no-ID `read_workspace` discovery exposes the stable authoring/platform contract, implemented canonical capabilities, unavailable candidate capabilities, and unavailable candidate contract deltas as distinct product surfaces.
 

@@ -12,7 +12,8 @@
     "Database constraints forbid accepted disposition on in-progress or implemented requests.",
     "Development claim/completion functions clear the live accepted disposition automatically while append-only Professor review history remains unchanged.",
     "Existing implemented requests are reconciled to implemented-only current state.",
-    "Professor inbox renders the canonical current lifecycle, and MCP capability-request interface v9 declares request_status as the current-state authority."
+    "Professor inbox renders the canonical current lifecycle, and MCP capability-request interface v9 declares request_status as the current-state authority.",
+    "Every MCP capability-request contract reference is aligned on vlab.capability-request/9."
   ],
   "close_issue": 522
 }
