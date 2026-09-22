@@ -214,14 +214,11 @@ function applyAuthoringSupport(
   host.dataset.vlabCompletionEnabled = String(completionItems.length > 0);
 }
 
-function pythonLike(format: string) {
-  return format === 'python-vlab' || format.startsWith('python-vlab-');
-}
-
-function applySyntaxMode(editor: any, host: HTMLElement, format: string) {
-  const python = pythonLike(format);
+function applySyntaxMode(editor: any, host: HTMLElement, language: string) {
+  const python = language === 'python';
   const modeId = python ? 'ace/mode/python' : 'ace/mode/text';
   if (editor.session.$modeId !== modeId) editor.session.setMode(modeId);
+  host.dataset.vlabArtifactLanguage = language;
   host.dataset.vlabSyntaxMode = python ? 'python' : 'plain';
   host.dataset.vlabAceModeId = editor.session.$modeId ?? modeId;
 }
@@ -234,7 +231,7 @@ function emitInteractionBoundary(source: HTMLTextAreaElement) {
 export function ArtifactCodeEditor({
   id,
   label,
-  format,
+  language,
   source,
   selected,
   diagnostics,
@@ -242,7 +239,7 @@ export function ArtifactCodeEditor({
 }: {
   id: string;
   label: string;
-  format: string;
+  language: string;
   source: HTMLTextAreaElement;
   selected: boolean;
   diagnostics: AuthoringDiagnostic[];
@@ -270,7 +267,7 @@ export function ArtifactCodeEditor({
         const ace = await loadAce();
         await Promise.all([
           loadAceLanguageTools(),
-          pythonLike(format) ? loadAcePythonMode() : Promise.resolve(),
+          language === 'python' ? loadAcePythonMode() : Promise.resolve(),
         ]);
         if (disposed || !hostRef.current) return;
 
@@ -295,7 +292,7 @@ export function ArtifactCodeEditor({
         editor.renderer.setShowGutter(true);
         editor.session.setUseWorker(false);
         editor.session.setFoldStyle?.('markbeginend');
-        applySyntaxMode(editor, host, format);
+        applySyntaxMode(editor, host, language);
         editor.setReadOnly(source.readOnly);
         editor.setValue(source.value, -1);
         editor.session.getUndoManager().reset();
@@ -317,7 +314,7 @@ export function ArtifactCodeEditor({
           syncingFromSource = true;
           try {
             editor.setValue(source.value, -1);
-            applySyntaxMode(editor, host, format);
+            applySyntaxMode(editor, host, language);
             editor.session.getUndoManager().reset();
             editor.clearSelection();
           } finally {
@@ -377,7 +374,7 @@ export function ArtifactCodeEditor({
       delete host.dataset.vlabCompletionEnabled;
       delete host.dataset.vlabCodeEditorError;
     };
-  }, [format, id, label, source]);
+  }, [id, label, language, source]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -389,10 +386,10 @@ export function ArtifactCodeEditor({
     const editor = editorRef.current;
     const host = hostRef.current;
     if (!selected || !editor || !host) return;
-    applySyntaxMode(editor, host, format);
+    applySyntaxMode(editor, host, language);
     editor.resize?.(true);
     editor.renderer?.updateFull?.(true);
-  }, [selected, format]);
+  }, [selected, language]);
 
   return (
     <div
