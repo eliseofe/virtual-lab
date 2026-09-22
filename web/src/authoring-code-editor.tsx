@@ -1,30 +1,26 @@
 import { useEffect, useRef } from 'react';
 
-const CODEMIRROR_URL = 'https://esm.sh/codemirror@6.0.2?bundle';
+const CODEMIRROR_URL = 'https://esm.sh/codemirror@6.0.2';
+const CODEMIRROR_PYTHON_URL = 'https://esm.sh/@codemirror/lang-python@6.2.1';
 const SOURCE_REPLACED_EVENT = 'vlab:artifact-source-replaced';
 
 type CodeMirrorRuntime = {
   EditorView: any;
-  EditorState: any;
-  Compartment: any;
-  Decoration: any;
-  ViewPlugin: any;
-  minimalSetup: any;
-  lineNumbers: () => any;
+  basicSetup: any;
+  python: () => any;
 };
 
 let runtimePromise: Promise<CodeMirrorRuntime> | null = null;
 
 function loadCodeMirror(): Promise<CodeMirrorRuntime> {
   if (!runtimePromise) {
-    runtimePromise = import(/* @vite-ignore */ CODEMIRROR_URL).then((core) => ({
+    runtimePromise = Promise.all([
+      import(/* @vite-ignore */ CODEMIRROR_URL),
+      import(/* @vite-ignore */ CODEMIRROR_PYTHON_URL),
+    ]).then(([core, python]) => ({
       EditorView: core.EditorView,
-      EditorState: core.EditorState,
-      Compartment: core.Compartment,
-      Decoration: core.Decoration,
-      ViewPlugin: core.ViewPlugin,
-      minimalSetup: core.minimalSetup,
-      lineNumbers: core.lineNumbers,
+      basicSetup: core.basicSetup,
+      python: python.python,
     }));
   }
   return runtimePromise;
@@ -37,38 +33,6 @@ function pythonLike(format: string) {
 function emitInteractionBoundary(source: HTMLTextAreaElement) {
   source.dispatchEvent(new FocusEvent('blur'));
   source.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-}
-
-function pythonLikeSyntax(runtime: CodeMirrorRuntime) {
-  const token = /#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:def|class|if|elif|else|for|while|in|return|and|or|not|is|None|True|False|import|from|as|pass|break|continue)\b|\b(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\b/g;
-
-  const buildDecorations = (view: any) => {
-    const ranges: any[] = [];
-    const text = view.state.doc.toString();
-    token.lastIndex = 0;
-    for (let match = token.exec(text); match; match = token.exec(text)) {
-      const value = match[0];
-      let className = 'vlab-syntax-keyword';
-      if (value.startsWith('#')) className = 'vlab-syntax-comment';
-      else if (value.startsWith('"') || value.startsWith("'")) className = 'vlab-syntax-string';
-      else if (/^(?:\d|\.)/.test(value)) className = 'vlab-syntax-number';
-      ranges.push(runtime.Decoration.mark({ class: className }).range(match.index, match.index + value.length));
-    }
-    return runtime.Decoration.set(ranges, true);
-  };
-
-  return runtime.ViewPlugin.fromClass(
-    class {
-      decorations: any;
-      constructor(view: any) {
-        this.decorations = buildDecorations(view);
-      }
-      update(update: any) {
-        if (update.docChanged) this.decorations = buildDecorations(update.view);
-      }
-    },
-    { decorations: (plugin: any) => plugin.decorations },
-  );
 }
 
 export function ArtifactCodeEditor({
@@ -102,60 +66,55 @@ export function ArtifactCodeEditor({
         const runtime = await loadCodeMirror();
         if (disposed || !hostRef.current) return;
 
-        const readOnly = new runtime.Compartment();
-        const readOnlyExtension = () => [
-          runtime.EditorState.readOnly.of(source.readOnly),
-          runtime.EditorView.editable.of(!source.readOnly),
-        ];
-
-        const updateListener = runtime.EditorView.updateListener.of((update: any) => {
-          if (!update.docChanged || syncingFromSource) return;
-          const next = update.state.doc.toString();
-          if (source.value !== next) source.value = next;
-          source.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-
-        const interactionBoundary = runtime.EditorView.domEventHandlers({
-          blur: () => {
-            emitInteractionBoundary(source);
-            return false;
-          },
-        });
-
-        const contentAttributes = runtime.EditorView.contentAttributes.of({
-          'aria-label': source.getAttribute('aria-label') || label,
-          'aria-multiline': 'true',
-          'autocomplete': 'off',
-          'autocapitalize': 'off',
-          'spellcheck': 'false',
-          'data-vlab-code-editor-content': id,
-        });
-
         const extensions = () => [
-          runtime.minimalSetup,
-          runtime.lineNumbers(),
-          ...(pythonLike(format) ? [pythonLikeSyntax(runtime)] : []),
-          readOnly.of(readOnlyExtension()),
-          updateListener,
-          interactionBoundary,
-          contentAttributes,
+          runtime.basicSetup,
+          ...(pythonLike(format) ? [runtime.python()] : []),
+          runtime.EditorView.editable.of(!source.readOnly),
+          runtime.EditorView.updateListener.of((update: any) => {
+            if (!update.docChanged || syncingFromSource) return;
+            const next = update.state.doc.toString();
+            if (source.value !== next) source.value = next;
+            source.dispatchEvent(new Event('input', { bubbles: true }));
+          }),
+          runtime.EditorView.domEventHandlers({
+            blur: () => {
+              emitInteractionBoundary(source);
+              return false;
+            },
+          }),
+          runtime.EditorView.contentAttributes.of({
+            'aria-label': source.getAttribute('aria-label') || label,
+            'aria-multiline': 'true',
+            'autocomplete': 'off',
+            'autocapitalize': 'off',
+            'spellcheck': 'false',
+            'data-vlab-code-editor-content': id,
+          }),
         ];
 
-        view = new runtime.EditorView({
-          doc: source.value,
-          extensions: extensions(),
-          parent: hostRef.current,
-        });
-        viewRef.current = view;
+        const mountEditor = (doc: string) => {
+          if (view) view.destroy();
+          view = new runtime.EditorView({
+            doc,
+            extensions: extensions(),
+            parent: hostRef.current,
+          });
+          viewRef.current = view;
+        };
+
+        mountEditor(source.value);
 
         resetFromAuthoritativeSource = () => {
           if (!view) return;
           syncingFromSource = true;
           try {
-            view.setState(runtime.EditorState.create({
-              doc: source.value,
-              extensions: extensions(),
-            }));
+            view.dispatch({
+              changes: {
+                from: 0,
+                to: view.state.doc.length,
+                insert: source.value,
+              },
+            });
           } finally {
             syncingFromSource = false;
           }
@@ -163,7 +122,8 @@ export function ArtifactCodeEditor({
 
         const syncReadOnly = () => {
           if (!view) return;
-          view.dispatch({ effects: readOnly.reconfigure(readOnlyExtension()) });
+          const doc = view.state.doc.toString();
+          mountEditor(doc);
           host.dataset.vlabCodeEditorReadonly = String(source.readOnly);
         };
 
@@ -176,7 +136,7 @@ export function ArtifactCodeEditor({
 
         source.dataset.vlabEditorEnhanced = 'true';
         host.dataset.vlabCodeEditorReady = 'true';
-        host.dataset.vlabSyntaxMode = pythonLike(format) ? 'python-like' : 'plain';
+        host.dataset.vlabSyntaxMode = pythonLike(format) ? 'python' : 'plain';
         host.dataset.vlabCodeEditorReadonly = String(source.readOnly);
         delete host.dataset.vlabCodeEditorError;
         view.requestMeasure();
