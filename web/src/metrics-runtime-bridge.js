@@ -6,6 +6,7 @@ import "./result-persistence.js";
 const NativeWorker = globalThis.Worker;
 let activeSimulationWorker = null;
 let activeParameters = {};
+let activeReferences = [];
 let lastBatch = null;
 let lastBuffer = null;
 let lastRuntimeContext = {};
@@ -35,7 +36,10 @@ function dispatch(name, detail = {}) {
 }
 
 function compiledMetrics(parameters) {
-  const ir = compileMetrics(metricSource(), { parameters: parameterTypes(parameters) });
+  const ir = compileMetrics(metricSource(), {
+    parameters: parameterTypes(parameters),
+    references: activeReferences,
+  });
   dispatch("vlab:metrics-definition", { ir });
   return ir;
 }
@@ -45,7 +49,10 @@ function rememberRuntimeMessage(message) {
   if (message.type === "initialize" || message.type === "apply-setup") {
     lastRuntimeContext = {
       ...lastRuntimeContext,
-      setup: { simulation: message.setup?.simulation ?? null },
+      setup: {
+        simulation: message.setup?.simulation ?? null,
+        worldReferences: message.setup?.worldReferences ?? null,
+      },
       controllerIr: message.ir ?? null,
       parameters: message.parameters ?? {},
       metricsIr: message.metricsIr ?? null,
@@ -186,6 +193,9 @@ class MetricsAwareWorker extends NativeWorker {
     let next = message;
     if (message && ["initialize", "apply-setup", "apply-controller"].includes(message.type)) {
       activeParameters = message.parameters ?? activeParameters;
+      if (message.type === "initialize" || message.type === "apply-setup") {
+        activeReferences = message.setup?.worldReferences?.references?.map(({ name }) => name) ?? [];
+      }
       next = {
         ...message,
         metricsIr: compiledMetrics(activeParameters),
