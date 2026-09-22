@@ -17,9 +17,9 @@ async function sources() {
 test("issue #157 keeps collections out of primary experiment navigation", async () => {
   const [shell, organization] = await sources();
   assert.match(shell, /import "\.\/collection-organization\.js";/);
-  assert.match(organization, /\.experiment-browser-body \{ grid-template-columns: minmax\(0, 1fr\) !important; \}/);
-  assert.match(organization, /setHidden\(filters, true\)/);
-  assert.match(organization, /Collections are optional metadata, never navigation/);
+  assert.match(organization, /#480 owns discovery/);
+  assert.match(organization, /vlab-refresh-experiment-library/);
+  assert.doesNotMatch(organization, /experiment-browser-body|experiment-browser-filters/);
   assert.doesNotMatch(organization, /filterButton\(|browserCollection/);
 });
 
