@@ -18,6 +18,13 @@ test("#522 makes status the only current lifecycle after Professor review", () =
   assert.match(migration, /where status in \('in_progress', 'implemented'\)[\s\S]*professor_disposition is not null/);
 });
 
+test("#522 normalizes legacy rows before installing the stricter lifecycle constraint", () => {
+  const drop = migration.indexOf("drop constraint if exists capability_requests_status_disposition_consistency");
+  const normalize = migration.indexOf("update public.capability_requests\nset professor_disposition = null");
+  const add = migration.indexOf("add constraint capability_requests_status_disposition_consistency");
+  assert.ok(drop >= 0 && normalize > drop && add > normalize, "migration must drop old rule, normalize rows, then add new rule");
+});
+
 test("#522 preserves accepted provenance without recording lifecycle clearing as a new review", () => {
   assert.match(migration, /new\.professor_disposition is null or new\.professor_disposition = 'pending'/);
   assert.match(migration, /capability_request_professor_reviews/);

@@ -54,6 +54,16 @@ alter table public.candidate_capabilities
 alter table public.candidate_contract_deltas
   alter column professor_disposition drop not null;
 
+-- Remove the old consistency rule before normalizing rows that it deliberately forced
+-- to keep accepted alongside in_progress/implemented.
+alter table public.capability_requests
+  drop constraint if exists capability_requests_status_disposition_consistency;
+
+update public.capability_requests
+set professor_disposition = null
+where status in ('in_progress', 'implemented')
+  and professor_disposition is not null;
+
 alter table public.capability_requests
   drop constraint if exists capability_requests_professor_disposition_check,
   add constraint capability_requests_professor_disposition_check
@@ -61,7 +71,6 @@ alter table public.capability_requests
       professor_disposition is null
       or professor_disposition in ('pending', 'accepted', 'rejected', 'revise', 'deferred', 'future')
     ),
-  drop constraint if exists capability_requests_status_disposition_consistency,
   add constraint capability_requests_status_disposition_consistency
     check (
       (status = 'requested' and professor_disposition in ('pending', 'revise', 'deferred', 'future'))
@@ -294,13 +303,6 @@ begin
   );
 end;
 $function$;
-
--- Reconcile existing advanced lifecycle rows. The acceptance itself remains in
--- capability_request_professor_reviews and the review attribution columns.
-update public.capability_requests
-set professor_disposition = null
-where status in ('in_progress', 'implemented')
-  and professor_disposition is not null;
 
 -- Defensive mirror reconciliation in case a candidate row existed before its request trigger fired.
 update public.candidate_capabilities c
