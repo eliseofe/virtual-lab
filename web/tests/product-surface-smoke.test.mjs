@@ -73,4 +73,8 @@ test('showcase smoke tolerates only Chrome navigation-transition evaluation fail
   assert.match(showcaseSmoke, /await sleep\(100\)/);
   assert.match(showcaseSmoke, /latest\.worker === "ready"/);
   assert.match(showcaseSmoke, /latest\.library && latest\.bridge/);
+  assert.match(showcaseSmoke, /async function clickBrowseWhenReady\(send, label\)/);
+  assert.match(showcaseSmoke, /if \(browse && library && bridge && worker === "ready"\)/);
+  assert.match(showcaseSmoke, /browse\.click\(\)/);
+  assert.match(showcaseSmoke, /await clickBrowseWhenReady\(send, label\)/);
 });
