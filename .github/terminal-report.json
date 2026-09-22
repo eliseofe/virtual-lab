@@ -1,19 +1,20 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Static named world-reference state and Initialization authoring foundation are deployed",
-  "owner_impact": "Initialization can now define validated named static reference points and assign per-agent reference sensors with finite or unlimited range. The simulator stores one canonical initial reference state and reconstructs current reference state on reset, with periodic relative-position geometry already centralized for the next step. This ticket deliberately does not expose or advertise reference observations to Controller or Metrics yet, so existing Experiments and currently available authoring capabilities remain unchanged.",
+  "outcome": "Static named world references are available to selectively informed Controllers and read-only Metrics",
+  "owner_impact": "Experiments can define named static point references in Initialization, choose exactly which agents can sense each reference with finite or unlimited range, branch in one shared Controller on per-agent availability, read the local minimum-image relative-position vector when available, and analyze the same canonical reference position in Metrics. Named sensing is direct over configured agent-reference links, not a broad world search. The reference state remains structured for a future separately approved dynamics mechanism, but this scope adds no dynamic motion or optional executable artifact.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 504,
-    "text": "Epic #501 continues with #504 — add selective per-agent Controller reference sensing, expose the same reference state read-only to Metrics, then advertise and mark the capability implemented. #504 has not started yet."
+    "kind": "scope_complete",
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The approved #501 static named-world-reference capability scope is complete with #504 and the epic is being closed. No owner action or rebuild of the earlier scientific experiment is required. The separately reported Mac syntax-highlighting bugs/changes are a different follow-up lane and have not started in this ticket."
   },
   "technical_evidence": [
-    "Browser and MCP Initializer compilers remain byte-identical and emit vlab.initializer-state/0.4 with a vlab.world-references/0.1 payload.",
-    "Initialization validates stable identifier names, finite/in-arena reference positions, agent indices, duplicate definitions/assignments, undefined reference links, and finite positive or unlimited sensor ranges.",
-    "Rust owns separate initial and current WorldReferenceState values; reset reconstructs current state from the initial state, leaving a clean future dynamics seam without implementing dynamics.",
-    "Named-reference relative geometry reuses the simulator minimum-image helper; no neighbour-search/world-discovery path, Controller observation, Metrics surface, optional executable artifact, or paper-specific behavior is introduced.",
-    "The implemented-capability registry remains unchanged, so observation.named_reference_relative_position stays candidate_unavailable until #504.",
-    "Production highlighting smoke validates Ace session tokenizer output rather than viewport-dependent rendered token spans, preserving the syntax-highlighting assertion for hidden/inactive editor surfaces."
+    "Initialization emits vlab.world-references/0.1; browser and MCP Controller/Metrics compilers consume the same declared reference names and remain mirrored.",
+    "Rust generates Controller reference observations only for configured agent-reference sensor links that pass their finite/unlimited range rule; relative geometry reuses the simulator minimum-image helper and an unavailable reference has no vector entry.",
+    "Controller exposes obs.references.<name>.available and obs.references.<name>.relative_position; Metrics exposes snapshot.references.<name>.position from the same simulator-owned reference state.",
+    "Unit regressions cover informed/uninformed availability, finite range, periodic minimum-image geometry, Controller relative-position execution and Metrics reference-position reads.",
+    "Production browser smoke applies and runs an isolated synthetic named-reference Experiment and verifies a live Metric computed from the canonical reference position without modifying a stored user Experiment.",
+    "Dynamic references, optional executable-artifact dispatch, arbitrary world-object discovery and paper-specific pursuit/capture behavior remain outside this completed scope."
   ],
-  "close_issue": 503
+  "close_issue": 504
 }

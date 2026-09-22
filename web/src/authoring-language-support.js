@@ -86,8 +86,10 @@ export function collectArtifactDiagnostics(sources, { seed = 0 } = {}) {
     appendDiagnostic(diagnostics, "initialization", error);
   }
 
+  const references = initializer?.world_references?.references?.map(({ name }) => name) ?? [];
+
   try {
-    controller = compileController(sources.controller ?? "", { parameters: parameterTypes });
+    controller = compileController(sources.controller ?? "", { parameters: parameterTypes, references });
     if (environment) validateEnvironmentControllerPair(environment, controller);
     if (initializer) validateInitializerControllerPrivateState(initializer, controller);
   } catch (error) {
@@ -95,7 +97,7 @@ export function collectArtifactDiagnostics(sources, { seed = 0 } = {}) {
   }
 
   try {
-    compileMetrics(sources.metrics ?? "", { parameters: parameterTypes });
+    compileMetrics(sources.metrics ?? "", { parameters: parameterTypes, references });
   } catch (error) {
     appendDiagnostic(diagnostics, "metrics", error);
   }
@@ -116,9 +118,19 @@ export function artifactCompletionItems(id, sources) {
   }
   const parameters = config ? numericParameters(config) : {};
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
+  let references = [];
+  if (config) {
+    try {
+      const initializerConfig = { ...config, values: { ...config.values, SEED: 0 } };
+      const initializer = compileInitializer(sources.initialization ?? "", initializerConfig);
+      references = initializer.world_references?.references?.map(({ name }) => name) ?? [];
+    } catch {
+      // Reference completions remain conservative until Initialization parses.
+    }
+  }
 
-  if (id === "controller") return controllerCompletionItems({ parameters: parameterTypes });
-  if (id === "metrics") return metricsCompletionItems({ parameters: parameterTypes });
+  if (id === "controller") return controllerCompletionItems({ parameters: parameterTypes, references });
+  if (id === "metrics") return metricsCompletionItems({ parameters: parameterTypes, references });
 
   if (id === "initialization") {
     const items = Object.keys(parameters).map((name) => ({

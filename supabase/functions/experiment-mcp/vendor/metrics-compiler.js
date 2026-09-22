@@ -39,12 +39,18 @@ export const METRIC_OBSERVATION_FIELDS = [
   "snapshot.agents[].heading_angle",
 ];
 
-export function metricsCompletionItems({ parameters = {} } = {}) {
+export function metricsCompletionItems({ parameters = {}, references = [] } = {}) {
   const items = [
     ...Object.keys(CALL_SIGNATURES).map((value) => ({ value, caption: value, score: 900, meta: "supported function" })),
     ...METRIC_OBSERVATION_FIELDS
       .filter((value) => !value.includes("[]"))
       .map((value) => ({ value, caption: value, score: 1000, meta: "snapshot field" })),
+    ...references.map((name) => ({
+      value: `snapshot.references.${name}.position`,
+      caption: `snapshot.references.${name}.position`,
+      score: 1000,
+      meta: "reference snapshot",
+    })),
     ...Object.keys(parameters).map((value) => ({ value, caption: value, score: 800, meta: "parameter" })),
   ];
   return [...new Map(items.map((item) => [item.value, item])).values()];
@@ -831,12 +837,19 @@ export function metricsStructure(source) {
   return { language: METRICS_LANGUAGE, symbols };
 }
 
-export function compileMetrics(source, { parameters = {} } = {}) {
+export function compileMetrics(source, { parameters = {}, references = [] } = {}) {
   if (typeof source !== "string") throw new MetricsCompileError("syntax", "Metrics source must be a string");
   const parameterTypes = {};
   for (const [name, type] of Object.entries(parameters)) {
     if (type !== "scalar") throw new MetricsCompileError("type", `metric parameter '${name}' must be scalar`);
     parameterTypes[name] = "scalar";
+  }
+  const referenceNames = [...references];
+  const uniqueReferences = new Set(referenceNames);
+  if (uniqueReferences.size !== referenceNames.length) throw new MetricsCompileError("type", "world reference names must be unique");
+  for (const name of referenceNames) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new MetricsCompileError("type", `invalid world reference name '${name}'`);
+    parameterTypes[`snapshot.references.${name}.position`] = "vec2";
   }
   const metrics = parseMetricFunctions(source, parameterTypes);
   const ids = new Set();
@@ -853,8 +866,12 @@ export function compileMetrics(source, { parameters = {} } = {}) {
     measurement_phase: METRIC_MEASUREMENT_PHASE,
     observation_contract: {
       mode: "read-only-global-snapshot",
-      fields: [...METRIC_OBSERVATION_FIELDS.filter((field) => field !== "snapshot.agents")],
+      fields: [
+        ...METRIC_OBSERVATION_FIELDS.filter((field) => field !== "snapshot.agents"),
+        ...referenceNames.map((name) => `snapshot.references.${name}.position`),
+      ],
     },
+    references: referenceNames,
     metrics,
   };
 }

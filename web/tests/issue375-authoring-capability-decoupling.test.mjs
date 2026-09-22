@@ -88,7 +88,7 @@ test("#375 stable authoring contract no longer carries the current capability in
 });
 
 test("#375 implemented capabilities own typed concrete authoring surfaces", () => {
-  assert.equal(CANONICAL_CAPABILITY_BINDINGS.length, 13);
+  assert.equal(CANONICAL_CAPABILITY_BINDINGS.length, 14);
   assert.equal(browserBindings, edgeBindings, "browser and edge capability surfaces must remain byte-identical");
 
   const surfaces = CANONICAL_CAPABILITY_BINDINGS.flatMap((binding) =>

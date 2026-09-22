@@ -343,8 +343,76 @@ try {
       const replayRandomized = await state(cdp.send);
       if (replayRandomized?.runSeed !== randomizedSeed || Number(replayRandomized?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve the new seed: ${JSON.stringify(replayRandomized)}`);
 
-      console.log(JSON.stringify(replayRandomized, null, 2));
-      console.log("Browser reached simulator ready with Ace authoring, compiler-derived Outline, Find, folding, source-linked diagnostics, constrained completion, metrics runtime bridge, measured speed controls, and restart controls.");
+      const referenceInitializer = `def initialize(config, rng, place):
+    for i in range(config.N):
+        place(i, i * 0.01, 0.0, 0.0)
+    define_reference("goal", 4.9, 0.0)
+    set_agent_reference_sensor(0, "goal", None)
+    set_agent_reference_sensor(1, "goal", 0.1)
+`;
+      const referenceController = `class ReferenceSmokeAgent(Agent):
+    def step(self, obs):
+        if obs.references.goal.available:
+            return Motion(0.1 + 0.0 * norm(obs.references.goal.relative_position), 0.0)
+        else:
+            return Motion(0.0, 0.0)
+`;
+      const referenceMetrics = `@metric(id="reference.norm", name="Reference norm", sampling=every(0.1))
+def reference_norm(snapshot):
+    return norm(snapshot.references.goal.position)
+`;
+      await cdp.send("Runtime.evaluate", {
+        expression: `(() => {
+          const setSource = (selector, value) => {
+            const source = document.querySelector(selector);
+            source.value = value;
+            source.dispatchEvent(new Event('input', { bubbles: true }));
+          };
+          setSource('#initializer-source', ${JSON.stringify(referenceInitializer)});
+          setSource('#controller-source', ${JSON.stringify(referenceController)});
+          setSource('#metrics-source', ${JSON.stringify(referenceMetrics)});
+          document.querySelector('#apply-workspace').click();
+        })()`,
+      });
+      let referenceReady = false;
+      for (let referenceAttempt = 0; referenceAttempt < 80; referenceAttempt += 1) {
+        await sleep(100);
+        const referenceState = await state(cdp.send);
+        const authoringState = await cdp.send("Runtime.evaluate", {
+          expression: "document.querySelector('#authoring-runtime-state')?.dataset.state ?? null",
+          returnByValue: true,
+        });
+        if (referenceState?.statusState === "error") {
+          throw new Error(`named-reference synthetic experiment failed to apply: ${JSON.stringify(referenceState)}`);
+        }
+        if (authoringState?.result?.value === "clean" && referenceState?.setupFeedback?.includes("valid")) {
+          referenceReady = true;
+          break;
+        }
+      }
+      if (!referenceReady) throw new Error("named-reference synthetic experiment did not reach a clean applied state");
+
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#run').click()" });
+      await sleep(650);
+      const referenceRunState = await state(cdp.send);
+      if (referenceRunState?.statusState === "error") {
+        throw new Error(`named-reference synthetic experiment entered runtime error: ${JSON.stringify(referenceRunState)}`);
+      }
+      const referenceBatchResult = await cdp.send("Runtime.evaluate", {
+        expression: "JSON.stringify(globalThis.__vlabMetricRuntime.lastBatch())",
+        returnByValue: true,
+      });
+      const referenceBatch = JSON.parse(referenceBatchResult?.result?.value ?? "null");
+      const referenceSamples = referenceBatch?.samples ?? [];
+      if (!referenceSamples.some((sample) =>
+        sample.metric_id === "reference.norm" && Math.abs(Number(sample.value) - 4.9) < 1e-9
+      )) {
+        throw new Error(`Metrics did not read the canonical named reference position: ${JSON.stringify(referenceBatch)}`);
+      }
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#pause').click()" });
+
+      console.log(JSON.stringify(referenceRunState, null, 2));
+      console.log("Browser ran a synthetic named-reference experiment with per-agent selective Controller sensing and read-only Metrics reference access.");
       succeeded = true;
       break;
     }

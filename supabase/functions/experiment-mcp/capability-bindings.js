@@ -187,6 +187,43 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
     ],
   }),
   freezeBinding({
+    canonical_capability_id: "1fbe59fb-79f3-48f7-9500-16557297ea0a",
+    capability_key: "observation.named_reference_relative_position",
+    surfaces: [
+      {
+        artifact: "initialization",
+        kind: "intrinsic",
+        symbol: "define_reference",
+        syntax: "define_reference(name, x, y)",
+      },
+      {
+        artifact: "initialization",
+        kind: "intrinsic",
+        symbol: "set_agent_reference_sensor",
+        syntax: "set_agent_reference_sensor(agent_index, name, max_range)",
+      },
+      {
+        artifact: "controller",
+        kind: "observation_pattern",
+        symbol: "obs.references.<name>.available",
+        value_type: "bool",
+      },
+      {
+        artifact: "controller",
+        kind: "observation_pattern",
+        symbol: "obs.references.<name>.relative_position",
+        value_type: "vec2",
+      },
+      {
+        artifact: "metrics",
+        kind: "snapshot_pattern",
+        symbol: "snapshot.references.<name>.position",
+        value_type: "vec2",
+      },
+    ],
+    requires: ["9a3a3034-a268-4c14-afbc-48325f3998ae"],
+  }),
+  freezeBinding({
     canonical_capability_id: "c52df915-e739-4de8-ad85-a3b15886d025",
     capability_key: "metrics.read_only_global_snapshot",
     surfaces: [

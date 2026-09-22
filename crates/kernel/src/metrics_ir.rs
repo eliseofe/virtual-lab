@@ -50,6 +50,8 @@ struct MetricsIr {
     language: String,
     measurement_phase: String,
     #[serde(default)]
+    references: Vec<String>,
+    #[serde(default)]
     metrics: Vec<MetricDefinition>,
 }
 
@@ -209,6 +211,7 @@ fn binary(op: &str, left: Value, right: Value, line: Option<usize>) -> Result<Va
 
 struct EvaluationContext<'a> {
     state: &'a [AgentPhysicalState],
+    references: &'a BTreeMap<String, Vec2>,
     scientific_time: f64,
     parameters: &'a BTreeMap<String, f64>,
 }
@@ -236,6 +239,16 @@ fn eval_expression(
             }
             if path == "snapshot.agents" {
                 return Err(at_line(*line, "snapshot.agents is iterable only"));
+            }
+            if let Some(reference_path) = path.strip_prefix("snapshot.references.") {
+                let mut pieces = reference_path.split('.');
+                let name = pieces.next().unwrap_or_default();
+                let field = pieces.next().unwrap_or_default();
+                if pieces.next().is_none() && field == "position" {
+                    let position = context.references.get(name)
+                        .ok_or_else(|| at_line(*line, format!("unknown world reference '{name}'")))?;
+                    return Ok(Value::Vec2(*position));
+                }
             }
             if let Some(value) = locals.get(path) {
                 return Ok(*value);
@@ -558,10 +571,11 @@ impl IrMetricsRuntime {
         &self,
         metric_index: usize,
         state: &[AgentPhysicalState],
+        references: &BTreeMap<String, Vec2>,
         scientific_time: f64,
     ) -> Result<f64, String> {
         let metric = &self.metrics[metric_index];
-        let context = EvaluationContext { state, scientific_time, parameters: &self.parameters };
+        let context = EvaluationContext { state, references, scientific_time, parameters: &self.parameters };
         let mut locals = HashMap::new();
         let mut loop_agents = HashMap::new();
         execute_statements(&metric.body, &context, &mut locals, &mut loop_agents)?
@@ -582,6 +596,7 @@ impl IrMetricsRuntime {
     pub fn observe_due(
         &mut self,
         state: &[AgentPhysicalState],
+        references: &BTreeMap<String, Vec2>,
         physics_tick: u32,
         scientific_time: f64,
     ) -> Result<(), String> {
@@ -590,20 +605,25 @@ impl IrMetricsRuntime {
             _ => None,
         }).collect();
         for index in due {
-            let value = self.evaluate_metric(index, state, scientific_time)
+            let value = self.evaluate_metric(index, state, references, scientific_time)
                 .map_err(|message| format!("metric '{}': {message}", self.metrics[index].id))?;
             self.append_sample(index, scientific_time, value);
         }
         Ok(())
     }
 
-    pub fn finalize(&mut self, state: &[AgentPhysicalState], scientific_time: f64) -> Result<(), String> {
+    pub fn finalize(
+        &mut self,
+        state: &[AgentPhysicalState],
+        references: &BTreeMap<String, Vec2>,
+        scientific_time: f64,
+    ) -> Result<(), String> {
         if self.finalized { return Ok(()); }
         let final_metrics: Vec<usize> = self.metrics.iter().enumerate().filter_map(|(index, metric)| {
             matches!(metric.sampling, RuntimeSampling::Final).then_some(index)
         }).collect();
         for index in final_metrics {
-            let value = self.evaluate_metric(index, state, scientific_time)
+            let value = self.evaluate_metric(index, state, references, scientific_time)
                 .map_err(|message| format!("metric '{}': {message}", self.metrics[index].id))?;
             self.append_sample(index, scientific_time, value);
         }
@@ -820,6 +840,7 @@ impl MetricProbeSimulation {
             if due == Some(step_target) {
                 self.metrics.observe_due(
                     &self.simulation.state,
+                    self.simulation.reference_state.positions(),
                     self.simulation.physics_ticks,
                     self.simulation.scientific_time(),
                 ).map_err(|message| JsValue::from_str(&message))?;
@@ -829,7 +850,11 @@ impl MetricProbeSimulation {
     }
 
     pub fn finalize_metrics(&mut self) -> Result<(), JsValue> {
-        self.metrics.finalize(&self.simulation.state, self.simulation.scientific_time())
+        self.metrics.finalize(
+            &self.simulation.state,
+            self.simulation.reference_state.positions(),
+            self.simulation.scientific_time(),
+        )
             .map_err(|message| JsValue::from_str(&message))
     }
 
@@ -890,7 +915,7 @@ mod tests {
         let mut metrics = IrMetricsRuntime::from_json(metrics_json(), "{}", 0.01).unwrap();
         let state = state();
         for tick in 1..=20 {
-            metrics.observe_due(&state, tick, tick as f64 * 0.01).unwrap();
+            metrics.observe_due(&state, &BTreeMap::new(), tick, tick as f64 * 0.01).unwrap();
         }
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
         let samples = batch["samples"].as_array().unwrap();
@@ -907,8 +932,8 @@ mod tests {
     fn final_metrics_emit_once_at_explicit_finalize() {
         let mut metrics = IrMetricsRuntime::from_json(metrics_json(), "{}", 0.01).unwrap();
         let state = state();
-        metrics.finalize(&state, 1.25).unwrap();
-        metrics.finalize(&state, 1.25).unwrap();
+        metrics.finalize(&state, &BTreeMap::new(), 1.25).unwrap();
+        metrics.finalize(&state, &BTreeMap::new(), 1.25).unwrap();
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
         let samples = batch["samples"].as_array().unwrap();
         assert_eq!(samples.len(), 1);
@@ -926,8 +951,8 @@ mod tests {
     fn overflow_is_explicit_and_never_silent() {
         let mut metrics = IrMetricsRuntime::from_json_with_capacity(metrics_json(), "{}", 0.01, 1).unwrap();
         let state = state();
-        metrics.observe_due(&state, 10, 0.1).unwrap();
-        metrics.observe_due(&state, 20, 0.2).unwrap();
+        metrics.observe_due(&state, &BTreeMap::new(), 10, 0.1).unwrap();
+        metrics.observe_due(&state, &BTreeMap::new(), 20, 0.2).unwrap();
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
         assert_eq!(batch["samples"].as_array().unwrap().len(), 1);
         assert_eq!(batch["buffer"]["complete"], false);
@@ -953,7 +978,7 @@ mod tests {
           }]
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
-        metrics.observe_due(&state(), 10, 0.1).unwrap();
+        metrics.observe_due(&state(), &BTreeMap::new(), 10, 0.1).unwrap();
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 1.0);
     }
@@ -985,7 +1010,7 @@ mod tests {
             baseline.advance_physics_ticks(1);
             measured.advance_physics_ticks(1);
             let tick = measured.physics_ticks();
-            metrics.observe_due(&measured.state, tick, measured.scientific_time()).unwrap();
+            metrics.observe_due(&measured.state, &BTreeMap::new(), tick, measured.scientific_time()).unwrap();
             if tick % 7 == 0 { let _ = metrics.drain_json(2).unwrap(); }
         }
         assert_eq!(baseline.snapshot(), measured.snapshot());
@@ -999,7 +1024,8 @@ mod tests {
                 line: None,
             };
             let parameters = BTreeMap::new();
-            let context = EvaluationContext { state: &[], scientific_time: 0.0, parameters: &parameters };
+            let references = BTreeMap::new();
+            let context = EvaluationContext { state: &[], references: &references, scientific_time: 0.0, parameters: &parameters };
             eval_expression(&expression, &context, &HashMap::new(), &HashMap::new())
                 .unwrap()
                 .scalar("test")
@@ -1054,7 +1080,7 @@ mod tests {
             AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.5 },
         ];
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
-        metrics.finalize(&state, 1.0).unwrap();
+        metrics.finalize(&state, &BTreeMap::new(), 1.0).unwrap();
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 2.0);
     }
@@ -1080,9 +1106,34 @@ mod tests {
           }]
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
-        metrics.finalize(&state(), 1.0).unwrap();
+        metrics.finalize(&state(), &BTreeMap::new(), 1.0).unwrap();
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 1.0);
+    }
+
+
+    #[test]
+    fn metrics_reads_named_reference_position_from_read_only_snapshot() {
+        let ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "references":["goal"],
+          "metrics":[{
+            "id":"reference.norm","name":"Reference norm","unit":null,
+            "sampling":{"kind":"final"},
+            "function":"reference_norm",
+            "body":[{"kind":"return","value":{"kind":"call","name":"norm","args":[
+              {"kind":"load","path":"snapshot.references.goal.position"}
+            ]}}]
+          }]
+        }"#;
+        let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
+        let mut references = BTreeMap::new();
+        references.insert("goal".to_owned(), Vec2::new(3.0, 4.0));
+        metrics.finalize(&state(), &references, 1.0).unwrap();
+        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        assert_eq!(batch["samples"][0]["value"], 5.0);
     }
 
     #[test]
@@ -1132,6 +1183,7 @@ mod tests {
                 heading: Vec2::new(1.0, 0.0),
                 neighbours: vec![],
                 environmental_scalar: None,
+                references: BTreeMap::new(),
             },
         );
         assert!(action.forward.is_finite());
@@ -1159,7 +1211,7 @@ mod tests {
           }]
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(metrics_ir, "{}", 0.01).unwrap();
-        metrics.finalize(&state(), 1.0).unwrap();
+        metrics.finalize(&state(), &BTreeMap::new(), 1.0).unwrap();
         let batch: serde_json::Value =
             serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 2.0);

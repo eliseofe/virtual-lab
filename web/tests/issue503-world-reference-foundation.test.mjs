@@ -63,7 +63,7 @@ test("#503 runtime setup carries reference state without advertising the capabil
   assert.equal(
     IMPLEMENTED_CAPABILITY_BINDINGS.some(({ capability_key }) =>
       capability_key === "observation.named_reference_relative_position"),
-    false,
+    true,
   );
 });
 

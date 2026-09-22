@@ -60,6 +60,7 @@ let appliedConfig = null;
 let appliedConfigSource = ui.config.value;
 let appliedInitializerSource = ui.initializerSource.value;
 let appliedEnvironment = null;
+let appliedReferences = [];
 let appliedController = null;
 let pendingSetup = null;
 let pendingController = null;
@@ -136,6 +137,7 @@ function compileSetup({ seed = activeSeed, configSource = ui.config.value, initi
   const initializer = compileInitializer(initializerSource, initializerConfig);
   validateInitialStateForRuntime(initializer.state, runtime);
   const environment = compileEnvironmentScalar(initializerSource, initializerConfig);
+  const references = initializer.world_references?.references?.map(({ name }) => name) ?? [];
 
   ui.initializerIr.textContent = JSON.stringify({
     version: initializer.version,
@@ -153,14 +155,15 @@ function compileSetup({ seed = activeSeed, configSource = ui.config.value, initi
   return {
     config,
     environment,
+    references,
     setup: simulationSetupFromRuntime(runtime, seed, initializer.state, environment, initializer.world_references),
   };
 }
 
-function compileControllerFor(config, environment = appliedEnvironment) {
+function compileControllerFor(config, environment = appliedEnvironment, references = appliedReferences) {
   const parameters = numericParameters(config);
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
-  const compiled = compileController(ui.source.value, { parameters: parameterTypes });
+  const compiled = compileController(ui.source.value, { parameters: parameterTypes, references });
   validateEnvironmentControllerPair(environment, compiled);
   ui.ir.textContent = JSON.stringify(compiled, null, 2);
   return { compiled, parameters };
@@ -217,12 +220,13 @@ function setRunning(next, { notifyWorker = true } = {}) {
 function initializeIfReady() {
   if (!wasmReady || initialized) return;
   try {
-    const { config, environment, setup } = compileSetup({ seed: activeSeed });
-    const controller = compileControllerFor(config, environment);
+    const { config, environment, references, setup } = compileSetup({ seed: activeSeed });
+    const controller = compileControllerFor(config, environment, references);
     appliedConfig = config;
     appliedConfigSource = ui.config.value;
     appliedInitializerSource = ui.initializerSource.value;
     appliedEnvironment = environment;
+    appliedReferences = references;
     appliedController = controller;
     setActiveArenaSize(setup.simulation.arenaSize, { resetView: true });
     ui.setupError.textContent = "";
@@ -457,6 +461,7 @@ worker.addEventListener("message", (event) => {
         appliedConfigSource = pendingSetup.configSource;
         appliedInitializerSource = pendingSetup.initializerSource;
         appliedEnvironment = pendingSetup.environment;
+        appliedReferences = pendingSetup.references;
         appliedController = pendingSetup.controller;
       }
       pendingSetup = null;
@@ -515,9 +520,9 @@ ui.applySetup.addEventListener("click", () => {
   try {
     const configSource = ui.config.value;
     const initializerSource = ui.initializerSource.value;
-    const { config, environment, setup } = compileSetup({ seed: activeSeed, configSource, initializerSource });
-    const controller = compileControllerFor(config, environment);
-    pendingSetup = { config, configSource, initializerSource, environment, controller };
+    const { config, environment, references, setup } = compileSetup({ seed: activeSeed, configSource, initializerSource });
+    const controller = compileControllerFor(config, environment, references);
+    pendingSetup = { config, configSource, initializerSource, environment, references, controller };
     setActiveArenaSize(setup.simulation.arenaSize, { resetView: true });
     ui.setupError.textContent = "";
     ui.error.textContent = "";
@@ -534,7 +539,7 @@ ui.applySetup.addEventListener("click", () => {
 ui.compile.addEventListener("click", () => {
   try {
     if (!appliedConfig) throw new Error("No valid experiment configuration is active.");
-    const controller = compileControllerFor(appliedConfig, appliedEnvironment);
+    const controller = compileControllerFor(appliedConfig, appliedEnvironment, appliedReferences);
     pendingController = controller;
     ui.error.textContent = "";
     setFeedback(ui.feedback, "Applying controller…", "working");
@@ -627,13 +632,14 @@ ui.restartNewSeed.addEventListener("click", () => {
   try {
     if (!appliedConfig || !appliedController) throw new Error("No valid experiment is active.");
     const seed = randomSeedDifferentFromCurrent();
-    const { config, environment, setup } = compileSetup({ seed, configSource: appliedConfigSource, initializerSource: appliedInitializerSource });
+    const { config, environment, references, setup } = compileSetup({ seed, configSource: appliedConfigSource, initializerSource: appliedInitializerSource });
     validateEnvironmentControllerPair(environment, appliedController.compiled);
     pendingSetup = {
       config,
       configSource: appliedConfigSource,
       initializerSource: appliedInitializerSource,
       environment,
+      references,
       controller: appliedController,
     };
     ui.setupError.textContent = "";

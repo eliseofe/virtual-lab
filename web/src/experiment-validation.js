@@ -37,10 +37,11 @@ function compileExperiment(experiment, runtimeValues, { seed = 0 } = {}) {
 
   const parameters = numericParameters(config);
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
-  const controller = compileController(controllerSource, { parameters: parameterTypes });
+  const references = initializer.world_references?.references?.map(({ name }) => name) ?? [];
+  const controller = compileController(controllerSource, { parameters: parameterTypes, references });
   validateEnvironmentControllerPair(environment, controller);
   validateInitializerControllerPrivateState(initializer, controller);
-  const metrics = compileMetrics(metricsSource, { parameters: parameterTypes });
+  const metrics = compileMetrics(metricsSource, { parameters: parameterTypes, references });
 
   return { config, runtime, initializer, environment, controller, metrics, parameters };
 }

@@ -57,7 +57,7 @@ Professor approval/acceptance does not itself authorize implementation.
 
 ### Current queue snapshot — 22 September 2026
 
-- **In progress / accepted + owner-authorized:** `observation.named_reference_relative_position` — #502 froze the generalized contract and #503 establishes the static named-reference state plus Initialization authoring foundation. #504 remains to add selective Controller sensing, Metrics exposure and activate the capability. Dynamic reference motion is explicitly deferred.
+- **Implemented:** `observation.named_reference_relative_position` — static named point references with per-agent selective local relative-position sensing, finite/unlimited range, and read-only Metrics access are completed through #502–#504. Dynamic reference evolution is intentionally not part of this capability.
 - **Requested / revise:** typed populations / role-aware sensing — must be decomposed into reusable population identity and optional sensing semantics.
 - **Requested / revise:** per-agent lifecycle/participation state — must be generic rather than capture/attacker/defender specific.
 - **Requested / revise:** Metrics population/outcome request — reduce to genuinely missing primitive observables/state.
@@ -70,7 +70,7 @@ This snapshot is descriptive only; query production before making a later backlo
 There is deliberately no global automatic ordering. The owner can select one bounded lane at a time.
 
 1. **Security audit #302** — inspect enrollment, roles, OAuth/MCP, RLS, client/session and privileged boundaries. Audit only; policy/remediation comes back for owner decision.
-2. **Static named world references #501** — owner-authorized and active. #502 architecture/generalization freeze and #503 static state/Initialization foundation are complete after #503 production verification; #504 is the known successor for Controller sensing, Metrics and activation.
+2. **Static named world references #501** — completed through #502–#504. No further ticket in this approved scope remains; dynamic reference evolution would require a separate future activation.
 3. **Capability-request refinement** — revisit the three Professor-`revise` Swarm-vs-Swarm requests and split them into minimal reusable primitives before any implementation.
 4. **Black-box capability-flow acceptance #371** — owner-driven fresh research-AI acceptance when useful; #325/#326 stay paused until the scientific-neutrality/candidate acceptance chain is green.
 5. **Studies #3** — may be activated only by an explicit owner decision.
