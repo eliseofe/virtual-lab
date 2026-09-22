@@ -1,93 +1,109 @@
 # Virtual Lab — Roadmap
 
-This file answers **where the project is going**. Current status lives in `CURRENT_STATUS.md`; development procedure lives in `DEVELOPMENT_WORKFLOW.md`.
+This file answers **where the project is going**. Current deployed/project state lives in `CURRENT_STATUS.md`; execution procedure lives in `DEVELOPMENT_WORKFLOW.md`.
 
 ## Strategic posture
 
-The deployed baseline already includes:
-- browser Rust/WASM scientific execution;
-- constrained Python-like Configuration, Initialization, Controller and Metrics authoring;
-- authenticated Supabase Experiment Registry and provider-independent MCP authoring;
-- explicit Professor capability requests for unsupported simulator capabilities;
-- live multi-metric Results;
-- local-first result persistence and whole-Experiment export;
-- Vite + React + TypeScript + Mantine presentation;
-- student self-registration/onboarding;
-- research-supervision collaboration: Professor read-only oversight, independent copy/fork, explicit read-only sharing and revocation;
-- Showcase publication/curation surfaces.
+The production baseline already includes scientific browser execution, four-artifact constrained authoring, authenticated Experiment storage/MCP access, revisions and Working copies, collaboration/supervision/Showcase, a scalable Experiment Library, responsive React/Mantine UI, local-first Results, and scientific-code editor ergonomics.
 
-These are baseline architecture, not future roadmap items.
+Do not treat completed baseline capabilities as roadmap work merely because their historical epic or child numbers appear in old discussions.
 
 ## Roadmap state classification
 
-- **Completed baseline:** #45 Access / sharing / curation / Showcase — the approved research-supervision collaboration scope is complete through Professor oversight, copy-to-own-workspace, explicit read-only sharing/revocation and separate Showcase curation.
-- **Living / ongoing domains:** #56 Simulator performance, #65 World/environment capabilities, #273 UI/UX refinement, **#58 Professor capability-request queue/lifecycle**, **#301 Security / identity / authorization**, and **#425 Refactoring / technical-debt reduction**. #58 is operationally living even when its infrastructure is complete because new research-AI/Professor extension requests can arrive at any time. #301 and #425 may be dormant when no bounded child is active; their existence does not authorize work automatically.
-- **Foundation built, waiting for a use case:** #124 Artifact capability registry / lifecycle hooks — the architectural seam exists; continue only when a concrete optional executable-artifact use case requires runtime dispatch. #285 Research submission snapshots — preservation infrastructure exists, but no distinct research use case currently justifies a submission workflow; do not implement one until the owner identifies a non-overlapping need.
-- **Not started major lanes:** #3 Studies, #202 Code authoring ergonomics, #6 Study results → AI handoff, #119 Research Notes / Research Documents.
+### Completed baseline
+
+- **#45 Access / sharing / curation / Showcase** — Professor oversight, copy-to-own-workspace, explicit read-only sharing/revocation and Showcase curation are established product behavior.
+- **#202 Code authoring ergonomics** — completed through #203–#205: highlighting, line numbers, parser-derived navigation/folding/search, source-linked diagnostics and constrained completion are deployed.
+- The current **Experiment Library** activation under living UI/UX #273 is complete through #480: Showcase, Mine, Shared and Supervised are one scalable discovery surface; Active Elastic is not a privileged Built-in execution identity.
+
+### Living / ongoing domains
+
+- **#2 Scientific validation and reproducibility guardrails**
+- **#56 Simulator performance**
+- **#58 Professor capability-request queue/lifecycle**
+- **#65 World/environment capabilities**
+- **#273 UI/UX refinement**
+- **#301 Security / identity / authorization**
+- **#425 Refactoring / technical-debt reduction**
+
+A living domain may be dormant. Its open state is not authorization to execute arbitrary work.
+
+### Foundation built, waiting for a concrete use case
+
+- **#124 Artifact capability registry / lifecycle hooks** — optional executable dispatch waits for an approved executable-artifact use case.
+- **#285 Research submission snapshots** — preservation foundation exists; do not invent a submission workflow without a distinct research use case.
+
+### Owner-gated / dependency-gated lanes
+
+- **#3 Studies** — the historical frontend/onboarding/real-student prerequisites are satisfied; the remaining gate is explicit owner activation.
+- **#6 Selected Study results → AI handoff** — depends on stable Study/result identities.
+- **#119 Research Notes / Research Documents** — intended after or alongside a stable Study/result model.
+- **#179 persistent neighbour-search benchmark Study** — hard-depends on mature Studies/results.
+
+### Future / on-demand
+
+- **#8 native workstation and HPC/Slurm execution**
+- **#9 richer physics, heterogeneous swarms and observation/action models**
+- **#102 numerical-integrator evaluation**
+- other concrete performance/environment/science children created from evidence or accepted capability requests.
+
+## Capability-request queue invariant
+
+For living epic #58, the authoritative operational backlog is Supabase `capability_requests`.
+
+Every project recovery, roadmap review or “what remains?” assessment must surface all rows in `requested`, `approved` or `in_progress`. GitHub issue closure is not evidence that this queue is empty.
+
+Professor approval/acceptance does not itself authorize implementation.
+
+### Current queue snapshot — 22 September 2026
+
+- **Approved / accepted:** `observation.target_relative_position` — reusable experiment-defined target-relative position for Controller and Metrics. Available for owner implementation selection, but not automatically authorized.
+- **Requested / revise:** typed populations / role-aware sensing — must be decomposed into reusable population identity and optional sensing semantics.
+- **Requested / revise:** per-agent lifecycle/participation state — must be generic rather than capture/attacker/defender specific.
+- **Requested / revise:** Metrics population/outcome request — reduce to genuinely missing primitive observables/state.
+- **Requested / future:** bounded multirotor rigid-body 3-D backend — intentionally outside the current implementation horizon.
+
+This snapshot is descriptive only; query production before making a later backlog decision.
+
+## Near-term selectable lanes
+
+There is deliberately no global automatic ordering. The owner can select one bounded lane at a time.
+
+1. **Security audit #302** — inspect enrollment, roles, OAuth/MCP, RLS, client/session and privileged boundaries. Audit only; policy/remediation comes back for owner decision.
+2. **Accepted target-observation capability** — if explicitly owner-authorized, design and implement the reusable `observation.target_relative_position` capability through the normal capability-generalization/deployment path.
+3. **Capability-request refinement** — revisit the three Professor-`revise` Swarm-vs-Swarm requests and split them into minimal reusable primitives before any implementation.
+4. **Black-box capability-flow acceptance #371** — owner-driven fresh research-AI acceptance when useful; #325/#326 stay paused until the scientific-neutrality/candidate acceptance chain is green.
+5. **Studies #3** — may be activated only by an explicit owner decision.
+
+The 3-D multirotor request is future work, not a near-term implementation candidate.
 
 ## Major-lane relationships
 
-Only relationships with a concrete architectural or product reason belong here. Do not infer a global linear roadmap from this section.
+1. **Studies → Study results → AI handoff (#6): hard dependency.**
+2. **Studies → Research Notes/Documents (#119): preferred order, not a hard block.**
+3. **Studies → persistent performance benchmark (#179): hard dependency.**
+4. **Studies → native/HPC (#8): preferred order, not a hard block.**
+5. Security, UI/UX, capability implementation and code-authoring ergonomics are independent lanes unless a concrete ticket introduces a dependency.
 
-1. **Studies → Study results → AI handoff (#6): hard dependency.** #6 requires stable Study, run-set, result and Plot identities plus exact pinned-Experiment provenance, so it cannot sensibly precede the Study/results foundation.
-2. **Studies → Research Notes / Research Documents (#119): preferred order, not a hard block.** Notes/Documents could exist around Experiments alone, but following Studies avoids designing the durable scientific-reference model once for Experiments and then retrofitting Study/result references later.
-3. **Studies → persistent performance benchmark (#179): hard dependency.** #179 is explicitly a Study representation of the existing neighbour-search benchmark and therefore waits for mature Study/results infrastructure.
-4. **Studies → native/HPC execution (#8): preferred order, not a hard block.** Native/HPC execution is technically independent, but Study orchestration supplies the natural multi-run/parallel execution contract. Doing the backend first risks designing job/run orchestration twice.
+## Capability-flow acceptance
 
-**Code authoring ergonomics (#202) is independent of Studies.** It may be activated whenever the owner chooses; no Study foundation is required.
+The long-running #313 / #330 acceptance history is not current feature backlog.
 
-The AI maintains this classification as the project evolves: every major epic belongs in exactly one category, and the category should change when its real execution state changes. When creating or reclassifying an epic, state the classification to the owner so it is visible and can be corrected; routine classification maintenance does not require owner approval.
+- Repair infrastructure and canonical capability architecture are deployed.
+- #336/#371 remain the unresolved owner-driven black-box acceptance closeout.
+- #325 and #326 remain paused behind that closeout.
+- Do not reopen completed repair tickets from historical chronology.
+- The existence of this unfinished acceptance does not erase or replace the current Supabase capability queue.
 
-### Capability-request queue invariant
+## Backlog hygiene rule
 
-For living epic #58, GitHub issue closure is never evidence that the capability backlog is empty. The authoritative operational backlog is Supabase `capability_requests`. Any project recovery, roadmap review, or “what work remains?” assessment must surface every nonterminal request in `requested`, `approved`, or `in_progress` status. Professor approval does not itself authorize implementation; approved requests remain visible backlog until explicitly declined, implemented, or otherwise resolved by owner-authorized policy.
+An open issue should represent one of:
 
-## Near term
+- a living domain;
+- parked/gated/future work with an explicit gate;
+- a bounded selected task/acceptance.
 
-1. **#273 UI/UX is dormant / living.** The #423–#430 activation implemented the task-based Control-panel design; #437/#440/#444/#446 refined proportions, prose and local structure; #449 restored the three-destination workspace; #458 reconciles signed-in and signed-out presentation with exact peer names **Control Panel · Simulation · Experiment Authoring**, one primary title per workspace card, a signed-out Control Panel that exposes Sign In instead of Save & share, and separate Sign In / Create Account authentication modes. Production smoke covers phone, foldable, desktop and ultra-wide workspace hierarchy plus the signed-out authentication flow. No automatic UI/UX successor is active; future children require concrete product-use evidence. #425 remains the dormant home for any future broader refactor audit.
-2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
-3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
-4. Keep #301 Security and #425 Refactoring as living maintenance domains; both are dormant unless a bounded child is explicitly selected.
-5. Do not activate Studies or other owner-gated/parked lanes without the required owner authorization/use case. Code authoring ergonomics (#202) is not gated by Studies and may be prioritized independently.
-
-## Owner-gated major lane: Studies
-
-Studies are the intended multi-run layer, but they are **not active work until the owner explicitly authorizes them**.
-
-When activated, Study capabilities are expected to grow in bounded slices such as:
-- durable Study identity under an originating Experiment;
-- pinning to exact Experiment revision(s);
-- conditions/parameter sweeps and repetitions/seeds;
-- local parallel/headless execution where useful;
-- reuse of stable Experiment metric IDs and the existing flat local result-file contract;
-- aggregation/statistics and cross-run plots;
-- checkpoint/resume semantics where explicitly designed;
-- selected Study-result handoff to an authorized research AI.
-
-Study output remains Experiment-first and local-first, directly under `<Experiment>/studies/<Study>/` without an extra `runs/` layer.
-
-## Later analysis and publication layer
-
-Potential later layers include:
-- reproducible downstream analysis/figure specifications;
-- publication-quality SVG/PDF/PNG generation;
-- structured Research Notes;
-- Research Documents for papers/reports/thesis chapters;
-- selected compact results/plots shared with an authorized research AI;
-- research synthesis that does not depend on recovering an old chat transcript.
-
-Live single-run Results should remain an interactive scientific inspection surface rather than becoming a general graphics editor.
-
-## Future execution and science
-
-Potential later capabilities include:
-- native workstation execution preserving the same scientific contracts;
-- institutional HPC/Slurm adapters;
-- richer physics and robot-specific models;
-- heterogeneous populations/controllers after explicit capability approval;
-- richer observation/action/environment models;
-- additional benchmark tasks and scientific modules;
-- deeper multi-user collaboration and curated/public research workflows.
+Obsolete handoffs, superseded implementation residue and historical verification leftovers should be closed with a note preserving what was and was not verified. They should not remain open merely as historical documentation.
 
 ## Standing product direction
 
