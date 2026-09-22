@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Experiment Authoring now has compiler-derived navigation, folding and in-artifact search",
-  "owner_impact": "Configuration, Initialization, Controller and Metrics now expose a compact Outline built from the same parsers/compilers that define each artifact language. Selecting a symbol jumps to its real definition line, Find opens Ace's in-artifact search, and Python-like blocks expose fold widgets. The navigation stays secondary to the active editor and remains compact on narrow screens; source, dirty-state, autosave, revision and runtime semantics are unchanged.",
+  "outcome": "Experiment Authoring now links compiler diagnostics to source and offers constrained completion",
+  "owner_impact": "Configuration, Initialization, Controller and Metrics errors now remain attached to their artifact and appear in the active editor with source-line gutter markers where the compiler provides a location. Selecting a diagnostic jumps to that source line. Controller, Metrics and Initialization expose lightweight completion derived only from implemented compiler/capability/configuration surfaces; no unrestricted Python language server or AI code generation was added. Existing source, dirty-state, autosave, revision and runtime semantics are unchanged.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 205,
-    "text": "#205 is the next and final currently approved code-authoring ergonomics ticket. It will connect compiler diagnostics to source locations and add constrained-language completion. It has not started yet."
+    "kind": "scope_complete",
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The currently approved #202 code-authoring ergonomics epic is complete with #205. No further ticket in this epic is approved or queued."
   },
   "technical_evidence": [
-    "Configuration parameters, Initializer functions, Controller class/state/step symbols and Metrics declarations are exposed by their existing compiler/parser modules rather than inferred from comments or decorative headings.",
-    "React consumes one artifactStructureSafe model and renders a compact Outline selector; symbol selection calls the Ace editor's gotoLine command.",
-    "Find uses Ace's native search command rather than a second search implementation.",
-    "Ace Python mode fold widgets remain enabled and are production-smoked on the Initializer artifact.",
-    "Outline recomputation is debounced while editing and becomes unavailable rather than inventing structure when the current source no longer parses.",
-    "Production browser smoke requires a populated Configuration outline, opens the real Ace search UI, switches to Initialization and verifies exactly three compiler-derived functions plus visible fold widgets."
+    "Authoring diagnostics are produced by the existing Configuration, Initializer, Controller, Environment, Metrics and runtime validators, normalized only for presentation, and retained by artifact identity.",
+    "Ace consumes exact compiler line/column locations through session annotations; the visible diagnostic detail is keyboard-accessible and selection reuses the existing source-line navigation path.",
+    "Controller completion is exported from the compiler's implemented call signatures, observations and active numeric parameters; Metrics completion uses compiler call signatures and directly insertable snapshot fields; Initializer completion uses parsed functions and active config parameters.",
+    "Browser and MCP Controller/Metrics compiler copies remain byte-identical after exposing completion metadata.",
+    "Production smoke opens Ace completion, injects a temporary Controller syntax error, verifies the linked gutter annotation and diagnostic jump, restores the source, and requires the annotation to clear before continuing runtime smoke."
   ],
-  "close_issue": 204
+  "close_issue": 205
 }
