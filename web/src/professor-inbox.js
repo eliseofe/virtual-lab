@@ -74,6 +74,8 @@ function installStyles() {
     .professor-status[data-status="revise"] { background: #fff0dd; color: #805018; }
     .professor-status[data-status="deferred"] { background: #eef1f7; color: #495c7a; }
     .professor-status[data-status="future"] { background: #f1ecf8; color: #654c7d; }
+    .professor-status[data-status="in_progress"] { background: #e8f0f6; color: #315a69; }
+    .professor-status[data-status="implemented"] { background: #e7f3ec; color: #265f43; }
     .professor-request-definition { margin: 0; color: #344850; font-size: 11.5px; line-height: 1.45; }
     .professor-request-details { border-top: 1px solid #edf1f3; padding-top: 6px; }
     .professor-request-details summary { cursor: pointer; color: #52666f; font-size: 10.5px; font-weight: 700; }
@@ -227,6 +229,13 @@ function candidateDefinition(request) {
   if (candidate?.kind === "semantic_capability") return candidate.data.canonical_definition;
   if (candidate?.kind === "contract_delta") return candidate.data.requested_change;
   return request.extension_definition || request.capability_name || "Scientific extension request";
+}
+
+function requestCurrentState(request) {
+  if (request.status === "implemented" || request.status === "in_progress") return request.status;
+  if (request.status === "approved") return "accepted";
+  if (request.status === "declined") return "rejected";
+  return request.professor_disposition || "pending";
 }
 
 function makeField(labelText, control) {
@@ -502,7 +511,7 @@ function setMessage(text, state = "idle") {
 }
 
 function pendingCount() {
-  return requests.filter((request) => request.professor_disposition === "pending").length;
+  return requests.filter((request) => requestCurrentState(request) === "pending").length;
 }
 
 function render() {
@@ -520,8 +529,8 @@ function render() {
   }
 
   const ordered = [...requests].sort((left, right) => {
-    const leftPending = left.professor_disposition === "pending" ? 0 : 1;
-    const rightPending = right.professor_disposition === "pending" ? 0 : 1;
+    const leftPending = requestCurrentState(left) === "pending" ? 0 : 1;
+    const rightPending = requestCurrentState(right) === "pending" ? 0 : 1;
     if (leftPending !== rightPending) return leftPending - rightPending;
     return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
   });
@@ -529,7 +538,8 @@ function render() {
   for (const request of ordered) {
     const card = document.createElement("article");
     card.className = "professor-request-card";
-    card.dataset.status = request.professor_disposition;
+    const currentState = requestCurrentState(request);
+    card.dataset.status = currentState;
     card.dataset.requestId = request.id;
 
     const top = document.createElement("div");
@@ -549,8 +559,8 @@ function render() {
     requestClass.textContent = REQUEST_CLASS_LABELS[request.request_class] || "Extension request";
     const status = document.createElement("span");
     status.className = "professor-status";
-    status.dataset.status = request.professor_disposition;
-    status.textContent = request.professor_disposition.replaceAll("_", " ");
+    status.dataset.status = currentState;
+    status.textContent = currentState.replaceAll("_", " ");
     badges.append(requestClass, status);
 
     const requestEvidence = evidenceForRequest(request.id);
@@ -581,7 +591,7 @@ function render() {
     const generalizationEditor = buildGeneralizationEditor(request);
     if (generalizationEditor) card.append(generalizationEditor);
 
-    if (request.professor_disposition === "pending") {
+    if (requestCurrentState(request) === "pending") {
       const noteLabel = document.createElement("label");
       noteLabel.className = "professor-request-note-label";
       noteLabel.textContent = "Professor guidance";

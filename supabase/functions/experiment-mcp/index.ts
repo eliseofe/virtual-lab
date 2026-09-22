@@ -24,11 +24,11 @@ import { MCP_TOOL_COUNT, MCP_TOOL_NAMES } from './tool-surface.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
-const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/8'
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/9'
 
 const PROFESSOR_DISPOSITION_BEHAVIOR = Object.freeze({
   pending: 'Candidate exists and remains unavailable. Reuse it when it covers the need; never duplicate it.',
-  accepted: 'Professor accepted the candidate into the design queue. It remains unavailable until implemented; reuse it and remain blocked.',
+  accepted: 'Professor accepted the candidate into the design queue. This current review state exists only while request_status=approved; development moves current state to in_progress and then implemented while review history preserves the acceptance.',
   rejected: 'Do not treat the candidate as support and do not recreate an exact duplicate. Only materially different evidence can justify a distinct request.',
   revise: 'Professor requires reformulation. The original requester may submit a revised candidate on the same request ID using request_capability/revalidation plus the Professor guidance.',
   deferred: 'Preserve and reuse the candidate identity without resubmitting merely for a different answer. A genuinely new use case may justify renewed review.',
@@ -258,6 +258,8 @@ function extensionRequestBehavior(role: RegistryRole) {
     submitter_role: role,
     triage_authority: 'professor',
     professor_disposition_behavior: PROFESSOR_DISPOSITION_BEHAVIOR,
+    current_request_state_authority: 'request_status',
+    professor_disposition_scope: 'review_phase_only',
     revise_via_same_candidate_identity: true,
     revise_action: 'request_capability',
     automatic_rejection_classes: [],

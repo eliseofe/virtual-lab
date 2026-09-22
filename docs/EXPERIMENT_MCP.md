@@ -10,7 +10,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.15.0`
+- MCP server: `3.16.0`
 - interface: `17`
 - authoring contract: `vlab.authoring/0.9`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -18,7 +18,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
 - Results presentation: `vlab.results-presentation/1`
-- capability requests: `vlab.capability-request/8`
+- capability requests: `vlab.capability-request/9`
 
 A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is the only Experiment-authoring input. All four core artifacts are supplied explicitly; Metrics may be empty.
 
@@ -142,6 +142,8 @@ When later evidence shows a candidate is related but too narrow, the Professor c
 When the Professor disposition is `revise`, the original requester may instead answer that guidance through the existing `request_capability` or whole-closure revalidation input using `revised_candidate_capability` or `revised_candidate_contract_delta`. This updates the same request/candidate identity, increments candidate revision history, preserves all evidence, and returns Professor disposition to `pending` for another review. A caller who does not own that request may reuse/link it but cannot rewrite it.
 
 Accept maps to the existing approved technical state; Reject maps to declined. Revise, Defer and Future remain technically requested/unavailable while no longer counting as pending Professor review. None of the five decisions implements the capability or creates canonical implemented semantic truth.
+
+Current request state is authoritative in `status`. `professor_disposition` is a review-phase field only: `accepted` is present while the request is `approved`, then is cleared when development advances to `in_progress` or `implemented`. The accepted decision remains permanently available in `capability_request_professor_reviews`, so provenance is preserved without presenting completed work as still accepted.
 
 Lifecycle-hook vocabulary remains:
 

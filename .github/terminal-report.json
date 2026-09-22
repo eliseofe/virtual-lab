@@ -1,19 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Core Experiment Authoring editors now use an explicit editor-language contract that is independent of stored artifact format versions",
-  "owner_impact": "Configuration, Initialization, Controller and Metrics now share the same metadata-driven editor path and all four core code artifacts explicitly declare Python as their editor language. Older experiments may keep historical format identifiers such as vlab.config/0.2, vlab.initializer-state/0.2 and python-vlab/0.1 without causing the editor to fall back to plain text after hydration. Search remains unchanged.",
+  "outcome": "Capability requests now have one unambiguous current lifecycle",
+  "owner_impact": "Accepted now means accepted and still waiting in the design queue. As soon as development starts, the current request becomes in progress; once deployed it becomes implemented. Completed requests no longer remain simultaneously accepted. The original Professor acceptance is still preserved in audit history, including reviewer, time and guidance.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The reopened #513 highlighting scope is complete after separating artifact format from editor language. Refresh the live Lab on the Mac and verify the previously affected remembered experiment. Separate planned feature #516 records Markdown technical documentation for AI/MCP experiment submission; it has not started and is not part of this execution turn."
+    "text": "The lifecycle-consistency fix is complete. No owner action is required; future capability-request summaries should classify requests from their current lifecycle state rather than historical Professor decisions."
   },
   "technical_evidence": [
-    "Live Supabase inspection showed retained experiments/revisions use multiple historical format identifiers for Configuration, Initialization and Controller, while Metrics consistently uses python-vlab-metrics/0.1.",
-    "The previous editor inferred Python directly from format strings and therefore classified vlab.config/0.2, vlab.initializer-state/0.2 and python-vlab/0.1 as plain text.",
-    "All four core artifacts now declare language=python through one shared artifact metadata contract; artifact serialization/runtime format remains a separate field.",
-    "The legacy three-special-editors-plus-Metrics-generic split was removed from the artifact presentation adapter: all four core textareas expose the same artifact metadata shape and use the same lookup path.",
-    "Production browser smoke explicitly rewrites the three core format fields to the historical live values after editor mount, forces authoring resynchronization, switches all four artifacts twice, and requires Python mode plus visibly distinct rendered token colors to survive."
+    "Database constraints forbid accepted disposition on in-progress or implemented requests.",
+    "Development claim/completion functions clear the live accepted disposition automatically while append-only Professor review history remains unchanged.",
+    "Existing implemented requests are reconciled to implemented-only current state.",
+    "Professor inbox renders the canonical current lifecycle, and MCP capability-request interface v9 declares request_status as the current-state authority."
   ],
-  "close_issue": 513
+  "close_issue": 522
 }

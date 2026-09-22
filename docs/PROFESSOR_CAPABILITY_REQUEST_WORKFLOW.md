@@ -103,6 +103,8 @@ implemented
 
 `approved` means approved by the Professor to enter developer design/queue. It **does not** authorize code implementation by itself.
 
+The request `status` is the sole current lifecycle for owner-facing reporting. Professor decisions are append-only audit history. The live `professor_disposition` field is only populated while a request is still in the review/design phase: `accepted` accompanies `approved`, and is cleared automatically when the request advances to `in_progress` or `implemented`. Historical acceptance remains in `capability_request_professor_reviews`.
+
 The developer-side standing boundary is:
 
 `approved request → developer design discussion → explicit owner implementation approval → trusted developer implementation/deploy/verification → implemented`
