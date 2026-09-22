@@ -27,14 +27,15 @@ async function state(send) {
     configurationEditor: (() => {
       const source = document.querySelector('#experiment-config');
       const root = document.querySelector('[data-vlab-code-editor-root="configuration"]');
-      const editor = root?.querySelector('.ace_editor');
+      const surface = root?.querySelector('[data-vlab-artifact-editor-surface="true"]');
+      const editor = surface?.querySelector('.ace_editor');
       return {
-        ready: root?.dataset.vlabCodeEditorReady ?? null,
-        engine: root?.dataset.vlabEditorEngine ?? null,
+        ready: surface?.dataset.vlabCodeEditorReady ?? null,
+        engine: surface?.dataset.vlabEditorEngine ?? null,
         sourceHidden: source ? getComputedStyle(source).display === 'none' : false,
-        lineNumbers: root?.querySelectorAll('.ace_gutter-cell').length ?? 0,
-        highlightedTokens: root?.querySelectorAll('.ace_keyword, .ace_comment, .ace_string, .ace_numeric').length ?? 0,
-        content: root?.querySelector('.ace_text-layer')?.textContent ?? null,
+        lineNumbers: surface?.querySelectorAll('.ace_gutter-cell').length ?? 0,
+        highlightedTokens: surface?.querySelectorAll('.ace_keyword, .ace_comment, .ace_string, .ace_numeric').length ?? 0,
+        content: surface?.querySelector('.ace_text-layer')?.textContent ?? null,
         editable: editor?.querySelector('.ace_text-input')?.getAttribute('readonly') ?? null,
       };
     })()

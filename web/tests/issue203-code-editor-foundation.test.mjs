@@ -71,6 +71,14 @@ test("#203 mirrors source read-only state and retains textarea fallback", async 
   assert.match(css, /\.vlab-code-editor-host \.ace_gutter/);
 });
 
+test("#203 production smoke reads readiness from the actual editor surface inside the React portal mount", async () => {
+  const smoke = await text("../scripts/browser-smoke.mjs");
+  assert.match(smoke, /data-vlab-code-editor-root="configuration"/);
+  assert.match(smoke, /data-vlab-artifact-editor-surface="true"/);
+  assert.match(smoke, /ready: surface\?\.dataset\.vlabCodeEditorReady/);
+  assert.match(smoke, /engine: surface\?\.dataset\.vlabEditorEngine/);
+});
+
 test("#203 does not hardcode Virtual Lab scientific symbols as fake semantic highlighting", async () => {
   const editor = await text("../src/authoring-code-editor.tsx");
   for (const scientificName of ["Motion(", "obs.", "PROXIMAL_RANGE", "DESIRED_DISTANCE", "ActiveElastic"]) {

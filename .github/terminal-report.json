@@ -13,7 +13,8 @@
     "Ace edits mirror into the authoritative textareas through the existing input contract, while authoritative Experiment/revision loads reset editor content and undo history without manufacturing dirty edits.",
     "Read-only state is mirrored from the existing artifact textareas into Ace.",
     "The existing interaction-boundary autosave logic treats the Ace surface as inside the artifact editor.",
-    "Production browser smoke requires four ready Ace surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens, and reports exact editor initialization errors."
+    "Production browser smoke requires four ready Ace surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens, and reports exact editor initialization errors.",
+    "Production browser smoke reads readiness and engine identity from the actual Ace surface inside the React portal mount, while still verifying hidden authoritative textarea, line numbers and highlighted tokens."
   ],
   "close_issue": 203
 }
