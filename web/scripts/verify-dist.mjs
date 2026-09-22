@@ -10,7 +10,7 @@ if (!/^assets-[0-9a-f]{16}$/.test(manifest.assetDir)) throw new Error("invalid v
 const assetDir = path.join(dist, manifest.assetDir);
 for (const relative of [
   "main.js", "runtime-speed.js", "worker.js", "style.css", "ux-hardening.css", "ux-hardening.js",
-  "workspace-shell.js", "student-registration.js", "student-onboarding.js",
+  "workspace-shell.js", "student-registration.js", "student-onboarding.js", "experiment-library.js",
   "experiment-catalog.js", "catalog-workspace.js",
   "config/compiler.js", "initializer/compiler.js", "controller/compiler.js",
   "wasm/vlab_kernel.js", "wasm/vlab_kernel_bg.wasm",
@@ -96,6 +96,26 @@ for (const forbidden of ["vlab_kernel_bg.wasm", "vlab_kernel.js", "new Worker("]
 const workspaceShell = await readFile(path.join(assetDir, "workspace-shell.js"), "utf8");
 if (!workspaceShell.includes('import "./student-registration.js"')) {
   throw new Error("production workspace does not load student registration");
+}
+if (!workspaceShell.includes('import "./experiment-library.js"')) {
+  throw new Error("production workspace does not load the unified Experiment Library");
+}
+const experimentLibrary = await readFile(path.join(assetDir, "experiment-library.js"), "utf8");
+for (const required of [
+  'showcase: "Showcase"',
+  'mine: "Mine"',
+  'shared: "Shared"',
+  'supervised: "Supervised"',
+  '"All Showcase"',
+  '"All in Mine"',
+  '"All shared"',
+  '"All sources"',
+  '"Open & run"',
+]) if (!experimentLibrary.includes(required)) {
+  throw new Error(`built Experiment Library is incomplete: ${required}`);
+}
+if (experimentLibrary.includes('"Built-in"') || experimentLibrary.includes('"All experiments"')) {
+  throw new Error("built Experiment Library contains obsolete discovery categories");
 }
 const studentRegistration = await readFile(path.join(assetDir, "student-registration.js"), "utf8");
 for (const required of [
