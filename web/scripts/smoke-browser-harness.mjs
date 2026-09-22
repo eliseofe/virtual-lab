@@ -27,40 +27,47 @@ async function httpJson(port, path) {
   return response.json();
 }
 
-export async function launchSmokeBrowserHost() {
+export async function launchSmokeBrowserHost({ launchAttempts = 2 } = {}) {
   const chrome = process.env.CHROME_BIN ?? "google-chrome";
-  const profile = `/tmp/vlab-smoke-host-${process.pid}`;
-  const child = spawn(chrome, [
-    "--headless",
-    "--no-sandbox",
-    "--disable-gpu",
-    "--disable-dev-shm-usage",
-    "--window-size=1280,900",
-    "--remote-debugging-address=127.0.0.1",
-    "--remote-debugging-port=0",
-    `--user-data-dir=${profile}`,
-    "about:blank",
-  ], { stdio: ["ignore", "ignore", "pipe"] });
+  let lastError;
 
-  let chromeLog = "";
-  child.stderr.on("data", (chunk) => { chromeLog += chunk.toString(); });
+  for (let launchAttempt = 1; launchAttempt <= launchAttempts; launchAttempt += 1) {
+    const profile = `/tmp/vlab-smoke-host-${process.pid}-${launchAttempt}`;
+    const child = spawn(chrome, [
+      "--headless",
+      "--no-sandbox",
+      "--disable-gpu",
+      "--disable-dev-shm-usage",
+      "--window-size=1280,900",
+      "--remote-debugging-address=127.0.0.1",
+      "--remote-debugging-port=0",
+      `--user-data-dir=${profile}`,
+      "about:blank",
+    ], { stdio: ["ignore", "ignore", "pipe"] });
 
-  try {
-    const port = await waitForDevToolsPort(child, profile);
-    return {
-      port,
-      getChromeLog: () => chromeLog,
-      async close() {
-        if (child.exitCode === null) child.kill("SIGTERM");
-        await rm(profile, { recursive: true, force: true }).catch(() => {});
-      },
-    };
-  } catch (error) {
-    if (child.exitCode === null) child.kill("SIGTERM");
-    await rm(profile, { recursive: true, force: true }).catch(() => {});
-    if (chromeLog.trim()) error.message += `\nChrome stderr:\n${chromeLog}`;
-    throw error;
+    let chromeLog = "";
+    child.stderr.on("data", (chunk) => { chromeLog += chunk.toString(); });
+
+    try {
+      const port = await waitForDevToolsPort(child, profile);
+      return {
+        port,
+        getChromeLog: () => chromeLog,
+        async close() {
+          if (child.exitCode === null) child.kill("SIGTERM");
+          await rm(profile, { recursive: true, force: true }).catch(() => {});
+        },
+      };
+    } catch (error) {
+      if (child.exitCode === null) child.kill("SIGTERM");
+      await rm(profile, { recursive: true, force: true }).catch(() => {});
+      if (chromeLog.trim()) error.message += `\nChrome stderr:\n${chromeLog}`;
+      lastError = error;
+      if (launchAttempt < launchAttempts) await sleep(250);
+    }
   }
+
+  throw lastError ?? new Error("Chrome smoke host failed to start");
 }
 
 async function connectBrowser(port) {
