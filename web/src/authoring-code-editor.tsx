@@ -4,6 +4,7 @@ const ACE_VERSION = '1.44.0';
 const ACE_BASE_URL = `https://cdn.jsdelivr.net/npm/ace-builds@${ACE_VERSION}/src-min-noconflict`;
 const ACE_SCRIPT_URL = `${ACE_BASE_URL}/ace.js`;
 const ACE_LANGUAGE_TOOLS_SCRIPT_URL = `${ACE_BASE_URL}/ext-language_tools.js`;
+const ACE_PYTHON_MODE_SCRIPT_URL = `${ACE_BASE_URL}/mode-python.js`;
 const SOURCE_REPLACED_EVENT = 'vlab:artifact-source-replaced';
 
 type AceRuntime = {
@@ -36,6 +37,7 @@ declare global {
 
 let acePromise: Promise<AceRuntime> | null = null;
 let aceLanguageToolsPromise: Promise<void> | null = null;
+let acePythonModePromise: Promise<void> | null = null;
 const editors = new Map<string, any>();
 
 export function focusArtifactLine(id: string, line: number): boolean {
@@ -46,11 +48,30 @@ export function focusArtifactLine(id: string, line: number): boolean {
   return true;
 }
 
-export function openArtifactSearch(id: string): boolean {
+export function openArtifactSearch(id: string, query = ''): boolean {
   const editor = editors.get(id);
   if (!editor) return false;
+  const needle = query.trim();
   editor.focus();
+  if (needle) {
+    editor.find(needle, {
+      backwards: false,
+      wrap: true,
+      caseSensitive: false,
+      wholeWord: false,
+      regExp: false,
+    });
+  }
   editor.execCommand('find');
+  if (needle) {
+    requestAnimationFrame(() => {
+      const field = editor.container.querySelector<HTMLInputElement>('.ace_search_field');
+      if (!field) return;
+      field.value = needle;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      field.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  }
   return true;
 }
 
@@ -125,6 +146,42 @@ async function loadAceLanguageTools(): Promise<void> {
   return aceLanguageToolsPromise;
 }
 
+async function loadAcePythonMode(): Promise<void> {
+  const ace = await loadAce();
+  try {
+    if (ace.require?.('ace/mode/python')) return;
+  } catch {
+    // The mode is loaded explicitly below so hidden editors never race Ace's dynamic loader.
+  }
+  if (!acePythonModePromise) {
+    acePythonModePromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>('script[data-vlab-ace-python-mode="true"]');
+      const finish = () => {
+        try {
+          if (!ace.require?.('ace/mode/python')) throw new Error('Ace Python mode did not register.');
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      };
+      if (existing) {
+        existing.addEventListener('load', finish, { once: true });
+        existing.addEventListener('error', () => reject(new Error('Ace Python mode failed to load.')), { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = ACE_PYTHON_MODE_SCRIPT_URL;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.dataset.vlabAcePythonMode = 'true';
+      script.addEventListener('load', finish, { once: true });
+      script.addEventListener('error', () => reject(new Error('Ace Python mode failed to load.')), { once: true });
+      document.head.append(script);
+    });
+  }
+  return acePythonModePromise;
+}
+
 function applyAuthoringSupport(
   editor: any,
   host: HTMLElement,
@@ -159,6 +216,14 @@ function applyAuthoringSupport(
 
 function pythonLike(format: string) {
   return format === 'python-vlab' || format.startsWith('python-vlab-');
+}
+
+function applySyntaxMode(editor: any, host: HTMLElement, format: string) {
+  const python = pythonLike(format);
+  const modeId = python ? 'ace/mode/python' : 'ace/mode/text';
+  if (editor.session.$modeId !== modeId) editor.session.setMode(modeId);
+  host.dataset.vlabSyntaxMode = python ? 'python' : 'plain';
+  host.dataset.vlabAceModeId = editor.session.$modeId ?? modeId;
 }
 
 function emitInteractionBoundary(source: HTMLTextAreaElement) {
@@ -203,7 +268,10 @@ export function ArtifactCodeEditor({
     const start = async () => {
       try {
         const ace = await loadAce();
-        await loadAceLanguageTools();
+        await Promise.all([
+          loadAceLanguageTools(),
+          pythonLike(format) ? loadAcePythonMode() : Promise.resolve(),
+        ]);
         if (disposed || !hostRef.current) return;
 
         editor = ace.edit(host);
@@ -227,7 +295,7 @@ export function ArtifactCodeEditor({
         editor.renderer.setShowGutter(true);
         editor.session.setUseWorker(false);
         editor.session.setFoldStyle?.('markbeginend');
-        if (pythonLike(format)) editor.session.setMode('ace/mode/python');
+        applySyntaxMode(editor, host, format);
         editor.setReadOnly(source.readOnly);
         editor.setValue(source.value, -1);
         editor.session.getUndoManager().reset();
@@ -249,6 +317,7 @@ export function ArtifactCodeEditor({
           syncingFromSource = true;
           try {
             editor.setValue(source.value, -1);
+            applySyntaxMode(editor, host, format);
             editor.session.getUndoManager().reset();
             editor.clearSelection();
           } finally {
@@ -272,7 +341,6 @@ export function ArtifactCodeEditor({
         source.dataset.vlabEditorEnhanced = 'true';
         host.dataset.vlabCodeEditorReady = 'true';
         host.dataset.vlabEditorEngine = 'ace';
-        host.dataset.vlabSyntaxMode = pythonLike(format) ? 'python' : 'plain';
         host.dataset.vlabCodeEditorReadonly = String(source.readOnly);
         applyAuthoringSupport(editor, host, diagnosticsRef.current, completionItemsRef.current);
         delete host.dataset.vlabCodeEditorError;
@@ -301,6 +369,7 @@ export function ArtifactCodeEditor({
       delete host.dataset.vlabCodeEditorReady;
       delete host.dataset.vlabEditorEngine;
       delete host.dataset.vlabSyntaxMode;
+      delete host.dataset.vlabAceModeId;
       delete host.dataset.vlabCodeEditorReadonly;
       delete host.dataset.vlabDiagnosticCount;
       delete host.dataset.vlabDiagnosticLineCount;
@@ -317,8 +386,13 @@ export function ArtifactCodeEditor({
   }, [diagnostics, completionItems]);
 
   useEffect(() => {
-    if (selected) editorRef.current?.resize?.(true);
-  }, [selected]);
+    const editor = editorRef.current;
+    const host = hostRef.current;
+    if (!selected || !editor || !host) return;
+    applySyntaxMode(editor, host, format);
+    editor.resize?.(true);
+    editor.renderer?.updateFull?.(true);
+  }, [selected, format]);
 
   return (
     <div
