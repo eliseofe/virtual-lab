@@ -115,6 +115,7 @@ function simulationValues(setup = {}) {
   return {
     initialState: Array.isArray(setup.initialState) ? setup.initialState : [],
     environment: setup.environment ?? null,
+    worldReferences: setup.worldReferences ?? { schema: "vlab.world-references/0.1", references: [], sensors: [] },
     seed: Number(simulationSetup.seed),
     physicsDt: Number(simulationSetup.physicsDt),
     controlDt: Number(simulationSetup.controlDt),
@@ -272,6 +273,7 @@ self.addEventListener("message", (event) => {
       activePhysicsDt = setup.physicsDt;
       simulation = new wasm.MetricProbeSimulation(
         JSON.stringify(setup.initialState),
+        JSON.stringify(setup.worldReferences),
         setup.seed,
         setup.physicsDt,
         setup.controlDt,
@@ -380,6 +382,7 @@ self.addEventListener("message", (event) => {
       activePhysicsDt = setup.physicsDt;
       simulation.set_experiment(
         JSON.stringify(setup.initialState),
+        JSON.stringify(setup.worldReferences),
         setup.seed,
         setup.physicsDt,
         setup.controlDt,
