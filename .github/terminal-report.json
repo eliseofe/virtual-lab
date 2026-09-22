@@ -13,7 +13,9 @@
     "CodeMirror edits mirror into the authoritative textareas through the existing input contract, while authoritative Experiment/revision loads reset editor state without manufacturing dirty edits.",
     "Read-only state is mirrored from the existing artifact textareas into CodeMirror.",
     "The existing interaction-boundary autosave logic treats the CodeMirror surface as inside the artifact editor.",
-    "Production browser smoke requires four ready CodeMirror surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens."
+    "Production browser smoke requires four ready CodeMirror surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens.",
+    "CodeMirror CDN imports disable esm.sh submodule bundling so shared CodeMirror state/view dependencies resolve as one module graph instead of duplicated extension identities.",
+    "Production smoke reports per-artifact CodeMirror initialization errors if the editor CDN graph fails again."
   ],
   "close_issue": 203
 }
