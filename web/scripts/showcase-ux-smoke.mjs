@@ -35,8 +35,66 @@ async function waitReady(send) {
   throw new Error(`Experiment Library did not initialize: ${JSON.stringify(latest)}`);
 }
 
+async function clickBrowseWhenReady(send, label) {
+  let latest = null;
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    try {
+      latest = JSON.parse(await evaluate(send, `JSON.stringify((() => {
+        const browse = document.querySelector('.experiment-browse');
+        const library = document.querySelector('.vlab-library');
+        const worker = document.querySelector('#worker-status')?.dataset.state ?? null;
+        const bridge = Boolean(window.vlabExperimentLibraryBridge);
+        if (browse && library && bridge && worker === "ready") {
+          browse.click();
+          return { clicked: true, worker, browse: browse.textContent?.trim() ?? null, library: true, bridge };
+        }
+        return {
+          clicked: false,
+          worker,
+          browse: browse?.textContent?.trim() ?? null,
+          library: Boolean(library),
+          bridge,
+        };
+      })())`));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("Inspected target navigated or closed")) throw error;
+      await sleep(100);
+      continue;
+    }
+    if (latest.clicked) return;
+    if (latest.worker === "error") {
+      throw new Error(`${label}: simulator entered error before Experiment Library could open: ${JSON.stringify(latest)}`);
+    }
+    await sleep(100);
+  }
+  throw new Error(`${label}: Browse experiments never became stably clickable: ${JSON.stringify(latest)}`);
+}
+
+async function ensureDetailsOpen(send, label) {
+  let latest = null;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    latest = JSON.parse(await evaluate(send, `JSON.stringify((() => {
+      const dialog = document.querySelector('.vlab-library');
+      const actions = [...dialog?.querySelectorAll('.vlab-library-row-actions button') ?? []];
+      if (actions.some((button) => button.textContent?.trim() === 'Open & run')) {
+        return { open: true, details: true };
+      }
+      const details = actions.find((button) => button.textContent?.trim() === 'Details');
+      if (details) {
+        details.click();
+        return { open: true, details: false, clicked: true };
+      }
+      return { open: Boolean(dialog?.open), details: false, clicked: false };
+    })())`));
+    if (latest.details) return;
+    await sleep(50);
+  }
+  throw new Error(`${label}: Experiment Details did not expose Open & run: ${JSON.stringify(latest)}`);
+}
+
 async function inspectLibrary(send, label, expectedTwoPane) {
-  await evaluate(send, "document.querySelector('.experiment-browse').click()");
+  await clickBrowseWhenReady(send, label);
 
   let state = null;
   for (let attempt = 0; attempt < 200; attempt += 1) {
@@ -55,11 +113,7 @@ async function inspectLibrary(send, label, expectedTwoPane) {
   }
   if (!state?.open || state.rows < 1) throw new Error(`${label}: Experiment Library did not load Showcase rows: ${JSON.stringify(state)}`);
 
-  await evaluate(send, `(() => {
-    const first = document.querySelector('.vlab-library-row .vlab-library-row-actions button:nth-child(2)');
-    first?.click();
-  })()`);
-  await sleep(30);
+  await ensureDetailsOpen(send, label);
 
   const inspected = JSON.parse(await evaluate(send, `JSON.stringify((() => {
     const dialog = document.querySelector('.vlab-library');
