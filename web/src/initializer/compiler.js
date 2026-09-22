@@ -215,6 +215,19 @@ export function initializerStructure(source) {
   };
 }
 
+export function initializerStructure(source) {
+  const functions = parseProgram(source);
+  return {
+    language: "python-vlab-initializer/0.1",
+    symbols: [...functions.values()].map((fn) => ({
+      kind: "function",
+      name: fn.name,
+      line: fn.line,
+      params: [...fn.params],
+    })),
+  };
+}
+
 function pythonTruthy(value) { return Boolean(value); }
 
 function binary(op, a, b, line) {
