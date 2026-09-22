@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 
-const CODEMIRROR_URL = 'https://esm.sh/codemirror@6.0.2';
-const CODEMIRROR_VIEW_URL = 'https://esm.sh/@codemirror/view@6.43.12';
-const CODEMIRROR_STATE_URL = 'https://esm.sh/@codemirror/state@6.7.5';
-const CODEMIRROR_PYTHON_URL = 'https://esm.sh/@codemirror/lang-python@6.2.1';
+const CODEMIRROR_URL = 'https://esm.sh/codemirror@6.0.2?bundle=false';
+const CODEMIRROR_VIEW_URL = 'https://esm.sh/@codemirror/view@6.43.12?bundle=false';
+const CODEMIRROR_STATE_URL = 'https://esm.sh/@codemirror/state@6.7.5?bundle=false';
+const CODEMIRROR_PYTHON_URL = 'https://esm.sh/@codemirror/lang-python@6.2.1?bundle=false';
 const SOURCE_REPLACED_EVENT = 'vlab:artifact-source-replaced';
 
 type CodeMirrorRuntime = {
@@ -156,6 +156,7 @@ export function ArtifactCodeEditor({
       } catch (error) {
         delete source.dataset.vlabEditorEnhanced;
         host.dataset.vlabCodeEditorReady = 'error';
+        host.dataset.vlabCodeEditorError = error instanceof Error ? error.message : String(error);
         console.error(`Virtual Lab code editor failed to initialize for '${id}'.`, error);
       }
     };
@@ -170,6 +171,7 @@ export function ArtifactCodeEditor({
       viewRef.current = null;
       delete source.dataset.vlabEditorEnhanced;
       delete host.dataset.vlabCodeEditorReady;
+      delete host.dataset.vlabCodeEditorError;
       delete host.dataset.vlabSyntaxMode;
       delete host.dataset.vlabCodeEditorReadonly;
     };
