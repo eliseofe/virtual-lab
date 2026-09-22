@@ -32,6 +32,7 @@ if (!experimentSelect || !experimentPanel || !accountPanel || !registrySaveState
 let sessionUser = null;
 let profile = null;
 let entries = [];
+let showcaseCollections = [];
 let currentShowcase = null;
 let busy = false;
 
@@ -50,8 +51,15 @@ function installStyles() {
     .showcase-message { margin: 0; padding: 8px 18px; min-height: 1.4em; color: #64757c; font-size: 11.5px; line-height: 1.4; }
     .showcase-message:empty { display: none; }
     .showcase-message[data-state="error"] { color: #9e2d29; }
+    .showcase-manager { display: grid; gap: 8px; padding: 8px 18px 12px; border-bottom: 1px solid #e6ecef; }
+    .showcase-manager-create { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px; }
+    .showcase-manager-create input, .showcase-entry-collection { min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; background: #fff; padding: 7px 9px; color: #172127; }
+    .showcase-manager-collections { display: flex; flex-wrap: wrap; gap: 6px; }
+    .showcase-manager-collection { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #dfe7ea; border-radius: 9px; padding: 4px 5px 4px 8px; }
+    .showcase-manager-collection strong { font-size: 11px; }
+    .showcase-manager-collection button { min-height: 30px; padding: 3px 7px; font-size: 10px; }
     .showcase-list { display: grid; align-content: start; gap: 8px; overflow: auto; padding: 0 18px 18px; }
-    .showcase-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: stretch; }
+    .showcase-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(10rem, 14rem) auto; gap: 8px; align-items: center; }
     .showcase-entry { display: grid; gap: 5px; width: 100%; padding: 11px 12px; text-align: left; border: 1px solid #dfe7ea; border-radius: 11px; background: #fff; }
     .showcase-entry:hover { background: #f6f9fa; }
     .showcase-entry strong { font-size: 13px; }
@@ -75,7 +83,7 @@ function installStyles() {
       .showcase-dialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
       .showcase-shell { min-height: min(620px, calc(100vh - 20px)); }
       .showcase-head-actions button, .showcase-promote-current, .showcase-entry-remove { min-height: 44px; }
-      .showcase-entry-row { grid-template-columns: 1fr; }
+      .showcase-manager-create, .showcase-entry-row { grid-template-columns: 1fr; }
       .showcase-entry-remove { width: 100%; }
     }
   `;
@@ -86,19 +94,20 @@ function buildUi() {
   const launcher = document.createElement("button");
   launcher.type = "button";
   launcher.className = "showcase-launcher";
-  launcher.textContent = "Showcase";
+  launcher.textContent = "Manage Showcase";
+  launcher.hidden = true;
   utilityLaunchers.prepend(launcher);
 
   const dialog = document.createElement("dialog");
   dialog.className = "showcase-dialog";
-  dialog.setAttribute("aria-label", "Showcase experiments");
+  dialog.setAttribute("aria-label", "Manage Showcase");
 
   const shell = document.createElement("div");
   shell.className = "showcase-shell";
   const head = document.createElement("div");
   head.className = "showcase-head";
   const title = document.createElement("h2");
-  title.textContent = "Showcase";
+  title.textContent = "Manage Showcase";
   const headActions = document.createElement("div");
   headActions.className = "showcase-head-actions";
   const refresh = document.createElement("button");
@@ -135,9 +144,27 @@ function buildUi() {
   const message = document.createElement("p");
   message.className = "showcase-message";
   message.setAttribute("role", "status");
+
+  const manager = document.createElement("section");
+  manager.className = "showcase-manager";
+  const createRow = document.createElement("div");
+  createRow.className = "showcase-manager-create";
+  const collectionName = document.createElement("input");
+  collectionName.type = "text";
+  collectionName.maxLength = 80;
+  collectionName.placeholder = "New Showcase collection";
+  collectionName.setAttribute("aria-label", "New Showcase collection name");
+  const addCollection = document.createElement("button");
+  addCollection.type = "button";
+  addCollection.textContent = "Add collection";
+  createRow.append(collectionName, addCollection);
+  const collectionList = document.createElement("div");
+  collectionList.className = "showcase-manager-collections";
+  manager.append(createRow, collectionList);
+
   const list = document.createElement("div");
   list.className = "showcase-list";
-  shell.append(head, message, list);
+  shell.append(head, message, manager, list);
   dialog.append(shell);
   document.body.append(dialog);
 
@@ -165,6 +192,7 @@ function buildUi() {
 
   return {
     launcher, dialog, refresh, close, message, list,
+    collectionName, addCollection, collectionList,
     current, currentTitle, currentMeta, saveCopy, leave,
     curationStatus, promote,
   };
@@ -229,57 +257,142 @@ async function loadSessionAndProfile() {
     .maybeSingle();
   if (profileError) throw profileError;
   profile = profileData;
+  ui.launcher.hidden = profile?.role !== "professor";
 }
 
 async function loadEntries() {
-  const { data, error } = await supabase.rpc("list_showcase_experiments");
-  if (error) throw error;
-  entries = Array.isArray(data) ? data : [];
+  const [entryResult, collectionResult] = await Promise.all([
+    supabase.rpc("list_showcase_experiments"),
+    supabase.rpc("list_showcase_collections"),
+  ]);
+  if (entryResult.error) throw entryResult.error;
+  if (collectionResult.error) throw collectionResult.error;
+  entries = Array.isArray(entryResult.data) ? entryResult.data : [];
+  showcaseCollections = Array.isArray(collectionResult.data) ? collectionResult.data : [];
+  renderCollectionManager();
   renderList();
   await syncCurationUi();
   return entries;
 }
 
+function collectionOptions(selectedId = null) {
+  const select = document.createElement("select");
+  select.className = "showcase-entry-collection";
+  select.setAttribute("aria-label", "Showcase collection");
+  const uncategorized = document.createElement("option");
+  uncategorized.value = "";
+  uncategorized.textContent = "Uncategorized";
+  select.append(uncategorized);
+  for (const collection of showcaseCollections) {
+    const option = document.createElement("option");
+    option.value = collection.showcase_collection_id;
+    option.textContent = collection.name;
+    select.append(option);
+  }
+  select.value = selectedId || "";
+  return select;
+}
+
+function renderCollectionManager() {
+  ui.collectionList.replaceChildren();
+  for (const collection of showcaseCollections) {
+    const item = document.createElement("div");
+    item.className = "showcase-manager-collection";
+    const name = document.createElement("strong");
+    name.textContent = `${collection.name} · ${collection.experiment_count}`;
+    const rename = document.createElement("button");
+    rename.type = "button";
+    rename.textContent = "Rename";
+    rename.addEventListener("click", () => run(() => renameCollection(collection)));
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Delete";
+    remove.addEventListener("click", () => run(() => deleteCollection(collection)));
+    item.append(name, rename, remove);
+    ui.collectionList.append(item);
+  }
+}
+
 function renderList() {
   ui.list.replaceChildren();
-  const activeId = activeShowcaseId();
   for (const entry of entries) {
     const row = document.createElement("div");
     row.className = "showcase-entry-row";
-    row.dataset.active = entry.showcase_id === activeId ? "true" : "false";
 
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "showcase-entry";
-    button.dataset.showcaseId = entry.showcase_id;
-    button.setAttribute("aria-label", `Open ${entry.title} in Lab and run it`);
-    if (entry.showcase_id === activeId) button.setAttribute("aria-current", "page");
-
+    const summary = document.createElement("div");
+    summary.className = "showcase-entry";
     const title = document.createElement("strong");
     title.textContent = entry.title;
     const meta = document.createElement("span");
     const date = formatDate(entry.published_at);
-    const revision = entry.source_revision == null ? "" : ` · revision ${entry.source_revision}`;
-    meta.textContent = `Curated${revision}${date ? ` · ${date}` : ""}`;
-    const action = document.createElement("span");
-    action.className = "showcase-entry-action";
-    action.textContent = entry.showcase_id === activeId ? "Loaded in Lab" : "Open & run";
-    button.append(title, meta, action);
-    button.addEventListener("click", () => openEntry(entry));
-    row.append(button);
+    const revision = entry.source_revision == null ? "Catalog" : `R${entry.source_revision}`;
+    meta.textContent = `${revision}${date ? ` · ${date}` : ""}`;
+    summary.append(title, meta);
 
-    if (profile?.role === "professor") {
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "showcase-entry-remove";
-      remove.textContent = "Remove";
-      remove.setAttribute("aria-label", `Remove ${entry.title} from Showcase`);
-      remove.addEventListener("click", () => run(() => removeEntry(entry, remove)));
-      row.append(remove);
-    }
+    const collection = collectionOptions(entry.showcase_collection_id);
+    collection.addEventListener("change", () => run(async () => {
+      collection.disabled = true;
+      try {
+        const { data, error } = await supabase.rpc("set_showcase_entry_collection", {
+          p_showcase_id: entry.showcase_id,
+          p_collection_id: collection.value || null,
+        });
+        if (error) throw error;
+        if (data !== true) throw new Error("Showcase entry is no longer active.");
+        await loadEntries();
+        setMessage(`Moved “${entry.title}” to ${entry.showcase_collection_name || "Showcase collection"}.`);
+      } finally {
+        collection.disabled = false;
+      }
+    }));
 
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "showcase-entry-remove";
+    remove.textContent = "Remove";
+    remove.setAttribute("aria-label", `Remove ${entry.title} from Showcase`);
+    remove.addEventListener("click", () => run(() => removeEntry(entry, remove)));
+
+    row.append(summary, collection, remove);
     ui.list.append(row);
   }
+}
+
+async function createCollection() {
+  if (profile?.role !== "professor") throw new Error("Professor role required.");
+  const name = ui.collectionName.value.trim();
+  if (!name) throw new Error("Enter a Showcase collection name.");
+  const { error } = await supabase.rpc("create_showcase_collection", { p_name: name });
+  if (error) throw error;
+  ui.collectionName.value = "";
+  await loadEntries();
+  setMessage(`Created Showcase collection “${name}”.`);
+}
+
+async function renameCollection(collection) {
+  if (profile?.role !== "professor") throw new Error("Professor role required.");
+  const name = window.prompt("Rename Showcase collection", collection.name)?.trim();
+  if (!name || name === collection.name) return;
+  const { data, error } = await supabase.rpc("rename_showcase_collection", {
+    p_collection_id: collection.showcase_collection_id,
+    p_name: name,
+  });
+  if (error) throw error;
+  if (data !== true) throw new Error("Showcase collection not found.");
+  await loadEntries();
+  setMessage(`Renamed Showcase collection to “${name}”.`);
+}
+
+async function deleteCollection(collection) {
+  if (profile?.role !== "professor") throw new Error("Professor role required.");
+  if (!window.confirm(`Delete Showcase collection “${collection.name}”? Its Experiments will move to Uncategorized.`)) return;
+  const { data, error } = await supabase.rpc("delete_showcase_collection", {
+    p_collection_id: collection.showcase_collection_id,
+  });
+  if (error) throw error;
+  if (data !== true) throw new Error("Showcase collection not found.");
+  await loadEntries();
+  setMessage(`Deleted Showcase collection “${collection.name}”.`);
 }
 
 async function readCurrentOwnedExperiment() {
@@ -586,11 +699,12 @@ async function savePrivateCopy() {
 }
 
 async function openDialog() {
+  if (profile?.role !== "professor") throw new Error("Professor role required.");
   setMessage("Loading…");
   await loadEntries();
   setMessage(`${entries.length} Showcase experiment${entries.length === 1 ? "" : "s"}.`);
   ui.dialog.showModal();
-  ui.close.focus({ preventScroll: true });
+  ui.collectionName.focus({ preventScroll: true });
 }
 
 async function initialize() {
@@ -615,6 +729,10 @@ async function run(action) {
 }
 
 ui.launcher.addEventListener("click", () => run(openDialog));
+ui.addCollection.addEventListener("click", () => run(createCollection));
+ui.collectionName.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") run(createCollection);
+});
 ui.refresh.addEventListener("click", () => run(async () => {
   await loadEntries();
   setMessage(`${entries.length} Showcase experiment${entries.length === 1 ? "" : "s"}.`);
