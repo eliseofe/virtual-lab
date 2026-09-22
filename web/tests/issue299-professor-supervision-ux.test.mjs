@@ -58,8 +58,8 @@ test("#299 leaves authorization semantics outside the UI restructuring", () => {
 });
 
 test("#299 remains complete while the living #273 lane can return dormant after bounded UI work", () => {
-  assert.match(status, /#273 UI\/UX[^\n]*dormant \/ living/i);
-  assert.match(status, /#301 Security[^\n]*living maintenance domain/i);
+  assert.match(status, /#273 UI\/UX refinement[^\n]*living domain, currently dormant/i);
+  assert.match(status, /#301 Security \/ identity \/ authorization[^\n]*living domain/i);
   assert.match(status, /#302/);
   assert.match(roadmap, /#301 Security \/ identity \/ authorization/);
   assert.match(roadmap, /#425 Refactoring \/ technical-debt reduction/);
