@@ -68,6 +68,7 @@ export function ArtifactCodeEditor({
     let disposed = false;
     let view: any = null;
     let readOnlyObserver: MutationObserver | null = null;
+    let resetFromAuthoritativeSource: (() => void) | null = null;
     let syncingFromSource = false;
 
     const start = async () => {
@@ -121,7 +122,7 @@ export function ArtifactCodeEditor({
         });
         viewRef.current = view;
 
-        const resetFromAuthoritativeSource = () => {
+        resetFromAuthoritativeSource = () => {
           if (!view) return;
           syncingFromSource = true;
           try {
@@ -164,7 +165,7 @@ export function ArtifactCodeEditor({
     return () => {
       disposed = true;
       readOnlyObserver?.disconnect();
-      source.removeEventListener(SOURCE_REPLACED_EVENT, () => {});
+      if (resetFromAuthoritativeSource) source.removeEventListener(SOURCE_REPLACED_EVENT, resetFromAuthoritativeSource);
       if (view) view.destroy();
       viewRef.current = null;
       delete source.dataset.vlabEditorEnhanced;
