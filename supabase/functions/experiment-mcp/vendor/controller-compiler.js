@@ -58,6 +58,15 @@ const CALL_SIGNATURES = {
   ...CAPABILITY_CALL_SIGNATURES,
 };
 
+export function controllerCompletionItems({ parameters = {} } = {}) {
+  const items = [
+    ...Object.keys(CALL_SIGNATURES).map((value) => ({ value, caption: value, score: 900, meta: "supported function" })),
+    ...[...OBSERVATION_TYPES.keys()].map((value) => ({ value, caption: value, score: 1000, meta: "observation" })),
+    ...Object.keys(parameters).map((value) => ({ value, caption: value, score: 800, meta: "parameter" })),
+  ];
+  return [...new Map(items.map((item) => [item.value, item])).values()];
+}
+
 export class ControllerCompileError extends Error {
   constructor(category, message, line = null, column = null) {
     const location = line == null ? "" : `line ${line}${column == null ? "" : `:${column}`}: `;

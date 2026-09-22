@@ -410,6 +410,22 @@ body.vlab-react-chrome-mounted {
   min-height: 38px;
 }
 
+.vlab-react-authoring-diagnostics {
+  min-width: 0;
+}
+
+.vlab-react-authoring-diagnostics .mantine-Button-root {
+  height: auto;
+  min-height: 34px;
+  max-width: 100%;
+}
+
+.vlab-react-authoring-diagnostics .mantine-Button-label {
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
 .vlab-react-chrome-mounted .authoring-pane-head {
   margin: 14px 1px 10px;
 }

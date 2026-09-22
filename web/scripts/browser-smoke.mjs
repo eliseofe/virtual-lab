@@ -48,6 +48,13 @@ async function state(send) {
         outlineDisabled: outline?.querySelector('input')?.disabled ?? null,
         findVisible: Boolean(find && getComputedStyle(find).display !== 'none'),
       };
+    })(),
+    authoringDiagnostics: (() => {
+      const surfaces = [...document.querySelectorAll('[data-vlab-artifact-editor-surface="true"]')];
+      return {
+        total: surfaces.reduce((sum, surface) => sum + Number(surface.dataset.vlabDiagnosticCount ?? 0), 0),
+        completionSurfaces: surfaces.filter((surface) => Number(surface.dataset.vlabCompletionCount ?? 0) > 0).length,
+      };
     })()
   })`;
   const result = await send("Runtime.evaluate", { expression, returnByValue: true });
@@ -116,6 +123,9 @@ try {
       ) {
         throw new Error(`compiler-derived Configuration outline is not available: ${JSON.stringify(latest)}`);
       }
+      if (latest.authoringDiagnostics?.total !== 0 || latest.authoringDiagnostics?.completionSurfaces < 3) {
+        throw new Error(`compiler-linked diagnostics/completion support did not initialize cleanly: ${JSON.stringify(latest)}`);
+      }
 
       await cdp.send("Runtime.evaluate", {
         expression: "document.querySelector('[data-vlab-authoring-find=\"configuration\"]').click()",
@@ -154,6 +164,129 @@ try {
         || initializerNavigationState?.foldWidgets < 1
       ) {
         throw new Error(`Initializer outline/folding is not available: ${JSON.stringify(initializerNavigationState)}`);
+      }
+
+      await cdp.send("Runtime.evaluate", {
+        expression: "document.querySelector('[data-vlab-authoring-tab=\"controller\"]').click()",
+      });
+      await sleep(120);
+      const controllerSupport = await cdp.send("Runtime.evaluate", {
+        expression: `JSON.stringify((() => {
+          const root = document.querySelector('[data-vlab-code-editor-root="controller"]');
+          const surface = root?.querySelector('[data-vlab-artifact-editor-surface="true"]');
+          const editor = surface && window.ace ? window.ace.edit(surface) : null;
+          return {
+            completionCount: Number(surface?.dataset.vlabCompletionCount ?? 0),
+            diagnosticCount: Number(surface?.dataset.vlabDiagnosticCount ?? 0),
+            annotations: editor?.session?.getAnnotations?.() ?? [],
+          };
+        })())`,
+        returnByValue: true,
+      });
+      const controllerSupportState = JSON.parse(controllerSupport?.result?.value ?? "null");
+      if (
+        controllerSupportState?.completionCount < 3
+        || controllerSupportState?.diagnosticCount !== 0
+        || controllerSupportState?.annotations?.length !== 0
+      ) {
+        throw new Error(`Controller authoring support did not initialize cleanly: ${JSON.stringify(controllerSupportState)}`);
+      }
+
+      await cdp.send("Runtime.evaluate", {
+        expression: `(() => {
+          const surface = document.querySelector('[data-vlab-code-editor-root="controller"] [data-vlab-artifact-editor-surface="true"]');
+          const editor = window.ace.edit(surface);
+          editor.focus();
+          editor.execCommand('startAutocomplete');
+        })()`,
+      });
+      await sleep(120);
+      const completionVisible = await cdp.send("Runtime.evaluate", {
+        expression: "Boolean(document.querySelector('.ace_autocomplete') && getComputedStyle(document.querySelector('.ace_autocomplete')).display !== 'none')",
+        returnByValue: true,
+      });
+      if (!completionVisible?.result?.value) throw new Error("Ace constrained completion UI did not open.");
+      await cdp.send("Runtime.evaluate", {
+        expression: `(() => {
+          const surface = document.querySelector('[data-vlab-code-editor-root="controller"] [data-vlab-artifact-editor-surface="true"]');
+          window.ace.edit(surface).completer?.detach();
+        })()`,
+      });
+
+      await cdp.send("Runtime.evaluate", {
+        expression: `(() => {
+          const surface = document.querySelector('[data-vlab-code-editor-root="controller"] [data-vlab-artifact-editor-surface="true"]');
+          const editor = window.ace.edit(surface);
+          globalThis.__vlabIssue205OriginalController = editor.getValue();
+          editor.setValue("class SmokeBroken(Agent):\\n    def step(self, obs):\\n        return @", -1);
+          editor.clearSelection();
+        })()`,
+      });
+      await sleep(240);
+      const linkedDiagnostic = await cdp.send("Runtime.evaluate", {
+        expression: `JSON.stringify((() => {
+          const surface = document.querySelector('[data-vlab-code-editor-root="controller"] [data-vlab-artifact-editor-surface="true"]');
+          const editor = window.ace.edit(surface);
+          const detail = document.querySelector('[data-vlab-authoring-diagnostics="controller"]');
+          const tab = document.querySelector('[data-vlab-authoring-tab="controller"]');
+          return {
+            diagnosticCount: Number(surface?.dataset.vlabDiagnosticCount ?? 0),
+            annotations: editor?.session?.getAnnotations?.() ?? [],
+            detailCount: Number(detail?.dataset.vlabAuthoringDiagnosticCount ?? 0),
+            tabCount: Number(tab?.dataset.vlabDiagnosticCount ?? 0),
+          };
+        })())`,
+        returnByValue: true,
+      });
+      const linkedDiagnosticState = JSON.parse(linkedDiagnostic?.result?.value ?? "null");
+      if (
+        linkedDiagnosticState?.diagnosticCount !== 1
+        || linkedDiagnosticState?.annotations?.length !== 1
+        || linkedDiagnosticState?.annotations?.[0]?.row !== 2
+        || linkedDiagnosticState?.detailCount !== 1
+        || linkedDiagnosticState?.tabCount !== 1
+      ) {
+        throw new Error(`Controller compiler error was not source-linked in Ace: ${JSON.stringify(linkedDiagnosticState)}`);
+      }
+
+      await cdp.send("Runtime.evaluate", {
+        expression: "document.querySelector('[data-vlab-authoring-diagnostic]')?.click()",
+      });
+      await sleep(60);
+      const diagnosticJump = await cdp.send("Runtime.evaluate", {
+        expression: `(() => {
+          const surface = document.querySelector('[data-vlab-code-editor-root="controller"] [data-vlab-artifact-editor-surface="true"]');
+          return window.ace.edit(surface).getCursorPosition().row;
+        })()`,
+        returnByValue: true,
+      });
+      if (diagnosticJump?.result?.value !== 2) throw new Error("Diagnostic selection did not jump to the compiler-reported source line.");
+
+      await cdp.send("Runtime.evaluate", {
+        expression: `(() => {
+          const surface = document.querySelector('[data-vlab-code-editor-root="controller"] [data-vlab-artifact-editor-surface="true"]');
+          const editor = window.ace.edit(surface);
+          editor.setValue(globalThis.__vlabIssue205OriginalController, -1);
+          editor.session.getUndoManager().reset();
+          editor.clearSelection();
+          delete globalThis.__vlabIssue205OriginalController;
+        })()`,
+      });
+      await sleep(240);
+      const restoredSupport = await cdp.send("Runtime.evaluate", {
+        expression: `JSON.stringify((() => {
+          const surface = document.querySelector('[data-vlab-code-editor-root="controller"] [data-vlab-artifact-editor-surface="true"]');
+          const editor = window.ace.edit(surface);
+          return {
+            diagnosticCount: Number(surface?.dataset.vlabDiagnosticCount ?? 0),
+            annotations: editor?.session?.getAnnotations?.() ?? [],
+          };
+        })())`,
+        returnByValue: true,
+      });
+      const restoredSupportState = JSON.parse(restoredSupport?.result?.value ?? "null");
+      if (restoredSupportState?.diagnosticCount !== 0 || restoredSupportState?.annotations?.length !== 0) {
+        throw new Error(`Controller diagnostics did not clear after restoring valid source: ${JSON.stringify(restoredSupportState)}`);
       }
 
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#run').click()" });
@@ -200,7 +333,7 @@ try {
       if (replayRandomized?.runSeed !== randomizedSeed || Number(replayRandomized?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve the new seed: ${JSON.stringify(replayRandomized)}`);
 
       console.log(JSON.stringify(replayRandomized, null, 2));
-      console.log("Browser reached simulator ready with Ace authoring, compiler-derived Outline, Find, folding, metrics runtime bridge, measured speed controls, and restart controls.");
+      console.log("Browser reached simulator ready with Ace authoring, compiler-derived Outline, Find, folding, source-linked diagnostics, constrained completion, metrics runtime bridge, measured speed controls, and restart controls.");
       succeeded = true;
       break;
     }
