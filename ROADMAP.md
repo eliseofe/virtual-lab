@@ -57,7 +57,7 @@ Professor approval/acceptance does not itself authorize implementation.
 
 ### Current queue snapshot — 22 September 2026
 
-- **Approved / accepted:** `observation.target_relative_position` — reusable experiment-defined target-relative position for Controller and Metrics. Available for owner implementation selection, but not automatically authorized.
+- **In progress / accepted + owner-authorized:** `observation.named_reference_relative_position` — static named point-like world references, per-agent selective local sensing with finite/unlimited range, and read-only Metrics access. #502 froze the generalized contract; #503/#504 remain. Dynamic reference motion is explicitly deferred.
 - **Requested / revise:** typed populations / role-aware sensing — must be decomposed into reusable population identity and optional sensing semantics.
 - **Requested / revise:** per-agent lifecycle/participation state — must be generic rather than capture/attacker/defender specific.
 - **Requested / revise:** Metrics population/outcome request — reduce to genuinely missing primitive observables/state.
@@ -70,7 +70,7 @@ This snapshot is descriptive only; query production before making a later backlo
 There is deliberately no global automatic ordering. The owner can select one bounded lane at a time.
 
 1. **Security audit #302** — inspect enrollment, roles, OAuth/MCP, RLS, client/session and privileged boundaries. Audit only; policy/remediation comes back for owner decision.
-2. **Accepted target-observation capability** — if explicitly owner-authorized, design and implement the reusable `observation.target_relative_position` capability through the normal capability-generalization/deployment path.
+2. **Static named world references #501** — owner-authorized and active. #502 architecture/generalization freeze is complete; #503 adds static reference state + Initialization authoring, then #504 completes selective Controller sensing, Metrics exposure and capability activation.
 3. **Capability-request refinement** — revisit the three Professor-`revise` Swarm-vs-Swarm requests and split them into minimal reusable primitives before any implementation.
 4. **Black-box capability-flow acceptance #371** — owner-driven fresh research-AI acceptance when useful; #325/#326 stay paused until the scientific-neutrality/candidate acceptance chain is green.
 5. **Studies #3** — may be activated only by an explicit owner decision.
