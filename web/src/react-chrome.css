@@ -466,6 +466,24 @@ body.vlab-react-chrome-mounted {
   padding: 0 8px 0 6px;
 }
 
+.vlab-code-editor-host .vlab-syntax-comment {
+  color: #74858c;
+  font-style: italic;
+}
+
+.vlab-code-editor-host .vlab-syntax-string {
+  color: #7b4f2c;
+}
+
+.vlab-code-editor-host .vlab-syntax-number {
+  color: #6b4aa0;
+}
+
+.vlab-code-editor-host .vlab-syntax-keyword {
+  color: #0f647b;
+  font-weight: 650;
+}
+
 .vlab-code-editor-host[data-vlab-code-editor-readonly="true"] .cm-editor {
   background: #f7f9fa;
 }
