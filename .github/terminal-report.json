@@ -13,7 +13,8 @@
     "Showcase collections are separate public curation metadata; private Experiment collections remain private, and Professor supervised collection labels are exposed only through an authorization-checked read model.",
     "Shared browsing groups by owner without exposing the owner's private collection structure.",
     "Open loads an Experiment without running it; Open & run is an explicit secondary action in Details.",
-    "Production smoke covers browse-first Showcase discovery at phone, foldable, desktop and ultra-wide widths using the shared browser harness."
+    "Production smoke covers browse-first Showcase discovery at phone, foldable, desktop and ultra-wide widths using the shared browser harness.",
+    "The retired flat finder is no longer constructed; Browse experiments accessibility/focus and collection refresh wiring target the unified library only."
   ],
   "close_issue": 480
 }

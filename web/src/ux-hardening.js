@@ -8,7 +8,7 @@ const dialogObservers = new WeakMap();
 const dialogSpecs = [
   { selector: "#workspace-utilities", triggers: ["#account-menu", '[data-vlab-nav="account"]', '[data-vlab-nav="account-mobile"]'], fallbackId: "workspace-utilities" },
   { selector: ".professor-inbox", triggers: ["#professor-menu", '[data-vlab-nav="professor"]', '[data-vlab-nav="professor-mobile"]'], fallbackId: "professor-extension-inbox" },
-  { selector: ".experiment-browser", triggers: [".experiment-browse"], fallbackId: "experiment-library-dialog" },
+  { selector: ".vlab-library", triggers: [".experiment-browse"], fallbackId: "experiment-library-dialog" },
   { selector: "#collection-organizer", triggers: [".experiment-organize"], fallbackId: "collection-organizer" },
 ];
 

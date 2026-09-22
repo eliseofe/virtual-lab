@@ -52,8 +52,8 @@ assert.ok(hardening.includes("discoveryObserver.observe(document.body, { childLi
 assert.ok(!hardening.includes("attributes: true, subtree: true"), "discovery observer must not recreate the self-triggering attribute loop class");
 assert.match(workspaceShell, /button:not\(:disabled\):not\(\[hidden\]\)/);
 
-assert.match(organization, /experiment-browser-filters/);
-assert.match(organization, /setHidden\(filters, true\)/);
+assert.match(organization, /#480 owns discovery/);
+assert.match(organization, /vlab-refresh-experiment-library/);
 assert.match(organization, /\.experiment-organize/);
 assert.ok(!organization.includes("simulator"), "organization adapter must remain browser presentation/persistence only");
 

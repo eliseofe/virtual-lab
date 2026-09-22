@@ -11,8 +11,6 @@ function installStyles() {
   const style = document.createElement("style");
   style.dataset.vlabCollectionOrganization = "";
   style.textContent = `
-    .experiment-browser-body { grid-template-columns: minmax(0, 1fr) !important; }
-    .experiment-browser-filters[hidden] { display: none !important; }
     .experiment-organize { min-height: 24px; padding: 3px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
     .collection-organizer { width: min(620px, calc(100vw - 32px)); max-height: min(720px, calc(100vh - 32px)); border: 0; border-radius: 16px; padding: 0; box-shadow: 0 18px 70px rgba(16,35,44,.28); color: #172127; }
     .collection-organizer::backdrop { background: rgba(16,27,33,.42); }
@@ -238,16 +236,7 @@ function suppressNoCollectionOutsideOrganization() {
 }
 
 function simplifyExperimentBrowser() {
-  const filters = document.querySelector(".experiment-browser-filters");
-  if (filters) {
-    setHidden(filters, true);
-    if (filters.getAttribute("aria-hidden") !== "true") filters.setAttribute("aria-hidden", "true");
-  }
-  const contextHelp = document.querySelector(".experiment-browser-context span");
-  const help = signedIn()
-    ? "Search all of your available experiments directly. Collections are optional metadata, never navigation."
-    : "Search the available experiments. Sign in to include your private experiments.";
-  if (contextHelp) setText(contextHelp, help);
+  // #480 owns discovery. Collection organization no longer mutates a second browser.
 }
 
 function relocateMoveControl() {
@@ -307,9 +296,8 @@ function syncRenameName() {
 }
 
 function refreshRegistry() {
-  const refresh = [...document.querySelectorAll(".experiment-browser-head-actions button")]
-    .find((button) => button.textContent?.trim() === "Refresh library");
-  refresh?.click();
+  window.vlabExperimentLibraryBridge?.refreshRegistry?.();
+  window.dispatchEvent(new Event("vlab-refresh-experiment-library"));
 }
 
 async function createCollection() {

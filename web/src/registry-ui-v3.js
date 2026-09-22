@@ -640,7 +640,7 @@ installStyles();
 const currentUi = buildCurrentExperimentUi();
 const ui = buildAccountPanel();
 const revisionHistory = buildRevisionHistory();
-const browser = buildBrowser();
+const browser = null;
 
 // Revision state belongs to the Experiment itself, not to Account settings.
 currentUi.revisionActions.append(ui.save);
@@ -1374,6 +1374,7 @@ function catalogResult(experiment) {
 }
 
 function renderBrowser() {
+  if (!browser) return;
   browser.searchRow.hidden = false;
   browser.filters.replaceChildren();
   browser.results.replaceChildren();
@@ -2309,19 +2310,21 @@ experimentSelect.addEventListener("change", () => run(async () => {
   await loadRemoteExperiment(id, { access });
 }));
 
-browser.close.addEventListener("click", () => browser.dialog.close());
-browser.dialog.addEventListener("close", () => {
-  browser.filters.hidden = true;
-});
-browser.refresh.addEventListener("click", () => run(refreshRegistry));
-browser.search.addEventListener("input", () => {
-  browserSearch = browser.search.value;
-  if (browserSearch.trim()) browserCollection = "all";
-  renderBrowser();
-});
-browser.dialog.addEventListener("click", (event) => {
-  if (event.target === browser.dialog) browser.dialog.close();
-});
+if (browser) {
+  browser.close.addEventListener("click", () => browser.dialog.close());
+  browser.dialog.addEventListener("close", () => {
+    browser.filters.hidden = true;
+  });
+  browser.refresh.addEventListener("click", () => run(refreshRegistry));
+  browser.search.addEventListener("input", () => {
+    browserSearch = browser.search.value;
+    if (browserSearch.trim()) browserCollection = "all";
+    renderBrowser();
+  });
+  browser.dialog.addEventListener("click", (event) => {
+    if (event.target === browser.dialog) browser.dialog.close();
+  });
+}
 
 ui.signIn.addEventListener("click", () => run(signIn));
 ui.password.addEventListener("keydown", (event) => {
