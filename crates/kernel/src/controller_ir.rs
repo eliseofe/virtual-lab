@@ -40,6 +40,8 @@ struct ControllerIr {
     #[serde(default)]
     parameters: BTreeMap<String, String>,
     #[serde(default)]
+    references: Vec<String>,
+    #[serde(default)]
     state: Vec<StateDeclaration>,
     body: Vec<Statement>,
 }
@@ -104,6 +106,20 @@ fn validate_expression(
         Expression::BoolConst { .. } => {}
         Expression::Load { path, line } => {
             if path == "obs.heading" || path == "obs.neighbours" || path == "obs.environmental_scalar" { return Ok(()); }
+            if let Some(reference_path) = path.strip_prefix("obs.references.") {
+                let mut pieces = reference_path.split('.');
+                let name = pieces.next().unwrap_or_default();
+                let field = pieces.next().unwrap_or_default();
+                if pieces.next().is_none()
+                    && !name.is_empty()
+                    && name.chars().enumerate().all(|(index, c)| {
+                        c == '_' || c.is_ascii_alphanumeric() && (index > 0 || !c.is_ascii_digit())
+                    })
+                    && matches!(field, "available" | "relative_position")
+                {
+                    return Ok(());
+                }
+            }
             if let Some(name) = path.strip_prefix("self.") {
                 if state.contains(name) { return Ok(()); }
                 return Err(at_line(*line, format!("private state '{name}' is not declared")));
@@ -281,6 +297,8 @@ enum PreparedLoad {
     Heading,
     EnvironmentalScalar,
     NeighbourRelativePosition,
+    ReferenceAvailable(usize),
+    ReferenceRelativePosition(usize),
     Parameter(usize),
     PrivateState(usize),
     Local(usize),
@@ -327,6 +345,7 @@ fn resolve_load(
     path: &str,
     line: Option<usize>,
     parameter_slots: &HashMap<String, usize>,
+    reference_slots: &HashMap<String, usize>,
     state_slots: &HashMap<String, usize>,
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
@@ -336,6 +355,20 @@ fn resolve_load(
     }
     if path == "obs.environmental_scalar" {
         return Ok(PreparedLoad::EnvironmentalScalar);
+    }
+    if let Some(reference_path) = path.strip_prefix("obs.references.") {
+        let mut pieces = reference_path.split('.');
+        let name = pieces.next().unwrap_or_default();
+        let field = pieces.next().unwrap_or_default();
+        if pieces.next().is_none() {
+            let slot = *reference_slots.get(name)
+                .ok_or_else(|| at_line(line, format!("world reference '{name}' is not declared by the controller IR")))?;
+            return match field {
+                "available" => Ok(PreparedLoad::ReferenceAvailable(slot)),
+                "relative_position" => Ok(PreparedLoad::ReferenceRelativePosition(slot)),
+                _ => Err(at_line(line, format!("unknown world reference observation field '{field}'"))),
+            };
+        }
     }
     if let Some(name) = path.strip_prefix("self.") {
         return Ok(PreparedLoad::PrivateState(*state_slots.get(name)
@@ -358,6 +391,7 @@ fn resolve_load(
 fn emit_expression(
     expression: &Expression,
     parameter_slots: &HashMap<String, usize>,
+    reference_slots: &HashMap<String, usize>,
     state_slots: &HashMap<String, usize>,
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
@@ -378,14 +412,14 @@ fn emit_expression(
         }
         Expression::Load { path, line } => {
             ops.push(EvalOp::Load(resolve_load(
-                path, *line, parameter_slots, state_slots, local_slots, loop_variable,
+                path, *line, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
             )?));
             *depth += 1;
             *max_depth = (*max_depth).max(*depth);
         }
         Expression::Unary { op, value, .. } => {
             emit_expression(
-                value, parameter_slots, state_slots, local_slots, loop_variable,
+                value, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                 ops, depth, max_depth,
             )?;
             ops.push(match op.as_str() {
@@ -396,11 +430,11 @@ fn emit_expression(
         }
         Expression::Compare { op, left, right, .. } => {
             emit_expression(
-                left, parameter_slots, state_slots, local_slots, loop_variable,
+                left, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                 ops, depth, max_depth,
             )?;
             emit_expression(
-                right, parameter_slots, state_slots, local_slots, loop_variable,
+                right, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                 ops, depth, max_depth,
             )?;
             let op = match op.as_str() {
@@ -417,11 +451,11 @@ fn emit_expression(
         }
         Expression::BoolOp { op, left, right, .. } => {
             emit_expression(
-                left, parameter_slots, state_slots, local_slots, loop_variable,
+                left, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                 ops, depth, max_depth,
             )?;
             emit_expression(
-                right, parameter_slots, state_slots, local_slots, loop_variable,
+                right, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                 ops, depth, max_depth,
             )?;
             ops.push(EvalOp::Boolean(match op.as_str() {
@@ -433,11 +467,11 @@ fn emit_expression(
         }
         Expression::Binary { op, left, right, .. } => {
             emit_expression(
-                left, parameter_slots, state_slots, local_slots, loop_variable,
+                left, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                 ops, depth, max_depth,
             )?;
             emit_expression(
-                right, parameter_slots, state_slots, local_slots, loop_variable,
+                right, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                 ops, depth, max_depth,
             )?;
             let op = match op.as_str() {
@@ -453,7 +487,7 @@ fn emit_expression(
         Expression::Call { name, args, .. } => {
             for arg in args {
                 emit_expression(
-                    arg, parameter_slots, state_slots, local_slots, loop_variable,
+                    arg, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                     ops, depth, max_depth,
                 )?;
             }
@@ -494,6 +528,7 @@ fn emit_expression(
 fn prepare_expression(
     expression: &Expression,
     parameter_slots: &HashMap<String, usize>,
+    reference_slots: &HashMap<String, usize>,
     state_slots: &HashMap<String, usize>,
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
@@ -502,7 +537,7 @@ fn prepare_expression(
     let mut depth = 0;
     let mut max_depth = 0;
     emit_expression(
-        expression, parameter_slots, state_slots, local_slots, loop_variable,
+        expression, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
         &mut ops, &mut depth, &mut max_depth,
     )?;
     debug_assert_eq!(depth, 1);
@@ -524,6 +559,7 @@ fn prepare_target(
 fn prepare_statements(
     body: &[Statement],
     parameter_slots: &HashMap<String, usize>,
+    reference_slots: &HashMap<String, usize>,
     state_slots: &HashMap<String, usize>,
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
@@ -531,30 +567,30 @@ fn prepare_statements(
     body.iter().map(|statement| Ok(match statement {
         Statement::Assign { target, value, .. } => PreparedStatement::Assign {
             target: prepare_target(target, state_slots, local_slots),
-            value: prepare_expression(value, parameter_slots, state_slots, local_slots, loop_variable)?,
+            value: prepare_expression(value, parameter_slots, reference_slots, state_slots, local_slots, loop_variable)?,
         },
         Statement::AugAssign { target, value, .. } => PreparedStatement::AugAssign {
             target: prepare_target(target, state_slots, local_slots),
-            value: prepare_expression(value, parameter_slots, state_slots, local_slots, loop_variable)?,
+            value: prepare_expression(value, parameter_slots, reference_slots, state_slots, local_slots, loop_variable)?,
         },
         Statement::ForEach { variable, body, .. } => PreparedStatement::ForEachNeighbour {
-            body: prepare_statements(body, parameter_slots, state_slots, local_slots, Some(variable))?,
+            body: prepare_statements(body, parameter_slots, reference_slots, state_slots, local_slots, Some(variable))?,
         },
         Statement::If { branches, else_body, .. } => PreparedStatement::If {
             branches: branches.iter().map(|branch| Ok(PreparedConditionalBranch {
                 condition: prepare_expression(
-                    &branch.condition, parameter_slots, state_slots, local_slots, loop_variable,
+                    &branch.condition, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                 )?,
                 body: prepare_statements(
-                    &branch.body, parameter_slots, state_slots, local_slots, loop_variable,
+                    &branch.body, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
                 )?,
             })).collect::<Result<Vec<_>, String>>()?,
             else_body: prepare_statements(
-                else_body, parameter_slots, state_slots, local_slots, loop_variable,
+                else_body, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
             )?,
         },
         Statement::Return { value, .. } => PreparedStatement::Return {
-            value: prepare_expression(value, parameter_slots, state_slots, local_slots, loop_variable)?,
+            value: prepare_expression(value, parameter_slots, reference_slots, state_slots, local_slots, loop_variable)?,
         },
     })).collect()
 }
@@ -601,6 +637,7 @@ fn push_load(
     parameters: &[f64],
     private_state: &[f64],
     locals: &[Value],
+    reference_names: &[String],
     observation: &Observation,
     neighbour: Option<&NeighbourObservation>,
     stack: &mut Vec<Value>,
@@ -612,6 +649,13 @@ fn push_load(
         ),
         PreparedLoad::NeighbourRelativePosition => {
             Value::Vec2(neighbour.expect("prepared neighbour load inside loop").relative_position)
+        }
+        PreparedLoad::ReferenceAvailable(slot) => {
+            Value::Bool(observation.references.contains_key(&reference_names[slot]))
+        }
+        PreparedLoad::ReferenceRelativePosition(slot) => {
+            Value::Vec2(*observation.references.get(&reference_names[slot])
+                .expect("reference relative_position read requires available observation"))
         }
         PreparedLoad::Parameter(slot) => Value::Scalar(parameters[slot]),
         PreparedLoad::PrivateState(slot) => Value::Scalar(private_state[slot]),
@@ -750,6 +794,7 @@ fn evaluate(
     parameters: &[f64],
     private_state: &[f64],
     locals: &[Value],
+    reference_names: &[String],
     observation: &Observation,
     neighbour: Option<&NeighbourObservation>,
     rng: &mut ScientificRng,
@@ -762,7 +807,7 @@ fn evaluate(
             EvalOp::Const(value) => stack.push(Value::Scalar(value)),
             EvalOp::BoolConst(value) => stack.push(Value::Bool(value)),
             EvalOp::Load(load) => {
-                push_load(load, parameters, private_state, locals, observation, neighbour, stack);
+                push_load(load, parameters, private_state, locals, reference_names, observation, neighbour, stack);
             }
             EvalOp::Negate => {
                 let value = stack.pop().expect("validated unary operand");
@@ -825,6 +870,7 @@ fn execute_statements(
     parameters: &[f64],
     private_state: &mut [f64],
     locals: &mut [Value],
+    reference_names: &[String],
     observation: &Observation,
     neighbour: Option<&NeighbourObservation>,
     rng: &mut ScientificRng,
@@ -834,13 +880,13 @@ fn execute_statements(
         match statement {
             PreparedStatement::Assign { target, value } => {
                 let result = evaluate(
-                    value, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
+                    value, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
                 );
                 assign(*target, result, private_state, locals);
             }
             PreparedStatement::AugAssign { target, value } => {
                 let right = evaluate(
-                    value, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
+                    value, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
                 );
                 match target {
                     PreparedTarget::PrivateState(slot) => private_state[*slot] += right.scalar(),
@@ -850,7 +896,7 @@ fn execute_statements(
             PreparedStatement::ForEachNeighbour { body } => {
                 for current in &observation.neighbours {
                     if let Some(action) = execute_statements(
-                        body, parameters, private_state, locals, observation, Some(current), rng, eval_stack,
+                        body, parameters, private_state, locals, reference_names, observation, Some(current), rng, eval_stack,
                     ) { return Some(action); }
                 }
             }
@@ -858,24 +904,24 @@ fn execute_statements(
                 let mut matched = false;
                 for branch in branches {
                     if evaluate(
-                        &branch.condition, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
+                        &branch.condition, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
                     ).boolean() {
                         matched = true;
                         if let Some(action) = execute_statements(
-                            &branch.body, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
+                            &branch.body, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
                         ) { return Some(action); }
                         break;
                     }
                 }
                 if !matched {
                     if let Some(action) = execute_statements(
-                        else_body, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
+                        else_body, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
                     ) { return Some(action); }
                 }
             }
             PreparedStatement::Return { value } => {
                 return Some(evaluate(
-                    value, parameters, private_state, locals, observation, neighbour, rng, eval_stack,
+                    value, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
                 ).action());
             }
         }
@@ -889,6 +935,7 @@ pub struct IrControllerRuntime {
     private_initial: Vec<f64>,
     private_state_slots: HashMap<String, usize>,
     private_state: Vec<Vec<f64>>,
+    reference_names: Vec<String>,
     root_seed: u32,
     controller_rngs: Vec<ScientificRng>,
     scratch_locals: Vec<Value>,
@@ -928,6 +975,17 @@ impl IrControllerRuntime {
             private_initial.push(declaration.initial);
         }
 
+        let mut reference_slots = HashMap::new();
+        for (slot, name) in ir.references.iter().enumerate() {
+            let valid = !name.is_empty() && name.chars().enumerate().all(|(index, c)| {
+                c == '_' || c.is_ascii_alphanumeric() && (index > 0 || !c.is_ascii_digit())
+            });
+            if !valid { return Err(format!("invalid world reference name '{name}'")); }
+            if reference_slots.insert(name.clone(), slot).is_some() {
+                return Err(format!("duplicate world reference name '{name}' in controller IR"));
+            }
+        }
+
         let parameter_names: HashSet<_> = ir.parameters.keys().cloned().collect();
         let state_names: HashSet<_> = state_slots.keys().cloned().collect();
         let mut validated_locals = HashSet::new();
@@ -938,7 +996,7 @@ impl IrControllerRuntime {
         let mut local_names = BTreeSet::new();
         collect_local_names(&ir.body, &mut local_names);
         let local_slots: HashMap<_, _> = local_names.into_iter().enumerate().map(|(slot, name)| (name, slot)).collect();
-        let body = prepare_statements(&ir.body, &parameter_slots, &state_slots, &local_slots, None)?;
+        let body = prepare_statements(&ir.body, &parameter_slots, &reference_slots, &state_slots, &local_slots, None)?;
         let eval_stack_capacity = max_stack_in_statements(&body).max(1);
 
         Ok(Self {
@@ -947,6 +1005,7 @@ impl IrControllerRuntime {
             private_initial,
             private_state_slots: state_slots,
             private_state: Vec::new(),
+            reference_names: ir.references,
             root_seed: 0,
             controller_rngs: Vec::new(),
             scratch_locals: vec![Value::Scalar(f64::NAN); local_slots.len()],
@@ -1015,6 +1074,7 @@ impl ControllerRuntime for IrControllerRuntime {
             &self.parameters,
             &mut self.private_state[agent_index],
             &mut self.scratch_locals,
+            &self.reference_names,
             observation,
             None,
             &mut self.controller_rngs[agent_index],
@@ -1056,6 +1116,7 @@ mod tests {
                 NeighbourObservation { relative_position: Vec2::new(1.0, -1.0) },
             ],
             environmental_scalar: None,
+            references: BTreeMap::new(),
         };
         let action = runtime.step(0, &observation);
         assert!((action.forward - 9.0).abs() < 1e-12);
@@ -1064,6 +1125,7 @@ mod tests {
             heading: Vec2::new(1.0, 0.0),
             neighbours: vec![NeighbourObservation { relative_position: Vec2::new(1.0, 0.0) }],
             environmental_scalar: None,
+            references: BTreeMap::new(),
         });
         assert!((second.forward - 4.0).abs() < 1e-12);
         assert_eq!(second.turning, 0.0);
@@ -1081,7 +1143,7 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, "{}");
         runtime.reset(2);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
         assert_eq!(runtime.step(0, &observation).forward, 2.0);
         assert_eq!(runtime.step(1, &observation).forward, 1.0);
@@ -1115,6 +1177,7 @@ mod tests {
                 NeighbourObservation { relative_position: Vec2::new(0.0, 2.0) },
             ],
             environmental_scalar: None,
+            references: BTreeMap::new(),
         };
         assert_eq!(runtime.step(0, &observation).forward, 16.0);
         assert_eq!(runtime.step(0, &Observation { heading: observation.heading, neighbours: vec![], environmental_scalar: None }).forward, 3.0);
@@ -1136,7 +1199,7 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, "{}");
         runtime.reset(1);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
     }
 
@@ -1204,7 +1267,7 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, r#"{"X":0.5}"#);
         runtime.reset(1);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() };
         assert_eq!(runtime.step(0, &observation).forward, 0.5);
     }
 
@@ -1229,7 +1292,7 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, r#"{"X":1.0}"#);
         runtime.reset(1);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None };
+        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
     }
 
@@ -1313,6 +1376,7 @@ mod tests {
             heading: Vec2::new(1.0, 0.0),
             neighbours: vec![],
             environmental_scalar: None,
+            references: BTreeMap::new(),
         };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
         assert_eq!(runtime.step(1, &observation).forward, 2.0);
