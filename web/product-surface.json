@@ -78,8 +78,8 @@
       ]
     },
     {
-      "id": "showcase",
-      "name": "Showcase",
+      "id": "experiment-library",
+      "name": "Browse-first Experiment Library with Showcase discovery",
       "state": "active",
       "smoke": [
         {

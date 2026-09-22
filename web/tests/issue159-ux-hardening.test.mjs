@@ -60,7 +60,7 @@ assert.ok(!organization.includes("simulator"), "organization adapter must remain
 assert.match(responsiveSmoke, /Emulation\.setDeviceMetricsOverride/);
 assert.match(responsiveSmoke, /width:\s*390/);
 assert.match(responsiveSmoke, /expected at least 44px/);
-assert.match(responsiveSmoke, /experiment finder did not return focus/);
+assert.match(responsiveSmoke, /Experiment Library did not return focus/);
 assert.match(responsiveSmoke, /utility dialog did not return focus/);
 assert.match(responsiveSmoke, /expected exactly one visible authoring pane/);
 assert.match(responsiveSmoke, /administrative surface re-entered the scientific workspace/);

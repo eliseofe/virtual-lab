@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Active Elastic is a normal Showcase/catalog Experiment instead of a privileged Built-in execution path",
-  "owner_impact": "The canonical Active Elastic example keeps the same scientific controller, initialization, runtime values and live metrics, but the Lab now loads it through the generic Experiment catalog/artifact path. Built-in-specific registry state, save/copy compatibility, result identity and Metrics injection are removed.",
+  "outcome": "The Experiment Library is one browse-first discovery surface for Showcase, Mine, Shared and Supervised research",
+  "owner_impact": "Browse experiments now opens one responsive library whose hierarchy works without search: Showcase is organized by public Showcase collections, Mine by private collections, Shared by owner, and Supervised by researcher then collection. Search remains optional acceleration. The old ordinary Showcase browser is replaced by Professor-only curation, while read-only/copy/editability boundaries remain distinct.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 483,
-    "text": "Epic continues with #483 — Product Design: coherent scalable Experiment Library. That design-only ticket will start in a later owner turn and will define the final Showcase / Mine / Shared / Supervised library navigation before #480 implements it."
+    "kind": "scope_complete",
+    "disposition": "dormant",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "The approved Experiment-discovery cleanup scope is complete. #273 remains a living UI/UX refinement domain and returns to dormant status with no current executable child. The completed library is available in the live Lab."
   },
   "technical_evidence": [
-    "The browser bootstrap uses a generic Experiment catalog descriptor containing Configuration, Initialization, Controller and Metrics artifacts.",
-    "Active Elastic configuration now exposes the generic runtime contract aliases INTERACTION_RADIUS, MAX_FORWARD_SPEED and MAX_ANGULAR_SPEED with values identical to the previous browser-only compatibility mapping.",
-    "Registry/current-source state uses explicit catalog source identity rather than null/builtin semantics.",
-    "Metrics load through the generic artifact application path; the dedicated Active Elastic Metrics installer modules are removed.",
-    "Local result provenance records stable catalog source identity instead of the synthetic builtin ID.",
-    "Showcase catalog source identity is normalized to catalog:active-elastic while retaining the generic Showcase source-key mechanism."
+    "The unified library uses fixed role-aware source navigation and source-specific directories rather than a global All-experiments bucket.",
+    "Showcase collections are separate public curation metadata; private Experiment collections remain private, and Professor supervised collection labels are exposed only through an authorization-checked read model.",
+    "Shared browsing groups by owner without exposing the owner's private collection structure.",
+    "Open loads an Experiment without running it; Open & run is an explicit secondary action in Details.",
+    "Production smoke covers browse-first Showcase discovery at phone, foldable, desktop and ultra-wide widths using the shared browser harness."
   ],
-  "close_issue": 481
+  "close_issue": 480
 }

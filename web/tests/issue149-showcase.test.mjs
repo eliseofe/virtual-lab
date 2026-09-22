@@ -11,6 +11,7 @@ const unifiedMigration = readFileSync(
   "utf8",
 );
 const showcase = readFileSync(new URL("../src/showcase.js", import.meta.url), "utf8");
+const library = readFileSync(new URL("../src/experiment-library.js", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../src/workspace-shell.js", import.meta.url), "utf8");
 
 test("#149 Showcase is exact-revision publication, not a collection move", () => {
@@ -42,14 +43,17 @@ test("#149 public Showcase discovery exposes only curated active snapshots", () 
   assert.match(unifiedMigration, /grant execute on function public\.list_showcase_experiments\(\) to anon, authenticated/i);
 });
 
-test("#149 browser exposes public Showcase plus reversible Professor curation", () => {
+test("#149 browser exposes public Showcase discovery plus reversible Professor curation", () => {
+  assert.match(shell, /import "\.\/experiment-library\.js"/);
   assert.match(shell, /import "\.\/showcase\.js"/);
-  assert.match(showcase, /launcher\.textContent = "Showcase"/);
-  assert.match(showcase, /supabase\.rpc\("list_showcase_experiments"\)/);
+  assert.match(library, /supabase\.rpc\("list_showcase_experiments"\)/);
+  assert.match(library, /"All Showcase"/);
+  assert.match(library, /"Uncategorized"/);
+  assert.match(showcase, /launcher\.textContent = "Manage Showcase"/);
+  assert.match(showcase, /profile\?\.role !== "professor"/);
   assert.match(showcase, /supabase\.rpc\("promote_experiment_to_showcase"/);
   assert.match(showcase, /supabase\.rpc\("remove_showcase_entry"/);
   assert.match(showcase, /p_showcase_id: entry\.showcase_id/);
-  assert.match(showcase, /profile\?\.role === "professor"/);
   assert.match(showcase, /Save private copy/);
   assert.match(showcase, /Showcase · Read-only/);
   assert.match(showcase, /remove\.textContent = "Remove"/);
