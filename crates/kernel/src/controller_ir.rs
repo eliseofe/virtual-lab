@@ -1180,7 +1180,7 @@ mod tests {
             references: BTreeMap::new(),
         };
         assert_eq!(runtime.step(0, &observation).forward, 16.0);
-        assert_eq!(runtime.step(0, &Observation { heading: observation.heading, neighbours: vec![], environmental_scalar: None }).forward, 3.0);
+        assert_eq!(runtime.step(0, &Observation { heading: observation.heading, neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() }).forward, 3.0);
     }
 
     #[test]
@@ -1218,6 +1218,7 @@ mod tests {
             heading: Vec2::new(1.0, 0.0),
             neighbours: vec![],
             environmental_scalar: Some(0.375),
+            references: BTreeMap::new(),
         };
         assert_eq!(runtime.step(0, &observation).forward, 0.375);
     }
@@ -1432,6 +1433,7 @@ mod tests {
             heading: Vec2::new(1.0, 0.0),
             neighbours: vec![],
             environmental_scalar: None,
+            references: BTreeMap::new(),
         }
     }
 
