@@ -72,6 +72,7 @@ pub struct Observation {
     pub heading: Vec2,
     pub neighbours: Vec<NeighbourObservation>,
     pub environmental_scalar: Option<f64>,
+    pub references: BTreeMap<String, Vec2>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -374,6 +375,28 @@ impl WorldReferenceState {
     pub(crate) fn relative_position(&self, name: &str, origin: Vec2, arena_size: f64) -> Option<Vec2> {
         self.reference_position(name).map(|position| minimum_image(position - origin, arena_size))
     }
+
+    pub(crate) fn positions(&self) -> &BTreeMap<String, Vec2> {
+        &self.positions
+    }
+
+    fn observe_for_agent(
+        &self,
+        agent_index: usize,
+        origin: Vec2,
+        arena_size: f64,
+        out: &mut BTreeMap<String, Vec2>,
+    ) {
+        out.clear();
+        let Some(sensors) = self.agent_sensors.get(agent_index) else { return; };
+        for (name, max_range) in sensors {
+            let relative = self.relative_position(name, origin, arena_size)
+                .expect("validated reference sensor points to an existing reference");
+            if max_range.map_or(true, |range| relative.norm_squared() <= range * range) {
+                out.insert(name.clone(), relative);
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -476,7 +499,12 @@ impl<C: ControllerRuntime> Simulation<C> {
             physics: KinematicPhysics,
             observation_model: LocalObservationModel,
             neighbour_index: AdaptivePeriodicBvh::default(),
-            observation_scratch: Observation { heading: Vec2::ZERO, neighbours: Vec::new(), environmental_scalar: None },
+            observation_scratch: Observation {
+                heading: Vec2::ZERO,
+                neighbours: Vec::new(),
+                environmental_scalar: None,
+                references: BTreeMap::new(),
+            },
             neighbour_indices_scratch: Vec::new(),
             environment,
             controller,
@@ -611,6 +639,7 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.observation_scratch.heading = Vec2::ZERO;
         self.observation_scratch.environmental_scalar = None;
         self.observation_scratch.neighbours.clear();
+        self.observation_scratch.references.clear();
         self.neighbour_indices_scratch.clear();
         self.controller.set_run_seed(self.config.seed);
         self.controller
@@ -637,6 +666,12 @@ impl<C: ControllerRuntime> Simulation<C> {
                         &mut self.observation_scratch,
                     );
                     self.observation_scratch.environmental_scalar = self.environment.sample(self.state[agent_index].position);
+                    self.reference_state.observe_for_agent(
+                        agent_index,
+                        self.state[agent_index].position,
+                        self.config.arena_size,
+                        &mut self.observation_scratch.references,
+                    );
                     let raw = self.controller.step(agent_index, &self.observation_scratch);
                     self.actuators[agent_index] = Action {
                         forward: raw.forward.clamp(-self.config.max_forward_speed, self.config.max_forward_speed),
@@ -1032,6 +1067,7 @@ mod tests {
             heading: Vec2::new(99.0, 99.0),
             neighbours: vec![NeighbourObservation { relative_position: Vec2::new(99.0, 99.0) }],
             environmental_scalar: Some(99.0),
+            references: BTreeMap::new(),
         };
         LocalObservationModel.observe_into(&state, 0, &grid, 0.5, 10.0, 0.17, &mut indices, &mut actual);
         assert_eq!(actual, expected);
