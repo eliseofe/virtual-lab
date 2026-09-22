@@ -21,7 +21,10 @@ test("#203 mounts a real Ace foundation through React without replacing source a
   assert.match(editor, /ace-builds@\$\{ACE_VERSION\}/);
   assert.match(editor, /ACE_VERSION = '1\.44\.0'/);
   assert.match(editor, /ace\.edit\(host\)/);
-  assert.match(editor, /session\.setMode\('ace\/mode\/python'\)/);
+  assert.match(editor, /ACE_PYTHON_MODE_SCRIPT_URL/);
+  assert.match(editor, /data-vlab-ace-python-mode/);
+  assert.match(editor, /ace\.require\?\.\('ace\/mode\/python'\)/);
+  assert.match(editor, /applySyntaxMode\(editor, host, format\)/);
   assert.match(editor, /session\.setUseWorker\(false\)/);
   assert.match(editor, /showGutter: true/);
   assert.doesNotMatch(editor, /codemirror|CodeMirror|@codemirror/);
