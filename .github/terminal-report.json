@@ -8,12 +8,12 @@
     "text": "#204 is the next code-authoring ergonomics ticket. It adds parser-derived outline/symbol navigation, folding and reliable in-artifact search on top of this editor foundation. It has not started yet."
   },
   "technical_evidence": [
-    "CodeMirror is loaded from one pinned bundled browser module, avoiding duplicate CodeMirror state/view instances; the existing textarea remains the fallback if initialization fails.",
-    "The deployed Python-like artifact formats receive lexical syntax highlighting for comments, strings, numbers and Python control/declaration keywords; no Virtual Lab scientific names are hardcoded as fake semantic tokens.",
-    "CodeMirror edits mirror into the authoritative textareas through the existing input contract, while authoritative Experiment/revision loads reset editor state without manufacturing dirty edits.",
-    "Read-only state is mirrored from the existing artifact textareas into CodeMirror.",
+    "CodeMirror uses the public codemirror meta-package API plus the Python language extension; unsupported direct state/view APIs are not used.",
+    "Configuration, Initialization, Controller and Metrics receive CodeMirror line numbers, history/selection editing behavior and Python syntax highlighting where their artifact format is Python-like.",
+    "CodeMirror edits mirror into the authoritative textareas through the existing input contract, while authoritative Experiment/revision loads replace editor content without manufacturing dirty edits.",
+    "Read-only state is enforced by rebuilding the CodeMirror surface with EditorView.editable disabled while the authoritative textarea remains read-only.",
     "The existing interaction-boundary autosave logic treats the CodeMirror surface as inside the artifact editor.",
-    "Production browser smoke requires four ready CodeMirror surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens, and now reports exact editor initialization errors."
+    "Production browser smoke requires four ready CodeMirror surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens, and reports exact editor initialization errors."
   ],
   "close_issue": 203
 }
