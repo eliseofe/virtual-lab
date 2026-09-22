@@ -2366,9 +2366,9 @@ document.querySelector("#additional-experiment-artifacts")?.addEventListener("fo
 // starts persistence before the action's click handler (including Run or Save Revision).
 document.addEventListener("pointerdown", (event) => {
   const target = event.target instanceof Element ? event.target : null;
-  const insideArtifactEditor = target?.matches(
-    "#experiment-config, #initializer-source, #controller-source, [data-experiment-artifact-editor='true']",
-  );
+  const insideArtifactEditor = Boolean(target?.closest(
+    "#experiment-config, #initializer-source, #controller-source, [data-experiment-artifact-editor='true'], [data-vlab-artifact-editor-surface='true']",
+  ));
   if (!insideArtifactEditor) autosaveAtInteractionBoundary();
 }, { capture: true });
 

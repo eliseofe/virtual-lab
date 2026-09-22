@@ -10,6 +10,13 @@ export const EXPERIMENT_ARTIFACTS = Object.freeze([
 const CORE_BY_ID = new Map(EXPERIMENT_ARTIFACTS.map((descriptor) => [descriptor.id, descriptor]));
 const GENERIC_TEXT_FORMATS = new Set(["python-vlab", METRICS_LANGUAGE, "text/plain", "text/markdown", "markdown"]);
 
+const SOURCE_REPLACED_EVENT = "vlab:artifact-source-replaced";
+
+function notifyAuthoritativeSourceReplaced(editor) {
+  if (typeof editor?.dispatchEvent !== "function" || typeof CustomEvent !== "function") return;
+  editor.dispatchEvent(new CustomEvent(SOURCE_REPLACED_EVENT));
+}
+
 function editorFor(root, descriptor) {
   if (!descriptor.editorSelector) return null;
   const editor = root.querySelector(descriptor.editorSelector);
@@ -140,8 +147,11 @@ export function applyExperimentArtifacts(experiment, root = document) {
   for (const artifact of artifacts) {
     const descriptor = CORE_BY_ID.get(artifact.id);
     const editor = descriptor ? (editorFor(root, descriptor) ?? dynamicEditorFor(root, artifact.id)) : dynamicEditorFor(root, artifact.id);
-    if (editor) { editor.value = artifact.content; applyArtifactMetadata(editor, artifact); }
-    else renderGenericArtifact(root, container, artifact);
+    if (editor) {
+      editor.value = artifact.content;
+      applyArtifactMetadata(editor, artifact);
+      notifyAuthoritativeSourceReplaced(editor);
+    } else renderGenericArtifact(root, container, artifact);
   }
 }
 

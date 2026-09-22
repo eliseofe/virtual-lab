@@ -1,6 +1,7 @@
 import { Badge, Button, Group, Paper, Stack, Title } from '@mantine/core';
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { ArtifactCodeEditor } from './authoring-code-editor';
 import {
   applyAuthoringChanges,
   readAuthoringPresentation,
@@ -113,5 +114,20 @@ export function AuthoringPresentation() {
     snapshot.tabsMount,
   );
 
-  return <>{header}{tabs}</>;
+  const editors = snapshot.artifacts.flatMap((artifact) => {
+    if (!artifact.source || !artifact.editorMount) return [];
+    return [createPortal(
+      <ArtifactCodeEditor
+        id={artifact.id}
+        label={artifact.label}
+        format={artifact.format}
+        source={artifact.source}
+        selected={artifact.selected}
+      />,
+      artifact.editorMount,
+      `authoring-editor-${artifact.id}`,
+    )];
+  });
+
+  return <>{header}{tabs}{editors}</>;
 }

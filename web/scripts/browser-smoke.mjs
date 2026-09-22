@@ -20,7 +20,22 @@ async function state(send) {
     speedLabel: document.querySelector('#simulation-speed-value')?.textContent ?? null,
     actualSpeed: document.querySelector('#actual-simulation-speed')?.textContent ?? null,
     runSeed: document.querySelector('#run-seed')?.textContent ?? null,
-    metricRuntimeBridge: Boolean(globalThis.__vlabMetricRuntime)
+    metricRuntimeBridge: Boolean(globalThis.__vlabMetricRuntime),
+    codeEditorsReady: document.querySelectorAll('[data-vlab-code-editor-ready="true"]').length,
+    codeEditorErrors: document.querySelectorAll('[data-vlab-code-editor-ready="error"]').length,
+    configurationEditor: (() => {
+      const source = document.querySelector('#experiment-config');
+      const root = document.querySelector('[data-vlab-code-editor-root="configuration"]');
+      const editor = root?.querySelector('.cm-editor');
+      return {
+        ready: root?.dataset.vlabCodeEditorReady ?? null,
+        sourceHidden: source ? getComputedStyle(source).display === 'none' : false,
+        lineNumbers: root?.querySelectorAll('.cm-lineNumbers .cm-gutterElement').length ?? 0,
+        highlightedTokens: root?.querySelectorAll('.cm-content .cm-line span[class]').length ?? 0,
+        content: root?.querySelector('.cm-content')?.textContent ?? null,
+        editable: editor?.querySelector('.cm-content')?.getAttribute('contenteditable') ?? null,
+      };
+    })()
   })`;
   const result = await send("Runtime.evaluate", { expression, returnByValue: true });
   const value = result?.result?.value;
@@ -37,9 +52,16 @@ try {
 
   let latest = null;
   let succeeded = false;
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
     latest = await state(cdp.send);
     if (latest?.statusState === "ready") {
+      if (latest.codeEditorErrors) {
+        throw new Error(`CodeMirror authoring surface failed to initialize: ${JSON.stringify(latest)}`);
+      }
+      if (latest.codeEditorsReady < 4) {
+        await sleep(100);
+        continue;
+      }
       if (!latest.metricRuntimeBridge) {
         throw new Error(`metrics runtime bridge is not loaded in the browser artifact: ${JSON.stringify(latest)}`);
       }
@@ -63,6 +85,15 @@ try {
       }
       if (latest.speed !== "20" || latest.speedLabel !== "20×") throw new Error(`runtime speed did not default to 20×: ${JSON.stringify(latest)}`);
       if (latest.runSeed !== "2026") throw new Error(`initial run seed is not the deterministic default: ${JSON.stringify(latest)}`);
+      if (
+        latest.configurationEditor?.ready !== "true"
+        || !latest.configurationEditor?.sourceHidden
+        || latest.configurationEditor?.lineNumbers < 2
+        || latest.configurationEditor?.highlightedTokens < 1
+        || !latest.configurationEditor?.content?.includes("INITIALIZATION_METHOD")
+      ) {
+        throw new Error(`CodeMirror authoring foundation is not visibly rendering the authoritative configuration source: ${JSON.stringify(latest)}`);
+      }
 
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#run').click()" });
       await sleep(700);
@@ -108,7 +139,7 @@ try {
       if (replayRandomized?.runSeed !== randomizedSeed || Number(replayRandomized?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve the new seed: ${JSON.stringify(replayRandomized)}`);
 
       console.log(JSON.stringify(replayRandomized, null, 2));
-      console.log("Browser reached simulator ready with the metrics runtime bridge loaded, reported measured speed, changed runtime speed live, and verified same-seed/new-seed restart controls.");
+      console.log("Browser reached simulator ready with CodeMirror authoring, the metrics runtime bridge, measured speed controls, and same-seed/new-seed restart controls.");
       succeeded = true;
       break;
     }

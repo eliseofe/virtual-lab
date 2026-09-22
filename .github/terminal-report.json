@@ -1,22 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Experiment Library is one browse-first discovery surface for Showcase, Mine, Shared and Supervised research",
-  "owner_impact": "Browse experiments now opens one responsive library whose hierarchy works without search: Showcase is organized by public Showcase collections, Mine by private collections, Shared by owner, and Supervised by researcher then collection. Search remains optional acceleration. The old ordinary Showcase browser is replaced by Professor-only curation, while read-only/copy/editability boundaries remain distinct.",
+  "outcome": "Experiment Authoring now has a real syntax-highlighted code editor foundation",
+  "owner_impact": "Configuration, Initialization, Controller and Metrics are edited through a CodeMirror surface with line numbers, Python-like syntax highlighting, normal selection/undo/redo/clipboard behavior and preserved responsive styling. The existing artifact textareas remain the authoritative source buffers underneath, so dirty-state, autosave, Apply & restart, revision history and read-only Experiment behavior keep their established semantics.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "dormant",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved Experiment-discovery cleanup scope is complete. #273 remains a living UI/UX refinement domain and returns to dormant status with no current executable child. The completed library is available in the live Lab."
+    "kind": "epic_continues",
+    "issue": 204,
+    "text": "#204 is the next code-authoring ergonomics ticket. It adds parser-derived outline/symbol navigation, folding and reliable in-artifact search on top of this editor foundation. It has not started yet."
   },
   "technical_evidence": [
-    "The unified library uses fixed role-aware source navigation and source-specific directories rather than a global All-experiments bucket.",
-    "Showcase collections are separate public curation metadata; private Experiment collections remain private, and Professor supervised collection labels are exposed only through an authorization-checked read model.",
-    "Shared browsing groups by owner without exposing the owner's private collection structure.",
-    "Open loads an Experiment without running it; Open & run is an explicit secondary action in Details.",
-    "Production smoke covers browse-first Showcase discovery at phone, foldable, desktop and ultra-wide widths using the shared browser harness.",
-    "The retired flat finder is no longer constructed; Browse experiments accessibility/focus and collection refresh wiring target the unified library only.",
-    "Responsive Experiment Library production smoke changes phone, foldable, desktop and ultra-wide viewports on one fully ready document, avoiding navigation races while still verifying live responsive behavior.",
-    "Production Experiment Library smoke is idempotent across phone, foldable, desktop and ultra-wide checks: it re-establishes Browse readiness after viewport transitions and ensures Details is open without toggling an already-expanded row closed."
+    "CodeMirror is loaded through pinned browser modules and falls back to the existing textarea if editor initialization fails.",
+    "Only the deployed Python-like artifact formats receive Python syntax parsing/highlighting; no Virtual Lab scientific names are hardcoded as fake semantic tokens.",
+    "CodeMirror edits mirror into the authoritative textareas through the existing input contract, while authoritative Experiment/revision loads reset editor state without manufacturing dirty edits.",
+    "Read-only state is mirrored from the existing artifact textareas into CodeMirror.",
+    "The existing interaction-boundary autosave logic treats the CodeMirror surface as inside the artifact editor.",
+    "Production browser smoke requires four ready CodeMirror surfaces, hidden authoritative fallback textareas, line numbers and rendered highlighted tokens."
   ],
-  "close_issue": 480
+  "close_issue": 203
 }
