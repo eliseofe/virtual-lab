@@ -32,7 +32,7 @@ async function waitReady(send) {
         text: document.querySelector('#worker-status')?.textContent ?? null,
         hardened: document.documentElement?.dataset.vlabUxHardened ?? null,
         experimentManagementReady: Boolean(document.querySelector('.experiment-management')),
-        experimentFinderReady: Boolean(document.querySelector('.experiment-browser-filters')),
+        experimentFinderReady: Boolean(document.querySelector('.vlab-library')),
         experimentEntryReady: Boolean(document.querySelector('.experiment-browse'))
       })`);
     } catch (error) {
@@ -88,8 +88,8 @@ async function structure(send) {
       adminInsideWorkspace: Boolean(workspace?.querySelector('.registry-panel, .professor-panel, .utility-dialog, #collection-organizer')),
       visiblePanes,
       technicalOpen: Boolean(technical?.open),
-      filtersPresent: Boolean(document.querySelector('.experiment-browser-filters')),
-      filtersHidden: Boolean(document.querySelector('.experiment-browser-filters')?.hidden),
+      filtersPresent: Boolean(document.querySelector('.vlab-library-directory')),
+      filtersHidden: !document.querySelector('.vlab-library')?.open,
       canvasRight: Math.ceil(document.querySelector('#simulation-canvas')?.getBoundingClientRect().right ?? 0),
       experimentManagement: {
         visible: visible(management),
@@ -248,26 +248,32 @@ function assertCoreLayout(state, label, { touch = false } = {}) {
 
 async function verifyFinder(send) {
   await evaluate(send, "document.querySelector('.experiment-browse').click()");
-  await sleep(100);
-  const opened = JSON.parse(await evaluate(send, `JSON.stringify((() => {
-    const dialog = document.querySelector('.experiment-browser');
-    const rect = dialog?.getBoundingClientRect();
-    const active = document.activeElement;
-    return {
-      open: Boolean(dialog?.open),
-      activeSearch: Boolean(active?.classList?.contains('experiment-browser-search')),
-      withinViewport: Boolean(rect && rect.left >= -1 && rect.right <= window.innerWidth + 1 && rect.top >= -1 && rect.bottom <= window.innerHeight + 1),
-      filtersHidden: Boolean(dialog?.querySelector('.experiment-browser-filters')?.hidden),
-      closeHeight: Math.round([...dialog.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Close')?.getBoundingClientRect().height ?? 0)
-    };
-  })())`));
-  if (!opened.open || !opened.activeSearch || !opened.withinViewport || !opened.filtersHidden || opened.closeHeight < 44) {
-    throw new Error(`mobile experiment finder failed: ${JSON.stringify(opened)}`);
+  let opened = null;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    opened = JSON.parse(await evaluate(send, `JSON.stringify((() => {
+      const dialog = document.querySelector('.vlab-library');
+      const rect = dialog?.getBoundingClientRect();
+      const active = document.activeElement;
+      return {
+        open: Boolean(dialog?.open),
+        activeSearch: Boolean(active?.classList?.contains('vlab-library-search') || active?.closest?.('.vlab-library-search')),
+        withinViewport: Boolean(rect && rect.left >= -1 && rect.right <= window.innerWidth + 1 && rect.top >= -1 && rect.bottom <= window.innerHeight + 1),
+        source: dialog?.querySelector('.vlab-library-source-select select')?.value ?? null,
+        directory: [...dialog?.querySelectorAll('.vlab-library-directory button') ?? []].map((button) => button.textContent?.replace(/\\s+/g, ' ').trim()),
+        builtIn: dialog?.textContent?.includes('Built-in') ?? false,
+        closeHeight: Math.round([...dialog?.querySelectorAll('button') ?? []].find((button) => button.textContent?.trim() === 'Close')?.getBoundingClientRect().height ?? 0)
+      };
+    })())`));
+    if (opened.open && opened.directory.length) break;
+    await sleep(100);
   }
-  await evaluate(send, "document.querySelector('.experiment-browser').close()");
+  if (!opened?.open || !opened.withinViewport || opened.source !== "showcase" || !opened.directory.some((label) => label.startsWith("All Showcase")) || opened.builtIn || opened.closeHeight < 44) {
+    throw new Error(`mobile Experiment Library failed: ${JSON.stringify(opened)}`);
+  }
+  await evaluate(send, "document.querySelector('.vlab-library').close()");
   await sleep(80);
   const returned = await evaluate(send, "document.activeElement === document.querySelector('.experiment-browse')");
-  if (!returned) throw new Error("experiment finder did not return focus to its launcher");
+  if (!returned) throw new Error("Experiment Library did not return focus to its launcher");
 }
 
 async function verifyUtilityDialog(send) {
