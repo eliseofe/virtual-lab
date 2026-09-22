@@ -29,12 +29,16 @@ function fakeElement() {
 
 function fakeRoot(initial = {}) {
   const editors = new Map(
-    EXPERIMENT_ARTIFACTS
-      .filter((descriptor) => descriptor.editorSelector)
-      .map((descriptor) => [
-        descriptor.editorSelector,
-        { value: initial[descriptor.registryField] ?? "", dataset: {} },
-      ]),
+    EXPERIMENT_ARTIFACTS.map((descriptor) => [
+      descriptor.id,
+      {
+        value: descriptor.registryField ? (initial[descriptor.registryField] ?? "") : "",
+        dataset: {
+          experimentArtifactEditor: "true",
+          experimentArtifactId: descriptor.id,
+        },
+      },
+    ]),
   );
   const extraContainer = fakeElement();
   extraContainer.replaceChildren = function replaceChildren() { this.children = []; };
@@ -56,7 +60,8 @@ function fakeRoot(initial = {}) {
     ownerDocument,
     querySelector(selector) {
       if (selector === "#additional-experiment-artifacts") return extraContainer;
-      return editors.get(selector) ?? null;
+      const idMatch = selector.match(/data-experiment-artifact-id="([^"]+)"/);
+      return idMatch ? editors.get(idMatch[1]) ?? null : null;
     },
   };
 }
@@ -80,7 +85,7 @@ MAX_ANGULAR_SPEED = 1.0
 `,
 };
 
-test("experiment artifact integration retains three specialized adapters plus compulsory Metrics", () => {
+test("experiment artifact integration keeps legacy registry fields while all four core editors use one metadata contract", () => {
   assert.deepEqual(
     EXPERIMENT_ARTIFACTS.map(({ id, registryField }) => [id, registryField]),
     [
@@ -91,7 +96,8 @@ test("experiment artifact integration retains three specialized adapters plus co
     ],
   );
   assert.equal(new Set(EXPERIMENT_ARTIFACTS.filter((item) => item.registryField).map((item) => item.registryField)).size, 3);
-  assert.equal(new Set(EXPERIMENT_ARTIFACTS.filter((item) => item.editorSelector).map((item) => item.editorSelector)).size, 3);
+  assert.deepEqual(EXPERIMENT_ARTIFACTS.map((item) => item.language), ["python", "python", "python", "python"]);
+  assert.equal(EXPERIMENT_ARTIFACTS.some((item) => "editorSelector" in item), false);
 });
 
 test("artifact adapter upgrades legacy registry sources into the four-artifact canonical payload", () => {
