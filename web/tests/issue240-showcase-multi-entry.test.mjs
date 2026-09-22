@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const showcase = readFileSync(new URL("../src/showcase.js", import.meta.url), "utf8");
+const library = readFileSync(new URL("../src/experiment-library.js", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../src/workspace-shell.js", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../../supabase/migrations/20260916221000_showcase_unified_sources.sql", import.meta.url), "utf8");
 
@@ -11,11 +12,12 @@ test("#240 Showcase behavior is implemented in one module without a synthetic cl
   assert.match(shell, /import "\.\/showcase\.js"/);
 });
 
-test("#240 Showcase cards explain that selection opens and runs an Experiment", () => {
-  assert.match(showcase, /Open & run/);
-  assert.match(showcase, /Loaded in Lab/);
-  assert.match(showcase, /aria-current/);
-  assert.match(showcase, /Open \$\{entry\.title\} in Lab and run it/);
+test("#240 Showcase discovery separates Open from explicit Open & run", () => {
+  assert.match(library, /open\.textContent|button\(loadedMatches\(source, row\) \? "Return to Lab" : "Open"\)/);
+  assert.match(library, /button\("Open & run"\)/);
+  assert.match(library, /openRow\(source, row, true\)/);
+  assert.match(library, /loaded\.textContent = "Loaded"/);
+  assert.doesNotMatch(showcase, /Open \$\{entry\.title\} in Lab and run it/);
 });
 
 test("#240 destructive curation is bound to the Showcase entry, not its source type", () => {
@@ -34,9 +36,9 @@ test("#240 backend supports homogeneous Experiment and catalog Showcase sources"
   assert.match(migration, /promote_catalog_to_showcase/);
 });
 
-test("#240 opening a Showcase URL applies the selected snapshot before running it", () => {
-  assert.match(showcase, /applyExperimentArtifacts\(\{ artifacts: entry\.artifacts \}\)/);
-  assert.match(showcase, /applySetup\.click\(\)/);
+test("#240 opening a Showcase URL loads the selected snapshot through the unified library before running it", () => {
+  assert.match(showcase, /const library = window\.vlabExperimentLibraryBridge/);
+  assert.match(showcase, /await library\.openShowcase\(entry\)/);
   assert.match(showcase, /await waitForSetupApplied\(\)/);
   assert.match(showcase, /await startShowcaseRun\(\)/);
   assert.match(showcase, /runButton\.click\(\)/);
