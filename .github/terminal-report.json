@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Experiment Authoring highlighting is stable across artifacts and Outline has been replaced by direct Search",
-  "owner_impact": "Configuration, Initialization, Controller and Metrics now preload and retain the same Ace Python syntax mode instead of racing Ace's dynamic mode loader when editors are hidden or switched. The misleading compiler-derived Outline control is removed from the authoring UI. In its place, a normal Search field and Search button send the entered query into Ace's existing in-editor find UI, while line numbers, folding, diagnostics and completion remain intact.",
+  "outcome": "Experiment Authoring now owns rendered syntax colors instead of relying on incidental Ace theme styling",
+  "owner_impact": "The Search field/button remains as previously verified. The macOS highlighting repair now works at the visual rendering layer: Virtual Lab defines its own scoped colors for keywords, strings, comments, numbers, language constants, functions, parameters and invalid syntax, so tokenized code cannot silently render as one monochrome color because an Ace theme failed to load or apply.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The owner-approved Mac editor-fix scope in #513 is complete and the ticket is being closed. The live Lab is the place to verify the repaired highlighting and Search behavior; no successor ticket is implied by this scope."
+    "text": "The reopened #513 scope is complete after the rendered-color repair. The owner should refresh the live Lab on macOS and verify the visual highlighting; no successor ticket is implied by this repair."
   },
   "technical_evidence": [
-    "Ace Python mode is loaded explicitly from the same pinned Ace 1.44.0 CDN bundle before Python-like editor sessions are created, removing the prior per-editor dynamic mode-load race.",
-    "The active-tab and authoritative-source replacement paths reassert the expected Ace mode and force a full renderer refresh without replacing the source-of-truth textarea contract.",
-    "Experiment Authoring no longer renders data-vlab-authoring-outline or compiler-derived symbol navigation; it renders one Search text input plus Search action.",
-    "Search passes the entered query to editor.find, opens Ace's existing find UI and synchronizes the native Ace search field with that query.",
-    "Production browser smoke switches across all four core artifacts twice and requires ace/mode/python plus real highlighted tokens after every switch; it also verifies Search prefills and selects ARENA_SIZE and that no Outline remains."
+    "Root cause: the prior implementation verified Ace Python tokenization but Virtual Lab CSS set one base editor text color and supplied no deterministic token-color palette.",
+    "Virtual Lab now owns the visible Ace token palette in react-chrome.css, scoped to the authoring editor and independent of Ace theme-module loading or browser/CDN timing.",
+    "The existing deterministic Python-mode preload/reassertion remains in place.",
+    "Production smoke still switches Configuration, Initialization, Controller and Metrics twice, but now also reads computed DOM colors for rendered token spans and requires at least one visible token color distinct from the editor base color for every artifact on every pass.",
+    "Search remains covered separately and is not changed by this repair."
   ],
   "close_issue": 513
 }

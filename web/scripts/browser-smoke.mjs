@@ -198,11 +198,24 @@ try {
                   if (/^(?:keyword|comment|string|constant\\.numeric|numeric)/.test(token.type ?? '')) highlightedTokens += 1;
                 }
               }
+              const baseColor = getComputedStyle(editor.container).color;
+              const renderedTokenColors = Array.from(
+                surface.querySelectorAll(
+                  '.ace_text-layer .ace_keyword, .ace_text-layer .ace_storage, .ace_text-layer .ace_string, .ace_text-layer .ace_comment, .ace_text-layer .ace_constant, .ace_text-layer .ace_numeric, .ace_text-layer .ace_support'
+                ),
+              )
+                .map((node) => getComputedStyle(node).color)
+                .filter(Boolean);
+              const distinctRenderedColors = [...new Set(renderedTokenColors)];
+              const visiblyHighlightedColors = distinctRenderedColors.filter((color) => color !== baseColor);
               return {
                 modeId: editor.session.$modeId ?? null,
                 datasetModeId: surface.dataset.vlabAceModeId ?? null,
                 syntaxMode: surface.dataset.vlabSyntaxMode ?? null,
                 highlightedTokens,
+                baseColor,
+                distinctRenderedColors,
+                visiblyHighlightedColors,
                 foldWidgets: surface.querySelectorAll('.ace_fold-widget').length,
               };
             })())`,
@@ -214,8 +227,10 @@ try {
             || highlighting?.datasetModeId !== "ace/mode/python"
             || highlighting?.syntaxMode !== "python"
             || highlighting?.highlightedTokens < 1
+            || !Array.isArray(highlighting?.visiblyHighlightedColors)
+            || highlighting.visiblyHighlightedColors.length < 1
           ) {
-            throw new Error(`Syntax highlighting failed after tab switch pass ${pass} for ${artifactId}: ${JSON.stringify(highlighting)}`);
+            throw new Error(`Rendered syntax highlighting failed after tab switch pass ${pass} for ${artifactId}: ${JSON.stringify(highlighting)}`);
           }
           if (artifactId === "initialization" && highlighting.foldWidgets < 1) {
             throw new Error(`Initializer folding disappeared while verifying highlighting: ${JSON.stringify(highlighting)}`);
