@@ -121,10 +121,16 @@ try {
         || latest.configurationEditor?.engine !== "ace"
         || !latest.configurationEditor?.sourceHidden
         || latest.configurationEditor?.lineNumbers < 2
-        || latest.configurationEditor?.highlightedTokens < 1
         || !latest.configurationEditor?.content?.includes("INITIALIZATION_METHOD")
       ) {
         throw new Error(`Ace authoring foundation is not visibly rendering the authoritative configuration source: ${JSON.stringify(latest)}`);
+      }
+      if (latest.configurationEditor?.highlightedTokens < 1) {
+        // Ace tokenization is asynchronous after mode/source setup. Preserve the
+        // highlighting requirement, but let the existing bounded readiness loop
+        // observe it rather than treating the first ready frame as terminal.
+        await sleep(100);
+        continue;
       }
       if (
         latest.authoringNavigation?.outlineState !== "ready"
@@ -363,21 +369,25 @@ def reference_norm(snapshot):
 `;
       await cdp.send("Runtime.evaluate", {
         expression: `(() => {
-          const setSource = (selector, value) => {
-            const source = document.querySelector(selector);
-            source.value = value;
-            source.dispatchEvent(new Event('input', { bubbles: true }));
+          const setEditorSource = (id, value) => {
+            const surface = document.querySelector(
+              \`[data-vlab-code-editor-root="\${id}"] [data-vlab-artifact-editor-surface="true"]\`
+            );
+            if (!surface || !window.ace) throw new Error(\`Ace editor '\${id}' is unavailable\`);
+            window.ace.edit(surface).setValue(value, -1);
           };
-          setSource('#initializer-source', ${JSON.stringify(referenceInitializer)});
-          setSource('#controller-source', ${JSON.stringify(referenceController)});
-          setSource('#metrics-source', ${JSON.stringify(referenceMetrics)});
+          setEditorSource('initialization', ${JSON.stringify(referenceInitializer)});
+          setEditorSource('controller', ${JSON.stringify(referenceController)});
+          setEditorSource('metrics', ${JSON.stringify(referenceMetrics)});
           document.querySelector('#apply-workspace').click();
         })()`,
       });
       let referenceReady = false;
+      let lastReferenceState = null;
+      let lastAppliedState = null;
       for (let referenceAttempt = 0; referenceAttempt < 80; referenceAttempt += 1) {
         await sleep(100);
-        const referenceState = await state(cdp.send);
+        lastReferenceState = await state(cdp.send);
         const authoringState = await cdp.send("Runtime.evaluate", {
           expression: `JSON.stringify({
             runtime: document.querySelector('#authoring-runtime-state')?.dataset.state ?? null,
@@ -386,16 +396,18 @@ def reference_norm(snapshot):
           })`,
           returnByValue: true,
         });
-        const appliedState = JSON.parse(authoringState?.result?.value ?? "null");
-        if (referenceState?.statusState === "error") {
-          throw new Error(`named-reference synthetic experiment failed to apply: ${JSON.stringify(referenceState)}`);
+        lastAppliedState = JSON.parse(authoringState?.result?.value ?? "null");
+        if (lastReferenceState?.statusState === "error") {
+          throw new Error(`named-reference synthetic experiment failed to apply: ${JSON.stringify(lastReferenceState)}`);
         }
-        if (appliedState?.runtime === "clean" && appliedState?.setup === "success" && appliedState?.controller === "success") {
+        if (lastAppliedState?.runtime === "clean" && lastAppliedState?.setup === "success" && lastAppliedState?.controller === "success") {
           referenceReady = true;
           break;
         }
       }
-      if (!referenceReady) throw new Error("named-reference synthetic experiment did not reach a clean applied state");
+      if (!referenceReady) {
+        throw new Error(`named-reference synthetic experiment did not reach a clean applied state: runtime=${JSON.stringify(lastAppliedState)} state=${JSON.stringify(lastReferenceState)}`);
+      }
 
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#run').click()" });
       await sleep(650);
