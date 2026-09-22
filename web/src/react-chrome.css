@@ -394,18 +394,18 @@ body.vlab-react-chrome-mounted {
   border-top: 1px solid #e4eaec;
 }
 
-.vlab-react-authoring-outline {
+.vlab-react-authoring-search-input {
   flex: 1 1 20rem;
   min-width: 0;
   max-width: 34rem;
 }
 
-.vlab-react-authoring-outline .mantine-Input-input {
+.vlab-react-authoring-search-input .mantine-Input-input {
   min-height: 38px;
   font-size: 12px;
 }
 
-.vlab-react-authoring-find {
+.vlab-react-authoring-search {
   flex: 0 0 auto;
   min-height: 38px;
 }
@@ -607,12 +607,12 @@ body.vlab-react-chrome-mounted .utility-dialog-head {
     flex-wrap: wrap !important;
   }
 
-  .vlab-react-authoring-outline {
+  .vlab-react-authoring-search-input {
     flex-basis: 100%;
     max-width: none;
   }
 
-  .vlab-react-authoring-find {
+  .vlab-react-authoring-search {
     min-height: 44px;
   }
 
