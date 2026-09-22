@@ -238,16 +238,7 @@ function suppressNoCollectionOutsideOrganization() {
 }
 
 function simplifyExperimentBrowser() {
-  const filters = document.querySelector(".experiment-browser-filters");
-  if (filters) {
-    setHidden(filters, true);
-    if (filters.getAttribute("aria-hidden") !== "true") filters.setAttribute("aria-hidden", "true");
-  }
-  const contextHelp = document.querySelector(".experiment-browser-context span");
-  const help = signedIn()
-    ? "Search all of your available experiments directly. Collections are optional metadata, never navigation."
-    : "Search the available experiments. Sign in to include your private experiments.";
-  if (contextHelp) setText(contextHelp, help);
+  // #480 owns discovery. Collection organization no longer mutates a second browser.
 }
 
 function relocateMoveControl() {
@@ -307,9 +298,8 @@ function syncRenameName() {
 }
 
 function refreshRegistry() {
-  const refresh = [...document.querySelectorAll(".experiment-browser-head-actions button")]
-    .find((button) => button.textContent?.trim() === "Refresh library");
-  refresh?.click();
+  window.vlabExperimentLibraryBridge?.refreshRegistry?.();
+  window.dispatchEvent(new Event("vlab-refresh-experiment-library"));
 }
 
 async function createCollection() {
