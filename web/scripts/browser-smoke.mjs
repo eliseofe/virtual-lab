@@ -22,7 +22,10 @@ async function state(send) {
     runSeed: document.querySelector('#run-seed')?.textContent ?? null,
     metricRuntimeBridge: Boolean(globalThis.__vlabMetricRuntime),
     codeEditorsReady: document.querySelectorAll('[data-vlab-code-editor-ready="true"]').length,
-    codeEditorErrors: document.querySelectorAll('[data-vlab-code-editor-ready="error"]').length,
+    codeEditorErrors: [...document.querySelectorAll('[data-vlab-code-editor-ready="error"]')].map((root) => ({
+      artifact: root.dataset.vlabArtifactId ?? null,
+      message: root.dataset.vlabCodeEditorError ?? null,
+    })),
     configurationEditor: (() => {
       const source = document.querySelector('#experiment-config');
       const root = document.querySelector('[data-vlab-code-editor-root="configuration"]');
@@ -55,7 +58,7 @@ try {
   for (let attempt = 0; attempt < 200; attempt += 1) {
     latest = await state(cdp.send);
     if (latest?.statusState === "ready") {
-      if (latest.codeEditorErrors) {
+      if (latest.codeEditorErrors?.length) {
         throw new Error(`CodeMirror authoring surface failed to initialize: ${JSON.stringify(latest)}`);
       }
       if (latest.codeEditorsReady < 4) {

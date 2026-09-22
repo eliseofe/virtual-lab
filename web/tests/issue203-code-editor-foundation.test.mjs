@@ -18,10 +18,10 @@ test("#203 mounts a real CodeMirror foundation through React without replacing s
   assert.match(adapter, /textarea\.code-editor/);
   assert.match(adapter, /ensureEditorMount/);
 
-  assert.match(editor, /codemirror@6\.0\.2/);
-  assert.match(editor, /@codemirror\/view@6\.43\.12/);
-  assert.match(editor, /@codemirror\/state@6\.7\.5/);
-  assert.match(editor, /@codemirror\/lang-python@6\.2\.1/);
+  assert.match(editor, /codemirror@6\.0\.2\?bundle=false/);
+  assert.match(editor, /@codemirror\/view@6\.43\.12\?bundle=false/);
+  assert.match(editor, /@codemirror\/state@6\.7\.5\?bundle=false/);
+  assert.match(editor, /@codemirror\/lang-python@6\.2\.1\?bundle=false/);
   assert.match(editor, /runtime\.minimalSetup/);
   assert.match(editor, /runtime\.lineNumbers\(\)/);
   assert.match(editor, /runtime\.python\(\)/);
@@ -67,6 +67,7 @@ test("#203 mirrors source read-only state and retains textarea fallback", async 
   assert.match(editor, /MutationObserver\(syncReadOnly\)/);
   assert.match(editor, /source\.dataset\.vlabEditorEnhanced = 'true'/);
   assert.match(editor, /catch \(error\)[\s\S]*delete source\.dataset\.vlabEditorEnhanced/);
+  assert.match(editor, /host\.dataset\.vlabCodeEditorError/);
   assert.match(css, /textarea\.code-editor\[data-vlab-editor-enhanced="true"\]/);
   assert.match(css, /\.vlab-code-editor-host \.cm-editor/);
   assert.match(css, /\.cm-lineNumbers \.cm-gutterElement/);
