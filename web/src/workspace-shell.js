@@ -1,4 +1,5 @@
 import "./registry-ui-v3.js";
+import "./experiment-library.js";
 import "./student-registration.js";
 import "./student-onboarding.js";
 import "./showcase.js";
