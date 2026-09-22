@@ -811,41 +811,6 @@ export function metricsStructure(source) {
   return { language: METRICS_LANGUAGE, symbols };
 }
 
-export function metricsStructure(source) {
-  if (typeof source !== "string") throw new MetricsCompileError("syntax", "Metrics source must be a string");
-  const lines = sourceLines(source);
-  const symbols = [];
-  let i = 0;
-  while (i < lines.length) {
-    const entry = lines[i];
-    if (!entry.text || entry.text.startsWith("#")) { i += 1; continue; }
-    if (entry.indent !== 0) throw new MetricsCompileError("syntax", "top-level metric declarations must not be indented", entry.line);
-    const metadata = parseDecorator(entry.text, entry.line);
-    let defIndex = i + 1;
-    while (defIndex < lines.length && (!lines[defIndex].text || lines[defIndex].text.startsWith("#"))) defIndex += 1;
-    const defEntry = lines[defIndex];
-    if (!defEntry) throw new MetricsCompileError("syntax", "@metric must be followed by a metric function", entry.line);
-    const defMatch = defEntry.text.match(/^def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*snapshot\s*\)\s*:\s*$/);
-    if (!defMatch || defEntry.indent !== 0) throw new MetricsCompileError("syntax", "metric function must have form 'def name(snapshot):'", defEntry.line);
-    let bodyIndex = defIndex + 1;
-    while (bodyIndex < lines.length && (!lines[bodyIndex].text || lines[bodyIndex].text.startsWith("#"))) bodyIndex += 1;
-    const firstBody = lines[bodyIndex];
-    if (!firstBody || firstBody.indent <= 0) throw new MetricsCompileError("syntax", "metric function requires an indented body", defEntry.line);
-    const parsed = parseStatements(lines, bodyIndex, firstBody.indent);
-
-    symbols.push({
-      kind: "metric",
-      name: metadata.name || metadata.id,
-      id: metadata.id,
-      function: defMatch[1],
-      line: defEntry.line,
-      decoratorLine: entry.line,
-    });
-    i = parsed.next;
-  }
-  return { language: METRICS_LANGUAGE, symbols };
-}
-
 export function compileMetrics(source, { parameters = {} } = {}) {
   if (typeof source !== "string") throw new MetricsCompileError("syntax", "Metrics source must be a string");
   const parameterTypes = {};
