@@ -803,8 +803,8 @@ export function metricsStructure(source) {
       name: metadata.name || metadata.id,
       id: metadata.id,
       function: defMatch[1],
-      line: entry.line,
-      definitionLine: defEntry.line,
+      line: defEntry.line,
+      metadataLine: entry.line,
     });
     i = parsed.next;
   }
