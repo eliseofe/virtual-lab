@@ -365,6 +365,7 @@ export function ArtifactCodeEditor({
       delete source.dataset.vlabEditorEnhanced;
       delete host.dataset.vlabCodeEditorReady;
       delete host.dataset.vlabEditorEngine;
+      delete host.dataset.vlabArtifactLanguage;
       delete host.dataset.vlabSyntaxMode;
       delete host.dataset.vlabAceModeId;
       delete host.dataset.vlabCodeEditorReadonly;
