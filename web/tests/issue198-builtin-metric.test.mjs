@@ -25,10 +25,12 @@ test("#198 Active Elastic catalog content retains the two owner-authorized live 
   assert.match(JSON.stringify(ir.metrics[1]), /"name":"cross2"/);
 });
 
-test("#481 Metrics reaches the editor through the generic Experiment artifact contract", () => {
+test("#481 Metrics reaches the editor through the same metadata-driven Experiment artifact contract as the other core artifacts", () => {
   assert.match(html, /id="metrics-source"/);
   assert.match(html, /data-artifact-id="metrics"/);
-  assert.match(artifacts, /id: "metrics"[\s\S]*editorSelector: null/);
+  assert.match(artifacts, /id: "metrics"[\s\S]*language: "python"/);
+  assert.match(artifacts, /artifactEditorFor/);
+  assert.doesNotMatch(artifacts, /editorSelector/);
   assert.match(catalogWorkspace, /applyExperimentArtifacts\(experiment\)/);
   assert.doesNotMatch(bridge, /builtin-active-elastic-metrics/);
 });
