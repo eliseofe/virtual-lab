@@ -417,74 +417,40 @@ body.vlab-react-chrome-mounted {
 
 .vlab-code-editor-host {
   min-width: 0;
+  min-height: 390px;
 }
 
-.vlab-code-editor-host .cm-editor {
-  min-width: 0;
-  min-height: 390px;
-  overflow: hidden;
+.vlab-code-editor-host .ace_editor {
+  width: 100%;
+  height: 390px;
   border: 1px solid #cfdadd;
   border-radius: 12px;
   background: #fbfcfc;
   color: #172127;
   box-shadow: inset 0 1px 2px rgba(17, 40, 49, 0.025);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 13px;
-  line-height: 1.55;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
 }
 
-.vlab-code-editor-host .cm-editor.cm-focused {
+.vlab-code-editor-host .ace_editor.ace_focus {
   outline: 3px solid rgba(23, 117, 141, 0.12);
   outline-offset: 0;
   border-color: #7faeba;
 }
 
-.vlab-code-editor-host .cm-scroller {
-  min-width: 0;
-  overflow: auto;
-  font-family: inherit;
-}
-
-.vlab-code-editor-host .cm-content {
-  min-height: 388px;
-  padding: 11px 0 18px;
-  caret-color: var(--vlab-ink);
-}
-
-.vlab-code-editor-host .cm-line {
-  padding: 0 12px 0 8px;
-}
-
-.vlab-code-editor-host .cm-gutters {
+.vlab-code-editor-host .ace_gutter {
   border-right: 1px solid #e2e8ea;
   background: #f3f6f7;
   color: #7b8b91;
 }
 
-.vlab-code-editor-host .cm-lineNumbers .cm-gutterElement {
-  min-width: 2.4rem;
-  padding: 0 8px 0 6px;
+.vlab-code-editor-host .ace_scroller {
+  background: #fbfcfc;
 }
 
-.vlab-code-editor-host .vlab-syntax-comment {
-  color: #74858c;
-  font-style: italic;
-}
-
-.vlab-code-editor-host .vlab-syntax-string {
-  color: #7b4f2c;
-}
-
-.vlab-code-editor-host .vlab-syntax-number {
-  color: #6b4aa0;
-}
-
-.vlab-code-editor-host .vlab-syntax-keyword {
-  color: #0f647b;
-  font-weight: 650;
-}
-
-.vlab-code-editor-host[data-vlab-code-editor-readonly="true"] .cm-editor {
+.vlab-code-editor-host[data-vlab-code-editor-readonly="true"] .ace_scroller,
+.vlab-code-editor-host[data-vlab-code-editor-readonly="true"] .ace_gutter {
   background: #f7f9fa;
 }
 
@@ -598,13 +564,13 @@ body.vlab-react-chrome-mounted .utility-dialog-head {
     align-self: flex-start;
   }
 
-  .vlab-code-editor-host .cm-editor {
+  .vlab-code-editor-host {
     min-height: 330px;
-    font-size: 12.5px;
   }
 
-  .vlab-code-editor-host .cm-content {
-    min-height: 328px;
+  .vlab-code-editor-host .ace_editor {
+    height: 330px;
+    font-size: 12.5px !important;
   }
 
 }

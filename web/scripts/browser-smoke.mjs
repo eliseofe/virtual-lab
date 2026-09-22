@@ -27,14 +27,15 @@ async function state(send) {
     configurationEditor: (() => {
       const source = document.querySelector('#experiment-config');
       const root = document.querySelector('[data-vlab-code-editor-root="configuration"]');
-      const editor = root?.querySelector('.cm-editor');
+      const editor = root?.querySelector('.ace_editor');
       return {
         ready: root?.dataset.vlabCodeEditorReady ?? null,
+        engine: root?.dataset.vlabEditorEngine ?? null,
         sourceHidden: source ? getComputedStyle(source).display === 'none' : false,
-        lineNumbers: root?.querySelectorAll('.cm-lineNumbers .cm-gutterElement').length ?? 0,
-        highlightedTokens: root?.querySelectorAll('.cm-content .cm-line span[class]').length ?? 0,
-        content: root?.querySelector('.cm-content')?.textContent ?? null,
-        editable: editor?.querySelector('.cm-content')?.getAttribute('contenteditable') ?? null,
+        lineNumbers: root?.querySelectorAll('.ace_gutter-cell').length ?? 0,
+        highlightedTokens: root?.querySelectorAll('.ace_keyword, .ace_comment, .ace_string, .ace_numeric').length ?? 0,
+        content: root?.querySelector('.ace_text-layer')?.textContent ?? null,
+        editable: editor?.querySelector('.ace_text-input')?.getAttribute('readonly') ?? null,
       };
     })()
   })`;
@@ -57,7 +58,7 @@ try {
     latest = await state(cdp.send);
     if (latest?.statusState === "ready") {
       if (latest.codeEditorErrors) {
-        throw new Error(`CodeMirror authoring surface failed to initialize: ${JSON.stringify(latest)}`);
+        throw new Error(`Ace authoring surface failed to initialize: ${JSON.stringify(latest)}`);
       }
       if (latest.codeEditorsReady < 4) {
         await sleep(100);
@@ -88,12 +89,13 @@ try {
       if (latest.runSeed !== "2026") throw new Error(`initial run seed is not the deterministic default: ${JSON.stringify(latest)}`);
       if (
         latest.configurationEditor?.ready !== "true"
+        || latest.configurationEditor?.engine !== "ace"
         || !latest.configurationEditor?.sourceHidden
         || latest.configurationEditor?.lineNumbers < 2
         || latest.configurationEditor?.highlightedTokens < 1
         || !latest.configurationEditor?.content?.includes("INITIALIZATION_METHOD")
       ) {
-        throw new Error(`CodeMirror authoring foundation is not visibly rendering the authoritative configuration source: ${JSON.stringify(latest)}`);
+        throw new Error(`Ace authoring foundation is not visibly rendering the authoritative configuration source: ${JSON.stringify(latest)}`);
       }
 
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#run').click()" });
@@ -140,7 +142,7 @@ try {
       if (replayRandomized?.runSeed !== randomizedSeed || Number(replayRandomized?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve the new seed: ${JSON.stringify(replayRandomized)}`);
 
       console.log(JSON.stringify(replayRandomized, null, 2));
-      console.log("Browser reached simulator ready with CodeMirror authoring, the metrics runtime bridge, measured speed controls, and same-seed/new-seed restart controls.");
+      console.log("Browser reached simulator ready with Ace authoring, the metrics runtime bridge, measured speed controls, and same-seed/new-seed restart controls.");
       succeeded = true;
       break;
     }

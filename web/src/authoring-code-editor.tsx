@@ -1,33 +1,57 @@
 import { useEffect, useRef } from 'react';
 
-const CODEMIRROR_URL = 'https://esm.sh/codemirror@6.0.2?bundle';
+const ACE_VERSION = '1.44.0';
+const ACE_BASE_URL = `https://cdn.jsdelivr.net/npm/ace-builds@${ACE_VERSION}/src-min-noconflict`;
+const ACE_SCRIPT_URL = `${ACE_BASE_URL}/ace.js`;
 const SOURCE_REPLACED_EVENT = 'vlab:artifact-source-replaced';
 
-type CodeMirrorRuntime = {
-  EditorView: any;
-  EditorState: any;
-  Compartment: any;
-  Decoration: any;
-  ViewPlugin: any;
-  minimalSetup: any;
-  lineNumbers: () => any;
+type AceRuntime = {
+  edit: (element: HTMLElement) => any;
+  config: {
+    set: (key: string, value: unknown) => void;
+  };
 };
 
-let runtimePromise: Promise<CodeMirrorRuntime> | null = null;
-
-function loadCodeMirror(): Promise<CodeMirrorRuntime> {
-  if (!runtimePromise) {
-    runtimePromise = import(/* @vite-ignore */ CODEMIRROR_URL).then((core) => ({
-      EditorView: core.EditorView,
-      EditorState: core.EditorState,
-      Compartment: core.Compartment,
-      Decoration: core.Decoration,
-      ViewPlugin: core.ViewPlugin,
-      minimalSetup: core.minimalSetup,
-      lineNumbers: core.lineNumbers,
-    }));
+declare global {
+  interface Window {
+    ace?: AceRuntime;
   }
-  return runtimePromise;
+}
+
+let acePromise: Promise<AceRuntime> | null = null;
+
+function loadAce(): Promise<AceRuntime> {
+  if (window.ace) return Promise.resolve(window.ace);
+  if (!acePromise) {
+    acePromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>('script[data-vlab-ace-runtime="true"]');
+      const finish = () => {
+        if (!window.ace) {
+          reject(new Error('Ace loaded without exposing window.ace.'));
+          return;
+        }
+        window.ace.config.set('basePath', ACE_BASE_URL);
+        window.ace.config.set('modePath', ACE_BASE_URL);
+        window.ace.config.set('themePath', ACE_BASE_URL);
+        window.ace.config.set('workerPath', ACE_BASE_URL);
+        resolve(window.ace);
+      };
+      if (existing) {
+        existing.addEventListener('load', finish, { once: true });
+        existing.addEventListener('error', () => reject(new Error('Ace runtime failed to load.')), { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = ACE_SCRIPT_URL;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.dataset.vlabAceRuntime = 'true';
+      script.addEventListener('load', finish, { once: true });
+      script.addEventListener('error', () => reject(new Error('Ace runtime failed to load.')), { once: true });
+      document.head.append(script);
+    });
+  }
+  return acePromise;
 }
 
 function pythonLike(format: string) {
@@ -37,38 +61,6 @@ function pythonLike(format: string) {
 function emitInteractionBoundary(source: HTMLTextAreaElement) {
   source.dispatchEvent(new FocusEvent('blur'));
   source.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-}
-
-function pythonLikeSyntax(runtime: CodeMirrorRuntime) {
-  const token = /#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:def|class|if|elif|else|for|while|in|return|and|or|not|is|None|True|False|import|from|as|pass|break|continue)\b|\b(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\b/g;
-
-  const buildDecorations = (view: any) => {
-    const ranges: any[] = [];
-    const text = view.state.doc.toString();
-    token.lastIndex = 0;
-    for (let match = token.exec(text); match; match = token.exec(text)) {
-      const value = match[0];
-      let className = 'vlab-syntax-keyword';
-      if (value.startsWith('#')) className = 'vlab-syntax-comment';
-      else if (value.startsWith('"') || value.startsWith("'")) className = 'vlab-syntax-string';
-      else if (/^(?:\d|\.)/.test(value)) className = 'vlab-syntax-number';
-      ranges.push(runtime.Decoration.mark({ class: className }).range(match.index, match.index + value.length));
-    }
-    return runtime.Decoration.set(ranges, true);
-  };
-
-  return runtime.ViewPlugin.fromClass(
-    class {
-      decorations: any;
-      constructor(view: any) {
-        this.decorations = buildDecorations(view);
-      }
-      update(update: any) {
-        if (update.docChanged) this.decorations = buildDecorations(update.view);
-      }
-    },
-    { decorations: (plugin: any) => plugin.decorations },
-  );
 }
 
 export function ArtifactCodeEditor({
@@ -85,85 +77,72 @@ export function ArtifactCodeEditor({
   selected: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const viewRef = useRef<any>(null);
+  const editorRef = useRef<any>(null);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
 
     let disposed = false;
-    let view: any = null;
+    let editor: any = null;
     let readOnlyObserver: MutationObserver | null = null;
     let resetFromAuthoritativeSource: (() => void) | null = null;
     let syncingFromSource = false;
 
     const start = async () => {
       try {
-        const runtime = await loadCodeMirror();
+        const ace = await loadAce();
         if (disposed || !hostRef.current) return;
 
-        const readOnly = new runtime.Compartment();
-        const readOnlyExtension = () => [
-          runtime.EditorState.readOnly.of(source.readOnly),
-          runtime.EditorView.editable.of(!source.readOnly),
-        ];
+        editor = ace.edit(host);
+        editorRef.current = editor;
+        editor.setOptions({
+          fontSize: '13px',
+          showPrintMargin: false,
+          showGutter: true,
+          highlightActiveLine: true,
+          highlightSelectedWord: true,
+          displayIndentGuides: true,
+          useSoftTabs: true,
+          tabSize: 4,
+          wrap: false,
+          behavioursEnabled: true,
+          autoScrollEditorIntoView: false,
+        });
+        editor.renderer.setShowGutter(true);
+        editor.session.setUseWorker(false);
+        if (pythonLike(format)) editor.session.setMode('ace/mode/python');
+        editor.setReadOnly(source.readOnly);
+        editor.setValue(source.value, -1);
+        editor.session.getUndoManager().reset();
+        editor.clearSelection();
+        editor.container.setAttribute('aria-label', source.getAttribute('aria-label') || label);
+        editor.container.dataset.vlabCodeEditorContent = id;
 
-        const updateListener = runtime.EditorView.updateListener.of((update: any) => {
-          if (!update.docChanged || syncingFromSource) return;
-          const next = update.state.doc.toString();
+        editor.session.on('change', () => {
+          if (syncingFromSource) return;
+          const next = editor.getValue();
           if (source.value !== next) source.value = next;
           source.dispatchEvent(new Event('input', { bubbles: true }));
         });
 
-        const interactionBoundary = runtime.EditorView.domEventHandlers({
-          blur: () => {
-            emitInteractionBoundary(source);
-            return false;
-          },
-        });
-
-        const contentAttributes = runtime.EditorView.contentAttributes.of({
-          'aria-label': source.getAttribute('aria-label') || label,
-          'aria-multiline': 'true',
-          'autocomplete': 'off',
-          'autocapitalize': 'off',
-          'spellcheck': 'false',
-          'data-vlab-code-editor-content': id,
-        });
-
-        const extensions = () => [
-          runtime.minimalSetup,
-          runtime.lineNumbers(),
-          ...(pythonLike(format) ? [pythonLikeSyntax(runtime)] : []),
-          readOnly.of(readOnlyExtension()),
-          updateListener,
-          interactionBoundary,
-          contentAttributes,
-        ];
-
-        view = new runtime.EditorView({
-          doc: source.value,
-          extensions: extensions(),
-          parent: hostRef.current,
-        });
-        viewRef.current = view;
+        editor.on('blur', () => emitInteractionBoundary(source));
 
         resetFromAuthoritativeSource = () => {
-          if (!view) return;
+          if (!editor) return;
           syncingFromSource = true;
           try {
-            view.setState(runtime.EditorState.create({
-              doc: source.value,
-              extensions: extensions(),
-            }));
+            editor.setValue(source.value, -1);
+            editor.session.getUndoManager().reset();
+            editor.clearSelection();
           } finally {
             syncingFromSource = false;
           }
         };
 
         const syncReadOnly = () => {
-          if (!view) return;
-          view.dispatch({ effects: readOnly.reconfigure(readOnlyExtension()) });
+          if (!editor) return;
+          editor.setReadOnly(source.readOnly);
           host.dataset.vlabCodeEditorReadonly = String(source.readOnly);
         };
 
@@ -176,10 +155,11 @@ export function ArtifactCodeEditor({
 
         source.dataset.vlabEditorEnhanced = 'true';
         host.dataset.vlabCodeEditorReady = 'true';
-        host.dataset.vlabSyntaxMode = pythonLike(format) ? 'python-like' : 'plain';
+        host.dataset.vlabEditorEngine = 'ace';
+        host.dataset.vlabSyntaxMode = pythonLike(format) ? 'python' : 'plain';
         host.dataset.vlabCodeEditorReadonly = String(source.readOnly);
         delete host.dataset.vlabCodeEditorError;
-        view.requestMeasure();
+        editor.resize(true);
       } catch (error) {
         delete source.dataset.vlabEditorEnhanced;
         host.dataset.vlabCodeEditorReady = 'error';
@@ -194,10 +174,14 @@ export function ArtifactCodeEditor({
       disposed = true;
       readOnlyObserver?.disconnect();
       if (resetFromAuthoritativeSource) source.removeEventListener(SOURCE_REPLACED_EVENT, resetFromAuthoritativeSource);
-      if (view) view.destroy();
-      viewRef.current = null;
+      if (editor) {
+        editor.destroy();
+        host.replaceChildren();
+      }
+      editorRef.current = null;
       delete source.dataset.vlabEditorEnhanced;
       delete host.dataset.vlabCodeEditorReady;
+      delete host.dataset.vlabEditorEngine;
       delete host.dataset.vlabSyntaxMode;
       delete host.dataset.vlabCodeEditorReadonly;
       delete host.dataset.vlabCodeEditorError;
@@ -205,7 +189,7 @@ export function ArtifactCodeEditor({
   }, [format, id, label, source]);
 
   useEffect(() => {
-    if (selected) viewRef.current?.requestMeasure?.();
+    if (selected) editorRef.current?.resize?.(true);
   }, [selected]);
 
   return (
