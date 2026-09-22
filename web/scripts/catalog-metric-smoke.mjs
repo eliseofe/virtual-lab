@@ -58,7 +58,7 @@ try {
     await sleep(100);
   }
   if (!startup?.reactResults) throw new Error(`React Results presentation did not mount: ${JSON.stringify(startup)}`);
-  if (!startup?.metricIds?.includes("polarization") || !startup?.metricIds?.includes("angular_momentum")) throw new Error(`two built-in metrics did not reach Results: ${JSON.stringify(startup)}`);
+  if (!startup?.metricIds?.includes("polarization") || !startup?.metricIds?.includes("angular_momentum")) throw new Error(`two catalog metrics did not reach Results: ${JSON.stringify(startup)}`);
   if (/No metrics configured/i.test(startup.status)) throw new Error(`Results incorrectly reports no metrics: ${JSON.stringify(startup)}`);
 
   await evaluate(cdp.send, `document.querySelector('[data-vlab-results-add]')?.click()`);

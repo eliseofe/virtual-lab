@@ -25,7 +25,7 @@ test("main Lab exposes one direct experiment switcher and one full finder", asyn
 test("loaded experiment exposes ownership, revision and optional location context", async () => {
   const source = await browserSource();
   assert.match(source, /Your experiment · Editable/);
-  assert.match(source, /Built-in · Read-only/);
+  assert.match(source, /Showcase · Read-only/);
   assert.match(source, /function currentLocationLabel\(\)/);
   assert.match(source, /Collection · \$\{collectionName\(currentRemote\.collection_id\)\}/);
   assert.match(source, /No collection/);
@@ -33,18 +33,17 @@ test("loaded experiment exposes ownership, revision and optional location contex
   assert.match(source, /experiment-location/);
 });
 
-test("browser unifies built-in and account-owned experiment sources", async () => {
+test("browser unifies Showcase catalog and account-owned experiment sources", async () => {
   const source = await browserSource();
-  assert.match(source, /tabs\.hidden = true/);
   assert.match(source, /filters\.hidden = true/);
   assert.match(source, /\.experiment-browser \.experiment-browser-filters\[hidden\] \{ display: none !important; \}/);
   assert.match(source, /browser\.filters\.hidden = false;[\s\S]*browser\.dialog\.showModal\(\)/);
   assert.match(source, /browser\.dialog\.addEventListener\("close"[\s\S]*browser\.filters\.hidden = true/);
   assert.match(source, /browser\.contextTitle\.textContent = "All available experiments"/);
-  assert.match(source, /Browse built-in, owned/);
-  assert.match(source, /builtInResult\(\)/);
+  assert.match(source, /Browse Showcase, owned/);
+  assert.match(source, /catalogResult\(experiment\)/);
   assert.match(source, /experimentGroup\(label, filtered\)/);
-  assert.doesNotMatch(source, /Showcase/);
+  assert.doesNotMatch(source, /Built-in|builtin/i);
 });
 
 test("collections remain optional filters rather than navigation prerequisites", async () => {

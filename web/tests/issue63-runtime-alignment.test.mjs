@@ -67,12 +67,16 @@ test("issue #63 production compileSetup consumes the shared generic runtime cont
   }
 });
 
-test("issue #63 legacy Active Elastic compatibility stays browser-local and outside MCP contract", async () => {
+test("issue #481 catalog content satisfies the generic runtime contract without a browser-only shim", async () => {
   const main = await readFile(path.join(web, "src", "main.js"), "utf8");
+  const catalog = await readFile(path.join(web, "src", "experiment-catalog.js"), "utf8");
   const authoring = await readFile(path.join(web, "..", "supabase", "functions", "experiment-mcp", "authoring.js"), "utf8");
   const runtimeVendor = await readFile(path.join(web, "..", "supabase", "functions", "experiment-mcp", "vendor", "runtime-contract.js"), "utf8");
 
-  assert.match(main, /runtimeValuesForCurrentBuiltIn/);
+  assert.doesNotMatch(main, /runtimeValuesForCurrentBuiltIn|PROXIMAL_RANGE|POTENTIAL_ALPHA/);
+  assert.match(catalog, /INTERACTION_RADIUS = PROXIMAL_RANGE/);
+  assert.match(catalog, /MAX_FORWARD_SPEED = U/);
+  assert.match(catalog, /MAX_ANGULAR_SPEED = OMEGA_MAX/);
   assert.equal(authoring.includes("PROXIMAL_RANGE"), false);
   assert.equal(authoring.includes("POTENTIAL_ALPHA"), false);
   assert.equal(runtimeVendor.includes("PROXIMAL_RANGE"), false);

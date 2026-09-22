@@ -39,7 +39,7 @@
       "state": "active",
       "smoke": [
         {
-          "script": "web/scripts/builtin-metric-smoke.mjs",
+          "script": "web/scripts/catalog-metric-smoke.mjs",
           "timeout_seconds": 60
         }
       ]

@@ -13,15 +13,6 @@ import {
   validateRuntimeValues,
 } from "./runtime/contract.js";
 
-export function runtimeValuesForProductionExperiment(values) {
-  return {
-    ...values,
-    INTERACTION_RADIUS: values.INTERACTION_RADIUS ?? values.PROXIMAL_RANGE,
-    MAX_FORWARD_SPEED: values.MAX_FORWARD_SPEED ?? values.U,
-    MAX_ANGULAR_SPEED: values.MAX_ANGULAR_SPEED ?? values.OMEGA_MAX,
-  };
-}
-
 function sourcesFromExperiment(experiment) {
   const artifacts = experimentArtifactArray(experiment);
   const fields = sourceFieldsFromArtifactArray(artifacts);
@@ -55,7 +46,7 @@ function compileExperiment(experiment, runtimeValues, { seed = 0 } = {}) {
 }
 
 export function compileProductionExperiment(experiment, options) {
-  return compileExperiment(experiment, runtimeValuesForProductionExperiment, options);
+  return compileExperiment(experiment, (values) => values, options);
 }
 
 export function compileRegistryExperiment(experiment, options) {
@@ -74,15 +65,3 @@ function runnability(compile, experiment, options) {
 export function productionExperimentRunnability(experiment, options) { return runnability(compileProductionExperiment, experiment, options); }
 export function registryExperimentRunnability(experiment, options) { return runnability(compileRegistryExperiment, experiment, options); }
 
-export function registryArtifactsFromProductionExperiment(experiment) {
-  const artifacts = experimentArtifactArray(experiment);
-  const fields = sourceFieldsFromArtifactArray(artifacts);
-  const config = compileConfig(fields.config_source);
-  const aliases = [];
-  if (config.values.INTERACTION_RADIUS === undefined && config.values.PROXIMAL_RANGE !== undefined) aliases.push("INTERACTION_RADIUS = PROXIMAL_RANGE");
-  if (config.values.MAX_FORWARD_SPEED === undefined && config.values.U !== undefined) aliases.push("MAX_FORWARD_SPEED = U");
-  if (config.values.MAX_ANGULAR_SPEED === undefined && config.values.OMEGA_MAX !== undefined) aliases.push("MAX_ANGULAR_SPEED = OMEGA_MAX");
-  const configSource = aliases.length ? `${fields.config_source.replace(/\s+$/, "")}\n${aliases.join("\n")}\n` : fields.config_source;
-  const updated = artifacts.map((artifact) => artifact.id === "configuration" ? { ...artifact, content: configSource } : artifact);
-  return artifactWritePayload(updated);
-}

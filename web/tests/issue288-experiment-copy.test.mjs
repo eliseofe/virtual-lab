@@ -59,7 +59,8 @@ test("#288 supervised copy uses the saved remote revision rather than local unsa
   assert.match(registry, /p_expected_revision: sourceRevision/);
   assert.match(registry, /p_collection_id: collectionId/);
   assert.match(registry, /data = await copyCurrentReadableExperiment\(title, collectionId\)/);
-  assert.match(registry, /const artifacts = registryArtifactsForSave\(\{ allowBuiltInCompatibility: true \}\)/);
+  assert.match(registry, /const artifacts = registryArtifactsForSave\(\);/);
+  assert.doesNotMatch(registry, /allowBuiltInCompatibility/);
 });
 
 test("#399 historical read-only copy uses the exact retained revision being viewed", () => {

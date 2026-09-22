@@ -1,5 +1,5 @@
 import { compileMetrics } from "./metrics/compiler.js";
-import "./builtin-active-elastic-metrics.js";
+import "./catalog-workspace.js";
 import "./results-ui.js";
 import "./result-persistence.js";
 

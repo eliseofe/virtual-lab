@@ -1,3 +1,4 @@
+import "./catalog-workspace.js";
 import { compileController } from "./controller/compiler.js";
 import { compileConfig, numericParameters } from "./config/compiler.js";
 import { compileEnvironmentScalar, validateEnvironmentControllerPair } from "./environment/compiler.js";
@@ -12,87 +13,6 @@ import { ArenaCamera } from "./visualization/camera.js";
 
 const INTERNAL_SEED = 2026;
 
-const defaultConfigSource = `# EXPERIMENT SETUP
-# Number of agents.
-N = 91
-# Side length of the square arena in model distance units. Boundaries are periodic.
-ARENA_SIZE = 10.0
-# Initialization method: "hexagon_perturbed" or "random".
-INITIALIZATION_METHOD = "hexagon_perturbed"
-# Maximum independent x/y displacement added to each hex-lattice position.
-# 0.0 gives a perfect lattice.
-INITIAL_POSITION_NOISE = 0.0
-# Controller update period (s). Ferrante et al. (2012) use 0.1 s.
-CONTROL_DT = 0.1
-# Bearing-noise parameter from Ferrante et al. (2012).
-# The simulator applies a uniform bearing perturbation in [-2*pi*sigma, +2*pi*sigma].
-SENSOR_NOISE = 0.1
-# Experiment duration (s).
-EXPERIMENT_DURATION = 25000.0
-
-# CONTROLLER PARAMETERS — Ferrante et al. (2012), MDMC + proximal control
-# Maximum forward speed (distance units/s); the 2012 numeric default corresponds to m/s.
-U = 0.005
-# Maximum angular speed (rad/s).
-OMEGA_MAX = 1.5707963267948966
-# MDMC gains.
-K1 = 0.005
-K2 = 0.06
-# Generalized Lennard-Jones proximal-control parameters.
-POTENTIAL_ALPHA = 2.0
-POTENTIAL_EPSILON = 1.5
-# Desired inter-agent distance. Hex-lattice spacing is derived from this value.
-DESIRED_DISTANCE = 0.45
-# Maximum range of proximal interaction.
-PROXIMAL_RANGE = 0.81
-`;
-
-const defaultInitializerSource = `def hexagon_perturbed(config, rng, place):
-    # Hexagonal-lattice radius derived from N.
-    radius = ceil((sqrt(12.0 * config.N - 3.0) - 3.0) / 6.0)
-    i = 0
-    for q in range(-radius, radius + 1):
-        for r in range(-radius, radius + 1):
-            s = -q - r
-            if max(abs(q), abs(r), abs(s)) <= radius:
-                if i < config.N:
-                    x = config.DESIRED_DISTANCE * (q + 0.5 * r)
-                    y = config.DESIRED_DISTANCE * SQRT3_OVER_2 * r
-                    x += rng.uniform(-config.INITIAL_POSITION_NOISE, config.INITIAL_POSITION_NOISE)
-                    y += rng.uniform(-config.INITIAL_POSITION_NOISE, config.INITIAL_POSITION_NOISE)
-                    theta = rng.uniform(0.0, TAU)
-                    place(i, x, y, theta)
-                    i += 1
-
-def random_uniform(config, rng, place):
-    half = config.ARENA_SIZE / 2.0
-    for i in range(config.N):
-        x = rng.uniform(-half, half)
-        y = rng.uniform(-half, half)
-        theta = rng.uniform(0.0, TAU)
-        place(i, x, y, theta)
-
-def initialize(config, rng, place):
-    if config.INITIALIZATION_METHOD == "hexagon_perturbed":
-        hexagon_perturbed(config, rng, place)
-    elif config.INITIALIZATION_METHOD == "random":
-        random_uniform(config, rng, place)
-`;
-
-const referenceSource = `class ActiveElasticAgent(Agent):
-    def step(self, obs):
-        proximal = Vec2(0.0, 0.0)
-        sigma_lj = DESIRED_DISTANCE / pow(2.0, 1.0 / POTENTIAL_ALPHA)
-        for neighbour in obs.neighbours:
-            displacement = neighbour.relative_position
-            distance = norm(displacement)
-            ratio = sigma_lj / distance
-            magnitude = -(4.0 * POTENTIAL_ALPHA * POTENTIAL_EPSILON / distance) * (2.0 * pow(ratio, 2.0 * POTENTIAL_ALPHA) - pow(ratio, POTENTIAL_ALPHA))
-            proximal += magnitude * displacement / distance
-        forward = K1 * dot(proximal, obs.heading) + U
-        turning = K2 * dot(proximal, perpendicular(obs.heading))
-        return Motion(forward, turning)
-`;
 
 const ui = {
   status: document.querySelector("#worker-status"),
@@ -129,9 +49,6 @@ for (const [name, element] of Object.entries(ui)) {
   if (!element) throw new Error(`Virtual Lab UI mismatch: missing element '${name}'`);
 }
 
-ui.config.value = defaultConfigSource;
-ui.initializerSource.value = defaultInitializerSource;
-ui.source.value = referenceSource;
 
 let wasmReady = false;
 let initialized = false;
@@ -140,8 +57,8 @@ let latestState = [];
 let activeArenaSize = 10.0;
 let activeSeed = INTERNAL_SEED;
 let appliedConfig = null;
-let appliedConfigSource = defaultConfigSource;
-let appliedInitializerSource = defaultInitializerSource;
+let appliedConfigSource = ui.config.value;
+let appliedInitializerSource = ui.initializerSource.value;
 let appliedEnvironment = null;
 let appliedController = null;
 let pendingSetup = null;
@@ -211,18 +128,9 @@ function currentPinch() {
   };
 }
 
-function runtimeValuesForCurrentBuiltIn(values) {
-  return {
-    ...values,
-    INTERACTION_RADIUS: values.INTERACTION_RADIUS ?? values.PROXIMAL_RANGE,
-    MAX_FORWARD_SPEED: values.MAX_FORWARD_SPEED ?? values.U,
-    MAX_ANGULAR_SPEED: values.MAX_ANGULAR_SPEED ?? values.OMEGA_MAX,
-  };
-}
-
 function compileSetup({ seed = activeSeed, configSource = ui.config.value, initializerSource = ui.initializerSource.value } = {}) {
   const config = compileConfig(configSource);
-  const runtime = validateRuntimeValues(runtimeValuesForCurrentBuiltIn(config.values));
+  const runtime = validateRuntimeValues(config.values);
 
   const initializerConfig = { ...config, values: { ...config.values, SEED: seed } };
   const initializer = compileInitializer(initializerSource, initializerConfig);

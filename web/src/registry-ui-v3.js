@@ -7,9 +7,16 @@ import {
 } from "./experiment-artifacts.js";
 import {
   productionExperimentRunnability,
-  registryArtifactsFromProductionExperiment,
   registryExperimentRunnability,
 } from "./experiment-validation.js";
+import {
+  DEFAULT_CATALOG_EXPERIMENT,
+  EXPERIMENT_CATALOG,
+  catalogExperimentByValue,
+  catalogSelectValue,
+  isCatalogSelectValue,
+} from "./experiment-catalog.js";
+import { loadCatalogExperiment } from "./catalog-workspace.js";
 
 const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYbJUyik9zN7WA_r4ie2P5d";
@@ -27,10 +34,6 @@ if (!experimentSelect || !experimentPanel || !experimentLabel || !metadataRevisi
   throw new Error("Registry integration UI mismatch.");
 }
 
-const BUILTIN_VALUE = experimentSelect.value;
-const BUILTIN_TITLE = experimentSelect.selectedOptions?.[0]?.textContent?.trim() || "Built-in experiment";
-const BUILTIN_REVISION = metadataRevision.textContent;
-const builtinArtifacts = captureExperimentArtifacts();
 const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 
 const AI_CLIENT_LABELS = Object.freeze({
@@ -56,12 +59,12 @@ let currentRemote = null;
 let currentRemoteAccess = null;
 let currentWorkingCopy = null;
 let currentRevisions = [];
-let currentRevisionView = { kind: "builtin", revision: null };
+let currentCatalog = DEFAULT_CATALOG_EXPERIMENT;
+let currentRevisionView = { kind: "catalog", revision: null };
 let revisionFilter = "all";
 let currentExperimentChannel = null;
 let workingCopyAutosave = Promise.resolve();
 let hiddenNonRunnableCount = 0;
-let browserSource = "builtin";
 let browserCollection = "all";
 let browserSearch = "";
 
@@ -226,7 +229,7 @@ function supervisedResearcherName(ownerId) {
 }
 
 function currentLocationLabel() {
-  if (!currentRemote) return "Built-in";
+  if (!currentRemote) return "Showcase";
   if (currentRemoteAccess === "shared") return "Shared with me";
   if (currentRemoteAccess === "supervised") return `Supervised · ${supervisedResearcherName(currentRemote.owner_id)}`;
   return currentRemote.collection_id ? `Collection · ${collectionName(currentRemote.collection_id)}` : "No collection";
@@ -288,7 +291,7 @@ function buildCurrentExperimentUi() {
   main.className = "experiment-current-main";
   const title = document.createElement("strong");
   title.className = "experiment-current-title";
-  title.textContent = BUILTIN_TITLE;
+  title.textContent = DEFAULT_CATALOG_EXPERIMENT.title;
   const browse = document.createElement("button");
   browse.className = "experiment-browse";
   browse.textContent = "Find experiment";
@@ -299,10 +302,10 @@ function buildCurrentExperimentUi() {
   const origin = document.createElement("span");
   origin.className = "experiment-origin";
   origin.dataset.kind = "readonly";
-  origin.textContent = "Built-in · Read-only";
+  origin.textContent = "Showcase · Read-only";
   const location = document.createElement("span");
   location.className = "experiment-location";
-  location.textContent = "Built-in";
+  location.textContent = "Showcase";
   meta.append(origin, location);
 
   const revisionWorkflow = document.createElement("div");
@@ -316,9 +319,9 @@ function buildCurrentExperimentUi() {
   revisionTrigger.setAttribute("aria-haspopup", "dialog");
   revisionTrigger.setAttribute("aria-expanded", "false");
   const revisionPrimary = document.createElement("strong");
-  revisionPrimary.textContent = "Built-in";
+  revisionPrimary.textContent = "Showcase";
   const revisionSecondary = document.createElement("span");
-  revisionSecondary.textContent = "No saved revision history";
+  revisionSecondary.textContent = "No private revision history";
   const revisionChevron = document.createElement("b");
   revisionChevron.setAttribute("aria-hidden", "true");
   revisionChevron.textContent = "▾";
@@ -583,19 +586,6 @@ function buildBrowser() {
   headActions.append(refresh, close);
   head.append(heading, headActions);
 
-  const tabs = document.createElement("div");
-  tabs.className = "experiment-browser-tabs";
-  const builtinTab = document.createElement("button");
-  builtinTab.className = "experiment-browser-tab";
-  builtinTab.dataset.source = "builtin";
-  builtinTab.textContent = "Built-in";
-  const mineTab = document.createElement("button");
-  mineTab.className = "experiment-browser-tab";
-  mineTab.dataset.source = "mine";
-  mineTab.textContent = "My experiments";
-  tabs.append(builtinTab, mineTab);
-  tabs.hidden = true;
-
   const body = document.createElement("div");
   body.className = "experiment-browser-body";
   const filters = document.createElement("nav");
@@ -627,7 +617,7 @@ function buildBrowser() {
   content.append(context, searchRow, count, results);
   body.append(filters, content);
 
-  shell.append(head, tabs, body);
+  shell.append(head, body);
   dialog.append(shell);
   document.body.append(dialog);
 
@@ -635,8 +625,6 @@ function buildBrowser() {
     dialog,
     refresh,
     close,
-    builtinTab,
-    mineTab,
     filters,
     contextTitle,
     contextHelp,
@@ -837,7 +825,7 @@ function renderRevisionHistory() {
   if (!currentRemote) {
     const empty = document.createElement("p");
     empty.className = "experiment-history-empty";
-    empty.textContent = "The built-in experiment has no saved revision history.";
+    empty.textContent = "Showcase Experiments do not have private revision history here.";
     revisionHistory.list.append(empty);
     return;
   }
@@ -1021,7 +1009,7 @@ function workspaceStorageKey() {
 function rememberCurrentWorkspace() {
   const key = workspaceStorageKey();
   if (!key) return;
-  const value = currentRemote ? `registry:${currentRemote.id}` : BUILTIN_VALUE;
+  const value = currentRemote ? `registry:${currentRemote.id}` : catalogSelectValue((currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).key);
   try {
     window.localStorage.setItem(key, value);
   } catch (error) {
@@ -1053,10 +1041,12 @@ function clearRememberedWorkspace() {
 function setQuickSwitchOptions() {
   experimentSelect.replaceChildren();
 
-  const builtin = document.createElement("option");
-  builtin.value = BUILTIN_VALUE;
-  builtin.textContent = BUILTIN_TITLE;
-  experimentSelect.append(builtin);
+  for (const experiment of EXPERIMENT_CATALOG) {
+    const option = document.createElement("option");
+    option.value = catalogSelectValue(experiment.key);
+    option.textContent = `${experiment.title} · Showcase`;
+    experimentSelect.append(option);
+  }
 
   const ownedExperiments = [...remoteExperiments];
   if (currentRemote && currentRemote.owner_id === user?.id && !ownedExperiments.some((experiment) => experiment.id === currentRemote.id)) {
@@ -1088,10 +1078,12 @@ function setQuickSwitchOptions() {
     experimentSelect.append(group);
   }
 
-  experimentSelect.value = currentRemote ? `registry:${currentRemote.id}` : BUILTIN_VALUE;
+  experimentSelect.value = currentRemote
+    ? `registry:${currentRemote.id}`
+    : catalogSelectValue((currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).key);
   currentUi.quickHint.textContent = user
     ? "Switch directly here, or use Find experiment to search everything. Collections are optional organization. Shared and Professor-supervised work stay read-only and separate from your own Experiments."
-    : "The built-in experiment is available now. Sign in to add your private experiments to this switcher.";
+    : "Showcase Experiments are available now. Sign in to add your private Experiments.";
 }
 function updateMoveButton() {
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
@@ -1149,13 +1141,13 @@ function updateCurrentUi() {
       currentUi.revisionNotice.textContent = "";
     }
   } else {
-    currentUi.title.textContent = BUILTIN_TITLE;
+    currentUi.title.textContent = (currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).title;
     currentUi.origin.dataset.kind = "readonly";
-    currentUi.origin.textContent = "Built-in · Read-only";
-    currentUi.location.textContent = "Built-in";
+    currentUi.origin.textContent = "Showcase · Read-only";
+    currentUi.location.textContent = "Showcase";
     currentUi.revisionWorkflow.hidden = true;
     currentUi.revisionNotice.hidden = true;
-    metadataRevision.textContent = BUILTIN_REVISION;
+    metadataRevision.textContent = "Showcase · curated source";
   }
 
   currentUi.editFromRevision.hidden = !protectedWorkingCopy;
@@ -1183,11 +1175,11 @@ function updateCurrentUi() {
   updateMoveButton();
 
   if (!user) {
-    ui.note.textContent = "You can edit and run the built-in experiment locally. Sign in to save a private copy or open your own library.";
+    ui.note.textContent = "You can edit and run this Showcase Experiment locally. Sign in to save a private copy or open your own library.";
   } else if (!currentRemote) {
     ui.saveState.dataset.state = "readonly";
     ui.saveState.textContent = "Read-only";
-    ui.note.textContent = "The built-in experiment cannot be overwritten. Save as new lets you choose where its private copy is stored.";
+    ui.note.textContent = "The Showcase source cannot be overwritten. Save as new creates an independent private copy.";
   } else if (!owned) {
     ui.saveState.dataset.state = "readonly";
     const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
@@ -1340,26 +1332,24 @@ function experimentGroup(label, experiments, { showEmpty = false, access = "owne
   return section;
 }
 
-function builtInResult() {
+function catalogResult(experiment) {
   const button = document.createElement("button");
   button.className = "experiment-result";
   const title = document.createElement("strong");
-  title.textContent = BUILTIN_TITLE;
+  title.textContent = experiment.title;
   const meta = document.createElement("span");
   meta.className = "experiment-result-meta";
-  meta.textContent = "Built-in · Read-only";
+  meta.textContent = "Showcase · Read-only";
   button.append(title, meta);
   button.addEventListener("click", () => run(async () => {
     if (!(await confirmDiscardIfNeeded())) return;
-    await restoreBuiltIn();
+    await restoreCatalog(experiment);
     browser.dialog.close();
   }));
   return button;
 }
 
 function renderBrowser() {
-  browser.builtinTab.hidden = true;
-  browser.mineTab.hidden = true;
   browser.searchRow.hidden = false;
   browser.filters.replaceChildren();
   browser.results.replaceChildren();
@@ -1376,7 +1366,9 @@ function renderBrowser() {
   }
 
   const search = browserSearch.trim().toLocaleLowerCase();
-  const builtinMatches = browserCollection === "all" && (!search || BUILTIN_TITLE.toLocaleLowerCase().includes(search));
+  const filteredCatalog = browserCollection === "all"
+    ? EXPERIMENT_CATALOG.filter((experiment) => !search || experiment.title.toLocaleLowerCase().includes(search))
+    : [];
   const filtered = remoteExperiments.filter((experiment) => {
     const matchesSearch = !search || experiment.title.toLocaleLowerCase().includes(search);
     if (!matchesSearch || browserCollection === "shared" || browserCollection === "supervised") return false;
@@ -1395,8 +1387,8 @@ function renderBrowser() {
   });
 
   if (!user) {
-    browser.contextTitle.textContent = "Built-in experiments";
-    browser.contextHelp.textContent = "Search the built-in experiments. Sign in to include your private experiments.";
+    browser.contextTitle.textContent = "Showcase";
+    browser.contextHelp.textContent = "Browse public read-only Experiments.";
   } else if (browserCollection === "shared") {
     browser.contextTitle.textContent = "Shared with me";
     browser.contextHelp.textContent = "Experiments another researcher shared with you. They remain read-only; copy one to create an independent editable Experiment.";
@@ -1409,26 +1401,26 @@ function renderBrowser() {
   } else {
     browser.contextTitle.textContent = "All available experiments";
     browser.contextHelp.textContent = profile?.role === "professor"
-      ? "Browse built-in, owned, explicitly shared, and supervised research in one place. Read-only sources remain separate from your own editable Experiments."
-      : "Browse built-in, owned, and explicitly shared Experiments in one place. Read-only sources remain separate from your own editable Experiments.";
+      ? "Browse Showcase, owned, explicitly shared, and supervised research in one place."
+      : "Browse Showcase, owned, and explicitly shared Experiments in one place.";
   }
 
-  const total = filtered.length + filteredShared.length + filteredSupervised.length + (builtinMatches ? 1 : 0);
+  const total = filteredCatalog.length + filtered.length + filteredShared.length + filteredSupervised.length;
   browser.count.textContent = `${total} experiment${total === 1 ? "" : "s"}`;
 
-  if (builtinMatches) {
+  if (filteredCatalog.length) {
     const section = document.createElement("section");
     section.className = "experiment-group";
     const head = document.createElement("div");
     head.className = "experiment-group-head";
     const name = document.createElement("strong");
-    name.textContent = "Built-in";
+    name.textContent = "Showcase";
     const count = document.createElement("span");
-    count.textContent = "1 experiment";
+    count.textContent = `${filteredCatalog.length} experiment${filteredCatalog.length === 1 ? "" : "s"}`;
     head.append(name, count);
     const items = document.createElement("div");
     items.className = "experiment-group-items";
-    items.append(builtInResult());
+    for (const experiment of filteredCatalog) items.append(catalogResult(experiment));
     section.append(head, items);
     browser.results.append(section);
   }
@@ -1442,13 +1434,8 @@ function renderBrowser() {
     browser.results.append(experimentGroup(label, filtered));
   }
 
-  if (filteredShared.length) {
-    browser.results.append(experimentGroup("Shared with me", filteredShared, { access: "shared" }));
-  }
-
-  if (filteredSupervised.length) {
-    browser.results.append(experimentGroup("Supervised research", filteredSupervised, { access: "supervised" }));
-  }
+  if (filteredShared.length) browser.results.append(experimentGroup("Shared with me", filteredShared, { access: "shared" }));
+  if (filteredSupervised.length) browser.results.append(experimentGroup("Supervised research", filteredSupervised, { access: "supervised" }));
 
   if (!total) {
     const empty = document.createElement("p");
@@ -1647,18 +1634,18 @@ async function confirmDiscardIfNeeded() {
   return window.confirm("Discard the unsaved changes to the current experiment?");
 }
 
-async function restoreBuiltIn({ apply = true } = {}) {
+async function restoreCatalog(experiment = DEFAULT_CATALOG_EXPERIMENT, { apply = true } = {}) {
   clearCurrentExperimentSubscription();
-  applyExperimentArtifacts(builtinArtifacts);
+  currentCatalog = loadCatalogExperiment(experiment);
   currentRemote = null;
   currentRemoteAccess = null;
   currentWorkingCopy = null;
   currentRevisions = [];
-  currentRevisionView = { kind: "builtin", revision: null };
+  currentRevisionView = { kind: "catalog", revision: null };
   ui.newForm.hidden = true;
   updateCurrentUi();
   rememberCurrentWorkspace();
-  setMessage(user ? "Built-in experiment loaded." : "Built-in experiment loaded. Sign in to open your private library.");
+  setMessage(user ? `${experiment.title} loaded from Showcase.` : `${experiment.title} loaded from Showcase. Sign in to open your private library.`);
   if (apply) await applyLoadedSources();
 }
 
@@ -1670,6 +1657,7 @@ async function loadRemoteExperiment(id, { access = "owned" } = {}) {
     ? await readWorkingCopy(id)
     : null;
 
+  currentCatalog = null;
   currentRemote = experiment;
   currentRemoteAccess = access;
   currentWorkingCopy = workingCopy;
@@ -1705,14 +1693,9 @@ function connectedMessage() {
   return `Your library is ready: ${count} experiment${count === 1 ? "" : "s"} in ${collectionCount} collection${collectionCount === 1 ? "" : "s"} plus Unfiled, with ${shared} shared with you${supervision}.${hidden}`;
 }
 
-function registryArtifactsForSave({ allowBuiltInCompatibility = false } = {}) {
-  const captured = captureExperimentArtifacts();
-  let artifacts = captured;
-  let validation = registryExperimentRunnability(artifacts);
-  if (!validation.runnable && allowBuiltInCompatibility && currentRemote === null) {
-    artifacts = registryArtifactsFromProductionExperiment(captured);
-    validation = registryExperimentRunnability(artifacts);
-  }
+function registryArtifactsForSave() {
+  const artifacts = captureExperimentArtifacts();
+  const validation = registryExperimentRunnability(artifacts);
   if (!validation.runnable) {
     throw new Error(`Cannot save: ${validation.error || "experiment does not satisfy the registry authoring contract."}`);
   }
@@ -1847,7 +1830,7 @@ async function revokeCurrentExperimentShare(recipientId) {
 
 function defaultCopyTitle() {
   const source = currentRevisionSnapshot() ?? currentRemote;
-  return source?.title ? `${source.title} copy` : `${BUILTIN_TITLE} copy`;
+  return source?.title ? `${source.title} copy` : `${(currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).title} copy`;
 }
 
 function openSaveAsNew() {
@@ -1898,7 +1881,7 @@ async function createNewExperiment() {
   if (copyingReadable) {
     data = await copyCurrentReadableExperiment(title, collectionId);
   } else {
-    const artifacts = registryArtifactsForSave({ allowBuiltInCompatibility: true });
+    const artifacts = registryArtifactsForSave();
     setMessage(`Creating ${title}…`);
     const { data: created, error } = await supabase
       .from("experiments")
@@ -1949,7 +1932,7 @@ function setSignedOutUi() {
   remoteExperiments = [];
   currentWorkingCopy = null;
   currentRevisions = [];
-  currentRevisionView = { kind: "builtin", revision: null };
+  currentRevisionView = { kind: "catalog", revision: null };
   sharedExperiments = [];
   supervisedProfiles = [];
   supervisedExperiments = [];
@@ -1957,7 +1940,6 @@ function setSignedOutUi() {
   outgoingShares = [];
   collections = [];
   hiddenNonRunnableCount = 0;
-  browserSource = "builtin";
   browserCollection = "all";
   updateCurrentUi();
   renderBrowser();
@@ -1973,7 +1955,16 @@ function setSignedInUi() {
 async function restoreRememberedWorkspace() {
   if (!user || currentRemote) return false;
   const remembered = rememberedWorkspaceValue();
-  if (!remembered || remembered === BUILTIN_VALUE) return false;
+  if (!remembered) return false;
+  if (isCatalogSelectValue(remembered)) {
+    const experiment = catalogExperimentByValue(remembered);
+    if (experiment) {
+      await restoreCatalog(experiment, { apply: currentRemote !== null });
+      return true;
+    }
+    clearRememberedWorkspace();
+    return false;
+  }
   if (!remembered.startsWith("registry:")) {
     clearRememberedWorkspace();
     return false;
@@ -2032,7 +2023,7 @@ async function signOut() {
   if (error) throw error;
   user = null;
   profile = null;
-  await restoreBuiltIn({ apply: currentRemote !== null });
+  await restoreCatalog({ apply: currentRemote !== null });
   setSignedOutUi();
 }
 
@@ -2066,7 +2057,7 @@ async function refreshRegistry() {
       if (currentWorkingCopy) {
         setMessage("This experiment is no longer in your available library. Your durable Working copy is still preserved.", "error");
       } else {
-        await restoreBuiltIn();
+        await restoreCatalog();
         setMessage("The previously loaded experiment is no longer available in this simulator version.");
       }
       renderBrowser();
@@ -2135,12 +2126,14 @@ revisionHistory.dialog.addEventListener("click", (event) => {
 
 experimentSelect.addEventListener("change", () => run(async () => {
   const value = experimentSelect.value;
-  if (value === BUILTIN_VALUE) {
+  if (isCatalogSelectValue(value)) {
+    const experiment = catalogExperimentByValue(value);
+    if (!experiment) throw new Error("Catalog Experiment not found.");
     if (currentRemote && !(await confirmDiscardIfNeeded())) {
       setQuickSwitchOptions();
       return;
     }
-    if (currentRemote) await restoreBuiltIn();
+    if (currentRemote || currentCatalog?.key !== experiment.key) await restoreCatalog(experiment);
     return;
   }
   if (!value.startsWith("registry:")) return;
@@ -2163,21 +2156,6 @@ browser.dialog.addEventListener("close", () => {
   browser.filters.hidden = true;
 });
 browser.refresh.addEventListener("click", () => run(refreshRegistry));
-browser.builtinTab.addEventListener("click", () => {
-  browserSource = "builtin";
-  browserCollection = "all";
-  browserSearch = "";
-  browser.search.value = "";
-  renderBrowser();
-});
-browser.mineTab.addEventListener("click", () => {
-  if (!user) return;
-  browserSource = "mine";
-  browserCollection = "all";
-  browserSearch = "";
-  browser.search.value = "";
-  renderBrowser();
-});
 browser.search.addEventListener("input", () => {
   browserSearch = browser.search.value;
   if (browserSearch.trim()) browserCollection = "all";

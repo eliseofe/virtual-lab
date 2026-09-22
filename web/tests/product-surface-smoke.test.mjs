@@ -40,7 +40,7 @@ test('product-surface manifest is the canonical active smoke registry', async ()
 
 test('Actions executes the manifest runner rather than hardcoded feature smoke scripts', () => {
   assert.match(workflow, /node web\/scripts\/run-active-product-smoke\.mjs/);
-  assert.doesNotMatch(workflow, /node web\/scripts\/(browser|frontend-foundation|builtin-metric|result-persistence|responsive|showcase-ux)-smoke\.mjs/);
+  assert.doesNotMatch(workflow, /node web\/scripts\/(browser|frontend-foundation|catalog-metric|result-persistence|responsive|showcase-ux)-smoke\.mjs/);
 });
 
 test('production smoke uses one shared Chrome host and isolated harness sessions', () => {

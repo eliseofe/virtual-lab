@@ -4,10 +4,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import {
-  registryArtifactsFromProductionExperiment,
-  registryExperimentRunnability,
-} from "../src/experiment-validation.js";
+import { registryExperimentRunnability } from "../src/experiment-validation.js";
+import { DEFAULT_CATALOG_EXPERIMENT } from "../src/experiment-catalog.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = path.resolve(here, "../src");
@@ -30,38 +28,16 @@ test("private human edits autosave to a Working copy and only Save Revision crys
   assert.doesNotMatch(registryUi, /conflictRevision/);
 });
 
-test("strict registry validation does not inherit production-only legacy aliases", () => {
-  const legacy = {
-    config_source: `N = 1
-ARENA_SIZE = 10.0
-CONTROL_DT = 0.1
-SENSOR_NOISE = 0.0
-EXPERIMENT_DURATION = 10.0
-U = 1.0
-OMEGA_MAX = 1.0
-PROXIMAL_RANGE = 1.0
-`,
-    initializer_source: `def initialize(config, rng, place):
-    place(0, 0.0, 0.0, 0.0)
-`,
-    controller_source: `class MinimalAgent(Agent):
-    def step(self, obs):
-        return Motion(0.0, 0.0)
-`,
-  };
-  assert.equal(registryExperimentRunnability(legacy).runnable, false);
-  const normalized = registryArtifactsFromProductionExperiment(legacy);
-  assert.match(normalized.config_source, /INTERACTION_RADIUS = PROXIMAL_RANGE/);
-  assert.match(normalized.config_source, /MAX_FORWARD_SPEED = U/);
-  assert.match(normalized.config_source, /MAX_ANGULAR_SPEED = OMEGA_MAX/);
-  assert.equal(registryExperimentRunnability(normalized).runnable, true);
+test("catalog examples satisfy the same strict registry runtime contract as saved Experiments", () => {
+  assert.equal(registryExperimentRunnability(DEFAULT_CATALOG_EXPERIMENT).runnable, true);
 });
 
 test("save-as-new creates a distinct private human-owned registry experiment", async () => {
   const registryUi = await registryUiSource();
   assert.match(registryUi, /Save as new…/);
   assert.match(registryUi, /async function createNewExperiment\(\)/);
-  assert.match(registryUi, /allowBuiltInCompatibility: true/);
+  assert.match(registryUi, /const artifacts = registryArtifactsForSave\(\);/);
+  assert.doesNotMatch(registryUi, /allowBuiltInCompatibility|registryArtifactsFromProductionExperiment/);
   assert.match(registryUi, /\.insert\(\{[\s\S]*owner_id: user\.id[\s\S]*collection_id: collectionId[\s\S]*visibility: "private"[\s\S]*created_by_actor: "human"[\s\S]*\}\)/);
   assert.match(registryUi, /currentRemote = data/);
   assert.match(registryUi, /data\.collection_id \? ` in \$\{collectionName\(data\.collection_id\)\}` : " without a collection"/);
@@ -69,7 +45,7 @@ test("save-as-new creates a distinct private human-owned registry experiment", a
 
 test("editability feedback distinguishes numbered state from Working-copy persistence", async () => {
   const registryUi = await registryUiSource();
-  assert.match(registryUi, /Built-in · Read-only/);
+  assert.match(registryUi, /Showcase · Read-only/);
   assert.match(registryUi, /Your experiment · Editable/);
   assert.match(registryUi, /currentRemote\.revision \+ " · Saved"/);
   assert.match(registryUi, /"Working · pending · " \+ baseRevision/);
@@ -78,11 +54,11 @@ test("editability feedback distinguishes numbered state from Working-copy persis
   assert.match(registryUi, /ui\.save\.disabled = !owned \|\| protectedWorkingCopy \|\| \(!dirty && !currentWorkingCopy\)/);
 });
 
-test("anonymous state exposes no persistence controls and built-in can only be copied after sign-in", async () => {
+test("anonymous state exposes no persistence controls and Showcase sources can only be copied after sign-in", async () => {
   const registryUi = await registryUiSource();
   assert.match(registryUi, /ui\.saveRow\.hidden = !user/);
   assert.match(registryUi, /Sign in before saving/);
-  assert.match(registryUi, /The built-in experiment cannot be overwritten/);
+  assert.match(registryUi, /The Showcase source cannot be overwritten/);
 });
 
 test("refresh exposes newer numbered revisions without changing the current revision view", async () => {
