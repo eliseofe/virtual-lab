@@ -47,28 +47,24 @@ test("#204 derives Metrics outline from metric declarations and targets function
   assert.ok(structure.symbols.every((symbol) => symbol.line > symbol.metadataLine));
 });
 
-test("#204 UI consumes compiler structure and Ace commands instead of inventing sections", async () => {
+test("#204 UI exposes direct Search instead of compiler-selected Outline navigation", async () => {
   const { readFile } = await import("node:fs/promises");
-  const [presentation, editor, structure] = await Promise.all([
+  const [presentation, editor] = await Promise.all([
     readFile(new URL("../src/authoring-react-presentation.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/authoring-code-editor.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/authoring-structure.js", import.meta.url), "utf8"),
   ]);
 
-  assert.match(structure, /configStructure/);
-  assert.match(structure, /initializerStructure/);
-  assert.match(structure, /controllerStructure/);
-  assert.match(structure, /metricsStructure/);
-  assert.doesNotMatch(structure, /#\s+[A-Z][A-Z ]+/);
+  assert.doesNotMatch(presentation, /data-vlab-authoring-outline/);
+  assert.doesNotMatch(presentation, /artifactStructureSafe/);
+  assert.doesNotMatch(presentation, /symbolLabel/);
+  assert.match(presentation, /data-vlab-authoring-search-input/);
+  assert.match(presentation, /data-vlab-authoring-search=/);
+  assert.match(presentation, /placeholder="Search"/);
+  assert.match(presentation, /openArtifactSearch\(selectedArtifact\.id, searchQuery\)/);
 
-  assert.match(presentation, /data-vlab-authoring-outline/);
-  assert.match(presentation, /artifactStructureSafe/);
-  assert.match(presentation, /focusArtifactLine/);
-  assert.match(presentation, /data-vlab-authoring-find/);
-  assert.match(presentation, /openArtifactSearch/);
-
-  assert.match(editor, /editor\.gotoLine/);
   assert.match(editor, /editor\.execCommand\('find'\)/);
+  assert.match(editor, /editor\.find\(needle/);
+  assert.match(editor, /\.ace_search_field/);
   assert.match(editor, /showFoldWidgets: true/);
   assert.match(editor, /setFoldStyle\?\.\('markbeginend'\)/);
 });
