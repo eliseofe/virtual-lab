@@ -10,83 +10,126 @@ async function evaluate(send, expression) {
 }
 
 async function waitReady(send) {
-  for (let attempt = 0; attempt < 180; attempt += 1) {
-    let state;
+  let latest = null;
+  for (let attempt = 0; attempt < 200; attempt += 1) {
     try {
-      state = await evaluate(send, "document.querySelector('#worker-status')?.dataset.state ?? null");
+      latest = JSON.parse(await evaluate(send, `JSON.stringify({
+        worker: document.querySelector('#worker-status')?.dataset.state ?? null,
+        browse: document.querySelector('.experiment-browse')?.textContent?.trim() ?? null,
+        library: Boolean(document.querySelector('.vlab-library')),
+        bridge: Boolean(window.vlabExperimentLibraryBridge)
+      })`));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!message.includes("Inspected target navigated or closed")) throw error;
       await sleep(100);
       continue;
     }
-    if (state === "ready") return;
-    if (state === "error") throw new Error("Browser reported simulator startup error");
+    if (latest.worker === "ready" && latest.browse === "Browse experiments" && latest.library && latest.bridge) return;
+    if (latest.worker === "error") throw new Error(`Browser reported simulator startup error: ${JSON.stringify(latest)}`);
     await sleep(100);
   }
-  throw new Error("Browser did not reach simulator ready state");
+  throw new Error(`Experiment Library did not initialize: ${JSON.stringify(latest)}`);
 }
 
-async function waitForShowcaseLauncher(send) {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    const ready = await evaluate(send, "Boolean(document.querySelector('.showcase-launcher'))");
-    if (ready) return;
-    await sleep(100);
-  }
-  throw new Error("Showcase launcher did not initialize");
-}
+async function inspectLibrary(send, label, expectedTwoPane) {
+  await evaluate(send, "document.querySelector('.experiment-browse').click()");
 
-async function inspectShowcase(send, label) {
-  await waitForShowcaseLauncher(send);
-  await evaluate(send, "document.querySelector('.showcase-launcher').click()");
-
-  let launchState = null;
-  for (let attempt = 0; attempt < 250; attempt += 1) {
-    launchState = JSON.parse(await evaluate(send, `JSON.stringify((() => {
-      const dialog = document.querySelector('.showcase-dialog');
-      const message = document.querySelector('.showcase-message');
+  let state = null;
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    state = JSON.parse(await evaluate(send, `JSON.stringify((() => {
+      const dialog = document.querySelector('.vlab-library');
+      const rows = [...dialog?.querySelectorAll('.vlab-library-row') ?? []];
       return {
         open: Boolean(dialog?.open),
-        entries: document.querySelectorAll('.showcase-entry').length,
-        message: message?.textContent?.trim() ?? '',
-        messageState: message?.dataset?.state ?? null,
+        rows: rows.length,
+        status: dialog?.querySelector('.vlab-library-status')?.textContent?.trim() ?? '',
+        activeElastic: rows.some((row) => row.textContent?.includes('Active Elastic')),
       };
     })())`));
-    if (launchState.messageState === "error") {
-      throw new Error(`${label} Showcase reported an error: ${JSON.stringify(launchState)}`);
-    }
-    if (launchState.open && launchState.entries > 0) break;
+    if (state.open && state.rows > 0) break;
     await sleep(100);
   }
-  if (!launchState?.open || launchState.entries < 1) {
-    throw new Error(`${label} Showcase did not become usable after launch: ${JSON.stringify(launchState)}`);
-  }
+  if (!state?.open || state.rows < 1) throw new Error(`${label}: Experiment Library did not load Showcase rows: ${JSON.stringify(state)}`);
 
-  const value = await evaluate(send, `JSON.stringify((() => {
-    const dialog = document.querySelector('.showcase-dialog');
+  await evaluate(send, `(() => {
+    const first = document.querySelector('.vlab-library-row .vlab-library-row-actions button:nth-child(2)');
+    first?.click();
+  })()`);
+  await sleep(30);
+
+  const inspected = JSON.parse(await evaluate(send, `JSON.stringify((() => {
+    const dialog = document.querySelector('.vlab-library');
     const rect = dialog?.getBoundingClientRect();
-    const entries = [...document.querySelectorAll('.showcase-entry')].map((entry) => entry.textContent?.replace(/\\s+/g, ' ').trim() ?? '');
+    const directory = dialog?.querySelector('.vlab-library-directory')?.getBoundingClientRect();
+    const results = dialog?.querySelector('.vlab-library-results-wrap')?.getBoundingClientRect();
+    const visible = (element) => Boolean(element && !element.hidden && getComputedStyle(element).display !== 'none' && element.getClientRects().length);
+    const sourceOptions = [...dialog?.querySelectorAll('.vlab-library-source-select option') ?? []].map((option) => option.textContent?.trim());
+    const sourceTabs = [...dialog?.querySelectorAll('.vlab-library-source-tabs button') ?? []].filter(visible).map((button) => button.textContent?.trim());
+    const directoryLabels = [...dialog?.querySelectorAll('.vlab-library-directory button') ?? []].map((button) => button.textContent?.replace(/\\s+/g, ' ').trim());
+    const rowTexts = [...dialog?.querySelectorAll('.vlab-library-row') ?? []].map((row) => row.textContent?.replace(/\\s+/g, ' ').trim());
+    const allScope = [...dialog?.querySelectorAll('.vlab-library-search select option') ?? []].map((option) => option.textContent?.trim());
+    const actions = [...dialog?.querySelectorAll('.vlab-library-row-actions button') ?? []].map((button) => button.textContent?.trim());
     return {
       width: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
-      open: Boolean(dialog?.open),
+      dialogWidth: Math.round(rect?.width ?? 0),
       withinViewport: Boolean(rect && rect.left >= -1 && rect.right <= window.innerWidth + 1 && rect.top >= -1 && rect.bottom <= window.innerHeight + 1),
-      entries,
-      activeElastic: entries.some((text) => text.includes('Active Elastic') && text.includes('Curated') && text.includes('Open & run')),
-      homogeneous: entries.length >= 1 && entries.every((text) => text.includes('Curated') && text.includes('Open & run')),
-      falseEmpty: document.body.textContent?.includes('No Showcase experiments yet.') ?? false,
-      syntheticBuiltin: entries.some((text) => text.includes('Built-in') || text.includes('Public example')),
-      closeHeight: Math.round(document.querySelector('.showcase-head-actions button:last-child')?.getBoundingClientRect().height ?? 0),
-      message: document.querySelector('.showcase-message')?.textContent?.trim() ?? '',
+      sourceOptions,
+      sourceTabs,
+      sourceValue: dialog?.querySelector('.vlab-library-source-select select')?.value ?? null,
+      directoryLabels,
+      rowTexts,
+      activeElastic: rowTexts.some((text) => text.includes('Active Elastic')),
+      builtIn: dialog?.textContent?.includes('Built-in') ?? false,
+      globalAll: directoryLabels.some((label) => /^All experiments\\b/.test(label)),
+      searchScopes: allScope,
+      searchPlaceholder: dialog?.querySelector('.vlab-library-search input')?.placeholder ?? '',
+      searchFocused: Boolean(document.activeElement?.closest?.('.vlab-library-search')),
+      openRunInDetails: actions.includes('Open & run'),
+      ordinaryRunInPrimary: [...dialog?.querySelectorAll('.vlab-library-row > .vlab-library-row-actions button') ?? []].some((button) => /run/i.test(button.textContent ?? '')),
+      manageShowcaseVisible: visible(document.querySelector('.showcase-launcher')),
+      twoPane: Boolean(directory && results && results.left >= directory.right - 2),
+      closeHeight: Math.round([...dialog?.querySelectorAll('.vlab-library-head button') ?? []].find((button) => button.textContent?.trim() === 'Close')?.getBoundingClientRect().height ?? 0),
     };
-  })())`);
-  const state = JSON.parse(value);
-  if (!state.open || !state.withinViewport || !state.activeElastic || !state.homogeneous || state.syntheticBuiltin || state.falseEmpty || state.scrollWidth > state.width + 1) {
-    throw new Error(`${label} Showcase UX failed: ${JSON.stringify(state)}`);
+  })())`));
+
+  if (
+    !inspected.withinViewport
+    || inspected.scrollWidth > inspected.width + 1
+    || inspected.sourceValue !== "showcase"
+    || JSON.stringify(inspected.sourceOptions) !== JSON.stringify(["Showcase"])
+    || !inspected.directoryLabels.some((value) => value.startsWith("All Showcase"))
+    || !inspected.directoryLabels.some((value) => value.startsWith("Uncategorized"))
+    || !inspected.activeElastic
+    || inspected.builtIn
+    || inspected.globalAll
+    || !inspected.searchScopes.includes("Here")
+    || !inspected.searchScopes.includes("All sources")
+    || inspected.ordinaryRunInPrimary
+    || !inspected.openRunInDetails
+    || inspected.manageShowcaseVisible
+    || inspected.twoPane !== expectedTwoPane
+  ) {
+    throw new Error(`${label}: browse-first Showcase library contract failed: ${JSON.stringify(inspected)}`);
   }
-  await evaluate(send, "document.querySelector('.showcase-dialog')?.close()");
-  return state;
+  if (inspected.width >= 2000 && inspected.dialogWidth > 1154) {
+    throw new Error(`${label}: library stretched beyond readable max width: ${JSON.stringify(inspected)}`);
+  }
+  if (inspected.width <= 520 && inspected.closeHeight < 44) {
+    throw new Error(`${label}: close target is ${inspected.closeHeight}px, expected at least 44px`);
+  }
+
+  await evaluate(send, "document.querySelector('.vlab-library')?.close()");
+  return inspected;
 }
+
+const viewports = [
+  { label: "phone", width: 390, height: 844, mobile: true, twoPane: false },
+  { label: "foldable", width: 768, height: 1024, mobile: true, twoPane: false },
+  { label: "desktop", width: 1366, height: 900, mobile: false, twoPane: true },
+  { label: "ultra-wide", width: 2560, height: 1440, mobile: false, twoPane: true },
+];
 
 let session;
 let cdp;
@@ -95,24 +138,24 @@ try {
   cdp = session.cdp;
   await cdp.send("Runtime.enable");
   await cdp.send("Page.enable");
-  await waitReady(cdp.send);
-  const desktop = await inspectShowcase(cdp.send, "desktop");
 
-  await cdp.send("Emulation.setDeviceMetricsOverride", {
-    width: 390,
-    height: 844,
-    deviceScaleFactor: 1,
-    mobile: true,
-    screenWidth: 390,
-    screenHeight: 844,
-  });
-  await cdp.send("Page.reload", { ignoreCache: true });
-  await waitReady(cdp.send);
-  const mobile = await inspectShowcase(cdp.send, "mobile");
-  if (mobile.closeHeight < 44) throw new Error(`mobile Showcase close target is ${mobile.closeHeight}px, expected at least 44px`);
+  const states = {};
+  for (const viewport of viewports) {
+    await cdp.send("Emulation.setDeviceMetricsOverride", {
+      width: viewport.width,
+      height: viewport.height,
+      deviceScaleFactor: 1,
+      mobile: viewport.mobile,
+      screenWidth: viewport.width,
+      screenHeight: viewport.height,
+    });
+    await cdp.send("Page.reload", { ignoreCache: true });
+    await waitReady(cdp.send);
+    states[viewport.label] = await inspectLibrary(cdp.send, viewport.label, viewport.twoPane);
+  }
 
-  console.log(JSON.stringify({ desktop, mobile }, null, 2));
-  console.log("Showcase smoke verified homogeneous curated entries, Active Elastic presence, and responsive layout on desktop and 390x844 mobile.");
+  console.log(JSON.stringify(states, null, 2));
+  console.log("Experiment Library smoke verified browse-first Showcase discovery at phone, foldable, desktop and ultra-wide widths.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);
