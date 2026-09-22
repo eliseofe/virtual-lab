@@ -60,6 +60,7 @@ let currentRemoteAccess = null;
 let currentWorkingCopy = null;
 let currentRevisions = [];
 let currentCatalog = DEFAULT_CATALOG_EXPERIMENT;
+let currentShowcase = null;
 let currentRevisionView = { kind: "catalog", revision: null };
 let revisionFilter = "all";
 let currentExperimentChannel = null;
@@ -294,7 +295,7 @@ function buildCurrentExperimentUi() {
   title.textContent = DEFAULT_CATALOG_EXPERIMENT.title;
   const browse = document.createElement("button");
   browse.className = "experiment-browse";
-  browse.textContent = "Find experiment";
+  browse.textContent = "Browse experiments";
   main.append(title, browse);
 
   const meta = document.createElement("div");
@@ -1009,7 +1010,11 @@ function workspaceStorageKey() {
 function rememberCurrentWorkspace() {
   const key = workspaceStorageKey();
   if (!key) return;
-  const value = currentRemote ? `registry:${currentRemote.id}` : catalogSelectValue((currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).key);
+  const value = currentRemote
+    ? `registry:${currentRemote.id}`
+    : currentShowcase
+      ? `showcase:${currentShowcase.showcase_id}`
+      : catalogSelectValue((currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).key);
   try {
     window.localStorage.setItem(key, value);
   } catch (error) {
@@ -1078,12 +1083,26 @@ function setQuickSwitchOptions() {
     experimentSelect.append(group);
   }
 
+  if (currentShowcase) {
+    const group = document.createElement("optgroup");
+    group.label = "Showcase · Curated snapshot";
+    const option = document.createElement("option");
+    option.value = `showcase:${currentShowcase.showcase_id}`;
+    option.textContent = currentShowcase.source_revision == null
+      ? `${currentShowcase.title} · Catalog`
+      : `${currentShowcase.title} · R${currentShowcase.source_revision}`;
+    group.append(option);
+    experimentSelect.append(group);
+  }
+
   experimentSelect.value = currentRemote
     ? `registry:${currentRemote.id}`
-    : catalogSelectValue((currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).key);
+    : currentShowcase
+      ? `showcase:${currentShowcase.showcase_id}`
+      : catalogSelectValue((currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).key);
   currentUi.quickHint.textContent = user
-    ? "Switch directly here, or use Find experiment to search everything. Collections are optional organization. Shared and Professor-supervised work stay read-only and separate from your own Experiments."
-    : "Showcase Experiments are available now. Sign in to add your private Experiments.";
+    ? "Switch directly here, or use Browse experiments for Showcase, Mine, Shared and Supervised navigation."
+    : "Browse Showcase Experiments now. Sign in to add your private Experiments.";
 }
 function updateMoveButton() {
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
@@ -1141,13 +1160,18 @@ function updateCurrentUi() {
       currentUi.revisionNotice.textContent = "";
     }
   } else {
-    currentUi.title.textContent = (currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).title;
+    const showcaseSource = currentShowcase ?? currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT;
+    currentUi.title.textContent = showcaseSource.title;
     currentUi.origin.dataset.kind = "readonly";
     currentUi.origin.textContent = "Showcase · Read-only";
-    currentUi.location.textContent = "Showcase";
+    currentUi.location.textContent = currentShowcase
+      ? `Showcase / ${currentShowcase.showcase_collection_name || "Uncategorized"}`
+      : "Showcase";
     currentUi.revisionWorkflow.hidden = true;
     currentUi.revisionNotice.hidden = true;
-    metadataRevision.textContent = "Showcase · curated source";
+    metadataRevision.textContent = currentShowcase?.source_revision == null
+      ? "Showcase · Catalog"
+      : `Showcase · R${currentShowcase.source_revision}`;
   }
 
   currentUi.editFromRevision.hidden = !protectedWorkingCopy;
@@ -1637,6 +1661,7 @@ async function confirmDiscardIfNeeded() {
 async function restoreCatalog(experiment = DEFAULT_CATALOG_EXPERIMENT, { apply = true } = {}) {
   clearCurrentExperimentSubscription();
   currentCatalog = loadCatalogExperiment(experiment);
+  currentShowcase = null;
   currentRemote = null;
   currentRemoteAccess = null;
   currentWorkingCopy = null;
@@ -1658,6 +1683,7 @@ async function loadRemoteExperiment(id, { access = "owned" } = {}) {
     : null;
 
   currentCatalog = null;
+  currentShowcase = null;
   currentRemote = experiment;
   currentRemoteAccess = access;
   currentWorkingCopy = workingCopy;
@@ -1679,6 +1705,95 @@ async function loadRemoteExperiment(id, { access = "owned" } = {}) {
       : experiment.title + " · revision " + experiment.revision + " loaded.",
     "success",
   );
+}
+
+async function loadShowcaseExperiment(entry) {
+  if (!entry?.showcase_id || !entry?.artifacts) throw new Error("Showcase Experiment is unavailable.");
+  const runnable = productionExperimentRunnability(entry);
+  if (!runnable.runnable) throw new Error(runnable.error || "Showcase Experiment is not runnable.");
+
+  clearCurrentExperimentSubscription();
+  currentCatalog = null;
+  currentShowcase = entry;
+  currentRemote = null;
+  currentRemoteAccess = "showcase";
+  currentWorkingCopy = null;
+  currentRevisions = [];
+  currentRevisionView = { kind: "showcase", revision: entry.source_revision ?? null };
+  applyExperimentArtifacts(entry);
+  ui.newForm.hidden = true;
+  updateCurrentUi();
+  rememberCurrentWorkspace();
+  await applyLoadedSources();
+  setMessage(`${entry.title} loaded from Showcase.`, "success");
+}
+
+function currentLibraryLoadedState() {
+  if (currentRemote) {
+    return {
+      source: currentRemoteAccess === "shared" ? "shared" : currentRemoteAccess === "supervised" ? "supervised" : "mine",
+      id: currentRemote.id,
+      title: currentRemote.title,
+      ownerId: currentRemote.owner_id,
+      collectionId: currentRemote.collection_id ?? null,
+      revision: currentRevisionSnapshot()?.revision ?? currentRemote.revision,
+    };
+  }
+  if (currentShowcase) {
+    return {
+      source: "showcase",
+      id: currentShowcase.showcase_id,
+      title: currentShowcase.title,
+      collectionId: currentShowcase.showcase_collection_id ?? null,
+      revision: currentShowcase.source_revision ?? null,
+    };
+  }
+  const catalog = currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT;
+  return { source: "showcase", id: catalogSelectValue(catalog.key), title: catalog.title, catalogKey: catalog.key, revision: null };
+}
+
+async function copyShowcaseToWorkspace(entry, title, collectionId) {
+  if (!user) throw new Error("Sign in before copying.");
+  if (!entry?.artifacts) throw new Error("Showcase snapshot is unavailable.");
+  const validation = registryExperimentRunnability(entry);
+  if (!validation.runnable) throw new Error(validation.error || "Showcase Experiment cannot be copied.");
+
+  const { data, error } = await supabase
+    .from("experiments")
+    .insert({
+      owner_id: user.id,
+      collection_id: collectionId,
+      title,
+      description: entry.description || "",
+      lifecycle: "active",
+      visibility: "private",
+      artifacts: entry.artifacts,
+      created_by_actor: "human",
+      created_by_ai_client: null,
+      updated_by_actor: "human",
+      updated_by_ai_client: null,
+    })
+    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
+    .single();
+  if (error) throw error;
+  await loadExperimentList();
+  await loadRemoteExperiment(data.id, { access: "owned" });
+  return data;
+}
+
+async function copyRegistryRevisionToWorkspace(experimentId, revision, title, collectionId) {
+  if (!user) throw new Error("Sign in before copying.");
+  const { data: copyId, error } = await supabase.rpc("copy_experiment_to_workspace", {
+    p_source_experiment_id: experimentId,
+    p_expected_revision: revision,
+    p_title: title,
+    p_collection_id: collectionId,
+  });
+  if (error) throw error;
+  if (typeof copyId !== "string" || !copyId) throw new Error("The copied Experiment identifier is missing.");
+  await loadExperimentList();
+  await loadRemoteExperiment(copyId, { access: "owned" });
+  return copyId;
 }
 
 function connectedMessage() {
@@ -1830,7 +1945,9 @@ async function revokeCurrentExperimentShare(recipientId) {
 
 function defaultCopyTitle() {
   const source = currentRevisionSnapshot() ?? currentRemote;
-  return source?.title ? `${source.title} copy` : `${(currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).title} copy`;
+  return source?.title
+    ? `${source.title} copy`
+    : `${(currentShowcase ?? currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).title} copy`;
 }
 
 function openSaveAsNew() {
@@ -1889,7 +2006,7 @@ async function createNewExperiment() {
         owner_id: user.id,
         collection_id: collectionId,
         title,
-        description: currentRemote?.description ?? "",
+        description: currentRemote?.description ?? currentShowcase?.description ?? currentCatalog?.description ?? "",
         lifecycle: "active",
         visibility: "private",
         ...artifacts,
@@ -1960,6 +2077,18 @@ async function restoreRememberedWorkspace() {
     const experiment = catalogExperimentByValue(remembered);
     if (experiment) {
       await restoreCatalog(experiment, { apply: currentRemote !== null });
+      return true;
+    }
+    clearRememberedWorkspace();
+    return false;
+  }
+  if (remembered.startsWith("showcase:")) {
+    const showcaseId = remembered.slice("showcase:".length);
+    const { data, error } = await supabase.rpc("list_showcase_experiments");
+    if (error) throw error;
+    const entry = (data ?? []).find((candidate) => candidate.showcase_id === showcaseId);
+    if (entry) {
+      await loadShowcaseExperiment(entry);
       return true;
     }
     clearRememberedWorkspace();
@@ -2105,7 +2234,31 @@ async function run(action) {
   }
 }
 
-currentUi.browse.addEventListener("click", openBrowser);
+window.vlabExperimentLibraryBridge = Object.freeze({
+  getState: () => ({
+    user: user ? { id: user.id } : null,
+    profile: profile ? { id: profile.id, display_name: profile.display_name, role: profile.role } : null,
+    loaded: currentLibraryLoadedState(),
+  }),
+  openShowcase: async (entry) => {
+    if (!(await confirmDiscardIfNeeded())) return false;
+    await loadShowcaseExperiment(entry);
+    return true;
+  },
+  openRegistry: async (experimentId, access) => {
+    if (!(await confirmDiscardIfNeeded())) return false;
+    await loadRemoteExperiment(experimentId, { access });
+    return true;
+  },
+  copyShowcase: copyShowcaseToWorkspace,
+  copyRegistry: copyRegistryRevisionToWorkspace,
+  refreshRegistry,
+});
+window.dispatchEvent(new Event("vlab-experiment-library-bridge-ready"));
+
+currentUi.browse.addEventListener("click", () => {
+  window.dispatchEvent(new CustomEvent("vlab-open-experiment-library"));
+});
 currentUi.revisionTrigger.addEventListener("click", () => run(openRevisionHistory));
 currentUi.editFromRevision.addEventListener("click", () => run(editFromViewedRevision));
 currentUi.discardWorkingCopy.addEventListener("click", () => run(discardCurrentWorkingCopy));
@@ -2129,11 +2282,16 @@ experimentSelect.addEventListener("change", () => run(async () => {
   if (isCatalogSelectValue(value)) {
     const experiment = catalogExperimentByValue(value);
     if (!experiment) throw new Error("Catalog Experiment not found.");
-    if (currentRemote && !(await confirmDiscardIfNeeded())) {
+    if ((currentRemote || currentShowcase) && !(await confirmDiscardIfNeeded())) {
       setQuickSwitchOptions();
       return;
     }
-    if (currentRemote || currentCatalog?.key !== experiment.key) await restoreCatalog(experiment);
+    if (currentRemote || currentShowcase || currentCatalog?.key !== experiment.key) await restoreCatalog(experiment);
+    return;
+  }
+  if (value.startsWith("showcase:")) {
+    if (currentShowcase?.showcase_id === value.slice("showcase:".length)) return;
+    setQuickSwitchOptions();
     return;
   }
   if (!value.startsWith("registry:")) return;
