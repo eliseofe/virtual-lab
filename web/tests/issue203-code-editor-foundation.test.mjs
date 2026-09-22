@@ -19,14 +19,12 @@ test("#203 mounts a real CodeMirror foundation through React without replacing s
   assert.match(adapter, /ensureEditorMount/);
 
   assert.match(editor, /codemirror@6\.0\.2/);
-  assert.match(editor, /codemirror@6\.0\.2\?bundle/);
-  assert.match(editor, /runtime\.minimalSetup/);
-  assert.match(editor, /runtime\.lineNumbers\(\)/);
-  assert.match(editor, /pythonLikeSyntax\(runtime\)/);
-  assert.match(editor, /runtime\.ViewPlugin\.fromClass/);
-  assert.match(editor, /runtime\.Decoration\.mark/);
-  assert.doesNotMatch(editor, /@codemirror\/view@|@codemirror\/state@|@codemirror\/lang-python@/);
-  assert.doesNotMatch(editor, /basicSetup/);
+  assert.match(editor, /codemirror@6\.0\.2/);
+  assert.match(editor, /@codemirror\/lang-python@6\.2\.1/);
+  assert.match(editor, /runtime\.basicSetup/);
+  assert.match(editor, /runtime\.python\(\)/);
+  assert.match(editor, /runtime\.EditorView\.editable\.of\(!source\.readOnly\)/);
+  assert.doesNotMatch(editor, /Compartment|EditorState\.readOnly/);
 });
 
 test("#203 mirrors edits through existing input and interaction-boundary contracts", async () => {
@@ -53,7 +51,7 @@ test("#203 authoritative revision loads reset editor state without manufacturing
   assert.match(artifacts, /notifyAuthoritativeSourceReplaced\(editor\)/);
   assert.match(editor, /SOURCE_REPLACED_EVENT = 'vlab:artifact-source-replaced'/);
   assert.match(editor, /syncingFromSource = true/);
-  assert.match(editor, /view\.setState\(runtime\.EditorState\.create/);
+  assert.match(editor, /view\.dispatch\(\{[\s\S]*changes:/);
   assert.match(editor, /if \(!update\.docChanged \|\| syncingFromSource\) return/);
 });
 
@@ -63,9 +61,9 @@ test("#203 mirrors source read-only state and retains textarea fallback", async 
     text("../src/react-chrome.css"),
   ]);
 
-  assert.match(editor, /runtime\.EditorState\.readOnly\.of\(source\.readOnly\)/);
   assert.match(editor, /runtime\.EditorView\.editable\.of\(!source\.readOnly\)/);
   assert.match(editor, /MutationObserver\(syncReadOnly\)/);
+  assert.match(editor, /mountEditor\(doc\)/);
   assert.match(editor, /source\.dataset\.vlabEditorEnhanced = 'true'/);
   assert.match(editor, /catch \(error\)[\s\S]*delete source\.dataset\.vlabEditorEnhanced/);
   assert.match(css, /textarea\.code-editor\[data-vlab-editor-enhanced="true"\]/);
