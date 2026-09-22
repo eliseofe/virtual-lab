@@ -1407,6 +1407,46 @@ mod tests {
         assert!(error.contains("undeclared controller private state 'unknown'"));
     }
 
+
+    #[test]
+    fn named_reference_observation_requires_availability_and_reads_relative_position() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Reference","entry":"step",
+          "parameters":{},"references":["goal"],"state":[],
+          "body":[
+            {"kind":"if","branches":[{
+              "condition":{"kind":"load","path":"obs.references.goal.available"},
+              "body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[
+                {"kind":"call","name":"norm","args":[{"kind":"load","path":"obs.references.goal.relative_position"}]},
+                {"kind":"const","value":0.0}
+              ]}}]
+            }],"else_body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"const","value":0.0},{"kind":"const","value":0.0}
+            ]}}]}
+          ]
+        }"#;
+        let mut runtime = compile(ir, "{}");
+        runtime.reset(1);
+
+        let mut references = BTreeMap::new();
+        references.insert("goal".to_owned(), Vec2::new(0.3, 0.4));
+        let informed = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+            references,
+        };
+        assert!((runtime.step(0, &informed).forward - 0.5).abs() < 1e-12);
+
+        let uninformed = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+            references: BTreeMap::new(),
+        };
+        assert_eq!(runtime.step(0, &uninformed).forward, 0.0);
+    }
+
     fn stochastic_runtime() -> IrControllerRuntime {
         compile(r#"{
           "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Stochastic","entry":"step",
