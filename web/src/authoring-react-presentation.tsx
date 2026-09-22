@@ -143,24 +143,27 @@ export function AuthoringPresentation() {
         </Group>
         {selectedArtifact && (
           <Group gap={8} wrap="nowrap" className="vlab-react-authoring-navigation">
-            <Select
-              aria-label={`${selectedArtifact.label} outline`}
-              placeholder={selectedStructure?.error ? 'Outline unavailable' : 'Outline'}
-              data={outlineData}
-              value={null}
-              disabled={Boolean(selectedStructure?.error) || outlineData.length === 0}
-              searchable={outlineData.length > 10}
-              clearable={false}
-              onChange={(value) => {
-                if (value == null || !selectedStructure) return;
-                const symbol = selectedStructure.symbols[Number(value)];
-                if (symbol) focusArtifactLine(selectedArtifact.id, symbol.line);
-              }}
+            <div
               className="vlab-react-authoring-outline"
               data-vlab-authoring-outline={selectedArtifact.id}
               data-vlab-outline-symbol-count={outlineData.length}
               data-vlab-outline-state={selectedStructure?.error ? 'unavailable' : 'ready'}
-            />
+            >
+              <Select
+                aria-label={`${selectedArtifact.label} outline`}
+                placeholder={selectedStructure?.error ? 'Outline unavailable' : 'Outline'}
+                data={outlineData}
+                value={null}
+                disabled={Boolean(selectedStructure?.error) || outlineData.length === 0}
+                searchable={outlineData.length > 10}
+                clearable={false}
+                onChange={(value) => {
+                  if (value == null || !selectedStructure) return;
+                  const symbol = selectedStructure.symbols[Number(value)];
+                  if (symbol) focusArtifactLine(selectedArtifact.id, symbol.line);
+                }}
+              />
+            </div>
             <Button
               variant="subtle"
               color="gray"
