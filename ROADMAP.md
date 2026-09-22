@@ -25,6 +25,17 @@ These are baseline architecture, not future roadmap items.
 - **Foundation built, waiting for a use case:** #124 Artifact capability registry / lifecycle hooks — the architectural seam exists; continue only when a concrete optional executable-artifact use case requires runtime dispatch. #285 Research submission snapshots — preservation infrastructure exists, but no distinct research use case currently justifies a submission workflow; do not implement one until the owner identifies a non-overlapping need.
 - **Not started major lanes:** #3 Studies, #202 Code authoring ergonomics, #6 Study results → AI handoff, #119 Research Notes / Research Documents.
 
+## Major-lane relationships
+
+Only relationships with a concrete architectural or product reason belong here. Do not infer a global linear roadmap from this section.
+
+1. **Studies → Study results → AI handoff (#6): hard dependency.** #6 requires stable Study, run-set, result and Plot identities plus exact pinned-Experiment provenance, so it cannot sensibly precede the Study/results foundation.
+2. **Studies → Research Notes / Research Documents (#119): preferred order, not a hard block.** Notes/Documents could exist around Experiments alone, but following Studies avoids designing the durable scientific-reference model once for Experiments and then retrofitting Study/result references later.
+3. **Studies → persistent performance benchmark (#179): hard dependency.** #179 is explicitly a Study representation of the existing neighbour-search benchmark and therefore waits for mature Study/results infrastructure.
+4. **Studies → native/HPC execution (#8): preferred order, not a hard block.** Native/HPC execution is technically independent, but Study orchestration supplies the natural multi-run/parallel execution contract. Doing the backend first risks designing job/run orchestration twice.
+
+**Code authoring ergonomics (#202) is independent of Studies.** It may be activated whenever the owner chooses; no Study foundation is required.
+
 The AI maintains this classification as the project evolves: every major epic belongs in exactly one category, and the category should change when its real execution state changes. When creating or reclassifying an epic, state the classification to the owner so it is visible and can be corrected; routine classification maintenance does not require owner approval.
 
 ### Capability-request queue invariant
@@ -37,7 +48,7 @@ For living epic #58, GitHub issue closure is never evidence that the capability 
 2. Keep the separate fresh target-observation request in the Professor queue as requested/unavailable. It remains not implementation-authorized.
 3. Resume #371 fresh blocking/two-paper acceptance only in a later owner turn when explicitly selected.
 4. Keep #301 Security and #425 Refactoring as living maintenance domains; both are dormant unless a bounded child is explicitly selected.
-5. Do not activate Studies or other parked/not-started major lanes without the required owner authorization/use case.
+5. Do not activate Studies or other owner-gated/parked lanes without the required owner authorization/use case. Code authoring ergonomics (#202) is not gated by Studies and may be prioritized independently.
 
 ## Owner-gated major lane: Studies
 
