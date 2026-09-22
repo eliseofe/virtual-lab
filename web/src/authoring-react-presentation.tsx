@@ -158,6 +158,8 @@ export function AuthoringPresentation() {
               }}
               className="vlab-react-authoring-outline"
               data-vlab-authoring-outline={selectedArtifact.id}
+              data-vlab-outline-symbol-count={outlineData.length}
+              data-vlab-outline-state={selectedStructure?.error ? 'unavailable' : 'ready'}
             />
             <Button
               variant="subtle"
