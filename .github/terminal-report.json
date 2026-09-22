@@ -1,21 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Static named world references are available to selectively informed Controllers and read-only Metrics",
-  "owner_impact": "Experiments can define named static point references in Initialization, choose exactly which agents can sense each reference with finite or unlimited range, branch in one shared Controller on per-agent availability, read the local minimum-image relative-position vector when available, and analyze the same canonical reference position in Metrics. Named sensing is direct over configured agent-reference links, not a broad world search. The reference state remains structured for a future separately approved dynamics mechanism, but this scope adds no dynamic motion or optional executable artifact.",
+  "outcome": "Experiment Authoring highlighting is stable across artifacts and Outline has been replaced by direct Search",
+  "owner_impact": "Configuration, Initialization, Controller and Metrics now preload and retain the same Ace Python syntax mode instead of racing Ace's dynamic mode loader when editors are hidden or switched. The misleading compiler-derived Outline control is removed from the authoring UI. In its place, a normal Search field and Search button send the entered query into Ace's existing in-editor find UI, while line numbers, folding, diagnostics and completion remain intact.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The approved #501 static named-world-reference capability scope is complete with #504 and the epic is being closed. No owner action or rebuild of the earlier scientific experiment is required. The separately reported Mac syntax-highlighting bugs/changes are a different follow-up lane and have not started in this ticket."
+    "text": "The owner-approved Mac editor-fix scope in #513 is complete and the ticket is being closed. The live Lab is the place to verify the repaired highlighting and Search behavior; no successor ticket is implied by this scope."
   },
   "technical_evidence": [
-    "Initialization emits vlab.world-references/0.1; browser and MCP Controller/Metrics compilers consume the same declared reference names and remain mirrored.",
-    "Rust generates Controller reference observations only for configured agent-reference sensor links that pass their finite/unlimited range rule; relative geometry reuses the simulator minimum-image helper and an unavailable reference has no vector entry.",
-    "Controller exposes obs.references.<name>.available and obs.references.<name>.relative_position; Metrics exposes snapshot.references.<name>.position from the same simulator-owned reference state.",
-    "Unit regressions cover informed/uninformed availability, finite range, periodic minimum-image geometry, Controller relative-position execution and Metrics reference-position reads.",
-    "Dynamic references, optional executable-artifact dispatch, arbitrary world-object discovery and paper-specific pursuit/capture behavior remain outside this completed scope.",
-    "Production browser smoke edits through live Ace, waits for the unified Experiment Authoring runtime state to report clean (without treating stale legacy per-artifact feedback as authoritative), preserves the syntax-highlighting assertion, and verifies a live Metric computed from the canonical reference position.",
-    "Production verification uses the repository shared Chrome host; transient DevTools startup failure receives one bounded fresh-profile retry before the smoke is considered failed."
+    "Ace Python mode is loaded explicitly from the same pinned Ace 1.44.0 CDN bundle before Python-like editor sessions are created, removing the prior per-editor dynamic mode-load race.",
+    "The active-tab and authoritative-source replacement paths reassert the expected Ace mode and force a full renderer refresh without replacing the source-of-truth textarea contract.",
+    "Experiment Authoring no longer renders data-vlab-authoring-outline or compiler-derived symbol navigation; it renders one Search text input plus Search action.",
+    "Search passes the entered query to editor.find, opens Ace's existing find UI and synchronizes the native Ace search field with that query.",
+    "Production browser smoke switches across all four core artifacts twice and requires ace/mode/python plus real highlighted tokens after every switch; it also verifies Search prefills and selects ARENA_SIZE and that no Outline remains."
   ],
-  "close_issue": 504
+  "close_issue": 513
 }
