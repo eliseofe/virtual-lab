@@ -2,7 +2,12 @@ import { Badge, Button, Group, Paper, Select, Stack, Title } from '@mantine/core
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ArtifactCodeEditor, focusArtifactLine, openArtifactSearch } from './authoring-code-editor';
-import { artifactCompletionItems, collectArtifactDiagnostics } from './authoring-language-support.js';
+import {
+  artifactCompletionItems,
+  collectArtifactDiagnostics,
+  type AuthoringCompletionItem,
+  type AuthoringDiagnostic,
+} from './authoring-language-support.js';
 import { artifactStructureSafe, symbolLabel } from './authoring-structure.js';
 import {
   applyAuthoringChanges,
@@ -66,7 +71,10 @@ export function AuthoringPresentation() {
     return artifactStructureSafe(selectedArtifact.id, selectedArtifact.source.value);
   }, [selectedArtifact?.id, selectedArtifact?.source, sourceVersion]);
 
-  const authoringSupport = useMemo(() => {
+  const authoringSupport = useMemo<{
+    diagnostics: Record<string, AuthoringDiagnostic[]>;
+    completions: Record<string, AuthoringCompletionItem[]>;
+  }>(() => {
     if (!snapshot) return { diagnostics: {}, completions: {} };
     void sourceVersion;
     const sources = Object.fromEntries(
