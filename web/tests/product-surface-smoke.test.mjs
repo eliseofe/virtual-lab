@@ -69,7 +69,8 @@ test('responsive smoke treats only Chrome navigation-transition evaluation failu
 test('showcase smoke tolerates only Chrome navigation-transition evaluation failure', () => {
   assert.match(showcaseSmoke, /message\.includes\("Inspected target navigated or closed"\)/);
   assert.match(showcaseSmoke, /if \(!message\.includes\("Inspected target navigated or closed"\)\) throw error/);
-  assert.match(showcaseSmoke, /for \(let attempt = 0; attempt < 180; attempt \+= 1\)/);
+  assert.match(showcaseSmoke, /for \(let attempt = 0; attempt < 200; attempt \+= 1\)/);
   assert.match(showcaseSmoke, /await sleep\(100\)/);
-  assert.match(showcaseSmoke, /if \(state === "ready"\) return/);
+  assert.match(showcaseSmoke, /latest\.worker === "ready"/);
+  assert.match(showcaseSmoke, /latest\.library && latest\.bridge/);
 });
