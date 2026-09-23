@@ -88,13 +88,23 @@ pub struct Observation {
 pub struct Action { pub forward: f64, pub turning: f64 }
 
 pub trait PhysicsModel {
-    fn step(
+    fn step(&self, state: &mut [AgentPhysicalState], actuators: &[Action], dt: f64);
+
+    fn step_with_kinematics(
         &self,
         state: &mut [AgentPhysicalState],
         kinematics: &mut [AgentKinematics],
         actuators: &[Action],
         dt: f64,
-    );
+    ) {
+        assert_eq!(state.len(), kinematics.len());
+        let previous = state.to_vec();
+        self.step(state, actuators, dt);
+        for ((before, after), measured) in previous.iter().zip(state.iter()).zip(kinematics.iter_mut()) {
+            measured.velocity = (after.position - before.position) * (1.0 / dt);
+            measured.angular_velocity = (after.heading_angle - before.heading_angle) / dt;
+        }
+    }
 }
 pub trait ObservationModel {
     fn observe(
@@ -177,7 +187,16 @@ fn wrap_state(state: &mut [AgentPhysicalState], arena_size: f64) {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct KinematicPhysics;
 impl PhysicsModel for KinematicPhysics {
-    fn step(
+    fn step(&self, state: &mut [AgentPhysicalState], actuators: &[Action], dt: f64) {
+        assert_eq!(state.len(), actuators.len());
+        for (agent, action) in state.iter_mut().zip(actuators.iter()) {
+            let velocity = agent.heading() * action.forward;
+            agent.position = agent.position + velocity * dt;
+            agent.heading_angle += action.turning * dt;
+        }
+    }
+
+    fn step_with_kinematics(
         &self,
         state: &mut [AgentPhysicalState],
         kinematics: &mut [AgentKinematics],
@@ -187,9 +206,8 @@ impl PhysicsModel for KinematicPhysics {
         assert_eq!(state.len(), actuators.len());
         assert_eq!(state.len(), kinematics.len());
         for ((agent, measured), action) in state.iter_mut().zip(kinematics.iter_mut()).zip(actuators.iter()) {
-            // Measured velocity is the velocity actually integrated by this backend at this
-            // physics step. Capture it before turning so it is not reconstructed later from
-            // the post-step heading.
+            // This backend integrates translation along the pre-turn heading. Record that
+            // exact physical velocity instead of reconstructing it from post-step heading.
             measured.velocity = agent.heading() * action.forward;
             measured.angular_velocity = action.turning;
             agent.position = agent.position + measured.velocity * dt;
@@ -787,7 +805,7 @@ impl<C: ControllerRuntime> Simulation<C> {
                 }
                 self.control_updates = self.control_updates.saturating_add(1);
             }
-            self.physics.step(&mut self.state, &mut self.kinematics, &self.actuators, self.config.physics_dt);
+            self.physics.step_with_kinematics(&mut self.state, &mut self.kinematics, &self.actuators, self.config.physics_dt);
             wrap_state(&mut self.state, self.config.arena_size);
             self.physics_ticks = self.physics_ticks.saturating_add(1);
             if self.physics_ticks % self.metric_stride == 0 {
