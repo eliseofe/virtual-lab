@@ -64,10 +64,13 @@ impl AgentPhysicalState {
     pub fn heading_perpendicular(self) -> Vec2 { Vec2::new(-self.heading_angle.sin(), self.heading_angle.cos()) }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AgentKinematics {
     pub velocity: Vec2,
     pub angular_velocity: f64,
+}
+impl Default for AgentKinematics {
+    fn default() -> Self { Self { velocity: Vec2::ZERO, angular_velocity: 0.0 } }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
