@@ -13,7 +13,8 @@
     "Supported requirements require machine-readable implemented capability IDs and/or stable contract paths and cannot be referenced by capability requests.",
     "Every unsupported requirement must link to at least one reused/new unavailable candidate; ambiguous requirements must retain an explicit ambiguity and cannot create requests.",
     "Legacy analysis JSON remains readable as an unsupported/ambiguous compatibility projection while v11 resume exposes normalized requirement/support history.",
-    "MCP capability-request interface is v11 and server version is 3.18.0; tool count and authoring language remain unchanged."
+    "MCP capability-request interface is v11 and server version is 3.18.0; tool count and authoring language remain unchanged.",
+    "Historical closure tests continue to assert the v8 contracts that created their data, while current MCP tests assert the v11 classify-before-request protocol."
   ],
   "close_issue": 524
 }

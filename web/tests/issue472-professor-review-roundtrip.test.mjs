@@ -62,8 +62,8 @@ test("#472 requester revision preserves one request and candidate identity with 
 });
 
 test("#472 revision wrappers keep closure submission atomic and existing tools", () => {
-  assert.match(migration, /submit_structured_extension_closure_v11/i);
-  assert.match(migration, /revalidate_structured_extension_closure_v11/i);
+  assert.match(migration, /submit_structured_extension_closure_v8/i);
+  assert.match(migration, /revalidate_structured_extension_closure_v8/i);
   assert.match(migration, /private\.revise_candidate_extension_for_requester[\s\S]*public\.submit_structured_extension_closure\(/i);
   assert.match(mcp, /submit_structured_extension_closure_v11/);
   assert.match(mcp, /revalidate_structured_extension_closure_v11/);

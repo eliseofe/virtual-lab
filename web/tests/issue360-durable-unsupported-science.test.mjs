@@ -64,14 +64,14 @@ test("#360 validation advertises the durable blocked continuation instead of a s
 
 test("#360 whole-Experiment revalidation is the only unblocking transition", () => {
   assert.match(mcp, /analysis_status === 'unblocked'/);
-  assert.match(mcp, /Unblocked requires zero unsupported requirements, zero ambiguity, and zero new requests/);
+  assert.match(mcp, /Unblocked requires zero unsupported requirements, zero ambiguity, and zero requests/);
   assert.match(migration, /unblocked requires zero unsupported requirements, zero ambiguity, and zero new requests/i);
   assert.match(migration, /set lifecycle = case when p_analysis_status = 'unblocked' then 'unblocked' else 'blocked' end/i);
   assert.match(mcp, /task_status: data\?\.blocked_experiment\?\.lifecycle/);
 });
 
 test("#360 supported semantics keep the ordinary authoring path", () => {
-  assert.match(mcp, /When the Lab already represents the required semantics exactly, author normally/i);
+  assert.match(mcp, /Supported requirements must cite deployed canonical capability IDs and\/or stable authoring\/platform contract paths and create no request/i);
   assert.match(mcp, /validateExperimentArtifacts\(artifacts\)/);
   assert.match(mcp, /\.from\('experiments'\)[\s\S]*\.insert\(/);
   assert.match(mcp, /\.from\('experiments'\)[\s\S]*\.update\(patch\)/);
