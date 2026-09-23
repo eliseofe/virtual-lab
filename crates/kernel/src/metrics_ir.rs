@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    parse_initial_state, parse_world_reference_state, simulation_config, Action, AgentPhysicalState, ControllerRuntime,
-    EnvironmentRuntime, IrControllerRuntime, Simulation, Vec2,
+    parse_initial_state, parse_world_reference_state, simulation_config, Action, ControllerRuntime,
+    EnvironmentRuntime, IrControllerRuntime, ScientificSnapshot, Simulation, Vec2,
 };
 
 const METRICS_LANGUAGE: &str = "python-vlab-metrics/0.1";
@@ -209,16 +209,14 @@ fn binary(op: &str, left: Value, right: Value, line: Option<usize>) -> Result<Va
     }
 }
 
-struct EvaluationContext<'a> {
-    state: &'a [AgentPhysicalState],
-    references: &'a BTreeMap<String, Vec2>,
-    scientific_time: f64,
-    parameters: &'a BTreeMap<String, f64>,
+struct EvaluationContext<'snapshot, 'state> {
+    snapshot: &'snapshot ScientificSnapshot<'state>,
+    parameters: &'snapshot BTreeMap<String, f64>,
 }
 
 fn eval_expression(
     expression: &Expression,
-    context: &EvaluationContext<'_>,
+    context: &EvaluationContext<'_, '_>,
     locals: &HashMap<String, Value>,
     loop_agents: &HashMap<String, usize>,
 ) -> Result<Value, String> {
@@ -232,39 +230,68 @@ fn eval_expression(
         Expression::BoolConst { value, .. } => Ok(Value::Bool(*value)),
         Expression::Load { path, line } => {
             if path == "snapshot.scientific_time" {
-                return Ok(Value::Scalar(context.scientific_time));
+                return Ok(Value::Scalar(context.snapshot.scientific_time));
+            }
+            if path == "snapshot.physics_ticks" {
+                return Ok(Value::Scalar(context.snapshot.physics_ticks as f64));
+            }
+            if path == "snapshot.control_updates" {
+                return Ok(Value::Scalar(context.snapshot.control_updates as f64));
             }
             if path == "snapshot.agent_count" {
-                return Ok(Value::Scalar(context.state.len() as f64));
+                return Ok(Value::Scalar(context.snapshot.agent_count() as f64));
             }
             if path == "snapshot.agents" {
                 return Err(at_line(*line, "snapshot.agents is iterable only"));
+            }
+            if let Some(name) = path.strip_prefix("snapshot.config.") {
+                let value = context.parameters.get(name)
+                    .ok_or_else(|| at_line(*line, format!("unknown configuration value '{name}'")))?;
+                return Ok(Value::Scalar(*value));
             }
             if let Some(reference_path) = path.strip_prefix("snapshot.references.") {
                 let mut pieces = reference_path.split('.');
                 let name = pieces.next().unwrap_or_default();
                 let field = pieces.next().unwrap_or_default();
                 if pieces.next().is_none() && field == "position" {
-                    let position = context.references.get(name)
+                    let position = context.snapshot.reference_position(name)
                         .ok_or_else(|| at_line(*line, format!("unknown world reference '{name}'")))?;
-                    return Ok(Value::Vec2(*position));
+                    return Ok(Value::Vec2(position));
                 }
             }
             if let Some(value) = locals.get(path) {
                 return Ok(*value);
             }
+            // Preserve the pre-#525 bare parameter form for source compatibility.
             if let Some(value) = context.parameters.get(path) {
                 return Ok(Value::Scalar(*value));
             }
             if let Some((root, field)) = path.split_once('.') {
                 if let Some(index) = loop_agents.get(root) {
-                    let agent = context.state.get(*index)
+                    let agent = context.snapshot.agents.get(*index)
                         .ok_or_else(|| at_line(*line, "metric agent index is outside the snapshot"))?;
+                    let kinematics = context.snapshot.kinematics.get(*index)
+                        .ok_or_else(|| at_line(*line, "metric agent kinematics are outside the snapshot"))?;
+                    let action = context.snapshot.actions.get(*index)
+                        .ok_or_else(|| at_line(*line, "metric agent action is outside the snapshot"))?;
                     return match field {
+                        "index" => Ok(Value::Scalar(*index as f64)),
                         "position" => Ok(Value::Vec2(agent.position)),
+                        "velocity" => Ok(Value::Vec2(kinematics.velocity)),
+                        "angular_velocity" => Ok(Value::Scalar(kinematics.angular_velocity)),
                         "heading" => Ok(Value::Vec2(agent.heading())),
                         "heading_angle" => Ok(Value::Scalar(agent.heading_angle)),
-                        _ => Err(at_line(*line, format!("unknown metric agent field '{field}'"))),
+                        "action.forward" => Ok(Value::Scalar(action.forward)),
+                        "action.turning" => Ok(Value::Scalar(action.turning)),
+                        _ => {
+                            if let Some(name) = field.strip_prefix("private_state.") {
+                                let value = context.snapshot.agent_private_scalar(*index, name)
+                                    .ok_or_else(|| at_line(*line, format!("unknown private scientific state '{name}'")))?;
+                                Ok(Value::Scalar(value))
+                            } else {
+                                Err(at_line(*line, format!("unknown metric agent field '{field}'")))
+                            }
+                        }
                     };
                 }
             }
@@ -331,6 +358,12 @@ fn eval_expression(
                 "norm" if values.len() == 1 => Ok(Value::Scalar(
                     values[0].vec2("norm argument")?.norm_squared().sqrt(),
                 )),
+                "environment_scalar_at" if values.len() == 1 => {
+                    let position = values[0].vec2("environment_scalar_at argument")?;
+                    let value = context.snapshot.sample_environment(position)
+                        .ok_or_else(|| at_line(*line, "this Experiment has no scalar environment"))?;
+                    Ok(Value::Scalar(value))
+                }
                 "abs" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("abs argument")?.abs())),
                 "sqrt" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("sqrt argument")?.sqrt())),
                 "exp" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("exp argument")?.exp())),
@@ -363,7 +396,7 @@ fn eval_expression(
 
 fn execute_statements(
     body: &[Statement],
-    context: &EvaluationContext<'_>,
+    context: &EvaluationContext<'_, '_>,
     locals: &mut HashMap<String, Value>,
     loop_agents: &mut HashMap<String, usize>,
 ) -> Result<Option<f64>, String> {
@@ -387,7 +420,7 @@ fn execute_statements(
                     Expression::Load { path, .. } if path == "snapshot.agents" => {}
                     _ => return Err(at_line(*line, "metric loops must iterate over snapshot.agents")),
                 }
-                for index in 0..context.state.len() {
+                for index in 0..context.snapshot.agent_count() {
                     let previous = loop_agents.insert(variable.clone(), index);
                     let returned = execute_statements(body, context, locals, loop_agents)?;
                     match previous {
@@ -570,12 +603,10 @@ impl IrMetricsRuntime {
     fn evaluate_metric(
         &self,
         metric_index: usize,
-        state: &[AgentPhysicalState],
-        references: &BTreeMap<String, Vec2>,
-        scientific_time: f64,
+        snapshot: &ScientificSnapshot<'_>,
     ) -> Result<f64, String> {
         let metric = &self.metrics[metric_index];
-        let context = EvaluationContext { state, references, scientific_time, parameters: &self.parameters };
+        let context = EvaluationContext { snapshot, parameters: &self.parameters };
         let mut locals = HashMap::new();
         let mut loop_agents = HashMap::new();
         execute_statements(&metric.body, &context, &mut locals, &mut loop_agents)?
@@ -593,39 +624,28 @@ impl IrMetricsRuntime {
         }
     }
 
-    pub fn observe_due(
-        &mut self,
-        state: &[AgentPhysicalState],
-        references: &BTreeMap<String, Vec2>,
-        physics_tick: u32,
-        scientific_time: f64,
-    ) -> Result<(), String> {
+    pub fn observe_due(&mut self, snapshot: &ScientificSnapshot<'_>) -> Result<(), String> {
         let due: Vec<usize> = self.metrics.iter().enumerate().filter_map(|(index, metric)| match metric.sampling {
-            RuntimeSampling::Periodic { stride } if physics_tick % stride == 0 => Some(index),
+            RuntimeSampling::Periodic { stride } if snapshot.physics_ticks % stride == 0 => Some(index),
             _ => None,
         }).collect();
         for index in due {
-            let value = self.evaluate_metric(index, state, references, scientific_time)
+            let value = self.evaluate_metric(index, snapshot)
                 .map_err(|message| format!("metric '{}': {message}", self.metrics[index].id))?;
-            self.append_sample(index, scientific_time, value);
+            self.append_sample(index, snapshot.scientific_time, value);
         }
         Ok(())
     }
 
-    pub fn finalize(
-        &mut self,
-        state: &[AgentPhysicalState],
-        references: &BTreeMap<String, Vec2>,
-        scientific_time: f64,
-    ) -> Result<(), String> {
+    pub fn finalize(&mut self, snapshot: &ScientificSnapshot<'_>) -> Result<(), String> {
         if self.finalized { return Ok(()); }
         let final_metrics: Vec<usize> = self.metrics.iter().enumerate().filter_map(|(index, metric)| {
             matches!(metric.sampling, RuntimeSampling::Final).then_some(index)
         }).collect();
         for index in final_metrics {
-            let value = self.evaluate_metric(index, state, references, scientific_time)
+            let value = self.evaluate_metric(index, snapshot)
                 .map_err(|message| format!("metric '{}': {message}", self.metrics[index].id))?;
-            self.append_sample(index, scientific_time, value);
+            self.append_sample(index, snapshot.scientific_time, value);
         }
         self.finalized = true;
         Ok(())
@@ -838,23 +858,17 @@ impl MetricProbeSimulation {
             let step_target = due.unwrap_or(target);
             self.simulation.advance_physics_ticks(step_target - current);
             if due == Some(step_target) {
-                self.metrics.observe_due(
-                    &self.simulation.state,
-                    self.simulation.reference_state.positions(),
-                    self.simulation.physics_ticks,
-                    self.simulation.scientific_time(),
-                ).map_err(|message| JsValue::from_str(&message))?;
+                let snapshot = self.simulation.scientific_snapshot();
+                self.metrics.observe_due(&snapshot)
+                    .map_err(|message| JsValue::from_str(&message))?;
             }
         }
         Ok(self.simulation.scientific_time())
     }
 
     pub fn finalize_metrics(&mut self) -> Result<(), JsValue> {
-        self.metrics.finalize(
-            &self.simulation.state,
-            self.simulation.reference_state.positions(),
-            self.simulation.scientific_time(),
-        )
+        let snapshot = self.simulation.scientific_snapshot();
+        self.metrics.finalize(&snapshot)
             .map_err(|message| JsValue::from_str(&message))
     }
 
