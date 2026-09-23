@@ -348,7 +348,15 @@ export function validateExperimentSources({ config_source, initializer_source, c
   catch (error) { diagnostics.push(errorDiagnostic("initializer", error)); return invalid(diagnostics); }
 
   let metrics;
-  try { metrics = compileMetrics(metrics_source, { parameters: parameterTypes, references }); }
+  try {
+    const agentState = Object.fromEntries((controller.state ?? []).map(({ name, type }) => [name, type]));
+    metrics = compileMetrics(metrics_source, {
+      parameters: parameterTypes,
+      references,
+      agentState,
+      runtimeCapabilities: environment ? ["environment_scalar"] : [],
+    });
+  }
   catch (error) { diagnostics.push(errorDiagnostic("metrics", error)); return invalid(diagnostics); }
 
   return {
