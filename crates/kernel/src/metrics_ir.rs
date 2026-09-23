@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    parse_initial_state, parse_world_reference_state, simulation_config, Action, AgentPhysicalState, ControllerRuntime,
-    EnvironmentRuntime, IrControllerRuntime, Simulation, Vec2,
+    parse_initial_state, parse_world_reference_state, simulation_config, Action, ControllerRuntime,
+    EnvironmentRuntime, IrControllerRuntime, ScientificSnapshot, ScientificValue, Simulation, Vec2,
 };
 
 const METRICS_LANGUAGE: &str = "python-vlab-metrics/0.1";
@@ -19,6 +19,16 @@ enum Value {
     Scalar(f64),
     Vec2(Vec2),
     Bool(bool),
+}
+
+impl From<ScientificValue> for Value {
+    fn from(value: ScientificValue) -> Self {
+        match value {
+            ScientificValue::Scalar(value) => Value::Scalar(value),
+            ScientificValue::Vec2(value) => Value::Vec2(value),
+            ScientificValue::Bool(value) => Value::Bool(value),
+        }
+    }
 }
 
 impl Value {
@@ -209,16 +219,14 @@ fn binary(op: &str, left: Value, right: Value, line: Option<usize>) -> Result<Va
     }
 }
 
-struct EvaluationContext<'a> {
-    state: &'a [AgentPhysicalState],
-    references: &'a BTreeMap<String, Vec2>,
-    scientific_time: f64,
-    parameters: &'a BTreeMap<String, f64>,
+struct EvaluationContext<'snapshot, 'state> {
+    snapshot: &'snapshot ScientificSnapshot<'state>,
+    parameters: &'snapshot BTreeMap<String, f64>,
 }
 
 fn eval_expression(
     expression: &Expression,
-    context: &EvaluationContext<'_>,
+    context: &EvaluationContext<'_, '_>,
     locals: &HashMap<String, Value>,
     loop_agents: &HashMap<String, usize>,
 ) -> Result<Value, String> {
@@ -231,41 +239,40 @@ fn eval_expression(
         }
         Expression::BoolConst { value, .. } => Ok(Value::Bool(*value)),
         Expression::Load { path, line } => {
-            if path == "snapshot.scientific_time" {
-                return Ok(Value::Scalar(context.scientific_time));
-            }
-            if path == "snapshot.agent_count" {
-                return Ok(Value::Scalar(context.state.len() as f64));
-            }
             if path == "snapshot.agents" {
                 return Err(at_line(*line, "snapshot.agents is iterable only"));
+            }
+            if let Some(name) = path.strip_prefix("snapshot.config.") {
+                let value = context.parameters.get(name)
+                    .ok_or_else(|| at_line(*line, format!("unknown configuration value '{name}'")))?;
+                return Ok(Value::Scalar(*value));
             }
             if let Some(reference_path) = path.strip_prefix("snapshot.references.") {
                 let mut pieces = reference_path.split('.');
                 let name = pieces.next().unwrap_or_default();
-                let field = pieces.next().unwrap_or_default();
-                if pieces.next().is_none() && field == "position" {
-                    let position = context.references.get(name)
-                        .ok_or_else(|| at_line(*line, format!("unknown world reference '{name}'")))?;
-                    return Ok(Value::Vec2(*position));
+                let field = pieces.collect::<Vec<_>>().join(".");
+                if let Some(value) = context.snapshot.reference_value(name, &field) {
+                    return Ok(value.into());
+                }
+                return Err(at_line(*line, format!("unknown world reference snapshot field '{reference_path}'")));
+            }
+            if let Some(field) = path.strip_prefix("snapshot.") {
+                if let Some(value) = context.snapshot.value(field) {
+                    return Ok(value.into());
                 }
             }
             if let Some(value) = locals.get(path) {
                 return Ok(*value);
             }
+            // Preserve the pre-#525 bare parameter form for source compatibility.
             if let Some(value) = context.parameters.get(path) {
                 return Ok(Value::Scalar(*value));
             }
             if let Some((root, field)) = path.split_once('.') {
                 if let Some(index) = loop_agents.get(root) {
-                    let agent = context.state.get(*index)
-                        .ok_or_else(|| at_line(*line, "metric agent index is outside the snapshot"))?;
-                    return match field {
-                        "position" => Ok(Value::Vec2(agent.position)),
-                        "heading" => Ok(Value::Vec2(agent.heading())),
-                        "heading_angle" => Ok(Value::Scalar(agent.heading_angle)),
-                        _ => Err(at_line(*line, format!("unknown metric agent field '{field}'"))),
-                    };
+                    let value = context.snapshot.agent_value(*index, field)
+                        .ok_or_else(|| at_line(*line, format!("unknown metric agent field '{field}'")))?;
+                    return Ok(value.into());
                 }
             }
             Err(at_line(*line, format!("unknown metric value '{path}'")))
@@ -331,6 +338,12 @@ fn eval_expression(
                 "norm" if values.len() == 1 => Ok(Value::Scalar(
                     values[0].vec2("norm argument")?.norm_squared().sqrt(),
                 )),
+                "environment_scalar_at" if values.len() == 1 => {
+                    let position = values[0].vec2("environment_scalar_at argument")?;
+                    let value = context.snapshot.sample_environment(position)
+                        .ok_or_else(|| at_line(*line, "this Experiment has no scalar environment"))?;
+                    Ok(Value::Scalar(value))
+                }
                 "abs" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("abs argument")?.abs())),
                 "sqrt" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("sqrt argument")?.sqrt())),
                 "exp" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("exp argument")?.exp())),
@@ -363,7 +376,7 @@ fn eval_expression(
 
 fn execute_statements(
     body: &[Statement],
-    context: &EvaluationContext<'_>,
+    context: &EvaluationContext<'_, '_>,
     locals: &mut HashMap<String, Value>,
     loop_agents: &mut HashMap<String, usize>,
 ) -> Result<Option<f64>, String> {
@@ -387,7 +400,7 @@ fn execute_statements(
                     Expression::Load { path, .. } if path == "snapshot.agents" => {}
                     _ => return Err(at_line(*line, "metric loops must iterate over snapshot.agents")),
                 }
-                for index in 0..context.state.len() {
+                for index in 0..context.snapshot.agent_count() {
                     let previous = loop_agents.insert(variable.clone(), index);
                     let returned = execute_statements(body, context, locals, loop_agents)?;
                     match previous {
@@ -570,12 +583,10 @@ impl IrMetricsRuntime {
     fn evaluate_metric(
         &self,
         metric_index: usize,
-        state: &[AgentPhysicalState],
-        references: &BTreeMap<String, Vec2>,
-        scientific_time: f64,
+        snapshot: &ScientificSnapshot<'_>,
     ) -> Result<f64, String> {
         let metric = &self.metrics[metric_index];
-        let context = EvaluationContext { state, references, scientific_time, parameters: &self.parameters };
+        let context = EvaluationContext { snapshot, parameters: &self.parameters };
         let mut locals = HashMap::new();
         let mut loop_agents = HashMap::new();
         execute_statements(&metric.body, &context, &mut locals, &mut loop_agents)?
@@ -593,39 +604,28 @@ impl IrMetricsRuntime {
         }
     }
 
-    pub fn observe_due(
-        &mut self,
-        state: &[AgentPhysicalState],
-        references: &BTreeMap<String, Vec2>,
-        physics_tick: u32,
-        scientific_time: f64,
-    ) -> Result<(), String> {
+    pub fn observe_due(&mut self, snapshot: &ScientificSnapshot<'_>) -> Result<(), String> {
         let due: Vec<usize> = self.metrics.iter().enumerate().filter_map(|(index, metric)| match metric.sampling {
-            RuntimeSampling::Periodic { stride } if physics_tick % stride == 0 => Some(index),
+            RuntimeSampling::Periodic { stride } if snapshot.physics_ticks % stride == 0 => Some(index),
             _ => None,
         }).collect();
         for index in due {
-            let value = self.evaluate_metric(index, state, references, scientific_time)
+            let value = self.evaluate_metric(index, snapshot)
                 .map_err(|message| format!("metric '{}': {message}", self.metrics[index].id))?;
-            self.append_sample(index, scientific_time, value);
+            self.append_sample(index, snapshot.scientific_time, value);
         }
         Ok(())
     }
 
-    pub fn finalize(
-        &mut self,
-        state: &[AgentPhysicalState],
-        references: &BTreeMap<String, Vec2>,
-        scientific_time: f64,
-    ) -> Result<(), String> {
+    pub fn finalize(&mut self, snapshot: &ScientificSnapshot<'_>) -> Result<(), String> {
         if self.finalized { return Ok(()); }
         let final_metrics: Vec<usize> = self.metrics.iter().enumerate().filter_map(|(index, metric)| {
             matches!(metric.sampling, RuntimeSampling::Final).then_some(index)
         }).collect();
         for index in final_metrics {
-            let value = self.evaluate_metric(index, state, references, scientific_time)
+            let value = self.evaluate_metric(index, snapshot)
                 .map_err(|message| format!("metric '{}': {message}", self.metrics[index].id))?;
-            self.append_sample(index, scientific_time, value);
+            self.append_sample(index, snapshot.scientific_time, value);
         }
         self.finalized = true;
         Ok(())
@@ -838,23 +838,17 @@ impl MetricProbeSimulation {
             let step_target = due.unwrap_or(target);
             self.simulation.advance_physics_ticks(step_target - current);
             if due == Some(step_target) {
-                self.metrics.observe_due(
-                    &self.simulation.state,
-                    self.simulation.reference_state.positions(),
-                    self.simulation.physics_ticks,
-                    self.simulation.scientific_time(),
-                ).map_err(|message| JsValue::from_str(&message))?;
+                let snapshot = self.simulation.scientific_snapshot();
+                self.metrics.observe_due(&snapshot)
+                    .map_err(|message| JsValue::from_str(&message))?;
             }
         }
         Ok(self.simulation.scientific_time())
     }
 
     pub fn finalize_metrics(&mut self) -> Result<(), JsValue> {
-        self.metrics.finalize(
-            &self.simulation.state,
-            self.simulation.reference_state.positions(),
-            self.simulation.scientific_time(),
-        )
+        let snapshot = self.simulation.scientific_snapshot();
+        self.metrics.finalize(&snapshot)
             .map_err(|message| JsValue::from_str(&message))
     }
 
@@ -903,11 +897,63 @@ mod tests {
         }"#
     }
 
-    fn state() -> Vec<AgentPhysicalState> {
+    fn state() -> Vec<crate::AgentPhysicalState> {
         vec![
-            AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(1.0, 0.0), heading_angle: 0.5 },
+            crate::AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+            crate::AgentPhysicalState { position: Vec2::new(1.0, 0.0), heading_angle: 0.5 },
         ]
+    }
+
+    fn with_snapshot<R>(
+        state: &[crate::AgentPhysicalState],
+        references: &BTreeMap<String, Vec2>,
+        physics_ticks: u32,
+        scientific_time: f64,
+        f: impl FnOnce(&ScientificSnapshot<'_>) -> R,
+    ) -> R {
+        let kinematics = vec![crate::AgentKinematics::default(); state.len()];
+        let actions = vec![Action::default(); state.len()];
+        let reference_state = crate::WorldReferenceState {
+            positions: references.clone(),
+            agent_sensors: vec![BTreeMap::new(); state.len()],
+        };
+        let environment = EnvironmentRuntime::default();
+        let controller = NoopController;
+        let snapshot = ScientificSnapshot {
+            scientific_time,
+            physics_ticks,
+            control_updates: 0,
+            agents: state,
+            kinematics: &kinematics,
+            actions: &actions,
+            references: &reference_state,
+            environment: &environment,
+            controller: &controller,
+        };
+        f(&snapshot)
+    }
+
+    fn observe_due(
+        metrics: &mut IrMetricsRuntime,
+        state: &[crate::AgentPhysicalState],
+        references: &BTreeMap<String, Vec2>,
+        physics_ticks: u32,
+        scientific_time: f64,
+    ) {
+        with_snapshot(state, references, physics_ticks, scientific_time, |snapshot| {
+            metrics.observe_due(snapshot).unwrap()
+        });
+    }
+
+    fn finalize(
+        metrics: &mut IrMetricsRuntime,
+        state: &[crate::AgentPhysicalState],
+        references: &BTreeMap<String, Vec2>,
+        scientific_time: f64,
+    ) {
+        with_snapshot(state, references, 0, scientific_time, |snapshot| {
+            metrics.finalize(snapshot).unwrap()
+        });
     }
 
     #[test]
@@ -915,7 +961,7 @@ mod tests {
         let mut metrics = IrMetricsRuntime::from_json(metrics_json(), "{}", 0.01).unwrap();
         let state = state();
         for tick in 1..=20 {
-            metrics.observe_due(&state, &BTreeMap::new(), tick, tick as f64 * 0.01).unwrap();
+            observe_due(&mut metrics, &state, &BTreeMap::new(), tick, tick as f64 * 0.01);
         }
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
         let samples = batch["samples"].as_array().unwrap();
@@ -932,8 +978,8 @@ mod tests {
     fn final_metrics_emit_once_at_explicit_finalize() {
         let mut metrics = IrMetricsRuntime::from_json(metrics_json(), "{}", 0.01).unwrap();
         let state = state();
-        metrics.finalize(&state, &BTreeMap::new(), 1.25).unwrap();
-        metrics.finalize(&state, &BTreeMap::new(), 1.25).unwrap();
+        finalize(&mut metrics, &state, &BTreeMap::new(), 1.25);
+        finalize(&mut metrics, &state, &BTreeMap::new(), 1.25);
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
         let samples = batch["samples"].as_array().unwrap();
         assert_eq!(samples.len(), 1);
@@ -951,8 +997,8 @@ mod tests {
     fn overflow_is_explicit_and_never_silent() {
         let mut metrics = IrMetricsRuntime::from_json_with_capacity(metrics_json(), "{}", 0.01, 1).unwrap();
         let state = state();
-        metrics.observe_due(&state, &BTreeMap::new(), 10, 0.1).unwrap();
-        metrics.observe_due(&state, &BTreeMap::new(), 20, 0.2).unwrap();
+        observe_due(&mut metrics, &state, &BTreeMap::new(), 10, 0.1);
+        observe_due(&mut metrics, &state, &BTreeMap::new(), 20, 0.2);
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
         assert_eq!(batch["samples"].as_array().unwrap().len(), 1);
         assert_eq!(batch["buffer"]["complete"], false);
@@ -978,7 +1024,7 @@ mod tests {
           }]
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
-        metrics.observe_due(&state(), &BTreeMap::new(), 10, 0.1).unwrap();
+        observe_due(&mut metrics, &state(), &BTreeMap::new(), 10, 0.1);
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 1.0);
     }
@@ -1010,7 +1056,8 @@ mod tests {
             baseline.advance_physics_ticks(1);
             measured.advance_physics_ticks(1);
             let tick = measured.physics_ticks();
-            metrics.observe_due(&measured.state, &BTreeMap::new(), tick, measured.scientific_time()).unwrap();
+            let snapshot = measured.scientific_snapshot();
+            metrics.observe_due(&snapshot).unwrap();
             if tick % 7 == 0 { let _ = metrics.drain_json(2).unwrap(); }
         }
         assert_eq!(baseline.snapshot(), measured.snapshot());
@@ -1024,12 +1071,13 @@ mod tests {
                 line: None,
             };
             let parameters = BTreeMap::new();
-            let references = BTreeMap::new();
-            let context = EvaluationContext { state: &[], references: &references, scientific_time: 0.0, parameters: &parameters };
-            eval_expression(&expression, &context, &HashMap::new(), &HashMap::new())
-                .unwrap()
-                .scalar("test")
-                .unwrap()
+            with_snapshot(&[], &BTreeMap::new(), 0, 0.0, |snapshot| {
+                let context = EvaluationContext { snapshot, parameters: &parameters };
+                eval_expression(&expression, &context, &HashMap::new(), &HashMap::new())
+                    .unwrap()
+                    .scalar("test")
+                    .unwrap()
+            })
         }
 
         assert_eq!(scalar_call("abs", &[-2.0]), 2.0);
@@ -1075,12 +1123,12 @@ mod tests {
           }]
         }"#;
         let state = vec![
-            AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::ZERO, heading_angle: -0.5 },
-            AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.5 },
+            crate::AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.0 },
+            crate::AgentPhysicalState { position: Vec2::ZERO, heading_angle: -0.5 },
+            crate::AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.5 },
         ];
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
-        metrics.finalize(&state, &BTreeMap::new(), 1.0).unwrap();
+        finalize(&mut metrics, &state, &BTreeMap::new(), 1.0);
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 2.0);
     }
@@ -1106,7 +1154,7 @@ mod tests {
           }]
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
-        metrics.finalize(&state(), &BTreeMap::new(), 1.0).unwrap();
+        finalize(&mut metrics, &state(), &BTreeMap::new(), 1.0);
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 1.0);
     }
@@ -1131,7 +1179,7 @@ mod tests {
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
         let mut references = BTreeMap::new();
         references.insert("goal".to_owned(), Vec2::new(3.0, 4.0));
-        metrics.finalize(&state(), &references, 1.0).unwrap();
+        finalize(&mut metrics, &state(), &references, 1.0);
         let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 5.0);
     }
@@ -1211,10 +1259,99 @@ mod tests {
           }]
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(metrics_ir, "{}", 0.01).unwrap();
-        metrics.finalize(&state(), &BTreeMap::new(), 1.0).unwrap();
+        finalize(&mut metrics, &state(), &BTreeMap::new(), 1.0);
         let batch: serde_json::Value =
             serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 2.0);
+    }
+
+
+    #[test]
+    fn complete_scientific_snapshot_reports_measured_state_without_reconstruction() {
+        let controller_ir = r#"{
+          "schema":"vlab.controller-ir/0.1",
+          "language":"python-vlab/0.1",
+          "controller":"Measured",
+          "entry":"step",
+          "parameters":{},
+          "state":[{"name":"energy","type":"scalar","initial":1.0}],
+          "body":[
+            {"kind":"aug_assign","target":"self.energy","op":"+","value":{"kind":"const","value":1.0}},
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"const","value":2.0},
+              {"kind":"const","value":1.5707963267948966}
+            ]}}
+          ]
+        }"#;
+        let controller = IrControllerRuntime::from_json(controller_ir, "{}").unwrap();
+        let initialization = crate::SwarmInitialization {
+            state: vec![crate::AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.0 }],
+        };
+        let config = crate::SimulationConfig {
+            seed: 1,
+            physics_dt: 1.0,
+            control_dt: 1.0,
+            metric_dt: 1.0,
+            interaction_radius: 1.0,
+            arena_size: 100.0,
+            sensor_noise: 0.0,
+            max_forward_speed: 10.0,
+            max_angular_speed: 10.0,
+        };
+        let environment = EnvironmentRuntime::from_json(r#"{
+          "schema":"vlab.environment-scalar-ir/0.1",
+          "language":"python-vlab/0.1",
+          "entry":"environmental_scalar(x, y, config)",
+          "expression":{"kind":"binary","op":"+","left":{"kind":"x"},"right":{"kind":"y"}}
+        }"#).unwrap();
+        let mut simulation = Simulation::new_with_environment(initialization, config, controller, environment).unwrap();
+        simulation.advance_physics_ticks(1);
+
+        let snapshot = simulation.scientific_snapshot();
+        assert!((snapshot.agents[0].heading_angle - std::f64::consts::FRAC_PI_2).abs() < 1e-12);
+        assert!((snapshot.kinematics[0].velocity.x - 2.0).abs() < 1e-12);
+        assert!(snapshot.kinematics[0].velocity.y.abs() < 1e-12);
+        assert!((snapshot.kinematics[0].angular_velocity - std::f64::consts::FRAC_PI_2).abs() < 1e-12);
+        assert_eq!(snapshot.agent_private_scalar(0, "energy"), Some(2.0));
+        assert_eq!(snapshot.sample_environment(Vec2::new(3.0, 4.0)), Some(7.0));
+
+        let metrics_ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "metrics":[{
+            "id":"snapshot.probe","name":"Snapshot probe","unit":null,
+            "sampling":{"kind":"final"},"function":"probe",
+            "body":[
+              {"kind":"assign","target":"total","value":{"kind":"binary","op":"+",
+                "left":{"kind":"load","path":"snapshot.physics_ticks"},
+                "right":{"kind":"load","path":"snapshot.control_updates"}}},
+              {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"snapshot.config.N"}},
+              {"kind":"for_each","variable":"agent","iterable":{"kind":"load","path":"snapshot.agents"},"body":[
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.index"}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"call","name":"dot","args":[
+                  {"kind":"load","path":"agent.velocity"},
+                  {"kind":"call","name":"Vec2","args":[{"kind":"const","value":1.0},{"kind":"const","value":0.0}]}
+                ]}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.angular_velocity"}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.action.forward"}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.action.turning"}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.private_state.energy"}}
+              ]},
+              {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"call","name":"environment_scalar_at","args":[
+                {"kind":"call","name":"Vec2","args":[{"kind":"const","value":3.0},{"kind":"const","value":4.0}]}
+              ]}},
+              {"kind":"return","value":{"kind":"load","path":"total"}}
+            ]
+          }]
+        }"#;
+        let mut metrics = IrMetricsRuntime::from_json(metrics_ir, r#"{"N":1.0}"#, 1.0).unwrap();
+        metrics.finalize(&snapshot).unwrap();
+        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        let value = batch["samples"][0]["value"].as_f64().unwrap();
+        let expected = 1.0 + 1.0 + 1.0 + 2.0 + std::f64::consts::FRAC_PI_2
+            + 2.0 + std::f64::consts::FRAC_PI_2 + 2.0 + 7.0;
+        assert!((value - expected).abs() < 1e-12);
     }
 
 }

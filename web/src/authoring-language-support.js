@@ -97,7 +97,9 @@ export function collectArtifactDiagnostics(sources, { seed = 0 } = {}) {
   }
 
   try {
-    compileMetrics(sources.metrics ?? "", { parameters: parameterTypes, references });
+    const agentState = Object.fromEntries((controller?.state ?? []).map(({ name, type }) => [name, type]));
+    const runtimeCapabilities = environment ? ["environment_scalar"] : [];
+    compileMetrics(sources.metrics ?? "", { parameters: parameterTypes, references, agentState, runtimeCapabilities });
   } catch (error) {
     appendDiagnostic(diagnostics, "metrics", error);
   }
@@ -119,18 +121,34 @@ export function artifactCompletionItems(id, sources) {
   const parameters = config ? numericParameters(config) : {};
   const parameterTypes = Object.fromEntries(Object.keys(parameters).map((name) => [name, "scalar"]));
   let references = [];
+  let environment = null;
+  let controller = null;
   if (config) {
     try {
       const initializerConfig = { ...config, values: { ...config.values, SEED: 0 } };
       const initializer = compileInitializer(sources.initialization ?? "", initializerConfig);
       references = initializer.world_references?.references?.map(({ name }) => name) ?? [];
+      environment = compileEnvironmentScalar(sources.initialization ?? "", initializerConfig);
     } catch {
-      // Reference completions remain conservative until Initialization parses.
+      // Snapshot completions remain conservative until Initialization parses.
+    }
+    try {
+      controller = compileController(sources.controller ?? "", { parameters: parameterTypes, references });
+    } catch {
+      // Private-state completions remain conservative until Controller parses.
     }
   }
 
   if (id === "controller") return controllerCompletionItems({ parameters: parameterTypes, references });
-  if (id === "metrics") return metricsCompletionItems({ parameters: parameterTypes, references });
+  if (id === "metrics") {
+    const agentState = Object.fromEntries((controller?.state ?? []).map(({ name, type }) => [name, type]));
+    return metricsCompletionItems({
+      parameters: parameterTypes,
+      references,
+      agentState,
+      runtimeCapabilities: environment ? ["environment_scalar"] : [],
+    });
+  }
 
   if (id === "initialization") {
     const items = Object.keys(parameters).map((name) => ({

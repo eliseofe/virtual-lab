@@ -1,20 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Capability closure now records existing support before request creation",
-  "owner_impact": "Research AI must now classify every paper/Experiment requirement before creating a capability request. Requirements already expressible by deployed capabilities or the stable Lab contract are stored with machine-readable support evidence and never enter the Professor queue. Only genuinely unsupported requirements can create or reuse candidate requests; scientific ambiguities remain explicit without creating requests. The Already Supported Professor response remains available only as the exceptional cleanup path for a false positive that still slips through.",
+  "outcome": "Metrics now uses one extensible read-only scientific-state snapshot",
+  "owner_impact": "The former hard-coded Metrics whitelist is replaced by a single scientific snapshot boundary. Metrics can measure actual backend kinematics, applied actions, run-local agent identity, authored per-agent private scientific state, Experiment configuration, named references and the active environment without granting mutation or host access. Existing Metrics source remains compatible, and future simulator-owned scientific state must declare its Metrics projection instead of adding another one-off field.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "No owner action is required. The approved two-ticket capability-request protocol repair is complete and this bounded repair scope is closed. The broader Professor capability-request domain (#58) remains a living product domain with its real queue handled separately."
+    "kind": "epic_continues",
+    "issue": 526,
+    "text": "Next is #526 — population identity and opt-in local recognition. It will add stable population/group identity plus separately enabled local recognition, using the scientific snapshot introduced here for global measurement. #526 has not started."
   },
   "technical_evidence": [
-    "Normalized closure requirement rows classify supported, unsupported and ambiguous requirements per append-only analysis.",
-    "Supported requirements require machine-readable implemented capability IDs and/or stable contract paths and cannot be referenced by capability requests.",
-    "Every unsupported requirement must link to at least one reused/new unavailable candidate; ambiguous requirements must retain an explicit ambiguity and cannot create requests.",
-    "Legacy analysis JSON remains readable as an unsupported/ambiguous compatibility projection while v11 resume exposes normalized requirement/support history.",
-    "MCP capability-request interface is v11 and server version is 3.18.0; tool count and authoring language remain unchanged.",
-    "Historical closure tests continue to assert the v8 contracts that created their data, while current MCP tests assert the v11 classify-before-request protocol."
+    "Kernel measurement now uses vlab.scientific-snapshot/0.1 instead of raw AgentPhysicalState plus ad-hoc reference arguments.",
+    "Planar velocity and angular velocity are retained from the actual physics integration step rather than reconstructed from post-step heading or controller commands.",
+    "Metrics static snapshot fields/functions are derived from implemented capability bindings; Experiment-specific configuration, reference and private-state projections are added at compile time.",
+    "Browser and MCP Metrics compilers remain mirrored and existing Active Elastic Metrics remain source-compatible.",
+    "The read-only boundary excludes RNG engine internals, neighbour-index internals, host state, transport buffers and mutation APIs."
   ],
-  "close_issue": 524
+  "close_issue": 525
 }
