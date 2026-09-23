@@ -1,9 +1,11 @@
+import { IMPLEMENTED_CAPABILITY_BINDINGS } from "../capability-bindings.js";
+
 const FORBIDDEN_ROOTS = new Set([
   "random", "rng", "seed", "controller", "world", "simulator", "environment",
   "filesystem", "network", "actions", "actuators",
 ]);
 
-const CALL_SIGNATURES = {
+const LANGUAGE_CALL_SIGNATURES = {
   Vec2: { args: ["scalar", "scalar"], result: "vec2" },
   dot: { args: ["vec2", "vec2"], result: "scalar" },
   cross2: { args: ["vec2", "vec2"], result: "scalar" },
@@ -26,25 +28,78 @@ const CALL_SIGNATURES = {
   max: { args: ["scalar", "scalar"], result: "scalar" },
 };
 
+const METRICS_CAPABILITY_SURFACES = IMPLEMENTED_CAPABILITY_BINDINGS.flatMap((binding) =>
+  binding.surfaces
+    .filter((surface) => surface.artifact === "metrics")
+    .map((surface) => ({ ...surface, capability_key: binding.capability_key }))
+);
+
+const STATIC_SNAPSHOT_TYPES = new Map(
+  METRICS_CAPABILITY_SURFACES
+    .filter((surface) => surface.kind === "snapshot" && !surface.symbol.includes("<"))
+    .map((surface) => [surface.symbol, surface.value_type]),
+);
+
+const AGENT_FIELD_TYPES = new Map(
+  METRICS_CAPABILITY_SURFACES
+    .filter((surface) => surface.kind === "snapshot_field" && surface.symbol.startsWith("agent."))
+    .map((surface) => [surface.symbol.slice("agent.".length), surface.value_type]),
+);
+
+const SNAPSHOT_INTRINSIC_SURFACES = new Map(
+  METRICS_CAPABILITY_SURFACES
+    .filter((surface) => surface.kind === "snapshot_intrinsic" && surface.signature)
+    .map((surface) => [surface.symbol, surface]),
+);
+
+const CALL_SIGNATURES = {
+  ...LANGUAGE_CALL_SIGNATURES,
+  ...Object.fromEntries([...SNAPSHOT_INTRINSIC_SURFACES].map(([name, surface]) => [name, surface.signature])),
+};
+
 export const METRICS_LANGUAGE = "python-vlab-metrics/0.1";
 export const METRICS_IR_SCHEMA = "vlab.metrics-ir/0.1";
 export const METRIC_MEASUREMENT_PHASE = "post-physics-wrapped-state/1";
 
-export const METRIC_OBSERVATION_FIELDS = [
-  "snapshot.scientific_time",
-  "snapshot.agent_count",
-  "snapshot.agents",
-  "snapshot.agents[].position",
-  "snapshot.agents[].heading",
-  "snapshot.agents[].heading_angle",
-];
+export const METRIC_OBSERVATION_FIELDS = Object.freeze([
+  ...[...STATIC_SNAPSHOT_TYPES.keys()],
+  ...[...AGENT_FIELD_TYPES.keys()].map((field) => `snapshot.agents[].${field}`),
+]);
 
-export function metricsCompletionItems({ parameters = {}, references = [] } = {}) {
+export function metricsCompletionItems({
+  parameters = {},
+  references = [],
+  agentState = {},
+  runtimeCapabilities = [],
+} = {}) {
+  const available = new Set(runtimeCapabilities);
+  const intrinsicItems = [...SNAPSHOT_INTRINSIC_SURFACES]
+    .filter(([, surface]) => !surface.availability || available.has(surface.availability))
+    .map(([value]) => ({ value, caption: value, score: 900, meta: "snapshot function" }));
   const items = [
-    ...Object.keys(CALL_SIGNATURES).map((value) => ({ value, caption: value, score: 900, meta: "supported function" })),
-    ...METRIC_OBSERVATION_FIELDS
-      .filter((value) => !value.includes("[]"))
+    ...Object.keys(LANGUAGE_CALL_SIGNATURES).map((value) => ({ value, caption: value, score: 900, meta: "supported function" })),
+    ...intrinsicItems,
+    ...[...STATIC_SNAPSHOT_TYPES.keys()]
+      .filter((value) => value !== "snapshot.agents")
       .map((value) => ({ value, caption: value, score: 1000, meta: "snapshot field" })),
+    ...[...AGENT_FIELD_TYPES.keys()].map((field) => ({
+      value: `agent.${field}`,
+      caption: `agent.${field}`,
+      score: 950,
+      meta: "agent snapshot field",
+    })),
+    ...Object.keys(agentState).map((name) => ({
+      value: `agent.private_state.${name}`,
+      caption: `agent.private_state.${name}`,
+      score: 950,
+      meta: "agent scientific state",
+    })),
+    ...Object.keys(parameters).map((name) => ({
+      value: `snapshot.config.${name}`,
+      caption: `snapshot.config.${name}`,
+      score: 900,
+      meta: "configuration snapshot",
+    })),
     ...references.map((name) => ({
       value: `snapshot.references.${name}.position`,
       caption: `snapshot.references.${name}.position`,
@@ -448,16 +503,26 @@ function binaryType(op, left, right, line) {
   throw new MetricsCompileError("type", `operator '${op}' cannot combine ${left} and ${right}`, line);
 }
 
-function loadType(path, locals, parameters, line) {
+function loadType(path, locals, parameters, context, line) {
   if (Object.hasOwn(locals, path)) return locals[path];
   if (Object.hasOwn(parameters, path)) return parameters[path];
-  if (path === "snapshot.scientific_time" || path === "snapshot.agent_count") return "scalar";
-  if (path === "snapshot.agents") return "sequence<agent>";
-  const [root, field] = path.split(".");
+  if (STATIC_SNAPSHOT_TYPES.has(path)) return STATIC_SNAPSHOT_TYPES.get(path);
+  if (path.startsWith("snapshot.config.")) {
+    const name = path.slice("snapshot.config.".length);
+    if (Object.hasOwn(parameters, name)) return parameters[name];
+    throw new MetricsCompileError("invalid-observation-field", `unknown configuration snapshot field '${name}'`, line);
+  }
+  const pieces = path.split(".");
+  const root = pieces[0];
   if (locals[root] === "agent") {
-    if (field === "position" || field === "heading") return "vec2";
-    if (field === "heading_angle") return "scalar";
-    throw new MetricsCompileError("invalid-observation-field", `unknown agent field '${field}'`, line);
+    const field = pieces.slice(1).join(".");
+    if (AGENT_FIELD_TYPES.has(field)) return AGENT_FIELD_TYPES.get(field);
+    if (field.startsWith("private_state.")) {
+      const name = field.slice("private_state.".length);
+      if (Object.hasOwn(context.agentState, name)) return context.agentState[name];
+      throw new MetricsCompileError("invalid-observation-field", `unknown agent private scientific state '${name}'`, line);
+    }
+    throw new MetricsCompileError("invalid-observation-field", `unknown agent snapshot field '${field}'`, line);
   }
   if (path === "snapshot" || path.startsWith("snapshot.")) {
     throw new MetricsCompileError("invalid-observation-field", `unknown metric snapshot field '${path}'`, line);
@@ -465,12 +530,12 @@ function loadType(path, locals, parameters, line) {
   throw new MetricsCompileError("type", `unknown scalar/vector name '${path}'`, line);
 }
 
-function expressionType(node, locals, parameters) {
+function expressionType(node, locals, parameters, context) {
   if (node.kind === "const") return "scalar";
   if (node.kind === "bool_const") return "bool";
-  if (node.kind === "load") return loadType(node.path, locals, parameters, node.line);
+  if (node.kind === "load") return loadType(node.path, locals, parameters, context, node.line);
   if (node.kind === "unary") {
-    const type = expressionType(node.value, locals, parameters);
+    const type = expressionType(node.value, locals, parameters, context);
     if (node.op === "not") {
       if (type !== "bool") throw new MetricsCompileError("type", `'not' requires bool, got ${type}`, node.line);
       return "bool";
@@ -480,27 +545,31 @@ function expressionType(node, locals, parameters) {
     return type;
   }
   if (node.kind === "compare") {
-    const left = expressionType(node.left, locals, parameters);
-    const right = expressionType(node.right, locals, parameters);
+    const left = expressionType(node.left, locals, parameters, context);
+    const right = expressionType(node.right, locals, parameters, context);
     if (left !== "scalar" || right !== "scalar") {
       throw new MetricsCompileError("type", `comparison '${node.op}' requires scalar operands, got ${left} and ${right}`, node.line);
     }
     return "bool";
   }
   if (node.kind === "bool_op") {
-    const left = expressionType(node.left, locals, parameters);
-    const right = expressionType(node.right, locals, parameters);
+    const left = expressionType(node.left, locals, parameters, context);
+    const right = expressionType(node.right, locals, parameters, context);
     if (left !== "bool" || right !== "bool") {
       throw new MetricsCompileError("type", `boolean '${node.op}' requires bool operands, got ${left} and ${right}`, node.line);
     }
     return "bool";
   }
-  if (node.kind === "binary") return binaryType(node.op, expressionType(node.left, locals, parameters), expressionType(node.right, locals, parameters), node.line);
+  if (node.kind === "binary") return binaryType(node.op, expressionType(node.left, locals, parameters, context), expressionType(node.right, locals, parameters, context), node.line);
   if (node.kind === "call") {
     const signature = CALL_SIGNATURES[node.name];
+    const surface = SNAPSHOT_INTRINSIC_SURFACES.get(node.name);
+    if (surface?.availability && !context.runtimeCapabilities.has(surface.availability)) {
+      throw new MetricsCompileError("invalid-observation-field", `snapshot function '${node.name}' is unavailable for this Experiment`, node.line);
+    }
     if (node.args.length !== signature.args.length) throw new MetricsCompileError("type", `${node.name} expects ${signature.args.length} arguments`, node.line);
     node.args.forEach((arg, index) => {
-      const actual = expressionType(arg, locals, parameters);
+      const actual = expressionType(arg, locals, parameters, context);
       if (actual !== signature.args[index]) throw new MetricsCompileError("type", `${node.name} argument ${index + 1} must be ${signature.args[index]}, got ${actual}`, node.line);
     });
     return signature.result;
@@ -517,36 +586,36 @@ function sameTypeLocals(scopes) {
   return merged;
 }
 
-function checkStatements(body, locals, parameters) {
+function checkStatements(body, locals, parameters, context) {
   let returned = false;
   for (const statement of body) {
     if (statement.kind === "assign") {
-      locals[statement.target] = expressionType(statement.value, locals, parameters);
+      locals[statement.target] = expressionType(statement.value, locals, parameters, context);
     } else if (statement.kind === "aug_assign") {
       if (!Object.hasOwn(locals, statement.target)) throw new MetricsCompileError("type", `cannot update unknown local '${statement.target}'`, statement.line);
-      const result = binaryType(statement.op, locals[statement.target], expressionType(statement.value, locals, parameters), statement.line);
+      const result = binaryType(statement.op, locals[statement.target], expressionType(statement.value, locals, parameters, context), statement.line);
       if (result !== locals[statement.target]) throw new MetricsCompileError("type", `update changes '${statement.target}' type`, statement.line);
     } else if (statement.kind === "for_each") {
-      const iterable = expressionType(statement.iterable, locals, parameters);
+      const iterable = expressionType(statement.iterable, locals, parameters, context);
       if (iterable !== "sequence<agent>") throw new MetricsCompileError("type", "metric loops currently require 'snapshot.agents'", statement.line);
       const nested = { ...locals, [statement.variable]: "agent" };
-      checkStatements(statement.body, nested, parameters);
+      checkStatements(statement.body, nested, parameters, context);
     } else if (statement.kind === "if") {
       const continuing = [];
       let allReturn = statement.else_body.length > 0;
 
       for (const branch of statement.branches) {
-        const conditionType = expressionType(branch.condition, locals, parameters);
+        const conditionType = expressionType(branch.condition, locals, parameters, context);
         if (conditionType !== "bool") throw new MetricsCompileError("type", `if/elif condition must be bool, got ${conditionType}`, branch.line ?? statement.line);
         const nested = { ...locals };
-        const branchReturns = checkStatements(branch.body, nested, parameters);
+        const branchReturns = checkStatements(branch.body, nested, parameters, context);
         if (!branchReturns) continuing.push(nested);
         allReturn &&= branchReturns;
       }
 
       if (statement.else_body.length) {
         const nested = { ...locals };
-        const elseReturns = checkStatements(statement.else_body, nested, parameters);
+        const elseReturns = checkStatements(statement.else_body, nested, parameters, context);
         if (!elseReturns) continuing.push(nested);
         allReturn &&= elseReturns;
       } else {
@@ -560,7 +629,7 @@ function checkStatements(body, locals, parameters) {
       }
       returned ||= allReturn;
     } else if (statement.kind === "return") {
-      const result = expressionType(statement.value, locals, parameters);
+      const result = expressionType(statement.value, locals, parameters, context);
       if (result !== "scalar") throw new MetricsCompileError("type", `metric return value must be scalar, got ${result}`, statement.line);
       returned = true;
     }
@@ -765,7 +834,7 @@ function lowerMetricIterableAliases(body, collectionAliases = new Set(), agentAl
   return lowerMetricIterableAliasesWithState(body, collectionAliases, agentAliases).body;
 }
 
-function parseMetricFunctions(source, parameters) {
+function parseMetricFunctions(source, parameters, context) {
   const lines = sourceLines(source);
   const metrics = [];
   let i = 0;
@@ -786,7 +855,7 @@ function parseMetricFunctions(source, parameters) {
     if (!firstBody || firstBody.indent <= 0) throw new MetricsCompileError("syntax", "metric function requires an indented body", defEntry.line);
     const parsed = parseStatements(lines, bodyIndex, firstBody.indent);
     const locals = {};
-    if (!checkStatements(parsed.body, locals, parameters)) {
+    if (!checkStatements(parsed.body, locals, parameters, context)) {
       throw new MetricsCompileError("type", `metric '${metadata.id}' must return a scalar`, defEntry.line);
     }
     metrics.push({
@@ -837,7 +906,12 @@ export function metricsStructure(source) {
   return { language: METRICS_LANGUAGE, symbols };
 }
 
-export function compileMetrics(source, { parameters = {}, references = [] } = {}) {
+export function compileMetrics(source, {
+  parameters = {},
+  references = [],
+  agentState = {},
+  runtimeCapabilities = [],
+} = {}) {
   if (typeof source !== "string") throw new MetricsCompileError("syntax", "Metrics source must be a string");
   const parameterTypes = {};
   for (const [name, type] of Object.entries(parameters)) {
@@ -851,7 +925,16 @@ export function compileMetrics(source, { parameters = {}, references = [] } = {}
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new MetricsCompileError("type", `invalid world reference name '${name}'`);
     parameterTypes[`snapshot.references.${name}.position`] = "vec2";
   }
-  const metrics = parseMetricFunctions(source, parameterTypes);
+  const context = {
+    agentState: { ...agentState },
+    runtimeCapabilities: new Set(runtimeCapabilities),
+  };
+  for (const [name, type] of Object.entries(context.agentState)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) || type !== "scalar") {
+      throw new MetricsCompileError("type", `agent private scientific state '${name}' must be a scalar identifier`);
+    }
+  }
+  const metrics = parseMetricFunctions(source, parameterTypes, context);
   const ids = new Set();
   const functions = new Set();
   for (const metric of metrics) {
@@ -868,8 +951,13 @@ export function compileMetrics(source, { parameters = {}, references = [] } = {}
       mode: "read-only-global-snapshot",
       fields: [
         ...METRIC_OBSERVATION_FIELDS.filter((field) => field !== "snapshot.agents"),
+        ...Object.keys(parameters).map((name) => `snapshot.config.${name}`),
+        ...Object.keys(context.agentState).map((name) => `snapshot.agents[].private_state.${name}`),
         ...referenceNames.map((name) => `snapshot.references.${name}.position`),
       ],
+      intrinsics: [...SNAPSHOT_INTRINSIC_SURFACES]
+        .filter(([, surface]) => !surface.availability || context.runtimeCapabilities.has(surface.availability))
+        .map(([name]) => name),
     },
     references: referenceNames,
     metrics,
