@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     parse_initial_state, parse_world_reference_state, simulation_config, Action, ControllerRuntime,
-    EnvironmentRuntime, IrControllerRuntime, ScientificSnapshot, Simulation, Vec2,
+    EnvironmentRuntime, IrControllerRuntime, ScientificSnapshot, ScientificValue, Simulation, Vec2,
 };
 
 const METRICS_LANGUAGE: &str = "python-vlab-metrics/0.1";
@@ -19,6 +19,16 @@ enum Value {
     Scalar(f64),
     Vec2(Vec2),
     Bool(bool),
+}
+
+impl From<ScientificValue> for Value {
+    fn from(value: ScientificValue) -> Self {
+        match value {
+            ScientificValue::Scalar(value) => Value::Scalar(value),
+            ScientificValue::Vec2(value) => Value::Vec2(value),
+            ScientificValue::Bool(value) => Value::Bool(value),
+        }
+    }
 }
 
 impl Value {
@@ -229,18 +239,6 @@ fn eval_expression(
         }
         Expression::BoolConst { value, .. } => Ok(Value::Bool(*value)),
         Expression::Load { path, line } => {
-            if path == "snapshot.scientific_time" {
-                return Ok(Value::Scalar(context.snapshot.scientific_time));
-            }
-            if path == "snapshot.physics_ticks" {
-                return Ok(Value::Scalar(context.snapshot.physics_ticks as f64));
-            }
-            if path == "snapshot.control_updates" {
-                return Ok(Value::Scalar(context.snapshot.control_updates as f64));
-            }
-            if path == "snapshot.agent_count" {
-                return Ok(Value::Scalar(context.snapshot.agent_count() as f64));
-            }
             if path == "snapshot.agents" {
                 return Err(at_line(*line, "snapshot.agents is iterable only"));
             }
@@ -252,11 +250,15 @@ fn eval_expression(
             if let Some(reference_path) = path.strip_prefix("snapshot.references.") {
                 let mut pieces = reference_path.split('.');
                 let name = pieces.next().unwrap_or_default();
-                let field = pieces.next().unwrap_or_default();
-                if pieces.next().is_none() && field == "position" {
-                    let position = context.snapshot.reference_position(name)
-                        .ok_or_else(|| at_line(*line, format!("unknown world reference '{name}'")))?;
-                    return Ok(Value::Vec2(position));
+                let field = pieces.collect::<Vec<_>>().join(".");
+                if let Some(value) = context.snapshot.reference_value(name, &field) {
+                    return Ok(value.into());
+                }
+                return Err(at_line(*line, format!("unknown world reference snapshot field '{reference_path}'")));
+            }
+            if let Some(field) = path.strip_prefix("snapshot.") {
+                if let Some(value) = context.snapshot.value(field) {
+                    return Ok(value.into());
                 }
             }
             if let Some(value) = locals.get(path) {
@@ -268,31 +270,9 @@ fn eval_expression(
             }
             if let Some((root, field)) = path.split_once('.') {
                 if let Some(index) = loop_agents.get(root) {
-                    let agent = context.snapshot.agents.get(*index)
-                        .ok_or_else(|| at_line(*line, "metric agent index is outside the snapshot"))?;
-                    let kinematics = context.snapshot.kinematics.get(*index)
-                        .ok_or_else(|| at_line(*line, "metric agent kinematics are outside the snapshot"))?;
-                    let action = context.snapshot.actions.get(*index)
-                        .ok_or_else(|| at_line(*line, "metric agent action is outside the snapshot"))?;
-                    return match field {
-                        "index" => Ok(Value::Scalar(*index as f64)),
-                        "position" => Ok(Value::Vec2(agent.position)),
-                        "velocity" => Ok(Value::Vec2(kinematics.velocity)),
-                        "angular_velocity" => Ok(Value::Scalar(kinematics.angular_velocity)),
-                        "heading" => Ok(Value::Vec2(agent.heading())),
-                        "heading_angle" => Ok(Value::Scalar(agent.heading_angle)),
-                        "action.forward" => Ok(Value::Scalar(action.forward)),
-                        "action.turning" => Ok(Value::Scalar(action.turning)),
-                        _ => {
-                            if let Some(name) = field.strip_prefix("private_state.") {
-                                let value = context.snapshot.agent_private_scalar(*index, name)
-                                    .ok_or_else(|| at_line(*line, format!("unknown private scientific state '{name}'")))?;
-                                Ok(Value::Scalar(value))
-                            } else {
-                                Err(at_line(*line, format!("unknown metric agent field '{field}'")))
-                            }
-                        }
-                    };
+                    let value = context.snapshot.agent_value(*index, field)
+                        .ok_or_else(|| at_line(*line, format!("unknown metric agent field '{field}'")))?;
+                    return Ok(value.into());
                 }
             }
             Err(at_line(*line, format!("unknown metric value '{path}'")))
