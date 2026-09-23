@@ -445,6 +445,13 @@ pub struct Snapshot {
 /// This is deliberately distinct from both the renderer snapshot and the kernel's
 /// minimal storage structs. Future simulator-owned scientific state should project
 /// through this boundary instead of adding ad-hoc MetricRuntime arguments.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ScientificValue {
+    Scalar(f64),
+    Vec2(Vec2),
+    Bool(bool),
+}
+
 pub struct ScientificSnapshot<'a> {
     pub scientific_time: f64,
     pub physics_ticks: u32,
@@ -459,7 +466,43 @@ pub struct ScientificSnapshot<'a> {
 
 impl ScientificSnapshot<'_> {
     pub fn agent_count(&self) -> usize { self.agents.len() }
-    pub fn reference_position(&self, name: &str) -> Option<Vec2> { self.references.reference_position(name) }
+
+    pub fn value(&self, field: &str) -> Option<ScientificValue> {
+        match field {
+            "scientific_time" => Some(ScientificValue::Scalar(self.scientific_time)),
+            "physics_ticks" => Some(ScientificValue::Scalar(self.physics_ticks as f64)),
+            "control_updates" => Some(ScientificValue::Scalar(self.control_updates as f64)),
+            "agent_count" => Some(ScientificValue::Scalar(self.agent_count() as f64)),
+            _ => None,
+        }
+    }
+
+    pub fn agent_value(&self, agent_index: usize, field: &str) -> Option<ScientificValue> {
+        let agent = self.agents.get(agent_index)?;
+        let kinematics = self.kinematics.get(agent_index)?;
+        let action = self.actions.get(agent_index)?;
+        match field {
+            "index" => Some(ScientificValue::Scalar(agent_index as f64)),
+            "position" => Some(ScientificValue::Vec2(agent.position)),
+            "velocity" => Some(ScientificValue::Vec2(kinematics.velocity)),
+            "angular_velocity" => Some(ScientificValue::Scalar(kinematics.angular_velocity)),
+            "heading" => Some(ScientificValue::Vec2(agent.heading())),
+            "heading_angle" => Some(ScientificValue::Scalar(agent.heading_angle)),
+            "action.forward" => Some(ScientificValue::Scalar(action.forward)),
+            "action.turning" => Some(ScientificValue::Scalar(action.turning)),
+            _ => field.strip_prefix("private_state.")
+                .and_then(|name| self.controller.scientific_private_state_value(agent_index, name))
+                .map(ScientificValue::Scalar),
+        }
+    }
+
+    pub fn reference_value(&self, name: &str, field: &str) -> Option<ScientificValue> {
+        match field {
+            "position" => self.references.reference_position(name).map(ScientificValue::Vec2),
+            _ => None,
+        }
+    }
+
     pub fn has_environmental_scalar(&self) -> bool { self.environment.has_scalar() }
     pub fn sample_environment(&self, position: Vec2) -> Option<f64> { self.environment.sample(position) }
     pub fn agent_private_scalar(&self, agent_index: usize, name: &str) -> Option<f64> {
