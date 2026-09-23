@@ -7,6 +7,8 @@ const NativeWorker = globalThis.Worker;
 let activeSimulationWorker = null;
 let activeParameters = {};
 let activeReferences = [];
+let activeAgentState = {};
+let activeRuntimeCapabilities = [];
 let lastBatch = null;
 let lastBuffer = null;
 let lastRuntimeContext = {};
@@ -39,6 +41,8 @@ function compiledMetrics(parameters) {
   const ir = compileMetrics(metricSource(), {
     parameters: parameterTypes(parameters),
     references: activeReferences,
+    agentState: activeAgentState,
+    runtimeCapabilities: activeRuntimeCapabilities,
   });
   dispatch("vlab:metrics-definition", { ir });
   return ir;
@@ -193,8 +197,10 @@ class MetricsAwareWorker extends NativeWorker {
     let next = message;
     if (message && ["initialize", "apply-setup", "apply-controller"].includes(message.type)) {
       activeParameters = message.parameters ?? activeParameters;
+      activeAgentState = Object.fromEntries((message.ir?.state ?? []).map(({ name, type }) => [name, type]));
       if (message.type === "initialize" || message.type === "apply-setup") {
         activeReferences = message.setup?.worldReferences?.references?.map(({ name }) => name) ?? [];
+        activeRuntimeCapabilities = message.setup?.environment ? ["environment_scalar"] : [];
       }
       next = {
         ...message,
