@@ -52,7 +52,9 @@ Examples of current capability-owned surfaces include:
 - controller private scalar state;
 - `obs.heading`, `obs.neighbours`, `neighbour.relative_position` and `obs.environmental_scalar`;
 - `environmental_scalar(x, y, config)`;
-- the currently implemented Metrics snapshot fields and sampling constructors.
+- the implemented Metrics scientific-snapshot surfaces and sampling constructors.
+
+Metrics snapshot surfaces follow the same capability-ownership rule as Controller observations. The compiler derives static snapshot fields/functions from implemented capability bindings, then adds Experiment-specific projections such as declared configuration names, named references and authored per-agent private scientific state. The runtime consumes the single read-only `vlab.scientific-snapshot/0.1` boundary rather than a Metrics-specific list of kernel fields.
 
 The stable Controller language therefore describes forms such as `step(self, obs)`, arithmetic, assignments, loops and capability-backed references/actions. It does not freeze today's observation/action inventory into the language contract.
 
