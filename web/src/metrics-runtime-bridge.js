@@ -197,7 +197,9 @@ class MetricsAwareWorker extends NativeWorker {
     let next = message;
     if (message && ["initialize", "apply-setup", "apply-controller"].includes(message.type)) {
       activeParameters = message.parameters ?? activeParameters;
-      activeAgentState = Object.fromEntries((message.ir?.state ?? []).map(({ name, type }) => [name, type]));
+      if (Array.isArray(message.ir?.state)) {
+        activeAgentState = Object.fromEntries(message.ir.state.map(({ name, type }) => [name, type]));
+      }
       if (message.type === "initialize" || message.type === "apply-setup") {
         activeReferences = message.setup?.worldReferences?.references?.map(({ name }) => name) ?? [];
         activeRuntimeCapabilities = message.setup?.environment ? ["environment_scalar"] : [];
