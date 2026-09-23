@@ -69,8 +69,8 @@ try {
   const result = JSON.parse(await evaluate(cdp.send, expression));
 
   if (
-    result.contract !== "vlab.professor-review/2"
-    || result.decisions !== "accepted,revise,deferred,future,rejected"
+    result.contract !== "vlab.professor-review/3"
+    || result.decisions !== "accepted,revise,deferred,future,rejected,already_supported"
     || result.reviseGuidanceRequired !== "true"
     || !result.signedOutProfessorHidden
     || !result.dialogReady
@@ -83,7 +83,7 @@ try {
   if (cdp.exceptions.length) throw new Error(`browser exceptions: ${JSON.stringify(cdp.exceptions)}`);
 
   console.log(JSON.stringify(result, null, 2));
-  console.log("Professor review smoke verified the live five-way review contract marker and signed-out access boundary.");
+  console.log("Professor review smoke verified the live six-way review contract marker and signed-out access boundary.");
 } catch (error) {
   console.error(error instanceof Error ? error.stack : String(error));
   if (cdp?.exceptions?.length) console.error("JavaScript exceptions:", cdp.exceptions);

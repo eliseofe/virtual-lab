@@ -15,7 +15,8 @@
     "The five established false-positive Eliseo request keys are reconciled without altering the genuine neighbour-visible scalar or coloured-region requests.",
     "Stable contract-path support references are validated against the same contract-root vocabulary used by extension requests.",
     "The legacy active-request catalog accepts terminal resolved entries so duplicate-prevention metadata remains coherent.",
-    "Repair preserves historical closure readback shape when no support resolution exists and keeps Professor review separate from canonical-capability creation/binding."
+    "Repair preserves historical closure readback shape when no support resolution exists and keeps Professor review separate from canonical-capability creation/binding.",
+    "Production Professor-review smoke now verifies the v3 six-way contract marker, including Already Supported."
   ],
   "close_issue": 523
 }
