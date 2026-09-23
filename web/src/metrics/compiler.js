@@ -80,7 +80,6 @@ export function metricsCompletionItems({
     ...Object.keys(LANGUAGE_CALL_SIGNATURES).map((value) => ({ value, caption: value, score: 900, meta: "supported function" })),
     ...intrinsicItems,
     ...[...STATIC_SNAPSHOT_TYPES.keys()]
-      .filter((value) => value !== "snapshot.agents")
       .map((value) => ({ value, caption: value, score: 1000, meta: "snapshot field" })),
     ...[...AGENT_FIELD_TYPES.keys()].map((field) => ({
       value: `agent.${field}`,
