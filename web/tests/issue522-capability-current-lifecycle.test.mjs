@@ -40,9 +40,9 @@ test("#522 owner-facing UI renders one current state", () => {
 });
 
 test("#522 MCP declares request_status authoritative and versions the contract", () => {
-  assert.match(mcp, /vlab\.capability-request\/9/);
+  assert.match(mcp, /vlab\.capability-request\/10/);
   assert.match(mcp, /current_request_state_authority: 'request_status'/);
   assert.match(mcp, /professor_disposition_scope: 'review_phase_only'/);
-  assert.match(metrics, /MCP_SERVER_VERSION = '3\.16\.0'/);
-  assert.match(metrics, /capability_request_interface: 'vlab\.capability-request\/9'/);
+  assert.match(metrics, /MCP_SERVER_VERSION = '3\.17\.0'/);
+  assert.match(metrics, /capability_request_interface: 'vlab\.capability-request\/10'/);
 });

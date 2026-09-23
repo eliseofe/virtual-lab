@@ -22,17 +22,20 @@ let profile = null;
 let requests = [];
 let evidenceByRequest = new Map();
 let candidateByRequest = new Map();
+let supportByRequest = new Map();
+let implementedCapabilities = [];
 let busyRequestId = null;
 
 const CANDIDATE_ARTIFACTS = ["configuration", "initialization", "controller", "metrics", "environment", "runtime"];
 
-const PROFESSOR_REVIEW_CONTRACT = "vlab.professor-review/2";
+const PROFESSOR_REVIEW_CONTRACT = "vlab.professor-review/3";
 const PROFESSOR_REVIEW_DECISIONS = Object.freeze([
   ["Accept", "accepted", true],
   ["Revise", "revise", false],
   ["Defer", "deferred", false],
   ["Future", "future", false],
   ["Reject", "rejected", false],
+  ["Already supported", "already_supported", false],
 ]);
 
 function installStyles() {
@@ -74,6 +77,11 @@ function installStyles() {
     .professor-status[data-status="revise"] { background: #fff0dd; color: #805018; }
     .professor-status[data-status="deferred"] { background: #eef1f7; color: #495c7a; }
     .professor-status[data-status="future"] { background: #f1ecf8; color: #654c7d; }
+    .professor-status[data-status="already_supported"] { background: #e7f3ec; color: #265f43; }
+    .professor-support-resolution { display: grid; gap: 6px; padding: 8px 9px; border: 1px solid #e5ebed; border-radius: 9px; background: #fafcfc; }
+    .professor-support-resolution label { display: grid; gap: 4px; color: #52666f; font-size: 10.5px; font-weight: 700; }
+    .professor-support-resolution select { min-height: 92px; border: 1px solid #cfd8dc; border-radius: 8px; padding: 6px; background: #fff; }
+    .professor-support-resolution input { border: 1px solid #cfd8dc; border-radius: 8px; padding: 7px 8px; font: inherit; }
     .professor-status[data-status="in_progress"] { background: #e8f0f6; color: #315a69; }
     .professor-status[data-status="implemented"] { background: #e7f3ec; color: #265f43; }
     .professor-request-definition { margin: 0; color: #344850; font-size: 11.5px; line-height: 1.45; }
@@ -162,7 +170,7 @@ function buildUi() {
 
   const summary = document.createElement("p");
   summary.className = "professor-inbox-summary";
-  summary.textContent = "Review the scientific need and decide Approve or Decline. Approval accepts the need into the design queue; implementation remains a separate step.";
+  summary.textContent = "Review the request: accept, revise, defer, mark future, reject, or resolve it as already supported. Implementation remains a separate step.";
   const message = document.createElement("p");
   message.className = "professor-inbox-message";
   message.setAttribute("role", "status");
@@ -235,7 +243,39 @@ function requestCurrentState(request) {
   if (request.status === "implemented" || request.status === "in_progress") return request.status;
   if (request.status === "approved") return "accepted";
   if (request.status === "declined") return "rejected";
+  if (request.status === "resolved") return "already_supported";
   return request.professor_disposition || "pending";
+}
+
+function supportForRequest(requestId) {
+  return supportByRequest.get(requestId) ?? [];
+}
+
+function supportResolutionEditor(request) {
+  const box = document.createElement("div");
+  box.className = "professor-support-resolution";
+  const capabilitiesLabel = document.createElement("label");
+  capabilitiesLabel.textContent = "Existing implemented capabilities";
+  const capabilities = document.createElement("select");
+  capabilities.multiple = true;
+  capabilities.className = "professor-support-capabilities";
+  capabilities.setAttribute("aria-label", `Existing capabilities supporting ${candidateName(request)}`);
+  for (const capability of implementedCapabilities) {
+    const option = document.createElement("option");
+    option.value = capability.id;
+    option.textContent = `${capability.capability_key} — ${capability.capability_name}`;
+    capabilities.append(option);
+  }
+  capabilitiesLabel.append(capabilities);
+
+  const contractLabel = document.createElement("label");
+  contractLabel.textContent = "Stable contract paths (optional, comma-separated)";
+  const contractPaths = document.createElement("input");
+  contractPaths.className = "professor-support-contract-paths";
+  contractPaths.placeholder = "e.g. artifacts.configuration";
+  contractLabel.append(contractPaths);
+  box.append(capabilitiesLabel, contractLabel);
+  return box;
 }
 
 function makeField(labelText, control) {
@@ -592,6 +632,7 @@ function render() {
     if (generalizationEditor) card.append(generalizationEditor);
 
     if (requestCurrentState(request) === "pending") {
+      card.append(supportResolutionEditor(request));
       const noteLabel = document.createElement("label");
       noteLabel.className = "professor-request-note-label";
       noteLabel.textContent = "Professor guidance";
@@ -612,7 +653,7 @@ function render() {
         button.textContent = label;
         button.dataset.professorDecision = decision;
         button.disabled = busy;
-        button.addEventListener("click", () => triage(request, decision, note.value));
+        button.addEventListener("click", () => triage(request, decision, note.value, card));
         actions.append(button);
       }
       note.disabled = busy;
@@ -624,6 +665,13 @@ function render() {
       if (request.professor_disposition && request.professor_disposition !== "pending") parts.push(`Professor decision: ${request.professor_disposition.replaceAll("_", " ")}`);
       if (request.professor_disposition_reviewed_at || request.reviewed_at) parts.push(formatDate(request.professor_disposition_reviewed_at || request.reviewed_at));
       if (request.professor_guidance || request.professor_notes) parts.push(`Professor guidance: ${request.professor_guidance || request.professor_notes}`);
+      const support = supportForRequest(request.id);
+      if (support.length > 0) {
+        const labels = support.map((item) => item.support_kind === "canonical_capability"
+          ? item.capability_key || item.canonical_capability_id
+          : item.contract_path);
+        parts.push(`Existing support: ${labels.join(", ")}`);
+      }
       if (request.status !== "requested") parts.push(`Technical state: ${request.status.replaceAll("_", " ")}`);
       review.textContent = parts.join(" · ") || "No Professor note.";
       card.append(review);
@@ -679,6 +727,36 @@ async function loadRequestEvidence(requestRows) {
   }
 }
 
+async function loadSupportResolutions(requestRows) {
+  supportByRequest = new Map();
+  const requestIds = requestRows.map((request) => request.id);
+  if (requestIds.length === 0) return;
+  const { data, error } = await supabase
+    .from("capability_request_support_resolutions")
+    .select("request_id,support_kind,canonical_capability_id,contract_path,created_at")
+    .in("request_id", requestIds)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  const capabilityById = new Map(implementedCapabilities.map((capability) => [capability.id, capability]));
+  for (const item of data ?? []) {
+    const capability = item.canonical_capability_id ? capabilityById.get(item.canonical_capability_id) : null;
+    const enriched = capability
+      ? { ...item, capability_key: capability.capability_key, capability_name: capability.capability_name }
+      : item;
+    const current = supportByRequest.get(item.request_id) ?? [];
+    current.push(enriched);
+    supportByRequest.set(item.request_id, current);
+  }
+}
+
+async function loadImplementedCapabilities() {
+  const { data, error } = await supabase.rpc("list_canonical_capability_registry");
+  if (error) throw error;
+  implementedCapabilities = (data ?? [])
+    .filter((capability) => capability.implementation_state === "implemented")
+    .sort((left, right) => left.capability_key.localeCompare(right.capability_key));
+}
+
 async function loadCandidateExtensions(requestRows) {
   candidateByRequest = new Map();
   const requestIds = requestRows.map((request) => request.id);
@@ -730,9 +808,11 @@ async function loadRequests() {
 
   requests = requestResult.data ?? [];
   try {
+    await loadImplementedCapabilities();
     await Promise.all([
       loadRequestEvidence(requests),
       loadCandidateExtensions(requests),
+      loadSupportResolutions(requests),
     ]);
   } catch (error) {
     evidenceByRequest = new Map();
@@ -769,9 +849,42 @@ async function generalizeCandidate(request, candidate, payload, resolveEvidence,
   }
 }
 
-async function triage(request, decision, note) {
+async function triage(request, decision, note, card) {
   if (profile?.role !== "professor" || request.status !== "requested" || request.professor_disposition !== "pending") return;
   const guidance = note.trim();
+  if (decision === "already_supported") {
+    const capabilityIds = [...card.querySelectorAll(".professor-support-capabilities option:checked")].map((option) => option.value);
+    const contractPaths = (card.querySelector(".professor-support-contract-paths")?.value || "")
+      .split(",").map((value) => value.trim()).filter(Boolean);
+    if (request.request_class === "semantic_capability" && capabilityIds.length === 0) {
+      setMessage("Already supported requires at least one implemented canonical capability for a semantic request.", "error");
+      return;
+    }
+    if (capabilityIds.length === 0 && contractPaths.length === 0) {
+      setMessage("Already supported requires machine-readable existing support.", "error");
+      return;
+    }
+    busyRequestId = request.id;
+    render();
+    setMessage("Resolving request as already supported…");
+    try {
+      const { data, error } = await supabase.rpc("resolve_extension_request_already_supported", {
+        p_request_id: request.id,
+        p_canonical_capability_ids: capabilityIds,
+        p_contract_paths: contractPaths,
+        p_professor_notes: guidance || null,
+      });
+      if (error) throw error;
+      if (!data) throw new Error("This request is no longer pending. Refresh the inbox.");
+      await loadRequests();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error), "error");
+    } finally {
+      busyRequestId = null;
+      render();
+    }
+    return;
+  }
   if (decision === "revise" && !guidance) {
     setMessage("Revise requires Professor guidance describing what must change.", "error");
     return;
@@ -782,6 +895,7 @@ async function triage(request, decision, note) {
     revise: "Sending back for revision",
     deferred: "Deferring",
     future: "Marking as future",
+    already_supported: "Resolving as already supported",
   };
   busyRequestId = request.id;
   render();

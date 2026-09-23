@@ -43,7 +43,7 @@ function pickFields(value, fields) {
 // legitimately hidden by RLS while the caller can still read their evidence
 // link and the globally shared candidate surface. Reconstruct only from those
 // already-readable sanitized surfaces; never synthesize private request data.
-export function buildClosureLinkedRequests(evidence, requests, candidateCapabilities, candidateContractDeltas) {
+export function buildClosureLinkedRequests(evidence, requests, candidateCapabilities, candidateContractDeltas, supportResolutions = []) {
   const requestsById = new Map(requests.map(request => [request.id, request]))
   const capabilitiesByRequest = new Map(
     candidateCapabilities.map(candidate => [candidate.request_id, pickFields(candidate, CAPABILITY_FIELDS)]),
@@ -51,6 +51,12 @@ export function buildClosureLinkedRequests(evidence, requests, candidateCapabili
   const deltasByRequest = new Map(
     candidateContractDeltas.map(delta => [delta.request_id, pickFields(delta, CONTRACT_DELTA_FIELDS)]),
   )
+
+  const supportByRequest = new Map()
+  for (const resolution of supportResolutions) {
+    if (!supportByRequest.has(resolution.request_id)) supportByRequest.set(resolution.request_id, [])
+    supportByRequest.get(resolution.request_id).push(resolution)
+  }
 
   const evidenceByRequest = new Map()
   for (const link of evidence) {
@@ -83,6 +89,7 @@ export function buildClosureLinkedRequests(evidence, requests, candidateCapabili
       ...(readableRequest ?? sharedFallback),
       candidate_capability: candidateCapability,
       candidate_contract_delta: candidateContractDelta,
+      support_resolution: supportByRequest.get(requestId) ?? [],
       evidence: links,
     }
   })

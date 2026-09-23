@@ -24,7 +24,7 @@ import { MCP_TOOL_COUNT, MCP_TOOL_NAMES } from './tool-surface.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
-const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/9'
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/10'
 
 const PROFESSOR_DISPOSITION_BEHAVIOR = Object.freeze({
   pending: 'Candidate exists and remains unavailable. Reuse it when it covers the need; never duplicate it.',
@@ -33,6 +33,7 @@ const PROFESSOR_DISPOSITION_BEHAVIOR = Object.freeze({
   revise: 'Professor requires reformulation. The original requester may submit a revised candidate on the same request ID using request_capability/revalidation plus the Professor guidance.',
   deferred: 'Preserve and reuse the candidate identity without resubmitting merely for a different answer. A genuinely new use case may justify renewed review.',
   future: 'Preserve and reuse the candidate as an acknowledged long-horizon direction; it is not current roadmap authorization or implemented support.',
+  already_supported: 'Professor resolved this exceptional request because deployed Lab support already satisfies the requirement. Follow support_resolution, author with that existing support, and never recreate the request as a missing capability.',
 }) as const
 
 type RegistryRole = 'student' | 'professor'
@@ -317,7 +318,7 @@ function registerExperimentTools(
     {
       title: 'Read Virtual Lab knowledge or an explicit experiment workspace',
       description:
-        'Start here for current Lab knowledge. Without experiment_id, return the authenticated identity, the stable Virtual Lab authoring/compiler contract, implemented canonical capabilities with concrete authoring surfaces, candidate_capabilities, and candidate_contract_deltas. Implemented support alone drives authoring acceptance; every candidate remains unavailable. Compare unsupported requirements with both candidate catalogs before creating a request: covered candidates receive new evidence; related-but-too-narrow candidates receive generalization-needed evidence; only genuinely absent needs create one new structured candidate/request. Set include_workspace_index=true only when Experiment discovery is needed. With experiment_id, return that visible Experiment and Results presentation. This tool never writes.',
+        'Start here for current Lab knowledge. Without experiment_id, return the authenticated identity, the stable Virtual Lab authoring/compiler contract, implemented canonical capabilities with concrete authoring surfaces, candidate_capabilities, and candidate_contract_deltas. Implemented support alone drives authoring acceptance. Candidates marked candidate_unavailable remain unsupported; candidates marked resolved_supported carry machine-readable support_resolution and must be authored using that deployed support rather than re-requested. Compare unsupported requirements with both candidate catalogs before creating a request: covered candidates receive new evidence; related-but-too-narrow candidates receive generalization-needed evidence; only genuinely absent needs create one new structured candidate/request. Set include_workspace_index=true only when Experiment discovery is needed. With experiment_id, return that visible Experiment and Results presentation. This tool never writes.',
       inputSchema: {
         experiment_id: z.string().uuid().optional(),
         include_workspace_index: z.boolean().default(false),
@@ -379,7 +380,7 @@ function registerExperimentTools(
       const { data: candidateCapabilities, error: candidateCapabilitiesError } = await supabase
         .from('candidate_capabilities')
         .select('request_id, capability_key, capability_domain, capability_name, canonical_definition, target_artifact, target_runtime_domain, authoring_surfaces, availability, request_status, professor_disposition, professor_guidance, request_created_at, request_updated_at, generalization_revision, generalized_at')
-        .eq('availability', 'candidate_unavailable')
+        .in('availability', ['candidate_unavailable', 'resolved_supported'])
         .order('request_updated_at', { ascending: false })
       if (candidateCapabilitiesError) {
         return toolError('Could not read candidate Virtual Lab capabilities.', candidateCapabilitiesError.message)
@@ -388,18 +389,47 @@ function registerExperimentTools(
       const { data: candidateContractDeltas, error: candidateContractDeltasError } = await supabase
         .from('candidate_contract_deltas')
         .select('request_id, request_class, delta_key, delta_name, target_contract_path, requested_change, availability, request_status, professor_disposition, professor_guidance, request_created_at, request_updated_at, generalization_revision, generalized_at')
-        .eq('availability', 'candidate_unavailable')
+        .in('availability', ['candidate_unavailable', 'resolved_supported'])
         .order('request_updated_at', { ascending: false })
       if (candidateContractDeltasError) {
         return toolError('Could not read candidate Virtual Lab contract deltas.', candidateContractDeltasError.message)
       }
 
+      const candidateRequestIds = [...new Set([
+        ...(candidateCapabilities ?? []).map((candidate: any) => candidate.request_id),
+        ...(candidateContractDeltas ?? []).map((candidate: any) => candidate.request_id),
+      ])]
+      let supportResolutions: any[] = []
+      if (candidateRequestIds.length > 0) {
+        const { data, error } = await supabase
+          .from('capability_request_support_resolutions')
+          .select('request_id,support_kind,canonical_capability_id,contract_path,created_at')
+          .in('request_id', candidateRequestIds)
+          .order('created_at', { ascending: true })
+        if (error) return toolError('Could not read existing-support request resolutions.', error.message)
+        supportResolutions = data ?? []
+      }
+      const supportByRequest = new Map<string, any[]>()
+      for (const resolution of supportResolutions) {
+        const current = supportByRequest.get(resolution.request_id) ?? []
+        current.push(resolution)
+        supportByRequest.set(resolution.request_id, current)
+      }
+      const candidateCapabilitiesWithSupport = (candidateCapabilities ?? []).map((candidate: any) => ({
+        ...candidate,
+        support_resolution: supportByRequest.get(candidate.request_id) ?? [],
+      }))
+      const candidateContractDeltasWithSupport = (candidateContractDeltas ?? []).map((candidate: any) => ({
+        ...candidate,
+        support_resolution: supportByRequest.get(candidate.request_id) ?? [],
+      }))
+
       const neutralLabKnowledge = {
         identity,
         authoring,
         capability_registry: discoverableCapabilityRegistry,
-        candidate_capabilities: candidateCapabilities ?? [],
-        candidate_contract_deltas: candidateContractDeltas ?? [],
+        candidate_capabilities: candidateCapabilitiesWithSupport,
+        candidate_contract_deltas: candidateContractDeltasWithSupport,
       }
 
       if (!include_workspace_index) return toolResult(neutralLabKnowledge)
@@ -782,11 +812,19 @@ function registerExperimentTools(
             return toolError('Could not read linked candidate contract deltas.', candidateContractDeltasError.message)
           }
 
+          const { data: supportResolutions, error: supportError } = await supabase
+            .from('capability_request_support_resolutions')
+            .select('request_id,support_kind,canonical_capability_id,contract_path,created_at')
+            .in('request_id', requestIds)
+            .order('created_at', { ascending: true })
+          if (supportError) return toolError('Could not read existing-support request resolutions.', supportError.message)
+
           linkedRequests = buildClosureLinkedRequests(
             evidence ?? [],
             requests ?? [],
             candidateCapabilities ?? [],
             candidateContractDeltas ?? [],
+            supportResolutions ?? [],
           )
         }
       }
@@ -809,7 +847,7 @@ function registerExperimentTools(
     {
       title: 'Revalidate a whole blocked Experiment against the current capability contract',
       description:
-        'Student/Professor research-AI action. Re-analyse the entire preserved Experiment against implemented capabilities, candidate_capabilities, candidate_contract_deltas, and the stable Lab contract. A Student revalidates their own blocked Experiment; a Professor may also supervise a visible blocked Experiment. Respect Professor dispositions/guidance: reuse unavailable candidates without duplicating them, and when your own candidate is marked revise you may reformulate the same identity in this request. Candidate presence never makes validation pass. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
+        'Student/Professor research-AI action. Re-analyse the entire preserved Experiment against implemented capabilities, candidate_capabilities, candidate_contract_deltas, existing-support resolutions, and the stable Lab contract. A Student revalidates their own blocked Experiment; a Professor may also supervise a visible blocked Experiment. Respect Professor dispositions/guidance: reuse unavailable candidates without duplicating them, and when your own candidate is marked revise you may reformulate the same identity in this request. Candidate presence never makes validation pass. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid(),
         base_analysis_sequence: z.number().int().positive(),

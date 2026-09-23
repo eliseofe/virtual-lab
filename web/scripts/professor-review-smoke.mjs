@@ -33,8 +33,8 @@ async function waitProfessorReviewContract(send) {
       };
     })())`));
     if (
-      latest.contract === "vlab.professor-review/2"
-      && latest.decisions === "accepted,revise,deferred,future,rejected"
+      latest.contract === "vlab.professor-review/3"
+      && latest.decisions === "accepted,revise,deferred,future,rejected,already_supported"
       && latest.reviseGuidanceRequired === "true"
       && latest.signedOutProfessorHidden
       && latest.dialogReady

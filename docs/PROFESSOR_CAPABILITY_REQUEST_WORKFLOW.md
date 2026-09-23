@@ -113,13 +113,13 @@ The developer-side standing boundary is:
 
 The production Lab includes the Professor-only request inbox/triage path implemented under #139 / #58.3.
 
-Professor can review pending requests and transition only `requested → approved` or `requested → declined` through the user-facing triage flow, with durable reviewer/time/note data. Approval accepts the scientific/product need into the design queue. Student users receive the sanitized active-request catalog for research-AI reconciliation while the Professor triage queue and its review data remain Professor-only.
+Professor can review pending requests and transition only `requested → approved`, `requested → declined`, or exceptional `requested → resolved` through the user-facing triage flow, with durable reviewer/time/note data. Approval accepts the scientific/product need into the design queue. Student users receive the sanitized active-request catalog for research-AI reconciliation while the Professor triage queue and its review data remain Professor-only.
 
 This UI remains an Experiment/product administration surface. It does not embed GitHub credentials or turn the browser into a simulator-development client.
 
 ## Research-AI request action — deployed
 
-Authenticated Student and Professor MCP sessions expose the durable closure path under `vlab.capability-request/9`: `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure`.
+Authenticated Student and Professor MCP sessions expose the durable closure path under `vlab.capability-request/10`: `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure`.
 
 Normal no-ID `read_workspace` discovery exposes the stable authoring/platform contract, implemented canonical capabilities, unavailable candidate capabilities, and unavailable candidate contract deltas as distinct product surfaces.
 
@@ -194,10 +194,19 @@ Current intended loop:
 5. The authenticated research AI preserves one durable blocked Experiment/closure analysis and compares each clear gap with the active-extension catalog.
 6. A covering candidate receives linked evidence; a related but too-narrow candidate receives `generalization_needed` evidence; neither creates a second request.
 7. A genuinely absent need creates one structured candidate/request, which appears once in the Professor inbox regardless of how many papers later attach evidence.
-8. Professor approves/declines the request; approval accepts the need into developer design.
+8. Professor reviews the request. Normal outcomes accept/reject/revise/defer/future; exceptionally, Already Supported resolves a false-positive request against machine-readable deployed support without entering development.
 9. Developer generalization/reconciliation resolves semantic requests to existing or new canonical capability identity as appropriate, followed by explicit owner implementation authorization.
 10. Trusted developer implements/deploys if authorized.
 11. Deployed versioned contract advertises implemented semantic capability truth; fulfilled request state is recorded.
 12. The owning Student research AI, or a supervising Professor research AI, resumes the durable blocked Experiment and revalidates the whole Experiment against the current deployed contract; it becomes unblocked only when the intended semantics are fully representable with no unresolved ambiguity.
 
 This lets real papers expose simulator gaps without giving research AI development privileges, blocking Student requests, or encouraging paper-specific hacks.
+
+
+## Already Supported exceptional resolution
+
+`already_supported` is a Professor review outcome for the exceptional case where a durable request was created but the requirement is already expressible by deployed Lab support. It is not a synonym for Reject. The request moves to terminal lifecycle `resolved`, preserves its review history and scientific provenance, and stores normalized support-resolution rows pointing to one or more implemented canonical capabilities and/or stable contract paths.
+
+Research AI receives those support-resolution rows through neutral candidate discovery and durable closure resume. A `resolved_supported` candidate is not an unavailable feature: the AI must author with the cited deployed support and must not recreate the request.
+
+This is a recovery path, not the desired normal flow. Issue #524 is the known successor that will represent supported paper/Experiment requirements directly during closure analysis so they normally never become requests.

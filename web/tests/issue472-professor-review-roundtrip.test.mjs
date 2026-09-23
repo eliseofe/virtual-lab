@@ -20,13 +20,14 @@ const inbox = readFileSync(new URL("../src/professor-inbox.js", import.meta.url)
 const manifest = JSON.parse(readFileSync(new URL("../product-surface.json", import.meta.url), "utf8"));
 const smoke = readFileSync(new URL("../scripts/professor-review-smoke.mjs", import.meta.url), "utf8");
 
-test("#472 keeps exactly five Professor decisions plus pending as system state", () => {
+test("#472 Professor decision surface remains extensible plus pending as system state", () => {
   for (const pair of [
     '["Accept", "accepted", true]',
     '["Reject", "rejected", false]',
     '["Revise", "revise", false]',
     '["Defer", "deferred", false]',
     '["Future", "future", false]',
+    '["Already supported", "already_supported", false]',
   ]) assert.ok(inbox.includes(pair), pair);
   assert.match(inbox, /requestCurrentState\(request\) === "pending"/);
   assert.match(inbox, /Professor guidance/);
@@ -81,7 +82,7 @@ test("#472 revision wrappers keep closure submission atomic and existing tools",
 
 test("#472 MCP exposes sanitized Professor disposition and guidance with revision semantics", () => {
   assert.match(mcp, /PROFESSOR_DISPOSITION_BEHAVIOR/);
-  for (const disposition of ["pending", "accepted", "rejected", "revise", "deferred", "future"]) {
+  for (const disposition of ["pending", "accepted", "rejected", "revise", "deferred", "future", "already_supported"]) {
     assert.ok(mcp.includes(disposition + ": '"), disposition);
   }
   assert.match(mcp, /revised_candidate_capability/);
@@ -109,7 +110,7 @@ test("#472 production manifest includes deterministic live-contract browser smok
   assert.equal(surface.state, "active");
   assert.equal(surface.smoke[0].script, "web/scripts/professor-review-smoke.mjs");
   assert.match(smoke, /dataset\.vlabProfessorReviewContract/);
-  assert.match(smoke, /accepted,revise,deferred,future,rejected/);
+  assert.match(smoke, /accepted,revise,deferred,future,rejected,already_supported/);
   assert.match(smoke, /vlabProfessorReviseGuidanceRequired/);
   assert.match(smoke, /waitProfessorReviewContract/);
   assert.match(smoke, /attempt < 250/);

@@ -1,21 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Capability requests now have one unambiguous current lifecycle",
-  "owner_impact": "Accepted now means accepted and still waiting in the design queue. As soon as development starts, the current request becomes in progress; once deployed it becomes implemented. Completed requests no longer remain simultaneously accepted. The original Professor acceptance is still preserved in audit history, including reviewer, time and guidance.",
+  "outcome": "Professor review can now resolve false-positive capability requests as Already Supported",
+  "owner_impact": "Already Supported is now a sixth Professor response, distinct from Reject and distinct from request lifecycle. It closes an erroneous missing-capability request as resolved and records exactly which deployed canonical capabilities or stable contract paths satisfy it. The five known false-positive Eliseo requests are reconciled through that mechanism; the genuine neighbour-visible scalar request and explicitly requested coloured-region feature remain pending.",
   "next": {
-    "kind": "scope_complete",
-    "disposition": "closed",
-    "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "The lifecycle-consistency fix is complete. No owner action is required; future capability-request summaries should classify requests from their current lifecycle state rather than historical Professor decisions."
+    "kind": "epic_continues",
+    "issue": 524,
+    "text": "Issue #524 is the known successor and has not started yet. It will change closure analysis so already-supported paper/Experiment requirements are recorded directly as support evidence before request creation, making this sixth response an exceptional recovery path rather than routine cleanup."
   },
   "technical_evidence": [
-    "Database constraints forbid accepted disposition on in-progress or implemented requests.",
-    "Development claim/completion functions clear the live accepted disposition automatically while append-only Professor review history remains unchanged.",
-    "Existing implemented requests are reconciled to implemented-only current state.",
-    "Professor inbox renders the canonical current lifecycle, and MCP capability-request interface v9 declares request_status as the current-state authority.",
-    "Every MCP capability-request contract reference is aligned on vlab.capability-request/9.",
-    "Historical regression tests were advanced from the superseded v8/3.15 and disposition-as-current-state contract to the v9/3.16 single-current-lifecycle contract.",
-    "Migration ordering is guarded: the legacy consistency rule is dropped before advanced rows are normalized, and the stricter rule is installed only afterward."
+    "Request status gains terminal resolved while Professor disposition gains already_supported; the two axes remain constrained separately.",
+    "Normalized support-resolution rows cite one or more implemented canonical capabilities and/or stable contract paths.",
+    "Candidate mirrors expose resolved_supported and MCP capability-request interface v10 returns support_resolution to research AI.",
+    "Professor review UI contract v3 exposes the sixth action with machine-readable support selection.",
+    "The five established false-positive Eliseo request keys are reconciled without altering the genuine neighbour-visible scalar or coloured-region requests."
   ],
-  "close_issue": 522
+  "close_issue": 523
 }
