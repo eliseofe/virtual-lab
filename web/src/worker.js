@@ -1,3 +1,4 @@
+import { METRIC_OBSERVATION_FIELDS } from "./metrics/compiler.js";
 import { RuntimePacer } from "./runtime/scheduler.js";
 
 let simulation = null;
@@ -25,13 +26,7 @@ const EMPTY_METRICS_IR = Object.freeze({
   measurement_phase: "post-physics-wrapped-state/1",
   observation_contract: {
     mode: "read-only-global-snapshot",
-    fields: [
-      "snapshot.scientific_time",
-      "snapshot.agent_count",
-      "snapshot.agents[].position",
-      "snapshot.agents[].heading",
-      "snapshot.agents[].heading_angle",
-    ],
+    fields: [...METRIC_OBSERVATION_FIELDS],
   },
   metrics: [],
 });
