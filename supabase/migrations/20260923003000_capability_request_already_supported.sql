@@ -69,7 +69,7 @@ create table if not exists public.capability_request_support_resolutions (
   ),
   check (
     contract_path is null
-    or contract_path ~ '^(runtime_contract|artifacts\\.(configuration|initialization|controller|metrics)|artifact_execution|diagnostic_model|execution_boundary|results_presentation)(\\.|$)'
+    or contract_path ~ '^(runtime_contract|artifacts\.(configuration|initialization|controller|metrics)|artifact_execution|diagnostic_model|execution_boundary|results_presentation)(\.|$)'
   )
 );
 
