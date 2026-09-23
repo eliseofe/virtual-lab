@@ -1081,6 +1081,11 @@ impl ControllerRuntime for IrControllerRuntime {
             &mut self.scratch_eval_stack,
         ).expect("validated controller always returns an action")
     }
+
+    fn scientific_private_state_value(&self, agent_index: usize, name: &str) -> Option<f64> {
+        let slot = self.private_state_slots.get(name).copied()?;
+        self.private_state.get(agent_index)?.get(slot).copied()
+    }
 }
 
 #[cfg(test)]
