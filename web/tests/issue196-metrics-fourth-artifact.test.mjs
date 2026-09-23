@@ -4,7 +4,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { compileMetrics } from "../src/metrics/compiler.js";
+import { compileMetrics, METRIC_OBSERVATION_FIELDS } from "../src/metrics/compiler.js";
+import { compileMetrics as compileEdgeMetrics } from "../../supabase/functions/experiment-mcp/vendor/metrics-compiler.js";
 import {
   AUTHORING_CONTRACT,
   normalizeExperimentArtifacts,
@@ -111,4 +112,67 @@ test("#196 browser artifact adapter gives Metrics the same metadata-driven edito
   assert.match(browser, /artifactEditorFor/);
   assert.doesNotMatch(browser, /editorSelector/);
   assert.doesNotMatch(browser, /dynamicEditorFor/);
+});
+
+
+const completeScientificSnapshotMetric = `@metric(id="snapshot.complete", name="Complete snapshot", unit=None, sampling=final())
+def complete(snapshot):
+    total = snapshot.physics_ticks + snapshot.control_updates + snapshot.config.N
+    for agent in snapshot.agents:
+        total += agent.index
+        total += dot(agent.position, Vec2(1.0, 0.0))
+        total += dot(agent.velocity, Vec2(1.0, 0.0))
+        total += agent.angular_velocity
+        total += agent.heading_angle
+        total += agent.action.forward
+        total += agent.action.turning
+        total += agent.private_state.energy
+    total += norm(snapshot.references.goal.position)
+    total += environment_scalar_at(Vec2(0.0, 0.0))
+    return total
+`;
+
+test("#525 Metrics compiler exposes one complete scientific snapshot contract and mirrors MCP", () => {
+  const context = {
+    parameters: { N: "scalar" },
+    references: ["goal"],
+    agentState: { energy: "scalar" },
+    runtimeCapabilities: ["environment_scalar"],
+  };
+  const browser = compileMetrics(completeScientificSnapshotMetric, context);
+  const edge = compileEdgeMetrics(completeScientificSnapshotMetric, context);
+  assert.deepEqual(edge, browser);
+  assert.equal(browser.observation_contract.mode, "read-only-global-snapshot");
+  for (const field of [
+    "snapshot.agents[].velocity",
+    "snapshot.agents[].angular_velocity",
+    "snapshot.agents[].action.forward",
+    "snapshot.agents[].private_state.energy",
+    "snapshot.config.N",
+    "snapshot.references.goal.position",
+  ]) assert.ok(browser.observation_contract.fields.includes(field), field);
+  assert.ok(browser.observation_contract.intrinsics.includes("environment_scalar_at"));
+});
+
+test("#525 static Metrics snapshot schema is capability-owned and dynamic projections stay explicit", () => {
+  for (const field of [
+    "snapshot.scientific_time",
+    "snapshot.physics_ticks",
+    "snapshot.control_updates",
+    "snapshot.agent_count",
+    "snapshot.agents[].position",
+    "snapshot.agents[].velocity",
+    "snapshot.agents[].angular_velocity",
+    "snapshot.agents[].action.forward",
+  ]) assert.ok(METRIC_OBSERVATION_FIELDS.includes(field), field);
+
+  const context = { parameters: { N: "scalar" }, references: ["goal"], agentState: { energy: "scalar" } };
+  assert.throws(
+    () => compileMetrics(completeScientificSnapshotMetric, { ...context, runtimeCapabilities: [] }),
+    /snapshot function 'environment_scalar_at' is unavailable/,
+  );
+  assert.throws(
+    () => compileMetrics(completeScientificSnapshotMetric, { ...context, agentState: {}, runtimeCapabilities: ["environment_scalar"] }),
+    /unknown agent private scientific state 'energy'/,
+  );
 });
