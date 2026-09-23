@@ -919,8 +919,8 @@ mod tests {
 
     fn state() -> Vec<crate::AgentPhysicalState> {
         vec![
-            crate::crate::AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
-            crate::crate::AgentPhysicalState { position: Vec2::new(1.0, 0.0), heading_angle: 0.5 },
+            crate::AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+            crate::AgentPhysicalState { position: Vec2::new(1.0, 0.0), heading_angle: 0.5 },
         ]
     }
 
