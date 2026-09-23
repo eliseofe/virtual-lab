@@ -190,6 +190,7 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
         symbol: "environment_scalar_at",
         syntax: "environment_scalar_at(position)",
         signature: { args: ["vec2"], result: "scalar" },
+        availability: "environment_scalar",
       },
     ],
   }),
