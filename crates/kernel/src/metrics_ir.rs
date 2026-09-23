@@ -1285,4 +1285,93 @@ mod tests {
         assert_eq!(batch["samples"][0]["value"], 2.0);
     }
 
+
+    #[test]
+    fn complete_scientific_snapshot_reports_measured_state_without_reconstruction() {
+        let controller_ir = r#"{
+          "schema":"vlab.controller-ir/0.1",
+          "language":"python-vlab/0.1",
+          "controller":"Measured",
+          "entry":"step",
+          "parameters":{},
+          "state":[{"name":"energy","type":"scalar","initial":1.0}],
+          "body":[
+            {"kind":"aug_assign","target":"self.energy","op":"+","value":{"kind":"const","value":1.0}},
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"const","value":2.0},
+              {"kind":"const","value":1.5707963267948966}
+            ]}}
+          ]
+        }"#;
+        let controller = IrControllerRuntime::from_json(controller_ir, "{}").unwrap();
+        let initialization = crate::SwarmInitialization {
+            state: vec![crate::AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.0 }],
+        };
+        let config = crate::SimulationConfig {
+            seed: 1,
+            physics_dt: 1.0,
+            control_dt: 1.0,
+            metric_dt: 1.0,
+            interaction_radius: 1.0,
+            arena_size: 100.0,
+            sensor_noise: 0.0,
+            max_forward_speed: 10.0,
+            max_angular_speed: 10.0,
+        };
+        let environment = EnvironmentRuntime::from_json(r#"{
+          "schema":"vlab.environment-scalar-ir/0.1",
+          "language":"python-vlab/0.1",
+          "entry":"environmental_scalar(x, y, config)",
+          "expression":{"kind":"binary","op":"+","left":{"kind":"x"},"right":{"kind":"y"}}
+        }"#).unwrap();
+        let mut simulation = Simulation::new_with_environment(initialization, config, controller, environment).unwrap();
+        simulation.advance_physics_ticks(1);
+
+        let snapshot = simulation.scientific_snapshot();
+        assert!((snapshot.agents[0].heading_angle - std::f64::consts::FRAC_PI_2).abs() < 1e-12);
+        assert!((snapshot.kinematics[0].velocity.x - 2.0).abs() < 1e-12);
+        assert!(snapshot.kinematics[0].velocity.y.abs() < 1e-12);
+        assert!((snapshot.kinematics[0].angular_velocity - std::f64::consts::FRAC_PI_2).abs() < 1e-12);
+        assert_eq!(snapshot.agent_private_scalar(0, "energy"), Some(2.0));
+        assert_eq!(snapshot.sample_environment(Vec2::new(3.0, 4.0)), Some(7.0));
+
+        let metrics_ir = r#"{
+          "schema":"vlab.metrics-ir/0.1",
+          "language":"python-vlab-metrics/0.1",
+          "measurement_phase":"post-physics-wrapped-state/1",
+          "metrics":[{
+            "id":"snapshot.probe","name":"Snapshot probe","unit":null,
+            "sampling":{"kind":"final"},"function":"probe",
+            "body":[
+              {"kind":"assign","target":"total","value":{"kind":"binary","op":"+",
+                "left":{"kind":"load","path":"snapshot.physics_ticks"},
+                "right":{"kind":"load","path":"snapshot.control_updates"}}},
+              {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"snapshot.config.N"}},
+              {"kind":"for_each","variable":"agent","iterable":{"kind":"load","path":"snapshot.agents"},"body":[
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.index"}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"call","name":"dot","args":[
+                  {"kind":"load","path":"agent.velocity"},
+                  {"kind":"call","name":"Vec2","args":[{"kind":"const","value":1.0},{"kind":"const","value":0.0}]}
+                ]}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.angular_velocity"}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.action.forward"}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.action.turning"}},
+                {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"agent.private_state.energy"}}
+              ]},
+              {"kind":"aug_assign","target":"total","op":"+","value":{"kind":"call","name":"environment_scalar_at","args":[
+                {"kind":"call","name":"Vec2","args":[{"kind":"const","value":3.0},{"kind":"const","value":4.0}]}
+              ]}},
+              {"kind":"return","value":{"kind":"load","path":"total"}}
+            ]
+          }]
+        }"#;
+        let mut metrics = IrMetricsRuntime::from_json(metrics_ir, r#"{"N":1.0}"#, 1.0).unwrap();
+        metrics.finalize(&snapshot).unwrap();
+        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        let value = batch["samples"][0]["value"].as_f64().unwrap();
+        let expected = 1.0 + 1.0 + 1.0 + 2.0 + std::f64::consts::FRAC_PI_2
+            + 2.0 + std::f64::consts::FRAC_PI_2 + 2.0 + 7.0;
+        assert!((value - expected).abs() < 1e-12);
+    }
+
 }
