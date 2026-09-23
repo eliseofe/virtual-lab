@@ -15,13 +15,13 @@ import {
   pruneMetricFromPanels,
 } from './results-authoring.js'
 
-export const MCP_SERVER_VERSION = '3.17.0'
+export const MCP_SERVER_VERSION = '3.18.0'
 export const MCP_INTERFACE_VERSION = '17'
 export const MCP_AUTHORING_CONTRACT = Object.freeze({
   ...BASE_AUTHORING_CONTRACT,
   contract_version: 'vlab.authoring/0.9',
   experiment_interface_version: MCP_INTERFACE_VERSION,
-  capability_request_interface: 'vlab.capability-request/10',
+  capability_request_interface: 'vlab.capability-request/11',
   results_presentation: RESULTS_PRESENTATION_CONTRACT,
 })
 
@@ -72,7 +72,7 @@ function validationForRole(validation: any, role: 'student' | 'professor') {
     extension_request_behavior: {
       requestable: true,
       action: 'request_capability',
-      capability_request_interface: 'vlab.capability-request/10',
+      capability_request_interface: 'vlab.capability-request/11',
       request_classes: [
         'semantic_capability',
         'authoring_language',
@@ -83,6 +83,11 @@ function validationForRole(validation: any, role: 'student' | 'professor') {
       ],
       diagnostic_request_classes: requestClasses,
       canonical_registry_first: true,
+      stable_contract_first: true,
+      classify_requirements_before_request: true,
+      supported_requirement_policy: 'record_support_without_request',
+      unsupported_requirement_policy: 'candidate_request_required',
+      ambiguous_requirement_policy: 'blocking_without_request',
       active_request_catalog_first: true,
       reuse_when_plausibly_covered: true,
       new_request_threshold: 'clearly_materially_distinct',

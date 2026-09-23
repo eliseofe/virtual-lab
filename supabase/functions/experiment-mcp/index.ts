@@ -24,7 +24,7 @@ import { MCP_TOOL_COUNT, MCP_TOOL_NAMES } from './tool-surface.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
-const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/10'
+const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/11'
 
 const PROFESSOR_DISPOSITION_BEHAVIOR = Object.freeze({
   pending: 'Candidate exists and remains unavailable. Reuse it when it covers the need; never duplicate it.',
@@ -73,11 +73,34 @@ const ARTIFACT_INPUT = z.object({
   content: z.string(),
 })
 
+const CLOSURE_SUPPORT_REFERENCE_INPUT = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('canonical_capability'),
+    canonical_capability_id: z.string().uuid().describe(
+      'ID of an implemented capability returned by read_workspace capability_registry.',
+    ),
+  }),
+  z.object({
+    kind: z.literal('contract_path'),
+    contract_path: z.string().min(1).max(500).describe(
+      'Stable authoring/platform contract path that already represents the requirement.',
+    ),
+  }),
+])
+
 const CLOSURE_REQUIREMENT_INPUT = z.object({
   key: z.string().min(1).max(120),
   summary: z.string().min(1).max(4000),
   evidence: z.string().min(1).max(12000),
-  resolution_status: z.enum(['clear', 'ambiguous']),
+  classification: z.enum(['supported', 'unsupported', 'ambiguous']),
+  support: z.array(CLOSURE_SUPPORT_REFERENCE_INPUT).max(20).default([]),
+}).superRefine((requirement, ctx) => {
+  if (requirement.classification === 'supported' && requirement.support.length === 0) {
+    ctx.addIssue({ code: 'custom', path: ['support'], message: 'Supported requirements must cite deployed support.' })
+  }
+  if (requirement.classification !== 'supported' && requirement.support.length > 0) {
+    ctx.addIssue({ code: 'custom', path: ['support'], message: 'Only supported requirements may cite deployed support.' })
+  }
 })
 
 const CLOSURE_AMBIGUITY_INPUT = z.object({
@@ -242,6 +265,11 @@ function extensionRequestBehavior(role: RegistryRole) {
     capability_request_interface: CAPABILITY_REQUEST_INTERFACE,
     request_classes: EXTENSION_REQUEST_CLASSES,
     canonical_registry_first: true,
+    stable_contract_first: true,
+    classify_requirements_before_request: true,
+    supported_requirement_policy: 'record_support_without_request',
+    unsupported_requirement_policy: 'candidate_request_required',
+    ambiguous_requirement_policy: 'blocking_without_request',
     candidate_capability_catalog_first: true,
     candidate_contract_delta_catalog_first: true,
     reuse_when_candidate_covers: true,
@@ -666,7 +694,7 @@ function registerExperimentTools(
     {
       title: 'Preserve and route unsupported Virtual Lab science through durable closure',
       description:
-        'Student/Professor research-AI continuation when the intended scientific task requires support outside the current Lab contract. When the Lab already represents the required semantics exactly, author normally. Otherwise preserve the whole intended Experiment and closure analysis. Compare each clear unsupported requirement against implemented support plus candidate_capabilities and candidate_contract_deltas. If a candidate covers the need, reuse its request_id and attach evidence. If it is related but too narrow or ambiguous, reuse it with relationship=generalization_needed and explain why; this creates no new Professor-facing request. Only a genuinely absent need creates one new structured candidate: semantic_capability carries a complete candidate capability including its concrete authoring surfaces, while the other five classes carry a candidate contract delta against a precise stable-contract path. Candidates remain unavailable to validation until implementation. The task remains blocked on durable closure state until whole-Experiment revalidation finds no unsupported requirement or unresolved ambiguity. Submission grants no development authority.',
+        'Student/Professor research-AI continuation for a whole paper/Experiment requirement analysis. Classify every identified requirement first as supported, unsupported, or ambiguous. Supported requirements must cite deployed canonical capability IDs and/or stable authoring/platform contract paths and create no request. Unsupported requirements must then be linked to a reused unavailable candidate or a genuinely new candidate/request; related-but-too-narrow candidates use relationship=generalization_needed. Ambiguous requirements create no request and remain explicitly blocking. Preserve the whole intended Experiment and publication context. Candidates remain unavailable to validation until implementation. The task remains blocked until whole-Experiment revalidation contains no unsupported or ambiguous requirements. Submission grants no development authority.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid().optional(),
         origin_experiment_id: z.string().uuid().optional(),
@@ -716,7 +744,7 @@ function registerExperimentTools(
         )
       }
 
-      const { data, error } = await supabase.rpc('submit_structured_extension_closure_v8', {
+      const { data, error } = await supabase.rpc('submit_structured_extension_closure_v11', {
         p_blocked_experiment_id: blocked_experiment_id ?? null,
         p_origin_experiment_id: origin_experiment_id ?? null,
         p_origin_experiment_revision: origin_revision ?? null,
@@ -728,7 +756,7 @@ function registerExperimentTools(
         p_publication_title: publication.title,
         p_contract_version: AUTHORING_CONTRACT.contract_version,
         p_analysis_status: analysis_status,
-        p_identified_requirements: identified_requirements,
+        p_classified_requirements: identified_requirements,
         p_unresolved_ambiguities: unresolved_ambiguities,
         p_requests: requests,
       })
@@ -778,6 +806,42 @@ function registerExperimentTools(
 
       const analysisHistory = analyses ?? []
       const analysisIds = analysisHistory.map((analysis: { id: string }) => analysis.id)
+      let classifiedRequirementHistory: unknown[] = []
+      if (analysisIds.length > 0) {
+        const { data: requirementRows, error: requirementError } = await supabase
+          .from('capability_closure_requirements')
+          .select('closure_analysis_id,requirement_key,summary,evidence,classification,created_at')
+          .in('closure_analysis_id', analysisIds)
+          .order('created_at', { ascending: true })
+        if (requirementError) return toolError('Could not read classified closure requirements.', requirementError.message)
+
+        const { data: supportRows, error: requirementSupportError } = await supabase
+          .from('capability_closure_requirement_support')
+          .select('closure_analysis_id,requirement_key,support_kind,canonical_capability_id,contract_path,created_at')
+          .in('closure_analysis_id', analysisIds)
+          .order('created_at', { ascending: true })
+        if (requirementSupportError) {
+          return toolError('Could not read classified requirement support evidence.', requirementSupportError.message)
+        }
+
+        const supportByRequirement = new Map<string, unknown[]>()
+        for (const support of supportRows ?? []) {
+          const key = `${support.closure_analysis_id}:${support.requirement_key}`
+          const current = supportByRequirement.get(key) ?? []
+          current.push(support)
+          supportByRequirement.set(key, current)
+        }
+        classifiedRequirementHistory = analysisHistory.map((analysis: any) => ({
+          analysis_id: analysis.id,
+          analysis_sequence: analysis.analysis_sequence,
+          requirements: (requirementRows ?? [])
+            .filter((requirement: any) => requirement.closure_analysis_id === analysis.id)
+            .map((requirement: any) => ({
+              ...requirement,
+              support: supportByRequirement.get(`${analysis.id}:${requirement.requirement_key}`) ?? [],
+            })),
+        }))
+      }
       let linkedRequests: unknown[] = []
       if (analysisIds.length > 0) {
         const { data: evidence, error: evidenceError } = await supabase
@@ -836,6 +900,7 @@ function registerExperimentTools(
         blocked_experiment: blockedExperiment,
         analysis_history: analysisHistory,
         latest_analysis: analysisHistory.length > 0 ? analysisHistory[analysisHistory.length - 1] : null,
+        classified_requirement_history: classifiedRequirementHistory,
         linked_requests: linkedRequests,
         revalidate_with: 'revalidate_capability_closure',
       })
@@ -847,7 +912,7 @@ function registerExperimentTools(
     {
       title: 'Revalidate a whole blocked Experiment against the current capability contract',
       description:
-        'Student/Professor research-AI action. Re-analyse the entire preserved Experiment against implemented capabilities, candidate_capabilities, candidate_contract_deltas, existing-support resolutions, and the stable Lab contract. A Student revalidates their own blocked Experiment; a Professor may also supervise a visible blocked Experiment. Respect Professor dispositions/guidance: reuse unavailable candidates without duplicating them, and when your own candidate is marked revise you may reformulate the same identity in this request. Candidate presence never makes validation pass. Use analysis_status=unblocked only when no unsupported requirements and no unresolved scientific ambiguity remain.',
+        'Student/Professor research-AI action. Re-analyse the entire preserved Experiment by classifying every requirement against implemented capabilities and the stable Lab contract before considering unavailable candidates. Supported requirements cite machine-readable deployed support and create no request. Unsupported requirements must link to reused/new unavailable candidates; ambiguous requirements stay blocking without requests. Respect Professor dispositions/guidance and preserve same-candidate revision semantics. Use analysis_status=unblocked only when every recorded requirement is supported and no ambiguity or request remains.',
       inputSchema: {
         blocked_experiment_id: z.string().uuid(),
         base_analysis_sequence: z.number().int().positive(),
@@ -866,25 +931,27 @@ function registerExperimentTools(
       unresolved_ambiguities,
       requests,
     }) => {
+      const unsupportedRequirements = identified_requirements.filter((requirement) => requirement.classification === 'unsupported')
+      const ambiguousRequirements = identified_requirements.filter((requirement) => requirement.classification === 'ambiguous')
       if (
         analysis_status === 'unblocked'
-        && (identified_requirements.length > 0 || unresolved_ambiguities.length > 0 || requests.length > 0)
+        && (unsupportedRequirements.length > 0 || ambiguousRequirements.length > 0 || unresolved_ambiguities.length > 0 || requests.length > 0)
       ) {
-        return toolError('Unblocked requires zero unsupported requirements, zero ambiguity, and zero new requests.')
+        return toolError('Unblocked requires zero unsupported requirements, zero ambiguity, and zero requests.')
       }
-      if (analysis_status === 'best_effort_complete' && identified_requirements.length === 0) {
+      if (analysis_status === 'best_effort_complete' && unsupportedRequirements.length === 0) {
         return toolError('best_effort_complete revalidation must retain at least one unsupported requirement.')
       }
-      if (analysis_status === 'partial_due_to_ambiguity' && unresolved_ambiguities.length === 0) {
-        return toolError('partial_due_to_ambiguity requires unresolved scientific ambiguity.')
+      if (analysis_status === 'partial_due_to_ambiguity' && ambiguousRequirements.length === 0) {
+        return toolError('partial_due_to_ambiguity requires an ambiguous requirement.')
       }
 
-      const { data, error } = await supabase.rpc('revalidate_structured_extension_closure_v8', {
+      const { data, error } = await supabase.rpc('revalidate_structured_extension_closure_v11', {
         p_blocked_experiment_id: blocked_experiment_id,
         p_base_analysis_sequence: base_analysis_sequence,
         p_contract_version: AUTHORING_CONTRACT.contract_version,
         p_analysis_status: analysis_status,
-        p_identified_requirements: identified_requirements,
+        p_classified_requirements: identified_requirements,
         p_unresolved_ambiguities: unresolved_ambiguities,
         p_requests: requests,
       })

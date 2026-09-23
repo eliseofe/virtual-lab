@@ -10,7 +10,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.17.0`
+- MCP server: `3.18.0`
 - interface: `17`
 - authoring contract: `vlab.authoring/0.9`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -18,7 +18,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 - Metrics language: `python-vlab-metrics/0.1`
 - Metrics IR: `vlab.metrics-ir/0.1`
 - Results presentation: `vlab.results-presentation/1`
-- capability requests: `vlab.capability-request/10`
+- capability requests: `vlab.capability-request/11`
 
 A runnable Experiment has exactly four compulsory core artifacts: Configuration, Initialization, Controller and Metrics. The ordered `artifacts[]` array is the only Experiment-authoring input. All four core artifacts are supplied explicitly; Metrics may be empty.
 
@@ -95,25 +95,25 @@ The browser loads a saved `vlab.results-presentation/1` layout for registry Expe
 
 ## Durable extension closure and request submission
 
-Student and Professor profiles share `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure` under `vlab.capability-request/10`.
+Student and Professor profiles share `request_capability`, `resume_capability_closure`, and `revalidate_capability_closure` under `vlab.capability-request/11`.
 
 The authoring continuation is deterministic:
 
 ```text
-required semantics exactly represented
-    -> author/validate normally
+classify every paper/Experiment requirement first
+    -> supported: cite implemented capability IDs and/or stable contract paths; create no request
+    -> unsupported: compare with unavailable candidates; reuse or create the minimal request
+    -> ambiguous: preserve the scientific question; create no request
 
-required scientific/model semantics unsupported
+any unsupported or ambiguous requirement
     -> preserve one durable blocked Experiment + whole-Experiment analysis
-    -> compare against implemented capability truth + candidate_capabilities + candidate_contract_deltas
-    -> reuse a covering active request or create one clearly materially distinct request
     -> report the scientific task as blocked on that durable state
 
-relevant extension later becomes available
-    -> resume the same blocked Experiment
-    -> revalidate the entire intended Experiment against the current contract
-    -> become unblocked only when no unsupported requirement or unresolved scientific ambiguity remains
+whole-Experiment revalidation
+    -> becomes unblocked only when every recorded requirement is supported and no ambiguity remains
 ```
+
+`capability_closure_requirements` stores the normalized requirement classification for each append-only analysis. `capability_closure_requirement_support` stores machine-readable support evidence for requirements classified as supported. The historical `capability_closure_analyses.identified_requirements` field remains a compatibility projection of unsupported/ambiguous requirements only.
 
 Resume readback treats the caller-visible closure evidence as authoritative membership. If RLS correctly hides another requester's private request row, an evidence-linked shared candidate is reconstructed from the same sanitized candidate fields exposed by neutral workspace discovery; requester identity, private draft/context, notes, and publication provenance are not synthesized or exposed. Evidence without any readable request/candidate metadata still remains visible as an unresolved linked ID rather than disappearing. Candidate presence remains unavailable to authoring/validation.
 
@@ -182,4 +182,4 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 ## Deployment evidence
 
-#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 established Professor-controlled candidate generalization metadata at server `3.13.0`. The capability-request integrity repairs then made clear-requirement evidence lossless, preserved exact blocked-Experiment revision snapshots, and patched shared-candidate resume readback at server `3.13.1`. Professor multi-way disposition and same-candidate revision began at server `3.14.0`; Already Supported resolution is versioned at server `3.17.0` / request interface `vlab.capability-request/10`, while interface `17`, `vlab.authoring/0.9`, and the exact nine-tool surface remain unchanged.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 established Professor-controlled candidate generalization metadata at server `3.13.0`. The capability-request integrity repairs then made clear-requirement evidence lossless, preserved exact blocked-Experiment revision snapshots, and patched shared-candidate resume readback at server `3.13.1`. Professor multi-way disposition and same-candidate revision began at server `3.14.0`; Already Supported resolution is versioned at server `3.17.0` / request interface `vlab.capability-request/11`, while interface `17`, `vlab.authoring/0.9`, and the exact nine-tool surface remain unchanged.

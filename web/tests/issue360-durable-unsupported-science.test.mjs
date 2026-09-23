@@ -32,8 +32,8 @@ test("#360 exposes one durable closure lifecycle to Student and Professor resear
   assert.match(mcp, /shared_tool_count: MCP_TOOL_COUNT/);
   assert.match(mcp, /student_tool_count: MCP_TOOL_COUNT/);
   assert.match(mcp, /professor_tool_count: MCP_TOOL_COUNT/);
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/10'/);
-  assert.match(tools, /capability_request_interface: 'vlab\.capability-request\/10'/);
+  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/11'/);
+  assert.match(tools, /capability_request_interface: 'vlab\.capability-request\/11'/);
 });
 
 test("#360 keeps Student revalidation owner-scoped while preserving Professor supervision", () => {

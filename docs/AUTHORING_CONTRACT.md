@@ -2,7 +2,7 @@
 
 Status: **current contract candidate, 20 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.9`, exposed by production `experiment-mcp` server `3.13.0`, interface `17`.
+Current machine-readable contract: `vlab.authoring/0.9`, exposed by production `experiment-mcp` server `3.18.0`, interface `17`.
 
 ## Canonical Experiment artifacts
 
@@ -197,7 +197,7 @@ No arbitrary plotting code is accepted through the MCP contract.
 
 ## Classified extension requests
 
-Student and Professor research-AI sessions use `vlab.capability-request/7`. All six owner-approved request classes may be submitted to the durable Professor-visible workflow:
+Student and Professor research-AI sessions use `vlab.capability-request/11`. All six owner-approved request classes may be submitted to the durable Professor-visible workflow:
 
 `semantic_capability | authoring_language | runtime_configuration | artifact_workflow | implementation_optimization | security_boundary`
 
@@ -211,7 +211,7 @@ Research AI reuses a candidate when it covers a new requirement and attaches the
 
 Validation diagnostics can advertise the relevant request class when the failure is genuinely an extension need. Ordinary type/validation errors remain ordinary validation evidence.
 
-The continuation rule is part of the authoring contract: when the Lab already represents the intended semantics exactly, author normally. When a required scientific/model semantic is outside the current contract, preserve the intended Experiment and whole-Experiment closure analysis through `request_capability`, keep that work blocked on its durable request state, and resume through `resume_capability_closure` + whole-Experiment `revalidate_capability_closure`. Student and Professor research-AI sessions use the same scientific blocking semantics; a Student resumes/revalidates their own blocked Experiment, while a Professor may also supervise visible blocked Experiments. A closure becomes unblocked only when revalidation finds no unsupported requirement and no unresolved scientific ambiguity.
+The continuation rule is part of the authoring contract: classify every identified paper/Experiment requirement before request creation. A supported requirement records machine-readable references to implemented canonical capabilities and/or stable contract paths and creates no request. An unsupported requirement must link to a reused/new unavailable candidate request. A scientifically ambiguous requirement stays explicit and blocking without a request. If any unsupported or ambiguous requirement remains, preserve the intended Experiment and whole-Experiment closure analysis through `request_capability`; resume through `resume_capability_closure` + whole-Experiment `revalidate_capability_closure`. Student and Professor research-AI sessions use the same scientific blocking semantics; a Student resumes/revalidates their own blocked Experiment, while a Professor may also supervise visible blocked Experiments. A closure becomes unblocked only when revalidation finds no unsupported requirement and no unresolved scientific ambiguity.
 
 Professor approval is queue/design approval, not implementation authorization or canonicalization. The standing handoff is:
 

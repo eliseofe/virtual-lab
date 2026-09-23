@@ -26,17 +26,16 @@ Validation answers whether requested Experiment semantics fit the active version
 Current policy:
 
 ```text
-capability exists
-    -> author/validate normally
+for every paper/Experiment requirement
+    -> supported: record deployed support; no request
+    -> unsupported: reuse/create a candidate request
+    -> ambiguous: preserve the question; no request
 
-capability missing + student or professor
-    -> preserve one whole blocked Experiment/analysis and submit durable grouped request(s)
-
-scientific ambiguity remains
-    -> preserve it explicitly; do not hand it to developer generalization
+any unsupported or ambiguous requirement
+    -> preserve one whole blocked Experiment/analysis
 
 requested rows
-    -> Professor inbox for approve/decline
+    -> Professor inbox for review
 ```
 
 ## Durable blocked Experiment / closure foundation
@@ -191,9 +190,9 @@ Current intended loop:
 2. AI reads the current authoring/capability contract through MCP.
 3. Supported Experiment artifacts/Metrics/Results bindings are authored normally.
 4. If a required simulator capability is absent, validation exposes that gap.
-5. The authenticated research AI preserves one durable blocked Experiment/closure analysis and compares each clear gap with the active-extension catalog.
-6. A covering candidate receives linked evidence; a related but too-narrow candidate receives `generalization_needed` evidence; neither creates a second request.
-7. A genuinely absent need creates one structured candidate/request, which appears once in the Professor inbox regardless of how many papers later attach evidence.
+5. The authenticated research AI classifies every requirement first: supported requirements cite deployed capability/contract support, unsupported requirements proceed to candidate comparison, and ambiguous requirements remain explicit.
+6. Supported requirements create no request. A covering unavailable candidate for an unsupported requirement receives linked evidence; a related but too-narrow candidate receives `generalization_needed` evidence.
+7. Only a genuinely unsupported and absent need creates one structured candidate/request, which appears once in the Professor inbox regardless of how many papers later attach evidence.
 8. Professor reviews the request. Normal outcomes accept/reject/revise/defer/future; exceptionally, Already Supported resolves a false-positive request against machine-readable deployed support without entering development.
 9. Developer generalization/reconciliation resolves semantic requests to existing or new canonical capability identity as appropriate, followed by explicit owner implementation authorization.
 10. Trusted developer implements/deploys if authorized.
@@ -209,4 +208,4 @@ This lets real papers expose simulator gaps without giving research AI developme
 
 Research AI receives those support-resolution rows through neutral candidate discovery and durable closure resume. A `resolved_supported` candidate is not an unavailable feature: the AI must author with the cited deployed support and must not recreate the request.
 
-This is a recovery path, not the desired normal flow. Issue #524 is the known successor that will represent supported paper/Experiment requirements directly during closure analysis so they normally never become requests.
+This is a recovery path, not the desired normal flow. Closure analysis now represents supported requirements directly before request creation, so Already Supported is reserved for exceptional false positives that still reach the Professor.
