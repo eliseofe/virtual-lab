@@ -64,6 +64,12 @@ impl AgentPhysicalState {
     pub fn heading_perpendicular(self) -> Vec2 { Vec2::new(-self.heading_angle.sin(), self.heading_angle.cos()) }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AgentKinematics {
+    pub velocity: Vec2,
+    pub angular_velocity: f64,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NeighbourObservation { pub relative_position: Vec2 }
 
@@ -78,7 +84,15 @@ pub struct Observation {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Action { pub forward: f64, pub turning: f64 }
 
-pub trait PhysicsModel { fn step(&self, state: &mut [AgentPhysicalState], actuators: &[Action], dt: f64); }
+pub trait PhysicsModel {
+    fn step(
+        &self,
+        state: &mut [AgentPhysicalState],
+        kinematics: &mut [AgentKinematics],
+        actuators: &[Action],
+        dt: f64,
+    );
+}
 pub trait ObservationModel {
     fn observe(
         &self,
@@ -122,10 +136,11 @@ pub trait ControllerRuntime {
         Ok(())
     }
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action;
+    fn scientific_private_state_value(&self, _agent_index: usize, _name: &str) -> Option<f64> { None }
 }
 pub trait MetricRuntime {
     fn reset(&mut self);
-    fn observe(&mut self, state: &[AgentPhysicalState], scientific_time: f64);
+    fn observe(&mut self, snapshot: &ScientificSnapshot<'_>);
 }
 
 fn minimum_image_component(delta: f64, arena_size: f64) -> f64 {
@@ -159,12 +174,23 @@ fn wrap_state(state: &mut [AgentPhysicalState], arena_size: f64) {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct KinematicPhysics;
 impl PhysicsModel for KinematicPhysics {
-    fn step(&self, state: &mut [AgentPhysicalState], actuators: &[Action], dt: f64) {
+    fn step(
+        &self,
+        state: &mut [AgentPhysicalState],
+        kinematics: &mut [AgentKinematics],
+        actuators: &[Action],
+        dt: f64,
+    ) {
         assert_eq!(state.len(), actuators.len());
-        for (agent, action) in state.iter_mut().zip(actuators.iter()) {
-            let heading = agent.heading();
-            agent.position = agent.position + heading * (action.forward * dt);
-            agent.heading_angle += action.turning * dt;
+        assert_eq!(state.len(), kinematics.len());
+        for ((agent, measured), action) in state.iter_mut().zip(kinematics.iter_mut()).zip(actuators.iter()) {
+            // Measured velocity is the velocity actually integrated by this backend at this
+            // physics step. Capture it before turning so it is not reconstructed later from
+            // the post-step heading.
+            measured.velocity = agent.heading() * action.forward;
+            measured.angular_velocity = action.turning;
+            agent.position = agent.position + measured.velocity * dt;
+            agent.heading_angle += measured.angular_velocity * dt;
         }
     }
 }
@@ -411,6 +437,33 @@ pub struct Snapshot {
     pub state: Vec<AgentPhysicalState>,
 }
 
+/// Stable read-only measurement boundary for Experiment Metrics.
+///
+/// This is deliberately distinct from both the renderer snapshot and the kernel's
+/// minimal storage structs. Future simulator-owned scientific state should project
+/// through this boundary instead of adding ad-hoc MetricRuntime arguments.
+pub struct ScientificSnapshot<'a> {
+    pub scientific_time: f64,
+    pub physics_ticks: u32,
+    pub control_updates: u32,
+    pub agents: &'a [AgentPhysicalState],
+    pub kinematics: &'a [AgentKinematics],
+    pub actions: &'a [Action],
+    references: &'a WorldReferenceState,
+    environment: &'a EnvironmentRuntime,
+    controller: &'a dyn ControllerRuntime,
+}
+
+impl ScientificSnapshot<'_> {
+    pub fn agent_count(&self) -> usize { self.agents.len() }
+    pub fn reference_position(&self, name: &str) -> Option<Vec2> { self.references.reference_position(name) }
+    pub fn has_environmental_scalar(&self) -> bool { self.environment.has_scalar() }
+    pub fn sample_environment(&self, position: Vec2) -> Option<f64> { self.environment.sample(position) }
+    pub fn agent_private_scalar(&self, agent_index: usize, name: &str) -> Option<f64> {
+        self.controller.scientific_private_state_value(agent_index, name)
+    }
+}
+
 pub struct Simulation<C: ControllerRuntime> {
     initialization: SwarmInitialization,
     controller_private_state: Vec<BTreeMap<String, f64>>,
@@ -420,6 +473,7 @@ pub struct Simulation<C: ControllerRuntime> {
     control_stride: u32,
     metric_stride: u32,
     state: Vec<AgentPhysicalState>,
+    kinematics: Vec<AgentKinematics>,
     actuators: Vec<Action>,
     physics_ticks: u32,
     control_updates: u32,
@@ -491,6 +545,7 @@ impl<C: ControllerRuntime> Simulation<C> {
         let reference_state = reference_initialization.clone();
         Ok(Self {
             actuators: vec![Action::default(); initialization.state.len()],
+            kinematics: vec![AgentKinematics::default(); initialization.state.len()],
             initialization,
             controller_private_state,
             reference_initialization,
@@ -637,6 +692,7 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.reference_state = self.reference_initialization.clone();
         wrap_state(&mut self.state, self.config.arena_size);
         self.actuators = vec![Action::default(); self.state.len()];
+        self.kinematics = vec![AgentKinematics::default(); self.state.len()];
         self.physics_ticks = 0;
         self.control_updates = 0;
         self.sensing_rng = ScientificRng::for_domain(self.config.seed, RNG_DOMAIN_SENSING, 0)
@@ -685,12 +741,22 @@ impl<C: ControllerRuntime> Simulation<C> {
                 }
                 self.control_updates = self.control_updates.saturating_add(1);
             }
-            self.physics.step(&mut self.state, &self.actuators, self.config.physics_dt);
+            self.physics.step(&mut self.state, &mut self.kinematics, &self.actuators, self.config.physics_dt);
             wrap_state(&mut self.state, self.config.arena_size);
             self.physics_ticks = self.physics_ticks.saturating_add(1);
             if self.physics_ticks % self.metric_stride == 0 {
-                let time = self.scientific_time();
-                for metric in &mut self.metrics { metric.observe(&self.state, time); }
+                let snapshot = ScientificSnapshot {
+                    scientific_time: self.scientific_time(),
+                    physics_ticks: self.physics_ticks,
+                    control_updates: self.control_updates,
+                    agents: &self.state,
+                    kinematics: &self.kinematics,
+                    actions: &self.actuators,
+                    references: &self.reference_state,
+                    environment: &self.environment,
+                    controller: &self.controller,
+                };
+                for metric in &mut self.metrics { metric.observe(&snapshot); }
             }
         }
     }
@@ -701,6 +767,19 @@ impl<C: ControllerRuntime> Simulation<C> {
     pub fn neighbour_strategy(&self) -> &'static str { PRODUCTION_NEIGHBOUR_STRATEGY }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot { scientific_time: self.scientific_time(), physics_ticks: self.physics_ticks, state: self.state.clone() }
+    }
+    pub(crate) fn scientific_snapshot(&self) -> ScientificSnapshot<'_> {
+        ScientificSnapshot {
+            scientific_time: self.scientific_time(),
+            physics_ticks: self.physics_ticks,
+            control_updates: self.control_updates,
+            agents: &self.state,
+            kinematics: &self.kinematics,
+            actions: &self.actuators,
+            references: &self.reference_state,
+            environment: &self.environment,
+            controller: &self.controller,
+        }
     }
     pub fn has_environmental_scalar(&self) -> bool { self.environment.has_scalar() }
     pub fn sample_environment_grid(&self, resolution: u32) -> Vec<f64> {
