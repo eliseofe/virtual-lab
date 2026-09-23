@@ -68,11 +68,17 @@ Results panel layout is separate presentation/workspace state and does not creat
 
 Metrics are measurement apparatus, not controller perception.
 
-They observe a versioned read-only global scientific snapshot and cannot mutate agents/world/actions, consume arbitrary host state, use arbitrary RNG, access controller-private state, filesystem or network, or grant new simulator capability.
+They observe a versioned read-only global scientific snapshot and cannot mutate agents/world/actions, consume arbitrary host state, use arbitrary RNG, access filesystem/network, or grant new simulator capability.
+
+The snapshot is the Experiment's global measurement boundary, not an agent-perception boundary. It includes simulator-owned scientific state that is part of the active model: physical pose, measured kinematics, applied actions, stable run-local agent identity, authored controller-private scientific state, Experiment configuration, named world references, and the active environment through its read-only scientific accessor. Controller-private state remains private **between agents/controllers**; it is not hidden from the Experiment's global measurement apparatus.
+
+Implementation storage is not the contract. RNG engine internals, neighbour-index internals, transport buffers, host state and mutation APIs are excluded. Every future simulator-owned scientific state component must either declare its Metrics projection through the implemented capability binding or explicitly document why it has no scientific measurement projection. Metrics compiler/runtime code must not grow one-off field whitelists for individual papers.
+
+Current scientific snapshot contract: `vlab.scientific-snapshot/0.1`.
 
 Current Metrics language: `python-vlab-metrics/0.1`.
 
-Current measurement point: `post-physics-wrapped-state/1`.
+Current measurement point: `post-physics-wrapped-state/1`. Measured planar velocity is the velocity actually integrated by the active physics backend for the completed physics step; it is not reconstructed from post-step heading or from an authored command.
 
 Current supported metric sampling declarations include exact periodic `every(seconds)` and `final()`. Runtime rejects a periodic cadence that cannot be scheduled exactly on the simulation timestep rather than silently rounding it.
 
