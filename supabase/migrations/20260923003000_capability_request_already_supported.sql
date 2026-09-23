@@ -21,6 +21,11 @@ alter table public.capability_requests
       or (status in ('in_progress', 'implemented') and professor_disposition is null)
     );
 
+alter table public.active_extension_request_catalog
+  drop constraint if exists active_extension_request_catalog_status,
+  add constraint active_extension_request_catalog_status
+    check (status in ('requested', 'approved', 'declined', 'resolved', 'in_progress'));
+
 alter table public.capability_request_professor_reviews
   drop constraint if exists capability_request_professor_reviews_disposition_check,
   add constraint capability_request_professor_reviews_disposition_check
