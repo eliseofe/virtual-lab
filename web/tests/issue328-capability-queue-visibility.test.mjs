@@ -39,7 +39,7 @@ test("#361/#374 keeps raw request history private while exposing structured cand
   assert.match(workspaceBlock[0], /\.rpc\('list_canonical_capability_registry'\)/);
   assert.match(workspaceBlock[0], /\.from\('candidate_capabilities'\)/);
   assert.match(workspaceBlock[0], /\.from\('candidate_contract_deltas'\)/);
-  assert.match(workspaceBlock[0], /candidate_capabilities: candidateCapabilities \?\? \[\]/);
-  assert.match(workspaceBlock[0], /candidate_contract_deltas: candidateContractDeltas \?\? \[\]/);
+  assert.match(workspaceBlock[0], /candidate_capabilities: candidateCapabilitiesWithSupport/);
+  assert.match(workspaceBlock[0], /candidate_contract_deltas: candidateContractDeltasWithSupport/);
   assert.doesNotMatch(workspaceBlock[0], /active_extension_requests/);
 });

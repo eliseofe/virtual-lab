@@ -170,7 +170,7 @@ function buildUi() {
 
   const summary = document.createElement("p");
   summary.className = "professor-inbox-summary";
-  summary.textContent = "Review the request: accept, revise, defer, mark future, reject, or resolve it as already supported. Implementation remains a separate step.";
+  summary.textContent = "Review the request: accept, revise, defer, mark future, reject, or resolve it as already supported. Approval accepts the need into the design queue; implementation remains a separate step.";
   const message = document.createElement("p");
   message.className = "professor-inbox-message";
   message.setAttribute("role", "status");
@@ -750,11 +750,13 @@ async function loadSupportResolutions(requestRows) {
 }
 
 async function loadImplementedCapabilities() {
-  const { data, error } = await supabase.rpc("list_canonical_capability_registry");
+  const { data, error } = await supabase
+    .from("canonical_capabilities")
+    .select("id,capability_key,capability_name,implementation_state")
+    .eq("implementation_state", "implemented")
+    .order("capability_key");
   if (error) throw error;
-  implementedCapabilities = (data ?? [])
-    .filter((capability) => capability.implementation_state === "implemented")
-    .sort((left, right) => left.capability_key.localeCompare(right.capability_key));
+  implementedCapabilities = data ?? [];
 }
 
 async function loadCandidateExtensions(requestRows) {

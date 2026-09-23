@@ -85,11 +85,12 @@ export function buildClosureLinkedRequests(evidence, requests, candidateCapabili
         candidateCapability?.canonical_definition ?? candidateContractDelta?.requested_change ?? null,
     }
 
+    const supportResolution = supportByRequest.get(requestId) ?? []
     return {
       ...(readableRequest ?? sharedFallback),
       candidate_capability: candidateCapability,
       candidate_contract_delta: candidateContractDelta,
-      support_resolution: supportByRequest.get(requestId) ?? [],
+      ...(supportResolution.length > 0 ? { support_resolution: supportResolution } : {}),
       evidence: links,
     }
   })

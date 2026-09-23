@@ -15,7 +15,7 @@ test("#523 keeps lifecycle and Professor response separate", () => {
   assert.match(migration, /status = 'resolved' and professor_disposition = 'already_supported'/);
   assert.match(migration, /capability_requests_status_check[\s\S]*'resolved'/);
   assert.match(migration, /capability_request_professor_reviews_disposition_check[\s\S]*'already_supported'/);
-  assert.match(migration, /record_capability_request_professor_review/);
+  assert.match(migration, /set status = 'resolved',[\s\S]*professor_disposition = 'already_supported'/);
 });
 
 test("#523 stores machine-readable existing support", () => {

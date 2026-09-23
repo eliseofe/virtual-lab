@@ -58,8 +58,8 @@ test("#373 Professor inbox edits the structured candidate rather than creating a
 test("#373 fresh research-AI discovery includes candidate generalization metadata", () => {
   assert.match(mcp, /generalization_revision/);
   assert.match(mcp, /generalized_at/);
-  assert.match(mcp, /candidate_capabilities: candidateCapabilities \?\? \[\]/);
-  assert.match(mcp, /candidate_contract_deltas: candidateContractDeltas \?\? \[\]/);
+  assert.match(mcp, /candidate_capabilities: candidateCapabilitiesWithSupport/);
+  assert.match(mcp, /candidate_contract_deltas: candidateContractDeltasWithSupport/);
 });
 
 test("#373 generalized candidates remain unavailable to controller authoring", () => {
@@ -74,9 +74,9 @@ test("#373 generalized candidates remain unavailable to controller authoring", (
 });
 
 test("#373 versions discovery without changing the nine-tool or authoring contract", () => {
-  assert.match(versions, /MCP_SERVER_VERSION = '3\.16\.0'/);
+  assert.match(versions, /MCP_SERVER_VERSION = '3\.17\.0'/);
   assert.match(versions, /MCP_INTERFACE_VERSION = '17'/);
   assert.match(versions, /contract_version: 'vlab\.authoring\/0\.9'/);
-  assert.match(versions, /capability_request_interface: 'vlab\.capability-request\/9'/);
+  assert.match(versions, /capability_request_interface: 'vlab\.capability-request\/10'/);
   assert.match(mcp, /shared_tool_count: MCP_TOOL_COUNT/);
 });

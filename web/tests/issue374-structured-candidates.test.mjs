@@ -34,8 +34,8 @@ test("#374 creates durable candidate capability and contract-delta product surfa
 });
 
 test("#374 candidates are separately discoverable and unavailable to compiler validation", () => {
-  assert.match(mcp, /candidate_capabilities: candidateCapabilities \?\? \[\]/);
-  assert.match(mcp, /candidate_contract_deltas: candidateContractDeltas \?\? \[\]/);
+  assert.match(mcp, /candidate_capabilities: candidateCapabilitiesWithSupport/);
+  assert.match(mcp, /candidate_contract_deltas: candidateContractDeltasWithSupport/);
   assert.doesNotMatch(mcp, /active_extension_requests: activeExtensionRequests/);
   assert.doesNotMatch(authoring, /candidate_capabilities|candidate_contract_deltas/);
 
@@ -77,8 +77,8 @@ test("#374 candidate identity survives request lifecycle while implementation su
 });
 
 test("#374 versions the structured candidate connector without changing authoring language", () => {
-  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/9'/);
-  assert.match(versions, /MCP_SERVER_VERSION = '3\.16\.0'/);
+  assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/10'/);
+  assert.match(versions, /MCP_SERVER_VERSION = '3\.17\.0'/);
   assert.match(versions, /MCP_INTERFACE_VERSION = '17'/);
   assert.match(versions, /contract_version: 'vlab\.authoring\/0\.9'/);
 });

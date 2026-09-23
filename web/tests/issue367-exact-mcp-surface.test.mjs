@@ -67,7 +67,7 @@ test("#367 current documents contain one canonical-only surface and exact nine-t
     assert.doesNotMatch(doc, /legacy three-source|bounded compatibility input|compatibility fields for the old three-source/i);
   }
   assert.match(authoringDoc, /vlab\.authoring\/0\.9/);
-  assert.match(mcpDoc, /MCP server: `3\.16\.0`/);
+  assert.match(mcpDoc, /MCP server: `3\.17\.0`/);
   assert.match(mcpDoc, /interface: `17`/);
   assert.match(mcpDoc, /exactly \*\*9\*\* shared tools/i);
   assert.match(protocolDoc, /exact shared experiment-domain tool surface contains 9 tools/i);
@@ -83,7 +83,7 @@ test("#367 Student and Professor receive the same scientific tool set; authority
 });
 
 test("#367 versions the breaking connector cutover explicitly", () => {
-  assert.match(metrics, /MCP_SERVER_VERSION = '3\.16\.0'/);
+  assert.match(metrics, /MCP_SERVER_VERSION = '3\.17\.0'/);
   assert.match(metrics, /MCP_INTERFACE_VERSION = '17'/);
   assert.match(metrics, /contract_version: 'vlab\.authoring\/0\.9'/);
 });

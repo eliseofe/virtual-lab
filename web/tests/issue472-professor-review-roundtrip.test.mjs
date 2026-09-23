@@ -34,7 +34,7 @@ test("#472 Professor decision surface remains extensible plus pending as system 
   assert.match(inbox, /Revise requires Professor guidance/);
   assert.doesNotMatch(inbox, /approve\.textContent = "Approve"/);
   assert.doesNotMatch(inbox, /decline\.textContent = "Decline"/);
-  assert.match(inbox, /vlab\.professor-review\/2/);
+  assert.match(inbox, /vlab\.professor-review\/3/);
   assert.match(inbox, /vlabProfessorReviewDecisions/);
   assert.match(inbox, /vlabProfessorReviseGuidanceRequired/);
 });
