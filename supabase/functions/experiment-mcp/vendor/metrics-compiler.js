@@ -509,7 +509,7 @@ function loadType(path, locals, parameters, context, line) {
   if (path.startsWith("snapshot.config.")) {
     const name = path.slice("snapshot.config.".length);
     if (Object.hasOwn(parameters, name)) return parameters[name];
-    throw new MetricsCompileError("invalid-observation-field", `unknown configuration snapshot field '${name}'`, line);
+    throw new MetricsCompileError("type", `unknown configuration snapshot field '${name}'`, line);
   }
   const pieces = path.split(".");
   const root = pieces[0];
@@ -519,7 +519,7 @@ function loadType(path, locals, parameters, context, line) {
     if (field.startsWith("private_state.")) {
       const name = field.slice("private_state.".length);
       if (Object.hasOwn(context.agentState, name)) return context.agentState[name];
-      throw new MetricsCompileError("invalid-observation-field", `unknown agent private scientific state '${name}'`, line);
+      throw new MetricsCompileError("type", `unknown agent private scientific state '${name}'`, line);
     }
     throw new MetricsCompileError("invalid-observation-field", `unknown agent snapshot field '${field}'`, line);
   }
@@ -564,7 +564,7 @@ function expressionType(node, locals, parameters, context) {
     const signature = CALL_SIGNATURES[node.name];
     const surface = SNAPSHOT_INTRINSIC_SURFACES.get(node.name);
     if (surface?.availability && !context.runtimeCapabilities.has(surface.availability)) {
-      throw new MetricsCompileError("invalid-observation-field", `snapshot function '${node.name}' is unavailable for this Experiment`, node.line);
+      throw new MetricsCompileError("type", `snapshot function '${node.name}' is unavailable for this Experiment`, node.line);
     }
     if (node.args.length !== signature.args.length) throw new MetricsCompileError("type", `${node.name} expects ${signature.args.length} arguments`, node.line);
     node.args.forEach((arg, index) => {
