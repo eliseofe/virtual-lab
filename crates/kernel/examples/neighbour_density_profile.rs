@@ -3,8 +3,7 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use vlab_kernel::{
-    AgentPhysicalState, BruteForceNeighbourIndex, NeighbourIndex, PeriodicGridNeighbourIndex,
-    Vec2,
+    AgentPhysicalState, BruteForceNeighbourIndex, NeighbourIndex, PeriodicGridNeighbourIndex, Vec2,
 };
 
 #[derive(Clone, Copy)]
@@ -24,7 +23,12 @@ enum Policy {
 }
 
 impl Policy {
-    const ALL: [Policy; 4] = [Policy::Current, Policy::Half, Policy::Double, Policy::RadiusMatched];
+    const ALL: [Policy; 4] = [
+        Policy::Current,
+        Policy::Half,
+        Policy::Double,
+        Policy::RadiusMatched,
+    ];
 
     fn label(self) -> &'static str {
         match self {
@@ -96,7 +100,10 @@ impl Grid {
     }
 
     fn cell_of(&self, state: &AgentPhysicalState) -> (usize, usize) {
-        (self.coordinate(state.position.x), self.coordinate(state.position.y))
+        (
+            self.coordinate(state.position.x),
+            self.coordinate(state.position.y),
+        )
     }
 
     fn axis_cells(&self, center: usize, span: usize, out: &mut Vec<usize>) {
@@ -216,13 +223,25 @@ fn validate() {
                 let mut ys = Vec::new();
                 brute.query(&sample, agent, radius, arena, &mut expected);
                 grid.query(&sample, agent, radius, &mut actual, &mut xs, &mut ys);
-                assert_eq!(actual, expected, "policy={} radius={} agent={}", policy.label(), radius, agent);
+                assert_eq!(
+                    actual,
+                    expected,
+                    "policy={} radius={} agent={}",
+                    policy.label(),
+                    radius,
+                    agent
+                );
             }
         }
     }
 }
 
-fn production_timing(state: &[AgentPhysicalState], arena: f64, radius: f64, reps: usize) -> (f64, usize) {
+fn production_timing(
+    state: &[AgentPhysicalState],
+    arena: f64,
+    radius: f64,
+    reps: usize,
+) -> (f64, usize) {
     let mut index = PeriodicGridNeighbourIndex::default();
     index.rebuild(state, arena);
     let mut accepted = 0usize;
@@ -243,7 +262,8 @@ fn run(workload: Workload) {
     let arena = (workload.agents as f64 / workload.density).sqrt();
     let sample = state(workload.agents, arena);
     let reps = 5;
-    let (production_ms, production_accepted) = production_timing(&sample, arena, workload.radius, reps);
+    let (production_ms, production_accepted) =
+        production_timing(&sample, arena, workload.radius, reps);
     println!(
         "production_timing,{},{},{:.6},{:.6},{:.6},{:.6},{:.3}",
         workload.label,
@@ -259,7 +279,13 @@ fn run(workload: Workload) {
         let cells = policy.cells(workload.agents, arena, workload.radius);
         let grid = Grid::build(&sample, arena, cells);
         let stats = grid.sweep(&sample, workload.radius);
-        assert_eq!(stats.accepted, production_accepted, "accepted neighbours changed for {} / {}", workload.label, policy.label());
+        assert_eq!(
+            stats.accepted,
+            production_accepted,
+            "accepted neighbours changed for {} / {}",
+            workload.label,
+            policy.label()
+        );
         let query_ms = median_ms(reps, || {
             black_box(grid.sweep(black_box(&sample), workload.radius));
         });
@@ -299,13 +325,48 @@ fn main() {
     println!("production_timing_schema=row_type,case,agents,density,arena_size,radius,query_all_ms,avg_neighbours");
     println!("diagnostic_schema=row_type,case,agents,density,arena_size,radius,policy,cells_per_axis,cell_size,occupied_buckets,mean_agents_per_cell,mean_agents_per_occupied_bucket,max_bucket_occupancy,avg_visited_cells,avg_nonempty_bucket_visits,avg_candidate_distance_checks,query_all_ms,avg_neighbours");
     for workload in [
-        Workload { label: "density-0.25", agents: 5_000, density: 0.25, radius: 1.0 },
-        Workload { label: "density-1", agents: 5_000, density: 1.0, radius: 1.0 },
-        Workload { label: "density-4", agents: 5_000, density: 4.0, radius: 1.0 },
-        Workload { label: "density-16", agents: 5_000, density: 16.0, radius: 1.0 },
-        Workload { label: "radius-0.5", agents: 5_000, density: 1.0, radius: 0.5 },
-        Workload { label: "radius-2", agents: 5_000, density: 1.0, radius: 2.0 },
-        Workload { label: "radius-4", agents: 5_000, density: 1.0, radius: 4.0 },
+        Workload {
+            label: "density-0.25",
+            agents: 5_000,
+            density: 0.25,
+            radius: 1.0,
+        },
+        Workload {
+            label: "density-1",
+            agents: 5_000,
+            density: 1.0,
+            radius: 1.0,
+        },
+        Workload {
+            label: "density-4",
+            agents: 5_000,
+            density: 4.0,
+            radius: 1.0,
+        },
+        Workload {
+            label: "density-16",
+            agents: 5_000,
+            density: 16.0,
+            radius: 1.0,
+        },
+        Workload {
+            label: "radius-0.5",
+            agents: 5_000,
+            density: 1.0,
+            radius: 0.5,
+        },
+        Workload {
+            label: "radius-2",
+            agents: 5_000,
+            density: 1.0,
+            radius: 2.0,
+        },
+        Workload {
+            label: "radius-4",
+            agents: 5_000,
+            density: 1.0,
+            radius: 4.0,
+        },
     ] {
         run(workload);
     }

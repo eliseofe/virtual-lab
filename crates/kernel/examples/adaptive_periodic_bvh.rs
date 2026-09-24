@@ -24,11 +24,29 @@ struct Node {
 
 impl Node {
     fn leaf(min_x: f64, min_y: f64, max_x: f64, max_y: f64, start: usize, end: usize) -> Self {
-        Self { min_x, min_y, max_x, max_y, left: None, right: None, start, end }
+        Self {
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+            left: None,
+            right: None,
+            start,
+            end,
+        }
     }
 
     fn internal(min_x: f64, min_y: f64, max_x: f64, max_y: f64, left: usize, right: usize) -> Self {
-        Self { min_x, min_y, max_x, max_y, left: Some(left), right: Some(right), start: 0, end: 0 }
+        Self {
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+            left: Some(left),
+            right: Some(right),
+            start: 0,
+            end: 0,
+        }
     }
 
     fn is_leaf(&self) -> bool {
@@ -91,14 +109,22 @@ impl AdaptivePeriodicBvh {
         out: &mut Vec<usize>,
     ) -> QueryStats {
         assert!(radius.is_finite() && radius > 0.0);
-        debug_assert!((arena_size - self.arena_size).abs() <= f64::EPSILON * arena_size.abs().max(1.0));
+        debug_assert!(
+            (arena_size - self.arena_size).abs() <= f64::EPSILON * arena_size.abs().max(1.0)
+        );
         out.clear();
-        let Some(root) = self.root else { return QueryStats::default(); };
+        let Some(root) = self.root else {
+            return QueryStats::default();
+        };
 
         let max_periodic_distance = arena_size * std::f64::consts::FRAC_1_SQRT_2;
         if radius >= max_periodic_distance {
             out.extend((0..state.len()).filter(|&i| i != agent_index));
-            return QueryStats { visited_nodes: 1, visited_leaves: self.leaf_count, candidate_checks: state.len().saturating_sub(1) };
+            return QueryStats {
+                visited_nodes: 1,
+                visited_leaves: self.leaf_count,
+                candidate_checks: state.len().saturating_sub(1),
+            };
         }
 
         let origin = state[agent_index].position;
@@ -110,7 +136,8 @@ impl AdaptivePeriodicBvh {
         // authoritative. A small scale-aware slack prevents a mathematically
         // tangent AABB from being discarded after floating-point translation,
         // subtraction and squaring at periodic boundaries.
-        let linear_slack = PRUNING_ULPS * f64::EPSILON * arena_size.abs().max(radius.abs()).max(1.0);
+        let linear_slack =
+            PRUNING_ULPS * f64::EPSILON * arena_size.abs().max(radius.abs()).max(1.0);
         let pruning_radius = radius + linear_slack;
         let pruning_radius2 = pruning_radius * pruning_radius;
         let mut candidates = Vec::new();
@@ -147,11 +174,21 @@ impl AdaptivePeriodicBvh {
         stats
     }
 
-    pub fn node_count(&self) -> usize { self.nodes.len() }
-    pub fn leaf_count(&self) -> usize { self.leaf_count }
-    pub fn max_depth(&self) -> usize { self.max_depth }
-    pub fn index_entries(&self) -> usize { self.indices.len() + self.nodes.len() }
-    pub fn leaf_capacity(&self) -> usize { LEAF_CAPACITY }
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+    pub fn leaf_count(&self) -> usize {
+        self.leaf_count
+    }
+    pub fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+    pub fn index_entries(&self) -> usize {
+        self.indices.len() + self.nodes.len()
+    }
+    pub fn leaf_capacity(&self) -> usize {
+        LEAF_CAPACITY
+    }
 }
 
 fn build_node(
@@ -176,13 +213,39 @@ fn build_node(
 
     let split_x = (max_x - min_x) >= (max_y - min_y);
     indices[start..end].sort_by(|&a, &b| {
-        let av = if split_x { state[a].position.x } else { state[a].position.y };
-        let bv = if split_x { state[b].position.x } else { state[b].position.y };
+        let av = if split_x {
+            state[a].position.x
+        } else {
+            state[a].position.y
+        };
+        let bv = if split_x {
+            state[b].position.x
+        } else {
+            state[b].position.y
+        };
         av.total_cmp(&bv).then_with(|| a.cmp(&b))
     });
     let mid = start + (end - start) / 2;
-    let left = build_node(state, indices, nodes, start, mid, depth + 1, leaf_count, max_depth);
-    let right = build_node(state, indices, nodes, mid, end, depth + 1, leaf_count, max_depth);
+    let left = build_node(
+        state,
+        indices,
+        nodes,
+        start,
+        mid,
+        depth + 1,
+        leaf_count,
+        max_depth,
+    );
+    let right = build_node(
+        state,
+        indices,
+        nodes,
+        mid,
+        end,
+        depth + 1,
+        leaf_count,
+        max_depth,
+    );
     nodes[node_index] = Node::internal(min_x, min_y, max_x, max_y, left, right);
     node_index
 }
@@ -223,13 +286,43 @@ fn collect_candidates(
         candidates.extend_from_slice(&indices[node.start..node.end]);
         return;
     }
-    collect_candidates(node.left.unwrap(), cx, cy, pruning_radius2, nodes, indices, candidates, stats);
-    collect_candidates(node.right.unwrap(), cx, cy, pruning_radius2, nodes, indices, candidates, stats);
+    collect_candidates(
+        node.left.unwrap(),
+        cx,
+        cy,
+        pruning_radius2,
+        nodes,
+        indices,
+        candidates,
+        stats,
+    );
+    collect_candidates(
+        node.right.unwrap(),
+        cx,
+        cy,
+        pruning_radius2,
+        nodes,
+        indices,
+        candidates,
+        stats,
+    );
 }
 
 fn distance2_to_aabb(x: f64, y: f64, node: &Node) -> f64 {
-    let dx = if x < node.min_x { node.min_x - x } else if x > node.max_x { x - node.max_x } else { 0.0 };
-    let dy = if y < node.min_y { node.min_y - y } else if y > node.max_y { y - node.max_y } else { 0.0 };
+    let dx = if x < node.min_x {
+        node.min_x - x
+    } else if x > node.max_x {
+        x - node.max_x
+    } else {
+        0.0
+    };
+    let dy = if y < node.min_y {
+        node.min_y - y
+    } else if y > node.max_y {
+        y - node.max_y
+    } else {
+        0.0
+    };
     dx * dx + dy * dy
 }
 

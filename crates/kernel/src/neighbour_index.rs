@@ -63,7 +63,9 @@ impl PeriodicGridNeighbourIndex {
     }
 
     #[cfg(test)]
-    fn cells_per_axis(&self) -> usize { self.cells_per_axis }
+    fn cells_per_axis(&self) -> usize {
+        self.cells_per_axis
+    }
 }
 
 impl NeighbourIndex for PeriodicGridNeighbourIndex {
@@ -86,8 +88,12 @@ impl NeighbourIndex for PeriodicGridNeighbourIndex {
         out: &mut Vec<usize>,
     ) {
         out.clear();
-        debug_assert!((arena_size - self.arena_size).abs() <= f64::EPSILON * arena_size.abs().max(1.0));
-        if state.is_empty() { return; }
+        debug_assert!(
+            (arena_size - self.arena_size).abs() <= f64::EPSILON * arena_size.abs().max(1.0)
+        );
+        if state.is_empty() {
+            return;
+        }
 
         let origin = state[agent_index].position;
         let (center_x, center_y) = self.cell_of(&state[agent_index]);
@@ -103,8 +109,11 @@ impl NeighbourIndex for PeriodicGridNeighbourIndex {
             for &cell_x in &x_cells {
                 if let Some(candidates) = self.buckets.get(&(cell_x, cell_y)) {
                     for &candidate_index in candidates {
-                        if candidate_index == agent_index { continue; }
-                        let displacement = minimum_image(state[candidate_index].position - origin, arena_size);
+                        if candidate_index == agent_index {
+                            continue;
+                        }
+                        let displacement =
+                            minimum_image(state[candidate_index].position - origin, arena_size);
                         if displacement.norm_squared() <= radius2 {
                             out.push(candidate_index);
                         }
@@ -125,15 +134,18 @@ mod tests {
     use crate::{BruteForceNeighbourIndex, Vec2};
 
     fn state_for(arena_size: f64, count: usize) -> Vec<AgentPhysicalState> {
-        let mut rng = crate::ScientificRng::for_domain(9917, crate::RNG_DOMAIN_INITIALIZATION, 0).unwrap();
+        let mut rng =
+            crate::ScientificRng::for_domain(9917, crate::RNG_DOMAIN_INITIALIZATION, 0).unwrap();
         let half = arena_size / 2.0;
-        (0..count).map(|_| AgentPhysicalState {
-            position: Vec2::new(
-                (rng.unit() * arena_size) - half,
-                (rng.unit() * arena_size) - half,
-            ),
-            heading_angle: rng.unit() * crate::TAU,
-        }).collect()
+        (0..count)
+            .map(|_| AgentPhysicalState {
+                position: Vec2::new(
+                    (rng.unit() * arena_size) - half,
+                    (rng.unit() * arena_size) - half,
+                ),
+                heading_angle: rng.unit() * crate::TAU,
+            })
+            .collect()
     }
 
     fn assert_matches_brute_force(state: &[AgentPhysicalState], arena_size: f64, radii: &[f64]) {
@@ -147,9 +159,16 @@ mod tests {
                 let mut actual = Vec::new();
                 brute.query(state, agent_index, radius, arena_size, &mut expected);
                 grid.query(state, agent_index, radius, arena_size, &mut actual);
-                assert_eq!(actual, expected, "agent={agent_index} radius={radius} arena={arena_size}");
+                assert_eq!(
+                    actual, expected,
+                    "agent={agent_index} radius={radius} arena={arena_size}"
+                );
             }
-            assert_eq!(grid.cells_per_axis(), built_cells, "query radius changed index geometry");
+            assert_eq!(
+                grid.cells_per_axis(),
+                built_cells,
+                "query radius changed index geometry"
+            );
         }
     }
 
@@ -157,18 +176,37 @@ mod tests {
     fn periodic_grid_matches_brute_force_across_arena_sizes_and_radii() {
         for &(arena_size, count) in &[(0.75, 24), (3.7, 64), (10.0, 211), (37.0, 400)] {
             let state = state_for(arena_size, count);
-            assert_matches_brute_force(&state, arena_size, &[0.05, 0.3, 0.81, 2.0, arena_size * 0.49, arena_size]);
+            assert_matches_brute_force(
+                &state,
+                arena_size,
+                &[0.05, 0.3, 0.81, 2.0, arena_size * 0.49, arena_size],
+            );
         }
     }
 
     #[test]
     fn periodic_grid_is_exact_across_wrapped_boundaries() {
         let state = vec![
-            AgentPhysicalState { position: Vec2::new(-4.9, -4.9), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(4.9, -4.9), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(-4.9, 4.9), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(4.9, 4.9), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState {
+                position: Vec2::new(-4.9, -4.9),
+                heading_angle: 0.0,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(4.9, -4.9),
+                heading_angle: 0.0,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(-4.9, 4.9),
+                heading_angle: 0.0,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(4.9, 4.9),
+                heading_angle: 0.0,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(0.0, 0.0),
+                heading_angle: 0.0,
+            },
         ];
         assert_matches_brute_force(&state, 10.0, &[0.15, 0.25, 0.5, 7.5]);
     }

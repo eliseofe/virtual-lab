@@ -1,18 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Changes now reach the live Lab only through green pull requests",
-  "owner_impact": "Nothing changes in how the Lab looks or behaves. From now on no agent can push a change straight to the live Lab: every change must go through a pull request whose checks (tests, build and the browser check before publishing) are green, and GitHub itself refuses anything else. Documentation-only pull requests also run the checks so they can always be merged. 'Done means verified live' is unchanged: a green pull request is never the finish line, only the green live run of the merged version is.",
+  "outcome": "The simulator's Rust code is tidied, with every result proven unchanged",
+  "owner_impact": "Nothing changes in how the Lab looks, behaves or computes. The Rust simulator code now uses standard formatting, a normal file structure instead of an unusual file-inclusion trick, and a few harmless shortcuts rewritten in their standard form. The recorded reference runs prove that every agent position and every metric value is bit-for-bit identical, both in the browser's simulator and the native one, and the simulator's browser interface is byte-identical. CI now also rejects unformatted Rust code.",
   "next": {
     "kind": "epic_continues",
-    "issue": 537,
-    "text": "Next is #537 — simulator core tidy-up: standard formatting, removal of harmless warnings and of an unusual file-inclusion trick in the Rust simulator, with the recorded reference runs proving that not a single number changes. #537 has not started."
+    "issue": 541,
+    "text": "Next is #541 — one shared database connection in the browser: the Lab currently opens 8 separate connections to its database (7 sharing your login), which I will replace with one shared connection without changing what you see or how you sign in. #541 has not started."
   },
   "technical_evidence": [
-    "GitHub ruleset on main: pull request required (0 approvals), required status check 'build', force pushes and deletion blocked, empty bypass list; verified via GET /repos/eliseofe/virtual-lab/rules/branches/main.",
-    "Ruleset 23935542 (created by Work under #539) verified independently; a deliberately failing test commit on #538 turned build red and GitHub reported the pull request as blocked (mergeable_state=blocked); the probe was then reverted.",
-    "pull_request trigger no longer has paths-ignore, so documentation-only pull requests report the required check; push paths-ignore unchanged.",
-    "DEVELOPMENT_WORKFLOW.md (within the owner-approved #535 scope): 'Pull requests only' section, loop step 2, and the owner-requested rule that approving a ticket covers it until production-green; docs/DEPLOYMENT.md documents the ruleset.",
-    "First production candidate 0c3d63b was stopped by the pre-publish check before publishing (run 36011596970): the shared smoke Chrome did not publish its DevTools port within 12 s on the busy build runner. The harness now allows 30 s per start, 3 attempts, and force-stops an abandoned Chrome; nothing broken was ever published."
+    "crates/kernel: src/entry.rs with include!(\"lib.rs\") removed; lib.rs is the crate root and declares metrics_ir; Cargo.toml lib path default.",
+    "cargo fmt applied across the workspace; CI runs cargo fmt --all --check (rustfmt component added).",
+    "Behaviour-free rewrites only: div_ceil, is_multiple_of (strides validated >= 1), is_none_or, derived Default with the same value, test-only imports moved into the test module. Remaining clippy warnings (argument counts, unused fields/methods, examples) are out of scope.",
+    "#532 references unchanged and passing: native cargo test and WebAssembly replay bit-identical; generated vlab_kernel.d.ts and vlab_kernel.js byte-identical before/after."
   ],
-  "close_issue": 535
+  "close_issue": 537
 }

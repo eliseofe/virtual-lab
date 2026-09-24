@@ -122,10 +122,8 @@ impl FaithfulArgosRabGrid {
 
         let mut xs = Vec::new();
         let mut ys = Vec::new();
-        for (transmitter, (agent, &range)) in state
-            .iter()
-            .zip(transmitter_ranges.iter())
-            .enumerate()
+        for (transmitter, (agent, &range)) in
+            state.iter().zip(transmitter_ranges.iter()).enumerate()
         {
             self.axis_cells_for_box(agent.position.x, range, &mut xs);
             self.axis_cells_for_box(agent.position.y, range, &mut ys);
@@ -149,8 +147,7 @@ impl FaithfulArgosRabGrid {
     ) -> (Vec<Vec<usize>>, RabRouteStats) {
         assert_eq!(state.len(), transmitter_ranges.len());
         debug_assert!(
-            (arena_size - self.arena_size).abs()
-                <= f64::EPSILON * arena_size.abs().max(1.0)
+            (arena_size - self.arena_size).abs() <= f64::EPSILON * arena_size.abs().max(1.0)
         );
 
         let mut routes = vec![Vec::new(); state.len()];
@@ -181,10 +178,8 @@ impl FaithfulArgosRabGrid {
                 }
 
                 stats.exact_pair_distance_checks += 1;
-                let displacement = minimum_image(
-                    state[other].position - state[receiver].position,
-                    arena_size,
-                );
+                let displacement =
+                    minimum_image(state[other].position - state[receiver].position, arena_size);
                 let distance2 = displacement.norm_squared();
 
                 // receiver receives other's message if receiver is inside

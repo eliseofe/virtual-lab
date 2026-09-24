@@ -28,13 +28,19 @@ fn expected_dir() -> PathBuf {
 }
 
 fn text<'a>(input: &'a Value, key: &str) -> &'a str {
-    input[key].as_str().unwrap_or_else(|| panic!("reference input missing string '{key}'"))
+    input[key]
+        .as_str()
+        .unwrap_or_else(|| panic!("reference input missing string '{key}'"))
 }
 
 fn bits(input: &Value, key: &str) -> f64 {
     let raw = text(input, &format!("{key}_bits"));
-    let hex = raw.strip_prefix("0x").unwrap_or_else(|| panic!("'{key}_bits' must start with 0x"));
-    f64::from_bits(u64::from_str_radix(hex, 16).unwrap_or_else(|_| panic!("'{key}_bits' is not hex")))
+    let hex = raw
+        .strip_prefix("0x")
+        .unwrap_or_else(|| panic!("'{key}_bits' must start with 0x"));
+    f64::from_bits(
+        u64::from_str_radix(hex, 16).unwrap_or_else(|_| panic!("'{key}_bits' is not hex")),
+    )
 }
 
 fn hex(value: f64) -> String {
@@ -48,12 +54,18 @@ fn drain_samples(simulation: &mut MetricProbeSimulation, out: &mut Vec<String>) 
         .drain_metric_samples_json(u32::MAX)
         .unwrap_or_else(|_| panic!("metric drain failed"));
     let start = batch.find("\"samples\":[").expect("batch has samples") + "\"samples\":[".len();
-    let end = batch[start..].find("],\"buffer\"").expect("batch has buffer") + start;
+    let end = batch[start..]
+        .find("],\"buffer\"")
+        .expect("batch has buffer")
+        + start;
     let samples = &batch[start..end];
     if samples.is_empty() {
         return;
     }
-    let trimmed = samples.strip_prefix('{').and_then(|s| s.strip_suffix('}')).expect("sample objects");
+    let trimmed = samples
+        .strip_prefix('{')
+        .and_then(|s| s.strip_suffix('}'))
+        .expect("sample objects");
     out.extend(trimmed.split("},{").map(|sample| format!("{{{sample}}}")));
 }
 
@@ -82,11 +94,15 @@ fn run(input: &Value, ticks: u32, chunk: u32) -> Value {
     let mut remaining = ticks;
     while remaining > 0 {
         let step = remaining.min(chunk);
-        simulation.advance_ticks(step).unwrap_or_else(|_| panic!("advance failed"));
+        simulation
+            .advance_ticks(step)
+            .unwrap_or_else(|_| panic!("advance failed"));
         drain_samples(&mut simulation, &mut samples);
         remaining -= step;
     }
-    simulation.finalize_metrics().unwrap_or_else(|_| panic!("finalize failed"));
+    simulation
+        .finalize_metrics()
+        .unwrap_or_else(|_| panic!("finalize failed"));
     drain_samples(&mut simulation, &mut samples);
 
     json!({
@@ -117,12 +133,18 @@ fn reference_runs_are_bit_identical() {
         let id = input["id"].as_str().expect("reference id").to_owned();
         let ticks = input["ticks"].as_u64().expect("reference ticks") as u32;
 
-        let outputs: Vec<Value> = CHUNKINGS.iter().map(|&chunk| run(&input, ticks, chunk)).collect();
+        let outputs: Vec<Value> = CHUNKINGS
+            .iter()
+            .map(|&chunk| run(&input, ticks, chunk))
+            .collect();
         if outputs.windows(2).any(|pair| pair[0] != pair[1]) {
             failures.push(format!("{id}: result depends on advance chunking"));
             continue;
         }
-        let actual = format!("{}\n", serde_json::to_string_pretty(&outputs[0]).expect("serializable"));
+        let actual = format!(
+            "{}\n",
+            serde_json::to_string_pretty(&outputs[0]).expect("serializable")
+        );
         let expected_path = expected_dir().join(format!("{id}.expected.json"));
 
         if update {
@@ -132,9 +154,18 @@ fn reference_runs_are_bit_identical() {
         }
         match fs::read_to_string(&expected_path) {
             Ok(expected) if expected == actual => {}
-            Ok(_) => failures.push(format!("{id}: trajectory or metric samples differ from the recorded reference")),
-            Err(_) => failures.push(format!("{id}: no recorded expectation at {}", expected_path.display())),
+            Ok(_) => failures.push(format!(
+                "{id}: trajectory or metric samples differ from the recorded reference"
+            )),
+            Err(_) => failures.push(format!(
+                "{id}: no recorded expectation at {}",
+                expected_path.display()
+            )),
         }
     }
-    assert!(failures.is_empty(), "reference runs failed:\n  {}", failures.join("\n  "));
+    assert!(
+        failures.is_empty(),
+        "reference runs failed:\n  {}",
+        failures.join("\n  ")
+    );
 }

@@ -43,8 +43,13 @@ struct Scenario {
 #[serde(tag = "kind", rename_all = "kebab-case")]
 enum Distribution {
     UniformGrid,
-    Clustered { cluster_fraction: f64, cluster_span_fraction: f64 },
-    BoundaryBands { band_offset_fraction: f64 },
+    Clustered {
+        cluster_fraction: f64,
+        cluster_span_fraction: f64,
+    },
+    BoundaryBands {
+        band_offset_fraction: f64,
+    },
 }
 
 fn median_ms(repetitions: usize, mut f: impl FnMut()) -> f64 {
@@ -73,7 +78,12 @@ fn uniform_grid(count: usize, arena: f64) -> Vec<AgentPhysicalState> {
         .collect()
 }
 
-fn clustered(count: usize, arena: f64, cluster_fraction: f64, cluster_span_fraction: f64) -> Vec<AgentPhysicalState> {
+fn clustered(
+    count: usize,
+    arena: f64,
+    cluster_fraction: f64,
+    cluster_span_fraction: f64,
+) -> Vec<AgentPhysicalState> {
     let clustered_count = ((count as f64) * cluster_fraction).round() as usize;
     let spread_count = count.saturating_sub(clustered_count);
     let cluster_span = arena * cluster_span_fraction;
@@ -114,7 +124,10 @@ fn boundary_bands(count: usize, arena: f64, band_offset_fraction: f64) -> Vec<Ag
                 2 => Vec2::new(along, -half + offset),
                 _ => Vec2::new(along, half - offset),
             };
-            AgentPhysicalState { position, heading_angle: (i % 64) as f64 * 0.03125 }
+            AgentPhysicalState {
+                position,
+                heading_angle: (i % 64) as f64 * 0.03125,
+            }
         })
         .collect()
 }
@@ -122,12 +135,18 @@ fn boundary_bands(count: usize, arena: f64, band_offset_fraction: f64) -> Vec<Ag
 fn state_for(scenario: &Scenario) -> Vec<AgentPhysicalState> {
     match scenario.distribution {
         Distribution::UniformGrid => uniform_grid(scenario.agents, scenario.arena_size),
-        Distribution::Clustered { cluster_fraction, cluster_span_fraction } => {
-            clustered(scenario.agents, scenario.arena_size, cluster_fraction, cluster_span_fraction)
-        }
-        Distribution::BoundaryBands { band_offset_fraction } => {
-            boundary_bands(scenario.agents, scenario.arena_size, band_offset_fraction)
-        }
+        Distribution::Clustered {
+            cluster_fraction,
+            cluster_span_fraction,
+        } => clustered(
+            scenario.agents,
+            scenario.arena_size,
+            cluster_fraction,
+            cluster_span_fraction,
+        ),
+        Distribution::BoundaryBands {
+            band_offset_fraction,
+        } => boundary_bands(scenario.agents, scenario.arena_size, band_offset_fraction),
     }
 }
 
@@ -137,8 +156,17 @@ fn validate_matrix(matrix: &Matrix) {
     assert!(!matrix.ci_smoke_scenarios.is_empty());
     assert!(!matrix.full_tournament_axes.agent_counts.is_empty());
     assert!(!matrix.full_tournament_axes.densities.is_empty());
-    assert!(matrix.full_tournament_axes.radius_sets.iter().any(|r| r.len() > 1));
-    let distributions: BTreeSet<&str> = matrix.full_tournament_axes.distributions.iter().map(String::as_str).collect();
+    assert!(matrix
+        .full_tournament_axes
+        .radius_sets
+        .iter()
+        .any(|r| r.len() > 1));
+    let distributions: BTreeSet<&str> = matrix
+        .full_tournament_axes
+        .distributions
+        .iter()
+        .map(String::as_str)
+        .collect();
     for required in ["uniform-grid", "clustered", "boundary-bands"] {
         assert!(distributions.contains(required));
     }
@@ -153,7 +181,12 @@ fn validate_exactness(scenario: &Scenario, state: &[AgentPhysicalState]) {
     current.rebuild(state, scenario.arena_size);
     multi.rebuild(state, scenario.arena_size);
     bvh.rebuild(state, scenario.arena_size);
-    let tree_shape = (bvh.node_count(), bvh.leaf_count(), bvh.max_depth(), bvh.index_entries());
+    let tree_shape = (
+        bvh.node_count(),
+        bvh.leaf_count(),
+        bvh.max_depth(),
+        bvh.index_entries(),
+    );
 
     let mut expected = Vec::new();
     let mut actual = Vec::new();
@@ -161,13 +194,34 @@ fn validate_exactness(scenario: &Scenario, state: &[AgentPhysicalState]) {
         for agent in 0..state.len() {
             brute.query(state, agent, radius, scenario.arena_size, &mut expected);
             current.query(state, agent, radius, scenario.arena_size, &mut actual);
-            assert_eq!(actual, expected, "current exactness failure scenario={} radius={} agent={}", scenario.id, radius, agent);
+            assert_eq!(
+                actual, expected,
+                "current exactness failure scenario={} radius={} agent={}",
+                scenario.id, radius, agent
+            );
             multi.query(state, agent, radius, scenario.arena_size, &mut actual);
-            assert_eq!(actual, expected, "multi-resolution exactness failure scenario={} radius={} agent={}", scenario.id, radius, agent);
+            assert_eq!(
+                actual, expected,
+                "multi-resolution exactness failure scenario={} radius={} agent={}",
+                scenario.id, radius, agent
+            );
             bvh.query(state, agent, radius, scenario.arena_size, &mut actual);
-            assert_eq!(actual, expected, "BVH exactness failure scenario={} radius={} agent={}", scenario.id, radius, agent);
+            assert_eq!(
+                actual, expected,
+                "BVH exactness failure scenario={} radius={} agent={}",
+                scenario.id, radius, agent
+            );
         }
-        assert_eq!(tree_shape, (bvh.node_count(), bvh.leaf_count(), bvh.max_depth(), bvh.index_entries()), "query radius changed BVH structure");
+        assert_eq!(
+            tree_shape,
+            (
+                bvh.node_count(),
+                bvh.leaf_count(),
+                bvh.max_depth(),
+                bvh.index_entries()
+            ),
+            "query radius changed BVH structure"
+        );
     }
 }
 
@@ -207,7 +261,10 @@ fn profile_multi(scenario: &Scenario, state: &[AgentPhysicalState]) -> (f64, f64
     (rebuild, query)
 }
 
-fn profile_bvh(scenario: &Scenario, state: &[AgentPhysicalState]) -> (f64, f64, AdaptivePeriodicBvh) {
+fn profile_bvh(
+    scenario: &Scenario,
+    state: &[AgentPhysicalState],
+) -> (f64, f64, AdaptivePeriodicBvh) {
     let mut index = AdaptivePeriodicBvh::default();
     let rebuild = median_ms(3, || index.rebuild(black_box(state), scenario.arena_size));
     index.rebuild(state, scenario.arena_size);
@@ -225,7 +282,11 @@ fn profile_bvh(scenario: &Scenario, state: &[AgentPhysicalState]) -> (f64, f64, 
     (rebuild, query, index)
 }
 
-fn print_bvh_diagnostics(scenario: &Scenario, state: &[AgentPhysicalState], index: &AdaptivePeriodicBvh) {
+fn print_bvh_diagnostics(
+    scenario: &Scenario,
+    state: &[AgentPhysicalState],
+    index: &AdaptivePeriodicBvh,
+) {
     println!(
         "tree,adaptive-periodic-bvh,{},{},{},{},{},{}",
         scenario.id,
@@ -277,14 +338,46 @@ fn main() {
         let state = state_for(scenario);
         validate_exactness(scenario, &state);
         println!("validated,{}", scenario.id);
-        let radii = scenario.radii.iter().map(|r| format!("{r:.6}")).collect::<Vec<_>>().join(";");
+        let radii = scenario
+            .radii
+            .iter()
+            .map(|r| format!("{r:.6}"))
+            .collect::<Vec<_>>()
+            .join(";");
         let queries = scenario.agents * scenario.radii.len();
         let (current_rebuild, current_query) = profile_current(scenario, &state);
         let (multi_rebuild, multi_query) = profile_multi(scenario, &state);
         let (bvh_rebuild, bvh_query, bvh) = profile_bvh(scenario, &state);
-        println!("profile,current-periodic-grid,{},{},{:.6},\"{}\",{:.6},{:.6},{}", scenario.id, scenario.agents, scenario.arena_size, radii, current_rebuild, current_query, queries);
-        println!("profile,multi-resolution-periodic-grid,{},{},{:.6},\"{}\",{:.6},{:.6},{}", scenario.id, scenario.agents, scenario.arena_size, radii, multi_rebuild, multi_query, queries);
-        println!("profile,adaptive-periodic-bvh,{},{},{:.6},\"{}\",{:.6},{:.6},{}", scenario.id, scenario.agents, scenario.arena_size, radii, bvh_rebuild, bvh_query, queries);
+        println!(
+            "profile,current-periodic-grid,{},{},{:.6},\"{}\",{:.6},{:.6},{}",
+            scenario.id,
+            scenario.agents,
+            scenario.arena_size,
+            radii,
+            current_rebuild,
+            current_query,
+            queries
+        );
+        println!(
+            "profile,multi-resolution-periodic-grid,{},{},{:.6},\"{}\",{:.6},{:.6},{}",
+            scenario.id,
+            scenario.agents,
+            scenario.arena_size,
+            radii,
+            multi_rebuild,
+            multi_query,
+            queries
+        );
+        println!(
+            "profile,adaptive-periodic-bvh,{},{},{:.6},\"{}\",{:.6},{:.6},{}",
+            scenario.id,
+            scenario.agents,
+            scenario.arena_size,
+            radii,
+            bvh_rebuild,
+            bvh_query,
+            queries
+        );
         print_bvh_diagnostics(scenario, &state, &bvh);
     }
     println!("validation=all-ci-scenarios-current-grid-multi-resolution-and-adaptive-bvh-match-brute-force-across-all-radii");

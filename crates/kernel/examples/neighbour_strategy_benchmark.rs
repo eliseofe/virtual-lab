@@ -4,9 +4,7 @@ use std::collections::BTreeSet;
 use std::hint::black_box;
 use std::time::Instant;
 
-use multi_resolution_periodic_grid::{
-    MultiResolutionPeriodicGrid, RadiusMatchedGridReference,
-};
+use multi_resolution_periodic_grid::{MultiResolutionPeriodicGrid, RadiusMatchedGridReference};
 use serde::Deserialize;
 use vlab_kernel::{
     AgentPhysicalState, BruteForceNeighbourIndex, NeighbourIndex, PeriodicGridNeighbourIndex, Vec2,
@@ -71,7 +69,9 @@ struct BruteForceStrategy {
 }
 
 impl BenchmarkStrategy for BruteForceStrategy {
-    fn id(&self) -> &'static str { "brute-force" }
+    fn id(&self) -> &'static str {
+        "brute-force"
+    }
 
     fn rebuild(&mut self, state: &[AgentPhysicalState], arena_size: f64) {
         self.index.rebuild(state, arena_size);
@@ -85,7 +85,8 @@ impl BenchmarkStrategy for BruteForceStrategy {
         arena_size: f64,
         out: &mut Vec<usize>,
     ) {
-        self.index.query(state, agent_index, radius, arena_size, out);
+        self.index
+            .query(state, agent_index, radius, arena_size, out);
     }
 }
 
@@ -95,7 +96,9 @@ struct CurrentPeriodicGridStrategy {
 }
 
 impl BenchmarkStrategy for CurrentPeriodicGridStrategy {
-    fn id(&self) -> &'static str { "current-periodic-grid" }
+    fn id(&self) -> &'static str {
+        "current-periodic-grid"
+    }
 
     fn rebuild(&mut self, state: &[AgentPhysicalState], arena_size: f64) {
         self.index.rebuild(state, arena_size);
@@ -109,7 +112,8 @@ impl BenchmarkStrategy for CurrentPeriodicGridStrategy {
         arena_size: f64,
         out: &mut Vec<usize>,
     ) {
-        self.index.query(state, agent_index, radius, arena_size, out);
+        self.index
+            .query(state, agent_index, radius, arena_size, out);
     }
 }
 
@@ -119,7 +123,9 @@ struct MultiResolutionGridStrategy {
 }
 
 impl BenchmarkStrategy for MultiResolutionGridStrategy {
-    fn id(&self) -> &'static str { "multi-resolution-periodic-grid" }
+    fn id(&self) -> &'static str {
+        "multi-resolution-periodic-grid"
+    }
 
     fn rebuild(&mut self, state: &[AgentPhysicalState], arena_size: f64) {
         self.index.rebuild(state, arena_size);
@@ -133,7 +139,8 @@ impl BenchmarkStrategy for MultiResolutionGridStrategy {
         arena_size: f64,
         out: &mut Vec<usize>,
     ) {
-        self.index.query(state, agent_index, radius, arena_size, out);
+        self.index
+            .query(state, agent_index, radius, arena_size, out);
     }
 }
 
@@ -227,25 +234,38 @@ fn boundary_bands(count: usize, arena: f64, band_offset_fraction: f64) -> Vec<Ag
 fn state_for(scenario: &Scenario) -> Vec<AgentPhysicalState> {
     match scenario.distribution {
         Distribution::UniformGrid => uniform_grid(scenario.agents, scenario.arena_size),
-        Distribution::Clustered { cluster_fraction, cluster_span_fraction } => clustered(
+        Distribution::Clustered {
+            cluster_fraction,
+            cluster_span_fraction,
+        } => clustered(
             scenario.agents,
             scenario.arena_size,
             cluster_fraction,
             cluster_span_fraction,
         ),
-        Distribution::BoundaryBands { band_offset_fraction } => {
-            boundary_bands(scenario.agents, scenario.arena_size, band_offset_fraction)
-        }
+        Distribution::BoundaryBands {
+            band_offset_fraction,
+        } => boundary_bands(scenario.agents, scenario.arena_size, band_offset_fraction),
     }
 }
 
 fn validate_matrix(matrix: &Matrix) {
-    assert_eq!(matrix.version, 1, "unsupported neighbour-search matrix version");
-    assert!(matrix.seed > 0, "benchmark seed must be recorded and non-zero");
+    assert_eq!(
+        matrix.version, 1,
+        "unsupported neighbour-search matrix version"
+    );
+    assert!(
+        matrix.seed > 0,
+        "benchmark seed must be recorded and non-zero"
+    );
     assert!(!matrix.ci_smoke_scenarios.is_empty());
     assert!(!matrix.full_tournament_axes.agent_counts.is_empty());
     assert!(!matrix.full_tournament_axes.densities.is_empty());
-    assert!(matrix.full_tournament_axes.radius_sets.iter().any(|r| r.len() > 1));
+    assert!(matrix
+        .full_tournament_axes
+        .radius_sets
+        .iter()
+        .any(|r| r.len() > 1));
 
     let distributions: BTreeSet<&str> = matrix
         .full_tournament_axes
@@ -254,7 +274,10 @@ fn validate_matrix(matrix: &Matrix) {
         .map(String::as_str)
         .collect();
     for required in ["uniform-grid", "clustered", "boundary-bands"] {
-        assert!(distributions.contains(required), "missing full-matrix distribution {required}");
+        assert!(
+            distributions.contains(required),
+            "missing full-matrix distribution {required}"
+        );
     }
 
     let mut has_multi_radius = false;
@@ -266,20 +289,33 @@ fn validate_matrix(matrix: &Matrix) {
         assert!(scenario.arena_size > 0.0);
         assert!(!scenario.radii.is_empty());
         assert!(scenario.radii.iter().all(|r| *r > 0.0));
-        if scenario.radii.len() > 1 { has_multi_radius = true; }
+        if scenario.radii.len() > 1 {
+            has_multi_radius = true;
+        }
         let min = scenario.radii.iter().copied().fold(f64::INFINITY, f64::min);
         let max = scenario.radii.iter().copied().fold(0.0_f64, f64::max);
-        if max / min >= 50.0 { has_wide_ratio = true; }
+        if max / min >= 50.0 {
+            has_wide_ratio = true;
+        }
         match scenario.distribution {
             Distribution::Clustered { .. } => has_clustered = true,
             Distribution::BoundaryBands { .. } => has_boundary = true,
             Distribution::UniformGrid => {}
         }
     }
-    assert!(has_multi_radius, "CI matrix must include simultaneous radii");
-    assert!(has_wide_ratio, "CI matrix must include a large min/max radius ratio");
+    assert!(
+        has_multi_radius,
+        "CI matrix must include simultaneous radii"
+    );
+    assert!(
+        has_wide_ratio,
+        "CI matrix must include a large min/max radius ratio"
+    );
     assert!(has_clustered, "CI matrix must include clustered occupancy");
-    assert!(has_boundary, "CI matrix must include periodic-boundary occupancy");
+    assert!(
+        has_boundary,
+        "CI matrix must include periodic-boundary occupancy"
+    );
 }
 
 fn validate_exactness(scenario: &Scenario, state: &[AgentPhysicalState]) {
@@ -313,13 +349,7 @@ fn validate_exactness(scenario: &Scenario, state: &[AgentPhysicalState]) {
                 scenario.id, radius, agent
             );
 
-            reference.query_with_stats(
-                state,
-                agent,
-                radius,
-                scenario.arena_size,
-                &mut actual,
-            );
+            reference.query_with_stats(state, agent, radius, scenario.arena_size, &mut actual);
             assert_eq!(
                 actual, expected,
                 "radius-matched reference exactness failure scenario={} radius={} agent={}",
@@ -409,15 +439,12 @@ fn profile_multi_resolution_diagnostics(scenario: &Scenario, state: &[AgentPhysi
         let mut cells_per_axis = 0usize;
         let mut cell_size = 0.0;
         for agent in 0..state.len() {
-            let stats = index.query_with_stats(
-                state,
-                agent,
-                radius,
-                scenario.arena_size,
-                &mut out,
-            );
+            let stats = index.query_with_stats(state, agent, radius, scenario.arena_size, &mut out);
             if let Some(level) = selected_level {
-                assert_eq!(level, stats.level_index, "radius selected inconsistent hierarchy levels");
+                assert_eq!(
+                    level, stats.level_index,
+                    "radius selected inconsistent hierarchy levels"
+                );
             } else {
                 selected_level = Some(stats.level_index);
                 cells_per_axis = stats.cells_per_axis;
@@ -457,13 +484,7 @@ fn profile_radius_matched_reference(scenario: &Scenario, state: &[AgentPhysicalS
             let mut out = Vec::new();
             let mut total = 0usize;
             for agent in 0..state.len() {
-                reference.query_with_stats(
-                    state,
-                    agent,
-                    radius,
-                    scenario.arena_size,
-                    &mut out,
-                );
+                reference.query_with_stats(state, agent, radius, scenario.arena_size, &mut out);
                 total += out.len();
             }
             accepted = total;
@@ -474,13 +495,8 @@ fn profile_radius_matched_reference(scenario: &Scenario, state: &[AgentPhysicalS
         let mut visited_cells = 0usize;
         let mut candidate_checks = 0usize;
         for agent in 0..state.len() {
-            let stats = reference.query_with_stats(
-                state,
-                agent,
-                radius,
-                scenario.arena_size,
-                &mut out,
-            );
+            let stats =
+                reference.query_with_stats(state, agent, radius, scenario.arena_size, &mut out);
             visited_cells += stats.visited_cells;
             candidate_checks += stats.candidate_checks;
         }

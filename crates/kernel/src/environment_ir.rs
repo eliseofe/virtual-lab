@@ -13,12 +13,24 @@ struct EnvironmentIr {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum Expression {
-    Const { value: f64 },
+    Const {
+        value: f64,
+    },
     X,
     Y,
-    Unary { op: String, value: Box<Expression> },
-    Binary { op: String, left: Box<Expression>, right: Box<Expression> },
-    Call { name: String, args: Vec<Expression> },
+    Unary {
+        op: String,
+        value: Box<Expression>,
+    },
+    Binary {
+        op: String,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+    Call {
+        name: String,
+        args: Vec<Expression>,
+    },
 }
 
 fn validate_expression(expression: &Expression) -> Result<(), String> {
@@ -44,13 +56,15 @@ fn validate_expression(expression: &Expression) -> Result<(), String> {
         }
         Expression::Call { name, args } => {
             let arity = match name.as_str() {
-                "abs" | "sqrt" | "exp" | "log" | "sin" | "cos" | "tan"
-                | "asin" | "acos" | "atan" | "floor" | "ceil" => 1,
+                "abs" | "sqrt" | "exp" | "log" | "sin" | "cos" | "tan" | "asin" | "acos"
+                | "atan" | "floor" | "ceil" => 1,
                 "atan2" | "pow" | "min" | "max" => 2,
                 _ => return Err(format!("unsupported environment intrinsic '{name}'")),
             };
             if args.len() != arity {
-                return Err(format!("environment intrinsic '{name}' expects {arity} arguments"));
+                return Err(format!(
+                    "environment intrinsic '{name}' expects {arity} arguments"
+                ));
             }
             for arg in args {
                 validate_expression(arg)?;
@@ -105,15 +119,9 @@ fn evaluate(expression: &Expression, position: Vec2) -> f64 {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct EnvironmentRuntime {
     expression: Option<Expression>,
-}
-
-impl Default for EnvironmentRuntime {
-    fn default() -> Self {
-        Self { expression: None }
-    }
 }
 
 impl EnvironmentRuntime {
@@ -127,13 +135,20 @@ impl EnvironmentRuntime {
             return Err(format!("unsupported environment IR schema '{}'", ir.schema));
         }
         if ir.language != "python-vlab/0.1" {
-            return Err(format!("unsupported environment language '{}'", ir.language));
+            return Err(format!(
+                "unsupported environment language '{}'",
+                ir.language
+            ));
         }
         if ir.entry != "environmental_scalar(x, y, config)" {
-            return Err("environment IR entry must be environmental_scalar(x, y, config)".to_owned());
+            return Err(
+                "environment IR entry must be environmental_scalar(x, y, config)".to_owned(),
+            );
         }
         validate_expression(&ir.expression)?;
-        Ok(Self { expression: Some(ir.expression) })
+        Ok(Self {
+            expression: Some(ir.expression),
+        })
     }
 
     pub fn has_scalar(&self) -> bool {
@@ -142,7 +157,10 @@ impl EnvironmentRuntime {
 
     pub fn sample(&self, position: Vec2) -> Option<f64> {
         let value = evaluate(self.expression.as_ref()?, position);
-        assert!(value.is_finite(), "environmental_scalar evaluated to a non-finite value");
+        assert!(
+            value.is_finite(),
+            "environmental_scalar evaluated to a non-finite value"
+        );
         Some(value)
     }
 }
@@ -188,7 +206,10 @@ mod tests {
         fn scalar_call(name: &str, args: &[f64]) -> f64 {
             let expression = Expression::Call {
                 name: name.to_owned(),
-                args: args.iter().map(|value| Expression::Const { value: *value }).collect(),
+                args: args
+                    .iter()
+                    .map(|value| Expression::Const { value: *value })
+                    .collect(),
             };
             evaluate(&expression, Vec2::ZERO)
         }
@@ -210,5 +231,4 @@ mod tests {
         assert_eq!(scalar_call("min", &[2.0, 3.0]), 2.0);
         assert_eq!(scalar_call("max", &[2.0, 3.0]), 3.0);
     }
-
 }

@@ -350,7 +350,14 @@ fn build_panel(matrix: &Matrix) -> Vec<Scenario> {
 
     for &n in &axes.agent_counts {
         for &range_case in &cases {
-            add_scenario(&mut panel, &mut seen, n, 1.0, Distribution::Uniform, range_case);
+            add_scenario(
+                &mut panel,
+                &mut seen,
+                n,
+                1.0,
+                Distribution::Uniform,
+                range_case,
+            );
         }
     }
     for &density in &axes.densities {
@@ -371,7 +378,10 @@ fn build_panel(matrix: &Matrix) -> Vec<Scenario> {
         }
     }
     for distribution in [Distribution::Clustered, Distribution::BoundaryBands] {
-        for range_case in [RangeCase::HeterogeneousModerate, RangeCase::HeterogeneousWide] {
+        for range_case in [
+            RangeCase::HeterogeneousModerate,
+            RangeCase::HeterogeneousWide,
+        ] {
             add_scenario(&mut panel, &mut seen, 25000, 1.0, distribution, range_case);
         }
     }
@@ -459,13 +469,7 @@ fn build_generic_routes<I: GenericRabIndex>(
 
     for receiver in 0..state.len() {
         stats.receiver_queries += 1;
-        let diag = index.query_max_range(
-            state,
-            receiver,
-            max_range,
-            arena_size,
-            &mut candidates,
-        );
+        let diag = index.query_max_range(state, receiver, max_range, arena_size, &mut candidates);
         stats.diag_supported |= diag.supported;
         stats.lookup_units += diag.lookup_units;
         stats.internal_candidate_checks += diag.internal_candidate_checks;
@@ -506,16 +510,53 @@ fn validate_case(scenario: &Scenario, state: &[AgentPhysicalState], ranges: &[f6
     let mut actual = Vec::new();
     for receiver in probes {
         brute_force_receiver(state, ranges, receiver, scenario.arena_size, &mut expected);
-        assert_eq!(faithful_routes[receiver], expected, "faithful mismatch {} receiver={receiver}", scenario.id);
+        assert_eq!(
+            faithful_routes[receiver], expected,
+            "faithful mismatch {} receiver={receiver}",
+            scenario.id
+        );
 
-        generic_receiver(&current, state, ranges, receiver, scenario.arena_size, &mut actual);
-        assert_eq!(actual, expected, "current adapter mismatch {} receiver={receiver}", scenario.id);
+        generic_receiver(
+            &current,
+            state,
+            ranges,
+            receiver,
+            scenario.arena_size,
+            &mut actual,
+        );
+        assert_eq!(
+            actual, expected,
+            "current adapter mismatch {} receiver={receiver}",
+            scenario.id
+        );
 
-        generic_receiver(&multi, state, ranges, receiver, scenario.arena_size, &mut actual);
-        assert_eq!(actual, expected, "multi adapter mismatch {} receiver={receiver}", scenario.id);
+        generic_receiver(
+            &multi,
+            state,
+            ranges,
+            receiver,
+            scenario.arena_size,
+            &mut actual,
+        );
+        assert_eq!(
+            actual, expected,
+            "multi adapter mismatch {} receiver={receiver}",
+            scenario.id
+        );
 
-        generic_receiver(&bvh, state, ranges, receiver, scenario.arena_size, &mut actual);
-        assert_eq!(actual, expected, "bvh adapter mismatch {} receiver={receiver}", scenario.id);
+        generic_receiver(
+            &bvh,
+            state,
+            ranges,
+            receiver,
+            scenario.arena_size,
+            &mut actual,
+        );
+        assert_eq!(
+            actual, expected,
+            "bvh adapter mismatch {} receiver={receiver}",
+            scenario.id
+        );
     }
 }
 
@@ -543,22 +584,42 @@ fn validate_large_boundary_full() {
         let mut faithful = FaithfulArgosRabGrid::default();
         faithful.rebuild(&state, &ranges, scenario.arena_size);
         let (actual, _) = faithful.build_routes_with_stats(&state, &ranges, scenario.arena_size);
-        assert_eq!(actual, expected, "faithful large-boundary mismatch {}", range_case.id());
+        assert_eq!(
+            actual,
+            expected,
+            "faithful large-boundary mismatch {}",
+            range_case.id()
+        );
 
         let mut current = PeriodicGridNeighbourIndex::default();
         current.rebuild_index(&state, scenario.arena_size);
         let (actual, _) = build_generic_routes(&current, &state, &ranges, scenario.arena_size);
-        assert_eq!(actual, expected, "current large-boundary mismatch {}", range_case.id());
+        assert_eq!(
+            actual,
+            expected,
+            "current large-boundary mismatch {}",
+            range_case.id()
+        );
 
         let mut multi = MultiResolutionPeriodicGrid::default();
         multi.rebuild_index(&state, scenario.arena_size);
         let (actual, _) = build_generic_routes(&multi, &state, &ranges, scenario.arena_size);
-        assert_eq!(actual, expected, "multi large-boundary mismatch {}", range_case.id());
+        assert_eq!(
+            actual,
+            expected,
+            "multi large-boundary mismatch {}",
+            range_case.id()
+        );
 
         let mut bvh = AdaptivePeriodicBvh::default();
         bvh.rebuild_index(&state, scenario.arena_size);
         let (actual, _) = build_generic_routes(&bvh, &state, &ranges, scenario.arena_size);
-        assert_eq!(actual, expected, "bvh large-boundary mismatch {}", range_case.id());
+        assert_eq!(
+            actual,
+            expected,
+            "bvh large-boundary mismatch {}",
+            range_case.id()
+        );
 
         println!("large_boundary_full_exact,{},{}", range_case.id(), n);
     }
@@ -597,16 +658,14 @@ fn print_profile(
 fn profile_faithful(scenario: &Scenario, state: &[AgentPhysicalState], ranges: &[f64]) {
     let max_range = ranges.iter().copied().fold(0.0_f64, f64::max);
     let mut grid = FaithfulArgosRabGrid::default();
-    let rebuild_ms = median_ms(|| grid.rebuild(black_box(state), black_box(ranges), scenario.arena_size));
+    let rebuild_ms =
+        median_ms(|| grid.rebuild(black_box(state), black_box(ranges), scenario.arena_size));
     grid.rebuild(state, ranges, scenario.arena_size);
 
     let mut last_stats = RabRouteStats::default();
     let route_ms = median_ms(|| {
-        let (routes, stats) = grid.build_routes_with_stats(
-            black_box(state),
-            black_box(ranges),
-            scenario.arena_size,
-        );
+        let (routes, stats) =
+            grid.build_routes_with_stats(black_box(state), black_box(ranges), scenario.arena_size);
         black_box(links_count(&routes));
         last_stats = stats;
     });
@@ -644,7 +703,12 @@ fn profile_generic<I: GenericRabIndex>(
 
     let mut last_stats = GenericRouteStats::default();
     let route_ms = median_ms(|| {
-        let (routes, stats) = build_generic_routes(index, black_box(state), black_box(ranges), scenario.arena_size);
+        let (routes, stats) = build_generic_routes(
+            index,
+            black_box(state),
+            black_box(ranges),
+            scenario.arena_size,
+        );
         black_box(links_count(&routes));
         last_stats = stats;
     });
@@ -679,7 +743,9 @@ fn main() {
 
     println!("vlab_rab_strategy_comparison_version=1");
     println!("semantic_target=directed-transmitter-owned-range-relation");
-    println!("generic_adapter=query-at-max-transmitter-range-then-exact-filter-by-transmitter-range");
+    println!(
+        "generic_adapter=query-at-max-transmitter-range-then-exact-filter-by-transmitter-range"
+    );
     println!("range_workloads=equal-1;heterogeneous-0.25-1-4;heterogeneous-0.1-1-10");
     println!("panel_scenarios={}", panel.len());
     println!("profile_schema=profile,strategy,scenario,N,density,distribution,range_case,max_range,rebuild_ms,route_ms,total_ms,index_entries,avg_directed_links_per_receiver");
@@ -690,7 +756,12 @@ fn main() {
     println!("large_boundary_full_validation=pass");
 
     for (index, scenario) in panel.iter().enumerate() {
-        println!("scenario_begin,{}/{},{}", index + 1, panel.len(), scenario.id);
+        println!(
+            "scenario_begin,{}/{},{}",
+            index + 1,
+            panel.len(),
+            scenario.id
+        );
         let state = state_for(scenario);
         let ranges = transmitter_ranges(scenario.range_case, state.len());
         validate_case(scenario, &state, &ranges);

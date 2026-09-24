@@ -147,12 +147,7 @@ fn heterogeneous_ranges(count: usize, range_set: &[f64]) -> Vec<f64> {
     (0..count).map(|i| range_set[i % range_set.len()]).collect()
 }
 
-fn validate_case(
-    label: &str,
-    scenario: &Scenario,
-    state: &[AgentPhysicalState],
-    ranges: &[f64],
-) {
+fn validate_case(label: &str, scenario: &Scenario, state: &[AgentPhysicalState], ranges: &[f64]) {
     let expected = brute_force_rab_routes(state, ranges, scenario.arena_size);
     let mut candidate = FaithfulArgosRabGrid::default();
     candidate.rebuild(state, ranges, scenario.arena_size);
@@ -168,41 +163,26 @@ fn sum_links(routes: &[Vec<usize>]) -> usize {
     routes.iter().map(Vec::len).sum()
 }
 
-fn profile_case(
-    label: &str,
-    scenario: &Scenario,
-    state: &[AgentPhysicalState],
-    ranges: &[f64],
-) {
+fn profile_case(label: &str, scenario: &Scenario, state: &[AgentPhysicalState], ranges: &[f64]) {
     let repetitions = 3;
     let mut grid = FaithfulArgosRabGrid::default();
 
     let rebuild_ms = median_ms(repetitions, || {
-        grid.rebuild(
-            black_box(state),
-            black_box(ranges),
-            scenario.arena_size,
-        );
+        grid.rebuild(black_box(state), black_box(ranges), scenario.arena_size);
     });
     grid.rebuild(state, ranges, scenario.arena_size);
 
     let mut last_stats = RabRouteStats::default();
     let route_ms = median_ms(repetitions, || {
-        let (routes, stats) = grid.build_routes_with_stats(
-            black_box(state),
-            black_box(ranges),
-            scenario.arena_size,
-        );
+        let (routes, stats) =
+            grid.build_routes_with_stats(black_box(state), black_box(ranges), scenario.arena_size);
         black_box(sum_links(&routes));
         last_stats = stats;
     });
 
     let brute_force_ms = median_ms(repetitions, || {
-        let routes = brute_force_rab_routes(
-            black_box(state),
-            black_box(ranges),
-            scenario.arena_size,
-        );
+        let routes =
+            brute_force_rab_routes(black_box(state), black_box(ranges), scenario.arena_size);
         black_box(sum_links(&routes));
     });
 
@@ -241,7 +221,9 @@ fn main() {
     println!("source_model=argos3-master-rab-medium-and-rab-equipped-entity-grid-updater");
     println!("semantics=transmitter-owned-range,point-receiver-lookup,pair-distance-once,directional-range-tests");
     println!("isolation=equal-message-size,no-occlusion,2d-periodic-virtual-lab-benchmark-world");
-    println!("grid_policy=argos-default-approximately-one-world-unit-per-cell,independent-of-rab-range");
+    println!(
+        "grid_policy=argos-default-approximately-one-world-unit-per-cell,independent-of-rab-range"
+    );
     println!("profile_schema=row_type,scenario,range_case,agents,arena_size,cells_per_axis,cell_size,rebuild_median_ms,route_build_median_ms,index_entries,entries_per_agent,receiver_point_lookups,raw_bucket_entries,pair_references,duplicate_pair_references,exact_pair_distance_checks,avg_directed_links_per_receiver");
     println!("oracle_schema=row_type,scenario,range_case,brute_force_route_median_ms");
 

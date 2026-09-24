@@ -17,16 +17,28 @@ enum Value {
 
 impl Value {
     fn scalar(self) -> f64 {
-        match self { Value::Scalar(value) => value, _ => unreachable!("validated controller scalar") }
+        match self {
+            Value::Scalar(value) => value,
+            _ => unreachable!("validated controller scalar"),
+        }
     }
     fn vec2(self) -> Vec2 {
-        match self { Value::Vec2(value) => value, _ => unreachable!("validated controller vector") }
+        match self {
+            Value::Vec2(value) => value,
+            _ => unreachable!("validated controller vector"),
+        }
     }
     fn boolean(self) -> bool {
-        match self { Value::Bool(value) => value, _ => unreachable!("validated controller boolean") }
+        match self {
+            Value::Bool(value) => value,
+            _ => unreachable!("validated controller boolean"),
+        }
     }
     fn action(self) -> Action {
-        match self { Value::Action(value) => value, _ => unreachable!("validated controller action") }
+        match self {
+            Value::Action(value) => value,
+            _ => unreachable!("validated controller action"),
+        }
     }
 }
 
@@ -65,24 +77,91 @@ struct ConditionalBranch {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum Statement {
-    Assign { target: String, value: Expression, #[serde(default)] line: Option<usize> },
-    AugAssign { target: String, op: String, value: Expression, #[serde(default)] line: Option<usize> },
-    ForEach { variable: String, iterable: Expression, body: Vec<Statement>, #[serde(default)] line: Option<usize> },
-    If { branches: Vec<ConditionalBranch>, #[serde(default)] else_body: Vec<Statement>, #[serde(default)] line: Option<usize> },
-    Return { value: Expression, #[serde(default)] line: Option<usize> },
+    Assign {
+        target: String,
+        value: Expression,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    AugAssign {
+        target: String,
+        op: String,
+        value: Expression,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    ForEach {
+        variable: String,
+        iterable: Expression,
+        body: Vec<Statement>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    If {
+        branches: Vec<ConditionalBranch>,
+        #[serde(default)]
+        else_body: Vec<Statement>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    Return {
+        value: Expression,
+        #[serde(default)]
+        line: Option<usize>,
+    },
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 enum Expression {
-    Const { value: f64, #[serde(default)] line: Option<usize> },
-    BoolConst { value: bool, #[serde(default)] line: Option<usize> },
-    Load { path: String, #[serde(default)] line: Option<usize> },
-    Unary { op: String, value: Box<Expression>, #[serde(default)] line: Option<usize> },
-    Compare { op: String, left: Box<Expression>, right: Box<Expression>, #[serde(default)] line: Option<usize> },
-    BoolOp { op: String, left: Box<Expression>, right: Box<Expression>, #[serde(default)] line: Option<usize> },
-    Binary { op: String, left: Box<Expression>, right: Box<Expression>, #[serde(default)] line: Option<usize> },
-    Call { name: String, args: Vec<Expression>, #[serde(default)] line: Option<usize> },
+    Const {
+        value: f64,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    BoolConst {
+        value: bool,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    Load {
+        path: String,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    Unary {
+        op: String,
+        value: Box<Expression>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    Compare {
+        op: String,
+        left: Box<Expression>,
+        right: Box<Expression>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    BoolOp {
+        op: String,
+        left: Box<Expression>,
+        right: Box<Expression>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    Binary {
+        op: String,
+        left: Box<Expression>,
+        right: Box<Expression>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
+    Call {
+        name: String,
+        args: Vec<Expression>,
+        #[serde(default)]
+        line: Option<usize>,
+    },
 }
 
 fn at_line(line: Option<usize>, message: impl AsRef<str>) -> String {
@@ -101,11 +180,18 @@ fn validate_expression(
 ) -> Result<(), String> {
     match expression {
         Expression::Const { value, line } => {
-            if !value.is_finite() { return Err(at_line(*line, "numeric constants must be finite")); }
+            if !value.is_finite() {
+                return Err(at_line(*line, "numeric constants must be finite"));
+            }
         }
         Expression::BoolConst { .. } => {}
         Expression::Load { path, line } => {
-            if path == "obs.heading" || path == "obs.neighbours" || path == "obs.environmental_scalar" { return Ok(()); }
+            if path == "obs.heading"
+                || path == "obs.neighbours"
+                || path == "obs.environmental_scalar"
+            {
+                return Ok(());
+            }
             if let Some(reference_path) = path.strip_prefix("obs.references.") {
                 let mut pieces = reference_path.split('.');
                 let name = pieces.next().unwrap_or_default();
@@ -121,16 +207,28 @@ fn validate_expression(
                 }
             }
             if let Some(name) = path.strip_prefix("self.") {
-                if state.contains(name) { return Ok(()); }
-                return Err(at_line(*line, format!("private state '{name}' is not declared")));
+                if state.contains(name) {
+                    return Ok(());
+                }
+                return Err(at_line(
+                    *line,
+                    format!("private state '{name}' is not declared"),
+                ));
             }
             if let Some(variable) = loop_variable {
-                if path.strip_prefix(variable) == Some(".relative_position") { return Ok(()); }
+                if path.strip_prefix(variable) == Some(".relative_position") {
+                    return Ok(());
+                }
             }
             if path.contains('.') {
-                return Err(at_line(*line, format!("observation field '{path}' is unavailable")));
+                return Err(at_line(
+                    *line,
+                    format!("observation field '{path}' is unavailable"),
+                ));
             }
-            if parameters.contains(path) || locals.contains(path) { return Ok(()); }
+            if parameters.contains(path) || locals.contains(path) {
+                return Ok(());
+            }
             return Err(at_line(*line, format!("unknown identifier '{path}'")));
         }
         Expression::Unary { op, value, line } => {
@@ -139,45 +237,74 @@ fn validate_expression(
             }
             validate_expression(value, parameters, state, locals, loop_variable)?;
         }
-        Expression::Compare { op, left, right, line } => {
+        Expression::Compare {
+            op,
+            left,
+            right,
+            line,
+        } => {
             if !matches!(op.as_str(), "<" | "<=" | ">" | ">=" | "==" | "!=") {
-                return Err(at_line(*line, format!("unsupported comparison operator '{op}'")));
+                return Err(at_line(
+                    *line,
+                    format!("unsupported comparison operator '{op}'"),
+                ));
             }
             validate_expression(left, parameters, state, locals, loop_variable)?;
             validate_expression(right, parameters, state, locals, loop_variable)?;
         }
-        Expression::BoolOp { op, left, right, line } => {
+        Expression::BoolOp {
+            op,
+            left,
+            right,
+            line,
+        } => {
             if !matches!(op.as_str(), "and" | "or") {
-                return Err(at_line(*line, format!("unsupported boolean operator '{op}'")));
+                return Err(at_line(
+                    *line,
+                    format!("unsupported boolean operator '{op}'"),
+                ));
             }
             validate_expression(left, parameters, state, locals, loop_variable)?;
             validate_expression(right, parameters, state, locals, loop_variable)?;
         }
-        Expression::Binary { op, left, right, line } => {
+        Expression::Binary {
+            op,
+            left,
+            right,
+            line,
+        } => {
             if !matches!(op.as_str(), "+" | "-" | "*" | "/") {
-                return Err(at_line(*line, format!("unsupported binary operator '{op}'")));
+                return Err(at_line(
+                    *line,
+                    format!("unsupported binary operator '{op}'"),
+                ));
             }
             validate_expression(left, parameters, state, locals, loop_variable)?;
             validate_expression(right, parameters, state, locals, loop_variable)?;
         }
         Expression::Call { name, args, line } => {
             let arity = match name.as_str() {
-                "Vec2" | "dot" | "atan2" | "pow" | "min" | "max" | "Motion"
-                | "rng.uniform" | "rng.normal" => 2,
-                "perpendicular" | "norm" | "abs" | "sqrt" | "exp" | "log"
-                | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"
-                | "floor" | "ceil" | "rng.bernoulli" => 1,
+                "Vec2" | "dot" | "atan2" | "pow" | "min" | "max" | "Motion" | "rng.uniform"
+                | "rng.normal" => 2,
+                "perpendicular" | "norm" | "abs" | "sqrt" | "exp" | "log" | "sin" | "cos"
+                | "tan" | "asin" | "acos" | "atan" | "floor" | "ceil" | "rng.bernoulli" => 1,
                 _ => return Err(at_line(*line, format!("unsupported call '{name}'"))),
             };
-            if args.len() != arity { return Err(at_line(*line, format!("{name} expects {arity} arguments"))); }
-            for arg in args { validate_expression(arg, parameters, state, locals, loop_variable)?; }
+            if args.len() != arity {
+                return Err(at_line(*line, format!("{name} expects {arity} arguments")));
+            }
+            for arg in args {
+                validate_expression(arg, parameters, state, locals, loop_variable)?;
+            }
         }
     }
     Ok(())
 }
 
 fn intersect_local_sets(sets: &[HashSet<String>]) -> HashSet<String> {
-    let Some(first) = sets.first() else { return HashSet::new(); };
+    let Some(first) = sets.first() else {
+        return HashSet::new();
+    };
     let mut out = first.clone();
     out.retain(|name| sets.iter().all(|set| set.contains(name)));
     out
@@ -193,45 +320,103 @@ fn validate_statements(
     let mut returns = false;
     for statement in body {
         match statement {
-            Statement::Assign { target, value, line } => {
+            Statement::Assign {
+                target,
+                value,
+                line,
+            } => {
                 validate_expression(value, parameters, state, locals, loop_variable)?;
                 if let Some(name) = target.strip_prefix("self.") {
-                    if !state.contains(name) { return Err(at_line(*line, format!("private state '{name}' is not declared"))); }
+                    if !state.contains(name) {
+                        return Err(at_line(
+                            *line,
+                            format!("private state '{name}' is not declared"),
+                        ));
+                    }
                 } else {
-                    if parameters.contains(target) || target == "obs" || loop_variable == Some(target.as_str()) {
-                        return Err(at_line(*line, format!("cannot assign to scientific input '{target}'")));
+                    if parameters.contains(target)
+                        || target == "obs"
+                        || loop_variable == Some(target.as_str())
+                    {
+                        return Err(at_line(
+                            *line,
+                            format!("cannot assign to scientific input '{target}'"),
+                        ));
                     }
                     locals.insert(target.clone());
                 }
             }
-            Statement::AugAssign { target, op, value, line } => {
-                if op != "+" { return Err(at_line(*line, format!("unsupported augmented operator '{op}'"))); }
+            Statement::AugAssign {
+                target,
+                op,
+                value,
+                line,
+            } => {
+                if op != "+" {
+                    return Err(at_line(
+                        *line,
+                        format!("unsupported augmented operator '{op}'"),
+                    ));
+                }
                 validate_expression(value, parameters, state, locals, loop_variable)?;
                 if let Some(name) = target.strip_prefix("self.") {
-                    if !state.contains(name) { return Err(at_line(*line, format!("private state '{name}' is not declared"))); }
+                    if !state.contains(name) {
+                        return Err(at_line(
+                            *line,
+                            format!("private state '{name}' is not declared"),
+                        ));
+                    }
                 } else if !locals.contains(target) {
-                    return Err(at_line(*line, format!("local '{target}' must be assigned before '+='")));
+                    return Err(at_line(
+                        *line,
+                        format!("local '{target}' must be assigned before '+='"),
+                    ));
                 }
             }
-            Statement::ForEach { variable, iterable, body, line } => {
+            Statement::ForEach {
+                variable,
+                iterable,
+                body,
+                line,
+            } => {
                 match iterable {
                     Expression::Load { path, .. } if path == "obs.neighbours" => {}
                     _ => return Err(at_line(*line, "for loop must iterate over obs.neighbours")),
                 }
-                if loop_variable.is_some() { return Err(at_line(*line, "nested neighbour loops are not supported")); }
+                if loop_variable.is_some() {
+                    return Err(at_line(*line, "nested neighbour loops are not supported"));
+                }
                 let mut nested = locals.clone();
                 validate_statements(body, parameters, state, &mut nested, Some(variable))?;
             }
-            Statement::If { branches, else_body, .. } => {
+            Statement::If {
+                branches,
+                else_body,
+                ..
+            } => {
                 let before = locals.clone();
                 let mut continuing = Vec::new();
                 let mut all_return = !else_body.is_empty();
 
                 for branch in branches {
-                    validate_expression(&branch.condition, parameters, state, &before, loop_variable)?;
+                    validate_expression(
+                        &branch.condition,
+                        parameters,
+                        state,
+                        &before,
+                        loop_variable,
+                    )?;
                     let mut nested = before.clone();
-                    let branch_returns = validate_statements(&branch.body, parameters, state, &mut nested, loop_variable)?;
-                    if !branch_returns { continuing.push(nested); }
+                    let branch_returns = validate_statements(
+                        &branch.body,
+                        parameters,
+                        state,
+                        &mut nested,
+                        loop_variable,
+                    )?;
+                    if !branch_returns {
+                        continuing.push(nested);
+                    }
                     all_return &= branch_returns;
                 }
 
@@ -240,8 +425,16 @@ fn validate_statements(
                     all_return = false;
                 } else {
                     let mut nested = before.clone();
-                    let else_returns = validate_statements(else_body, parameters, state, &mut nested, loop_variable)?;
-                    if !else_returns { continuing.push(nested); }
+                    let else_returns = validate_statements(
+                        else_body,
+                        parameters,
+                        state,
+                        &mut nested,
+                        loop_variable,
+                    )?;
+                    if !else_returns {
+                        continuing.push(nested);
+                    }
                     all_return &= else_returns;
                 }
 
@@ -263,11 +456,19 @@ fn collect_local_names(body: &[Statement], out: &mut BTreeSet<String>) {
     for statement in body {
         match statement {
             Statement::Assign { target, .. } | Statement::AugAssign { target, .. } => {
-                if !target.starts_with("self.") { out.insert(target.clone()); }
+                if !target.starts_with("self.") {
+                    out.insert(target.clone());
+                }
             }
             Statement::ForEach { body, .. } => collect_local_names(body, out),
-            Statement::If { branches, else_body, .. } => {
-                for branch in branches { collect_local_names(&branch.body, out); }
+            Statement::If {
+                branches,
+                else_body,
+                ..
+            } => {
+                for branch in branches {
+                    collect_local_names(&branch.body, out);
+                }
                 collect_local_names(else_body, out);
             }
             Statement::Return { .. } => {}
@@ -276,20 +477,55 @@ fn collect_local_names(body: &[Statement], out: &mut BTreeSet<String>) {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum BinaryOp { Add, Subtract, Multiply, Divide }
+enum BinaryOp {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+}
 
 #[derive(Debug, Clone, Copy)]
-enum CompareOp { Less, LessEqual, Greater, GreaterEqual, Equal, NotEqual }
+enum CompareOp {
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+    Equal,
+    NotEqual,
+}
 
 #[derive(Debug, Clone, Copy)]
-enum BooleanOp { And, Or }
+enum BooleanOp {
+    And,
+    Or,
+}
 
 #[derive(Debug, Clone, Copy)]
 enum Intrinsic {
-    Vec2, Dot, Perpendicular, Norm,
-    Abs, Sqrt, Exp, Log, Sin, Cos, Tan, Asin, Acos, Atan, Atan2, Floor, Ceil,
-    Pow, Min, Max, Motion,
-    RngUniform, RngBernoulli, RngNormal,
+    Vec2,
+    Dot,
+    Perpendicular,
+    Norm,
+    Abs,
+    Sqrt,
+    Exp,
+    Log,
+    Sin,
+    Cos,
+    Tan,
+    Asin,
+    Acos,
+    Atan,
+    Atan2,
+    Floor,
+    Ceil,
+    Pow,
+    Min,
+    Max,
+    Motion,
+    RngUniform,
+    RngBernoulli,
+    RngNormal,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -324,7 +560,10 @@ struct PreparedExpression {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum PreparedTarget { PrivateState(usize), Local(usize) }
+enum PreparedTarget {
+    PrivateState(usize),
+    Local(usize),
+}
 
 #[derive(Debug)]
 struct PreparedConditionalBranch {
@@ -334,11 +573,24 @@ struct PreparedConditionalBranch {
 
 #[derive(Debug)]
 enum PreparedStatement {
-    Assign { target: PreparedTarget, value: PreparedExpression },
-    AugAssign { target: PreparedTarget, value: PreparedExpression },
-    ForEachNeighbour { body: Vec<PreparedStatement> },
-    If { branches: Vec<PreparedConditionalBranch>, else_body: Vec<PreparedStatement> },
-    Return { value: PreparedExpression },
+    Assign {
+        target: PreparedTarget,
+        value: PreparedExpression,
+    },
+    AugAssign {
+        target: PreparedTarget,
+        value: PreparedExpression,
+    },
+    ForEachNeighbour {
+        body: Vec<PreparedStatement>,
+    },
+    If {
+        branches: Vec<PreparedConditionalBranch>,
+        else_body: Vec<PreparedStatement>,
+    },
+    Return {
+        value: PreparedExpression,
+    },
 }
 
 fn resolve_load(
@@ -361,18 +613,28 @@ fn resolve_load(
         let name = pieces.next().unwrap_or_default();
         let field = pieces.next().unwrap_or_default();
         if pieces.next().is_none() {
-            let slot = *reference_slots.get(name)
-                .ok_or_else(|| at_line(line, format!("world reference '{name}' is not declared by the controller IR")))?;
+            let slot = *reference_slots.get(name).ok_or_else(|| {
+                at_line(
+                    line,
+                    format!("world reference '{name}' is not declared by the controller IR"),
+                )
+            })?;
             return match field {
                 "available" => Ok(PreparedLoad::ReferenceAvailable(slot)),
                 "relative_position" => Ok(PreparedLoad::ReferenceRelativePosition(slot)),
-                _ => Err(at_line(line, format!("unknown world reference observation field '{field}'"))),
+                _ => Err(at_line(
+                    line,
+                    format!("unknown world reference observation field '{field}'"),
+                )),
             };
         }
     }
     if let Some(name) = path.strip_prefix("self.") {
-        return Ok(PreparedLoad::PrivateState(*state_slots.get(name)
-            .ok_or_else(|| at_line(line, "validated private state slot missing"))?));
+        return Ok(PreparedLoad::PrivateState(
+            *state_slots
+                .get(name)
+                .ok_or_else(|| at_line(line, "validated private state slot missing"))?,
+        ));
     }
     if let Some(variable) = loop_variable {
         if path.strip_prefix(variable) == Some(".relative_position") {
@@ -385,7 +647,10 @@ fn resolve_load(
     if let Some(slot) = parameter_slots.get(path) {
         return Ok(PreparedLoad::Parameter(*slot));
     }
-    Err(at_line(line, "validated controller load could not be prepared"))
+    Err(at_line(
+        line,
+        "validated controller load could not be prepared",
+    ))
 }
 
 fn emit_expression(
@@ -412,15 +677,28 @@ fn emit_expression(
         }
         Expression::Load { path, line } => {
             ops.push(EvalOp::Load(resolve_load(
-                path, *line, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
+                path,
+                *line,
+                parameter_slots,
+                reference_slots,
+                state_slots,
+                local_slots,
+                loop_variable,
             )?));
             *depth += 1;
             *max_depth = (*max_depth).max(*depth);
         }
         Expression::Unary { op, value, .. } => {
             emit_expression(
-                value, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                ops, depth, max_depth,
+                value,
+                parameter_slots,
+                reference_slots,
+                state_slots,
+                local_slots,
+                loop_variable,
+                ops,
+                depth,
+                max_depth,
             )?;
             ops.push(match op.as_str() {
                 "-" => EvalOp::Negate,
@@ -428,14 +706,30 @@ fn emit_expression(
                 _ => unreachable!("validated unary operator"),
             });
         }
-        Expression::Compare { op, left, right, .. } => {
+        Expression::Compare {
+            op, left, right, ..
+        } => {
             emit_expression(
-                left, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                ops, depth, max_depth,
+                left,
+                parameter_slots,
+                reference_slots,
+                state_slots,
+                local_slots,
+                loop_variable,
+                ops,
+                depth,
+                max_depth,
             )?;
             emit_expression(
-                right, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                ops, depth, max_depth,
+                right,
+                parameter_slots,
+                reference_slots,
+                state_slots,
+                local_slots,
+                loop_variable,
+                ops,
+                depth,
+                max_depth,
             )?;
             let op = match op.as_str() {
                 "<" => CompareOp::Less,
@@ -449,14 +743,30 @@ fn emit_expression(
             ops.push(EvalOp::Compare(op));
             *depth -= 1;
         }
-        Expression::BoolOp { op, left, right, .. } => {
+        Expression::BoolOp {
+            op, left, right, ..
+        } => {
             emit_expression(
-                left, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                ops, depth, max_depth,
+                left,
+                parameter_slots,
+                reference_slots,
+                state_slots,
+                local_slots,
+                loop_variable,
+                ops,
+                depth,
+                max_depth,
             )?;
             emit_expression(
-                right, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                ops, depth, max_depth,
+                right,
+                parameter_slots,
+                reference_slots,
+                state_slots,
+                local_slots,
+                loop_variable,
+                ops,
+                depth,
+                max_depth,
             )?;
             ops.push(EvalOp::Boolean(match op.as_str() {
                 "and" => BooleanOp::And,
@@ -465,14 +775,30 @@ fn emit_expression(
             }));
             *depth -= 1;
         }
-        Expression::Binary { op, left, right, .. } => {
+        Expression::Binary {
+            op, left, right, ..
+        } => {
             emit_expression(
-                left, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                ops, depth, max_depth,
+                left,
+                parameter_slots,
+                reference_slots,
+                state_slots,
+                local_slots,
+                loop_variable,
+                ops,
+                depth,
+                max_depth,
             )?;
             emit_expression(
-                right, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                ops, depth, max_depth,
+                right,
+                parameter_slots,
+                reference_slots,
+                state_slots,
+                local_slots,
+                loop_variable,
+                ops,
+                depth,
+                max_depth,
             )?;
             let op = match op.as_str() {
                 "+" => BinaryOp::Add,
@@ -487,8 +813,15 @@ fn emit_expression(
         Expression::Call { name, args, .. } => {
             for arg in args {
                 emit_expression(
-                    arg, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                    ops, depth, max_depth,
+                    arg,
+                    parameter_slots,
+                    reference_slots,
+                    state_slots,
+                    local_slots,
+                    loop_variable,
+                    ops,
+                    depth,
+                    max_depth,
                 )?;
             }
             let intrinsic = match name.as_str() {
@@ -537,11 +870,21 @@ fn prepare_expression(
     let mut depth = 0;
     let mut max_depth = 0;
     emit_expression(
-        expression, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-        &mut ops, &mut depth, &mut max_depth,
+        expression,
+        parameter_slots,
+        reference_slots,
+        state_slots,
+        local_slots,
+        loop_variable,
+        &mut ops,
+        &mut depth,
+        &mut max_depth,
     )?;
     debug_assert_eq!(depth, 1);
-    Ok(PreparedExpression { ops, stack_capacity: max_depth })
+    Ok(PreparedExpression {
+        ops,
+        stack_capacity: max_depth,
+    })
 }
 
 fn prepare_target(
@@ -564,35 +907,91 @@ fn prepare_statements(
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
 ) -> Result<Vec<PreparedStatement>, String> {
-    body.iter().map(|statement| Ok(match statement {
-        Statement::Assign { target, value, .. } => PreparedStatement::Assign {
-            target: prepare_target(target, state_slots, local_slots),
-            value: prepare_expression(value, parameter_slots, reference_slots, state_slots, local_slots, loop_variable)?,
-        },
-        Statement::AugAssign { target, value, .. } => PreparedStatement::AugAssign {
-            target: prepare_target(target, state_slots, local_slots),
-            value: prepare_expression(value, parameter_slots, reference_slots, state_slots, local_slots, loop_variable)?,
-        },
-        Statement::ForEach { variable, body, .. } => PreparedStatement::ForEachNeighbour {
-            body: prepare_statements(body, parameter_slots, reference_slots, state_slots, local_slots, Some(variable))?,
-        },
-        Statement::If { branches, else_body, .. } => PreparedStatement::If {
-            branches: branches.iter().map(|branch| Ok(PreparedConditionalBranch {
-                condition: prepare_expression(
-                    &branch.condition, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                )?,
-                body: prepare_statements(
-                    &branch.body, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-                )?,
-            })).collect::<Result<Vec<_>, String>>()?,
-            else_body: prepare_statements(
-                else_body, parameter_slots, reference_slots, state_slots, local_slots, loop_variable,
-            )?,
-        },
-        Statement::Return { value, .. } => PreparedStatement::Return {
-            value: prepare_expression(value, parameter_slots, reference_slots, state_slots, local_slots, loop_variable)?,
-        },
-    })).collect()
+    body.iter()
+        .map(|statement| {
+            Ok(match statement {
+                Statement::Assign { target, value, .. } => PreparedStatement::Assign {
+                    target: prepare_target(target, state_slots, local_slots),
+                    value: prepare_expression(
+                        value,
+                        parameter_slots,
+                        reference_slots,
+                        state_slots,
+                        local_slots,
+                        loop_variable,
+                    )?,
+                },
+                Statement::AugAssign { target, value, .. } => PreparedStatement::AugAssign {
+                    target: prepare_target(target, state_slots, local_slots),
+                    value: prepare_expression(
+                        value,
+                        parameter_slots,
+                        reference_slots,
+                        state_slots,
+                        local_slots,
+                        loop_variable,
+                    )?,
+                },
+                Statement::ForEach { variable, body, .. } => PreparedStatement::ForEachNeighbour {
+                    body: prepare_statements(
+                        body,
+                        parameter_slots,
+                        reference_slots,
+                        state_slots,
+                        local_slots,
+                        Some(variable),
+                    )?,
+                },
+                Statement::If {
+                    branches,
+                    else_body,
+                    ..
+                } => PreparedStatement::If {
+                    branches: branches
+                        .iter()
+                        .map(|branch| {
+                            Ok(PreparedConditionalBranch {
+                                condition: prepare_expression(
+                                    &branch.condition,
+                                    parameter_slots,
+                                    reference_slots,
+                                    state_slots,
+                                    local_slots,
+                                    loop_variable,
+                                )?,
+                                body: prepare_statements(
+                                    &branch.body,
+                                    parameter_slots,
+                                    reference_slots,
+                                    state_slots,
+                                    local_slots,
+                                    loop_variable,
+                                )?,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, String>>()?,
+                    else_body: prepare_statements(
+                        else_body,
+                        parameter_slots,
+                        reference_slots,
+                        state_slots,
+                        local_slots,
+                        loop_variable,
+                    )?,
+                },
+                Statement::Return { value, .. } => PreparedStatement::Return {
+                    value: prepare_expression(
+                        value,
+                        parameter_slots,
+                        reference_slots,
+                        state_slots,
+                        local_slots,
+                        loop_variable,
+                    )?,
+                },
+            })
+        })
+        .collect()
 }
 
 fn compare(op: CompareOp, left: Value, right: Value) -> Value {
@@ -645,18 +1044,24 @@ fn push_load(
     stack.push(match load {
         PreparedLoad::Heading => Value::Vec2(observation.heading),
         PreparedLoad::EnvironmentalScalar => Value::Scalar(
-            observation.environmental_scalar.expect("validated environmental scalar observation")
+            observation
+                .environmental_scalar
+                .expect("validated environmental scalar observation"),
         ),
-        PreparedLoad::NeighbourRelativePosition => {
-            Value::Vec2(neighbour.expect("prepared neighbour load inside loop").relative_position)
-        }
+        PreparedLoad::NeighbourRelativePosition => Value::Vec2(
+            neighbour
+                .expect("prepared neighbour load inside loop")
+                .relative_position,
+        ),
         PreparedLoad::ReferenceAvailable(slot) => {
             Value::Bool(observation.references.contains_key(&reference_names[slot]))
         }
-        PreparedLoad::ReferenceRelativePosition(slot) => {
-            Value::Vec2(*observation.references.get(&reference_names[slot])
-                .expect("reference relative_position read requires available observation"))
-        }
+        PreparedLoad::ReferenceRelativePosition(slot) => Value::Vec2(
+            *observation
+                .references
+                .get(&reference_names[slot])
+                .expect("reference relative_position read requires available observation"),
+        ),
         PreparedLoad::Parameter(slot) => Value::Scalar(parameters[slot]),
         PreparedLoad::PrivateState(slot) => Value::Scalar(private_state[slot]),
         PreparedLoad::Local(slot) => locals[slot],
@@ -754,20 +1159,32 @@ fn execute_intrinsic(intrinsic: Intrinsic, stack: &mut Vec<Value>, rng: &mut Sci
         Intrinsic::Motion => {
             let turning = stack.pop().expect("validated Motion turning").scalar();
             let forward = stack.pop().expect("validated Motion forward").scalar();
-            assert!(forward.is_finite() && turning.is_finite(), "controller Motion requires finite scalar arguments");
+            assert!(
+                forward.is_finite() && turning.is_finite(),
+                "controller Motion requires finite scalar arguments"
+            );
             stack.push(Value::Action(Action { forward, turning }));
         }
         Intrinsic::RngUniform => {
             let upper = stack.pop().expect("validated rng.uniform upper").scalar();
             let lower = stack.pop().expect("validated rng.uniform lower").scalar();
-            assert!(lower.is_finite() && upper.is_finite(), "rng.uniform bounds must be finite");
+            assert!(
+                lower.is_finite() && upper.is_finite(),
+                "rng.uniform bounds must be finite"
+            );
             assert!(upper >= lower, "rng.uniform requires upper >= lower");
             let value = lower + (upper - lower) * rng.unit();
-            assert!(value.is_finite(), "rng.uniform produced a non-finite result");
+            assert!(
+                value.is_finite(),
+                "rng.uniform produced a non-finite result"
+            );
             stack.push(Value::Scalar(value));
         }
         Intrinsic::RngBernoulli => {
-            let probability = stack.pop().expect("validated rng.bernoulli probability").scalar();
+            let probability = stack
+                .pop()
+                .expect("validated rng.bernoulli probability")
+                .scalar();
             assert!(
                 probability.is_finite() && (0.0..=1.0).contains(&probability),
                 "rng.bernoulli probability must be finite and in [0, 1]"
@@ -778,7 +1195,10 @@ fn execute_intrinsic(intrinsic: Intrinsic, stack: &mut Vec<Value>, rng: &mut Sci
             let stddev = stack.pop().expect("validated rng.normal stddev").scalar();
             let mean = stack.pop().expect("validated rng.normal mean").scalar();
             assert!(mean.is_finite(), "rng.normal mean must be finite");
-            assert!(stddev.is_finite() && stddev >= 0.0, "rng.normal stddev must be finite and non-negative");
+            assert!(
+                stddev.is_finite() && stddev >= 0.0,
+                "rng.normal stddev must be finite and non-negative"
+            );
             let u1 = 1.0 - rng.unit();
             let u2 = rng.unit();
             let z = (-2.0 * u1.ln()).sqrt() * (std::f64::consts::TAU * u2).cos();
@@ -807,14 +1227,25 @@ fn evaluate(
             EvalOp::Const(value) => stack.push(Value::Scalar(value)),
             EvalOp::BoolConst(value) => stack.push(Value::Bool(value)),
             EvalOp::Load(load) => {
-                push_load(load, parameters, private_state, locals, reference_names, observation, neighbour, stack);
+                push_load(
+                    load,
+                    parameters,
+                    private_state,
+                    locals,
+                    reference_names,
+                    observation,
+                    neighbour,
+                    stack,
+                );
             }
             EvalOp::Negate => {
                 let value = stack.pop().expect("validated unary operand");
                 stack.push(match value {
                     Value::Scalar(value) => Value::Scalar(-value),
                     Value::Vec2(value) => Value::Vec2(value * -1.0),
-                    Value::Bool(_) | Value::Action(_) => unreachable!("cannot negate non-numeric value"),
+                    Value::Bool(_) | Value::Action(_) => {
+                        unreachable!("cannot negate non-numeric value")
+                    }
                 });
             }
             EvalOp::Not => {
@@ -844,18 +1275,31 @@ fn evaluate(
 }
 
 fn max_stack_in_statements(body: &[PreparedStatement]) -> usize {
-    body.iter().map(|statement| match statement {
-        PreparedStatement::Assign { value, .. }
-        | PreparedStatement::AugAssign { value, .. }
-        | PreparedStatement::Return { value } => value.stack_capacity,
-        PreparedStatement::ForEachNeighbour { body } => max_stack_in_statements(body),
-        PreparedStatement::If { branches, else_body } => {
-            let branch_max = branches.iter().map(|branch| {
-                branch.condition.stack_capacity.max(max_stack_in_statements(&branch.body))
-            }).max().unwrap_or(0);
-            branch_max.max(max_stack_in_statements(else_body))
-        }
-    }).max().unwrap_or(0)
+    body.iter()
+        .map(|statement| match statement {
+            PreparedStatement::Assign { value, .. }
+            | PreparedStatement::AugAssign { value, .. }
+            | PreparedStatement::Return { value } => value.stack_capacity,
+            PreparedStatement::ForEachNeighbour { body } => max_stack_in_statements(body),
+            PreparedStatement::If {
+                branches,
+                else_body,
+            } => {
+                let branch_max = branches
+                    .iter()
+                    .map(|branch| {
+                        branch
+                            .condition
+                            .stack_capacity
+                            .max(max_stack_in_statements(&branch.body))
+                    })
+                    .max()
+                    .unwrap_or(0);
+                branch_max.max(max_stack_in_statements(else_body))
+            }
+        })
+        .max()
+        .unwrap_or(0)
 }
 
 fn assign(target: PreparedTarget, value: Value, private_state: &mut [f64], locals: &mut [Value]) {
@@ -880,49 +1324,121 @@ fn execute_statements(
         match statement {
             PreparedStatement::Assign { target, value } => {
                 let result = evaluate(
-                    value, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
+                    value,
+                    parameters,
+                    private_state,
+                    locals,
+                    reference_names,
+                    observation,
+                    neighbour,
+                    rng,
+                    eval_stack,
                 );
                 assign(*target, result, private_state, locals);
             }
             PreparedStatement::AugAssign { target, value } => {
                 let right = evaluate(
-                    value, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
+                    value,
+                    parameters,
+                    private_state,
+                    locals,
+                    reference_names,
+                    observation,
+                    neighbour,
+                    rng,
+                    eval_stack,
                 );
                 match target {
                     PreparedTarget::PrivateState(slot) => private_state[*slot] += right.scalar(),
-                    PreparedTarget::Local(slot) => locals[*slot] = binary(BinaryOp::Add, locals[*slot], right),
+                    PreparedTarget::Local(slot) => {
+                        locals[*slot] = binary(BinaryOp::Add, locals[*slot], right)
+                    }
                 }
             }
             PreparedStatement::ForEachNeighbour { body } => {
                 for current in &observation.neighbours {
                     if let Some(action) = execute_statements(
-                        body, parameters, private_state, locals, reference_names, observation, Some(current), rng, eval_stack,
-                    ) { return Some(action); }
+                        body,
+                        parameters,
+                        private_state,
+                        locals,
+                        reference_names,
+                        observation,
+                        Some(current),
+                        rng,
+                        eval_stack,
+                    ) {
+                        return Some(action);
+                    }
                 }
             }
-            PreparedStatement::If { branches, else_body } => {
+            PreparedStatement::If {
+                branches,
+                else_body,
+            } => {
                 let mut matched = false;
                 for branch in branches {
                     if evaluate(
-                        &branch.condition, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
-                    ).boolean() {
+                        &branch.condition,
+                        parameters,
+                        private_state,
+                        locals,
+                        reference_names,
+                        observation,
+                        neighbour,
+                        rng,
+                        eval_stack,
+                    )
+                    .boolean()
+                    {
                         matched = true;
                         if let Some(action) = execute_statements(
-                            &branch.body, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
-                        ) { return Some(action); }
+                            &branch.body,
+                            parameters,
+                            private_state,
+                            locals,
+                            reference_names,
+                            observation,
+                            neighbour,
+                            rng,
+                            eval_stack,
+                        ) {
+                            return Some(action);
+                        }
                         break;
                     }
                 }
                 if !matched {
                     if let Some(action) = execute_statements(
-                        else_body, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
-                    ) { return Some(action); }
+                        else_body,
+                        parameters,
+                        private_state,
+                        locals,
+                        reference_names,
+                        observation,
+                        neighbour,
+                        rng,
+                        eval_stack,
+                    ) {
+                        return Some(action);
+                    }
                 }
             }
             PreparedStatement::Return { value } => {
-                return Some(evaluate(
-                    value, parameters, private_state, locals, reference_names, observation, neighbour, rng, eval_stack,
-                ).action());
+                return Some(
+                    evaluate(
+                        value,
+                        parameters,
+                        private_state,
+                        locals,
+                        reference_names,
+                        observation,
+                        neighbour,
+                        rng,
+                        eval_stack,
+                    )
+                    .action(),
+                );
             }
         }
     }
@@ -944,59 +1460,115 @@ pub struct IrControllerRuntime {
 
 impl IrControllerRuntime {
     pub fn from_json(ir_json: &str, parameters_json: &str) -> Result<Self, String> {
-        let ir: ControllerIr = serde_json::from_str(ir_json).map_err(|error| format!("invalid controller IR JSON: {error}"))?;
-        if ir.schema != "vlab.controller-ir/0.1" { return Err(format!("unsupported controller IR schema '{}'", ir.schema)); }
-        if ir.language != "python-vlab/0.1" { return Err(format!("unsupported controller language '{}'", ir.language)); }
-        if ir.entry != "step" { return Err("controller IR entry must be 'step'".to_owned()); }
+        let ir: ControllerIr = serde_json::from_str(ir_json)
+            .map_err(|error| format!("invalid controller IR JSON: {error}"))?;
+        if ir.schema != "vlab.controller-ir/0.1" {
+            return Err(format!("unsupported controller IR schema '{}'", ir.schema));
+        }
+        if ir.language != "python-vlab/0.1" {
+            return Err(format!("unsupported controller language '{}'", ir.language));
+        }
+        if ir.entry != "step" {
+            return Err("controller IR entry must be 'step'".to_owned());
+        }
 
         let supplied: BTreeMap<String, f64> = serde_json::from_str(parameters_json)
             .map_err(|error| format!("invalid controller parameter JSON: {error}"))?;
         let mut parameter_slots = HashMap::new();
         let mut parameters = Vec::with_capacity(ir.parameters.len());
         for (name, value_type) in &ir.parameters {
-            if value_type != "scalar" { return Err(format!("parameter '{name}' must be scalar")); }
-            let value = supplied.get(name).copied().ok_or_else(|| format!("missing controller parameter '{name}'"))?;
-            if !value.is_finite() { return Err(format!("controller parameter '{name}' must be finite")); }
+            if value_type != "scalar" {
+                return Err(format!("parameter '{name}' must be scalar"));
+            }
+            let value = supplied
+                .get(name)
+                .copied()
+                .ok_or_else(|| format!("missing controller parameter '{name}'"))?;
+            if !value.is_finite() {
+                return Err(format!("controller parameter '{name}' must be finite"));
+            }
             parameter_slots.insert(name.clone(), parameters.len());
             parameters.push(value);
         }
         for name in supplied.keys() {
-            if !ir.parameters.contains_key(name) { return Err(format!("parameter value '{name}' was supplied but is not declared by the controller")); }
+            if !ir.parameters.contains_key(name) {
+                return Err(format!(
+                    "parameter value '{name}' was supplied but is not declared by the controller"
+                ));
+            }
         }
 
         let mut state_slots = HashMap::new();
         let mut private_initial = Vec::new();
         for declaration in &ir.state {
-            if declaration.value_type != "scalar" { return Err(format!("private state '{}' must be scalar", declaration.name)); }
-            if !declaration.initial.is_finite() { return Err(format!("private state '{}' initial value must be finite", declaration.name)); }
-            if state_slots.insert(declaration.name.clone(), private_initial.len()).is_some() {
-                return Err(format!("duplicate private state declaration '{}'", declaration.name));
+            if declaration.value_type != "scalar" {
+                return Err(format!(
+                    "private state '{}' must be scalar",
+                    declaration.name
+                ));
+            }
+            if !declaration.initial.is_finite() {
+                return Err(format!(
+                    "private state '{}' initial value must be finite",
+                    declaration.name
+                ));
+            }
+            if state_slots
+                .insert(declaration.name.clone(), private_initial.len())
+                .is_some()
+            {
+                return Err(format!(
+                    "duplicate private state declaration '{}'",
+                    declaration.name
+                ));
             }
             private_initial.push(declaration.initial);
         }
 
         let mut reference_slots = HashMap::new();
         for (slot, name) in ir.references.iter().enumerate() {
-            let valid = !name.is_empty() && name.chars().enumerate().all(|(index, c)| {
-                c == '_' || c.is_ascii_alphanumeric() && (index > 0 || !c.is_ascii_digit())
-            });
-            if !valid { return Err(format!("invalid world reference name '{name}'")); }
+            let valid = !name.is_empty()
+                && name.chars().enumerate().all(|(index, c)| {
+                    c == '_' || c.is_ascii_alphanumeric() && (index > 0 || !c.is_ascii_digit())
+                });
+            if !valid {
+                return Err(format!("invalid world reference name '{name}'"));
+            }
             if reference_slots.insert(name.clone(), slot).is_some() {
-                return Err(format!("duplicate world reference name '{name}' in controller IR"));
+                return Err(format!(
+                    "duplicate world reference name '{name}' in controller IR"
+                ));
             }
         }
 
         let parameter_names: HashSet<_> = ir.parameters.keys().cloned().collect();
         let state_names: HashSet<_> = state_slots.keys().cloned().collect();
         let mut validated_locals = HashSet::new();
-        if !validate_statements(&ir.body, &parameter_names, &state_names, &mut validated_locals, None)? {
+        if !validate_statements(
+            &ir.body,
+            &parameter_names,
+            &state_names,
+            &mut validated_locals,
+            None,
+        )? {
             return Err("controller IR has no action return".to_owned());
         }
 
         let mut local_names = BTreeSet::new();
         collect_local_names(&ir.body, &mut local_names);
-        let local_slots: HashMap<_, _> = local_names.into_iter().enumerate().map(|(slot, name)| (name, slot)).collect();
-        let body = prepare_statements(&ir.body, &parameter_slots, &reference_slots, &state_slots, &local_slots, None)?;
+        let local_slots: HashMap<_, _> = local_names
+            .into_iter()
+            .enumerate()
+            .map(|(slot, name)| (name, slot))
+            .collect();
+        let body = prepare_statements(
+            &ir.body,
+            &parameter_slots,
+            &reference_slots,
+            &state_slots,
+            &local_slots,
+            None,
+        )?;
         let eval_stack_capacity = max_stack_in_statements(&body).max(1);
 
         Ok(Self {
@@ -1039,11 +1611,11 @@ impl ControllerRuntime for IrControllerRuntime {
         self.private_state = vec![self.private_initial.clone(); agent_count];
         for (agent_index, profile) in private_state.iter().enumerate() {
             for (name, value) in profile {
-                let slot = self.private_state_slots.get(name)
-                    .copied()
-                    .ok_or_else(|| format!(
+                let slot = self.private_state_slots.get(name).copied().ok_or_else(|| {
+                    format!(
                         "agent {agent_index} assigns undeclared controller private state '{name}'"
-                    ))?;
+                    )
+                })?;
                 if !value.is_finite() {
                     return Err(format!(
                         "agent {agent_index} private state '{name}' must be finite"
@@ -1054,11 +1626,8 @@ impl ControllerRuntime for IrControllerRuntime {
         }
         self.controller_rngs = (0..agent_count)
             .map(|agent_index| {
-                ScientificRng::for_domain(
-                    self.root_seed,
-                    RNG_DOMAIN_CONTROLLER,
-                    agent_index as u64,
-                ).expect("static controller RNG domain is valid")
+                ScientificRng::for_domain(self.root_seed, RNG_DOMAIN_CONTROLLER, agent_index as u64)
+                    .expect("static controller RNG domain is valid")
             })
             .collect();
         self.scratch_locals.fill(Value::Scalar(f64::NAN));
@@ -1079,7 +1648,8 @@ impl ControllerRuntime for IrControllerRuntime {
             None,
             &mut self.controller_rngs[agent_index],
             &mut self.scratch_eval_stack,
-        ).expect("validated controller always returns an action")
+        )
+        .expect("validated controller always returns an action")
     }
 
     fn scientific_private_state_value(&self, agent_index: usize, name: &str) -> Option<f64> {
@@ -1117,8 +1687,12 @@ mod tests {
         let observation = Observation {
             heading: Vec2::new(1.0, 0.0),
             neighbours: vec![
-                NeighbourObservation { relative_position: Vec2::new(0.5, 1.0) },
-                NeighbourObservation { relative_position: Vec2::new(1.0, -1.0) },
+                NeighbourObservation {
+                    relative_position: Vec2::new(0.5, 1.0),
+                },
+                NeighbourObservation {
+                    relative_position: Vec2::new(1.0, -1.0),
+                },
             ],
             environmental_scalar: None,
             references: BTreeMap::new(),
@@ -1126,12 +1700,17 @@ mod tests {
         let action = runtime.step(0, &observation);
         assert!((action.forward - 9.0).abs() < 1e-12);
         assert_eq!(action.turning, 0.0);
-        let second = runtime.step(0, &Observation {
-            heading: Vec2::new(1.0, 0.0),
-            neighbours: vec![NeighbourObservation { relative_position: Vec2::new(1.0, 0.0) }],
-            environmental_scalar: None,
-            references: BTreeMap::new(),
-        });
+        let second = runtime.step(
+            0,
+            &Observation {
+                heading: Vec2::new(1.0, 0.0),
+                neighbours: vec![NeighbourObservation {
+                    relative_position: Vec2::new(1.0, 0.0),
+                }],
+                environmental_scalar: None,
+                references: BTreeMap::new(),
+            },
+        );
         assert!((second.forward - 4.0).abs() < 1e-12);
         assert_eq!(second.turning, 0.0);
     }
@@ -1148,7 +1727,12 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, "{}");
         runtime.reset(2);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() };
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+            references: BTreeMap::new(),
+        };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
         assert_eq!(runtime.step(0, &observation).forward, 2.0);
         assert_eq!(runtime.step(1, &observation).forward, 1.0);
@@ -1178,14 +1762,31 @@ mod tests {
         let observation = Observation {
             heading: Vec2::new(1.0, 0.0),
             neighbours: vec![
-                NeighbourObservation { relative_position: Vec2::new(3.0, 4.0) },
-                NeighbourObservation { relative_position: Vec2::new(0.0, 2.0) },
+                NeighbourObservation {
+                    relative_position: Vec2::new(3.0, 4.0),
+                },
+                NeighbourObservation {
+                    relative_position: Vec2::new(0.0, 2.0),
+                },
             ],
             environmental_scalar: None,
             references: BTreeMap::new(),
         };
         assert_eq!(runtime.step(0, &observation).forward, 16.0);
-        assert_eq!(runtime.step(0, &Observation { heading: observation.heading, neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() }).forward, 3.0);
+        assert_eq!(
+            runtime
+                .step(
+                    0,
+                    &Observation {
+                        heading: observation.heading,
+                        neighbours: vec![],
+                        environmental_scalar: None,
+                        references: BTreeMap::new()
+                    }
+                )
+                .forward,
+            3.0
+        );
     }
 
     #[test]
@@ -1204,7 +1805,12 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, "{}");
         runtime.reset(1);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() };
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+            references: BTreeMap::new(),
+        };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
     }
 
@@ -1273,7 +1879,12 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, r#"{"X":0.5}"#);
         runtime.reset(1);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() };
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+            references: BTreeMap::new(),
+        };
         assert_eq!(runtime.step(0, &observation).forward, 0.5);
     }
 
@@ -1298,7 +1909,12 @@ mod tests {
         }"#;
         let mut runtime = compile(ir, r#"{"X":1.0}"#);
         runtime.reset(1);
-        let observation = Observation { heading: Vec2::new(1.0, 0.0), neighbours: vec![], environmental_scalar: None, references: BTreeMap::new() };
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+            references: BTreeMap::new(),
+        };
         assert_eq!(runtime.step(0, &observation).forward, 1.0);
     }
 
@@ -1412,7 +2028,6 @@ mod tests {
         assert!(error.contains("undeclared controller private state 'unknown'"));
     }
 
-
     #[test]
     fn named_reference_observation_requires_availability_and_reads_relative_position() {
         let ir = r#"{
@@ -1453,7 +2068,8 @@ mod tests {
     }
 
     fn stochastic_runtime() -> IrControllerRuntime {
-        compile(r#"{
+        compile(
+            r#"{
           "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Stochastic","entry":"step",
           "parameters":{},"state":[],
           "body":[
@@ -1470,7 +2086,9 @@ mod tests {
               ]}}
             ]}
           ]
-        }"#, "{}")
+        }"#,
+            "{}",
+        )
     }
 
     fn empty_observation() -> Observation {
@@ -1500,7 +2118,9 @@ mod tests {
             runtime.step(0, &observation),
         ];
         assert_eq!(first, replay);
-        assert!(first.iter().all(|action| action.forward >= 0.0 && action.forward < 1.0));
+        assert!(first
+            .iter()
+            .all(|action| action.forward >= 0.0 && action.forward < 1.0));
         assert!(first.iter().all(|action| action.turning.is_finite()));
     }
 
@@ -1555,5 +2175,4 @@ mod tests {
 
         assert_eq!(zero.next_u64(), one.next_u64());
     }
-
 }
