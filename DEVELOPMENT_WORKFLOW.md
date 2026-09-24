@@ -6,6 +6,8 @@ This is the sole repository authority for development execution procedure; no ot
 
 When the owner approves a sequence with language such as `go ahead`, `proceed`, `continue`, or equivalent, treat that as permission only for the explicitly named current lane/epic and its already-bounded tasks. Never infer permission to enter the next epic, roadmap phase or major feature lane.
 
+Approval to work on a ticket covers that whole ticket until it is production-green, including changes to repository authority documents (such as this file) that fall within the ticket's stated scope; do not ask for approval again at each step. Anything outside the ticket's stated scope needs new owner approval. The completion report must quote every changed authority-document sentence exactly, so the owner always knows what changed.
+
 ## Default unit of execution
 
 All development work is governed by the execution-granularity rules in this section. No interpretation of scope, intent, urgency, discovered work, or continuation may bypass those rules.

@@ -11,7 +11,7 @@
     "GitHub ruleset on main: pull request required (0 approvals), required status check 'build', force pushes and deletion blocked, empty bypass list; verified via GET /repos/eliseofe/virtual-lab/rules/branches/main.",
     "Ruleset 23935542 (created by Work under #539) verified independently; a deliberately failing test commit on #538 turned build red and GitHub reported the pull request as blocked (mergeable_state=blocked); the probe was then reverted.",
     "pull_request trigger no longer has paths-ignore, so documentation-only pull requests report the required check; push paths-ignore unchanged.",
-    "DEVELOPMENT_WORKFLOW.md: owner-approved 'Pull requests only' section and loop step 2; docs/DEPLOYMENT.md documents the ruleset."
+    "DEVELOPMENT_WORKFLOW.md (within the owner-approved #535 scope): 'Pull requests only' section, loop step 2, and the owner-requested rule that approving a ticket covers it until production-green; docs/DEPLOYMENT.md documents the ruleset."
   ],
   "close_issue": 535
 }
