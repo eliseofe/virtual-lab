@@ -22,18 +22,17 @@ test('#262 mounts Authoring inside the established React/Mantine root', () => {
 });
 
 test('#262 keeps authoritative source/compiler/runtime behavior in legacy adapters', () => {
-  // #564: the panel reads the authoring model and acts through the authoring
-  // controller; Apply still runs through the workspace's Apply button inside it.
+  // #564/#567: the panel reads the authoring model and acts through the
+  // authoring controller, whose Apply is a direct command.
   assert.match(adapter, /authoringCommands\.selectArtifact\(id\)/);
   assert.match(adapter, /authoringCommands\.apply\(\)/);
   assert.doesNotMatch(adapter, /\.click\(\)|MutationObserver/);
-  assert.match(legacy, /apply: \(\) => applyWorkspace\.click\(\)/);
+  assert.doesNotMatch(legacy, /applyWorkspace\.click\(\)/);
   assert.match(legacy, /selectArtifact: \(id\) => activateArtifact\(id, \{ focus: true \}\)/);
   assert.doesNotMatch(adapter, /experiment-config.*value\s*=/s);
   assert.doesNotMatch(adapter, /controller-source.*value\s*=/s);
   assert.doesNotMatch(adapter, /metrics-source.*value\s*=/s);
-  assert.match(legacy, /applySetup\.click\(\)/);
-  assert.match(legacy, /compileController\.click\(\)/);
+  assert.match(legacy, /import "\.\/authoring-panel\/authoring-controller\.js"/);
   assert.match(legacy, /activateArtifact\(/);
 });
 

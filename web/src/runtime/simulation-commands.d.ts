@@ -6,6 +6,8 @@ export type SimulationCommands = {
   fitArena(): void;
   setSpeed(value: number): void;
   setGlyph(value: string): void;
+  applySetup(): void;
+  applyController(): void;
 };
 
 export function provideSimulationCommands(commands: SimulationCommands): void;

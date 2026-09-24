@@ -10,7 +10,12 @@ export type RuntimeState = Readonly<{
   requestedSpeed: number;
   glyph: string;
   camera: Readonly<{ label: string; fit: boolean }>;
-  controls: Readonly<{ run: boolean; pause: boolean; restart: boolean; newSeed: boolean; speed: boolean; fit: boolean }>;
+  controls: Readonly<{ run: boolean; pause: boolean; restart: boolean; newSeed: boolean; speed: boolean; fit: boolean; applySources: boolean }>;
+  sourceStatus: Readonly<{
+    setup: Readonly<{ state: string; text: string }>;
+    controller: Readonly<{ state: string; text: string }>;
+  }>;
+  sourceApplyRequest: Readonly<{ kind: 'setup' | 'controller' }> | null;
 }>;
 
 export type RuntimeModel = {

@@ -36,7 +36,8 @@ test('responsive hardening no longer styles hidden legacy presentation controls'
 
 test('authoring controller keeps semantic tab plumbing without injecting obsolete tab chrome', () => {
   assert.match(authoring, /function activateArtifact/);
-  assert.match(authoring, /function updateRuntimeUi/);
+  // #567: the apply status moved to the authoring controller.
+  assert.match(authoring, /import "\.\/authoring-panel\/authoring-controller\.js"/);
   assert.match(authoring, /\.authoring-tab/);
   assert.doesNotMatch(authoring, /\.authoring-workbench-head \{ display:/);
   assert.doesNotMatch(authoring, /\.authoring-tabs \{ display:/);

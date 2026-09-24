@@ -54,8 +54,9 @@ test("Metrics runtime bridge is installed before main simulation startup", () =>
 
 test("metrics-only authoring changes use the existing Apply and restart action", () => {
   assert.match(bridgeSource, /data-experiment-artifact-id/);
-  assert.match(bridgeSource, /#apply-workspace/);
-  assert.match(bridgeSource, /metricsDirty = true/);
-  assert.match(bridgeSource, /stopImmediatePropagation/);
+  // #567: covered by authoring-machine.test.mjs; this checks the wiring.
+  assert.match(bridgeSource, /metricsEdited\(\)/);
+  assert.match(bridgeSource, /registerMetricsParticipant\(\{ applyMetrics: \(\) => dispatch\("vlab:apply-metrics"\) \}\)/);
+  assert.doesNotMatch(bridgeSource, /stopImmediatePropagation|#apply-workspace/, "Metrics no longer intercepts the Apply click");
   assert.match(bridgeSource, /type: "apply-metrics"/);
 });

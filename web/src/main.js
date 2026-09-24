@@ -76,7 +76,17 @@ let pinchGesture = null;
 
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 
+// Setup and controller apply outcomes are reported in the runtime model
+// (#567); the feedback lines on the page show them.
 function setFeedback(element, message, state = "idle") {
+  const key = element === ui.setupFeedback ? "setup" : element === ui.feedback ? "controller" : null;
+  if (key) {
+    const current = runtimeModel.get().sourceStatus;
+    runtimeModel.set({ sourceStatus: Object.freeze({ ...current, [key]: Object.freeze({ state, text: message }) }) });
+    element.textContent = runtimeModel.get().sourceStatus[key].text;
+    element.dataset.state = runtimeModel.get().sourceStatus[key].state;
+    return;
+  }
   element.textContent = message;
   element.dataset.state = state;
 }
@@ -185,6 +195,7 @@ function setControlsEnabled(enabled) {
       restart: enabled,
       newSeed: enabled,
       speed: enabled,
+      applySources: enabled,
     }),
   });
   const controls = runtimeModel.get().controls;
@@ -192,8 +203,8 @@ function setControlsEnabled(enabled) {
   ui.pause.disabled = !controls.pause;
   ui.restart.disabled = !controls.restart;
   ui.restartNewSeed.disabled = !controls.newSeed;
-  ui.compile.disabled = !enabled;
-  ui.applySetup.disabled = !enabled;
+  ui.compile.disabled = !controls.applySources;
+  ui.applySetup.disabled = !controls.applySources;
   ui.speed.disabled = !controls.speed;
 }
 
@@ -543,7 +554,10 @@ function markSetupDirty() {
 ui.config.addEventListener("input", markSetupDirty);
 ui.initializerSource.addEventListener("input", markSetupDirty);
 
-ui.applySetup.addEventListener("click", () => {
+// Applying edited sources (#567). Like the buttons they replace, these do
+// nothing while the simulator cannot take sources; each reports the request.
+function applySetup() {
+  if (!runtimeModel.get().controls.applySources) return;
   try {
     const configSource = ui.config.value;
     const initializerSource = ui.initializerSource.value;
@@ -561,9 +575,11 @@ ui.applySetup.addEventListener("click", () => {
     ui.setupError.textContent = error instanceof Error ? error.message : String(error);
     setFeedback(ui.setupFeedback, "Could not apply changes. Previous configuration remains active.", "error");
   }
-});
+  runtimeModel.set({ sourceApplyRequest: Object.freeze({ kind: "setup" }) });
+}
 
-ui.compile.addEventListener("click", () => {
+function applyController() {
+  if (!runtimeModel.get().controls.applySources) return;
   try {
     if (!appliedConfig) throw new Error("No valid experiment configuration is active.");
     const controller = compileControllerFor(appliedConfig, appliedEnvironment, appliedReferences);
@@ -577,7 +593,11 @@ ui.compile.addEventListener("click", () => {
     ui.error.textContent = error instanceof Error ? error.message : String(error);
     setFeedback(ui.feedback, "Could not apply controller. Previous controller remains active.", "error");
   }
-});
+  runtimeModel.set({ sourceApplyRequest: Object.freeze({ kind: "controller" }) });
+}
+
+ui.applySetup.addEventListener("click", applySetup);
+ui.compile.addEventListener("click", applyController);
 
 ui.source.addEventListener("input", () => {
   ui.error.textContent = "";
@@ -711,7 +731,7 @@ function restartWithNewSeed() {
   }
 }
 
-provideSimulationCommands({ run, pause, restart, restartWithNewSeed, fitArena, setSpeed, setGlyph });
+provideSimulationCommands({ run, pause, restart, restartWithNewSeed, fitArena, setSpeed, setGlyph, applySetup, applyController });
 
 // The legacy buttons are one more view of the same controller, and other
 // modules that press them (library, results, metrics) reach it the same way.
