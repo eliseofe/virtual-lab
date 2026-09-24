@@ -23,12 +23,12 @@ test("#261 React/Mantine owns visible Results controls without owning metric run
 });
 
 test("#261 coexistence adapter proxies the authoritative Results engine and cannot self-trigger through React portals", () => {
-  assert.match(adapter, /window\.__vlabResultsUI/);
-  assert.match(adapter, /#results-add-panel/);
-  assert.match(adapter, /\.results-series-option input\[type="checkbox"\]/);
-  assert.match(adapter, /\[data-action="reset-view"\]/);
-  assert.match(adapter, /\[data-action="remove"\]/);
-  assert.match(adapter, /observer\?\.observe\(panelHost!, \{ childList: true \}\)/);
+  // #564: the results panel reads the results model and acts through the results controller.
+  for (const command of ["addPanel", "toggleMetric", "removePanel", "followLive"]) {
+    assert.match(adapter, new RegExp(`resultsCommands\\.${command}\\(`));
+  }
+  assert.match(adapter, /resultsModel\.subscribe\(/);
+  assert.doesNotMatch(adapter, /\.click\(\)|MutationObserver|addEventListener|__vlabResultsUI/, "the panel neither watches nor clicks the legacy results view");
   assert.doesNotMatch(adapter, /observer\?\.observe\([^\n]*subtree:\s*true/);
   assert.doesNotMatch(adapter, /createClient|supabase|compileMetrics|vlab:metric-batch[^'\"]*=/);
 });
@@ -54,6 +54,8 @@ test("#261 detached state is presentation-only and Follow live delegates to the 
   assert.match(reactRoot, /const \[detached, setDetached\]/);
   assert.match(reactRoot, /panelIdFromEventTarget\(event\.target\)/);
   assert.match(reactRoot, /followLiveResults\(panel\.id\)/);
-  assert.match(adapter, /followLiveResults[\s\S]*\[data-action="reset-view"\]/);
+  // #564: the results panel reads the results model and acts through the results controller.
+  assert.match(adapter, /followLiveResults[\s\S]*resultsCommands\.followLive\(panelId\)/);
+  assert.match(resultsEngine, /function followLiveCommand\(panelId\) \{[\s\S]*?panel\.view = null;/);
   assert.match(adapter, /\.results-plot-canvas/);
 });

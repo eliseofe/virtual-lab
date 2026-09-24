@@ -78,7 +78,8 @@ test("one model: the simulator, the speed meter and the React panel share the sa
   assert.match(main, /import \{ runtimeModel \} from "\.\/runtime\/runtime-model\.js"/);
   assert.match(meter, /import \{ runtimeModel \} from "\.\/runtime\/runtime-model\.js"/);
   assert.match(adapter, /import \{ runtimeModel \} from '\.\/runtime\/runtime-model\.js'/);
-  assert.match(vite, /external: \[\/\\\/runtime\\\/\(runtime-model\|simulation-commands\)\\\.js\$\/\]/, "the React bundle must not inline its own copies");
+  assert.match(vite, /runtime-model\|simulation-commands\|results-model\|results-commands/, "the React bundle must not inline its own copies");
+  assert.match(vite, /external: \[SHARED_MODULE\]/);
 });
 
 test("views no longer read runtime values back from page text", async () => {

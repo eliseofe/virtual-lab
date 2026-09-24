@@ -1,3 +1,6 @@
+import { resultsModel } from "./results-panel/results-model.js";
+import { provideResultsCommands } from "./results-panel/results-commands.js";
+
 const definitions = new Map();
 const samples = new Map();
 const panels = [];
@@ -34,10 +37,21 @@ function defaultMetricIdForNewPanel() {
   return ids.find((id) => !represented.has(id)) ?? ids[0] ?? null;
 }
 
+// The results model (#564): what every view of the results panel shows.
+function publishResults() {
+  resultsModel.set({
+    metrics: Object.freeze(allMetricIds().map((id) => Object.freeze(definitions.has(id)
+      ? { id, label: metricLabel(id), color: colorFor(id) }
+      : { id, label: id, color: "currentColor" }))),
+    panels: Object.freeze(panels.map((panel) => Object.freeze({ id: panel.id, metricIds: Object.freeze([...panel.metricIds]) }))),
+  });
+}
+
 function updateAddPlotButton() {
+  resultsModel.set({ canAdd: definitions.size > 0 });
   const button = document.querySelector("#results-add-panel");
   if (!button) return;
-  button.disabled = definitions.size === 0;
+  button.disabled = !resultsModel.get().canAdd;
   button.title = definitions.size === 0 ? "This experiment has no configured metrics." : "Add another metric plot.";
 }
 
@@ -64,11 +78,7 @@ function mount() {
     </header>
     <div id="results-panels" class="results-panels"></div>`;
   grid.append(results);
-  results.querySelector("#results-add-panel").addEventListener("click", () => {
-    const id = defaultMetricIdForNewPanel();
-    if (!id) return;
-    addPanel([id]);
-  });
+  results.querySelector("#results-add-panel").addEventListener("click", addPanelCommand);
   updateAddPlotButton();
   refreshEmptyState();
 }
@@ -88,6 +98,7 @@ function addPanel(metricIds = []) {
   host.append(panel.element);
   panels.push(panel);
   buildPanel(panel);
+  publishResults();
   refreshEmptyState();
   scheduleRender(true);
   return panel;
@@ -97,6 +108,7 @@ function removePanel(panel) {
   const index = panels.indexOf(panel);
   if (index >= 0) panels.splice(index, 1);
   panel.element.remove();
+  publishResults();
   refreshEmptyState();
 }
 
@@ -122,11 +134,8 @@ function buildPanel(panel) {
   panel.tooltip = panel.element.querySelector(".results-tooltip");
   panel.legend = panel.element.querySelector(".results-legend");
   panel.options = panel.element.querySelector(".results-series-options");
-  panel.element.querySelector('[data-action="reset-view"]').addEventListener("click", () => {
-    panel.view = null;
-    scheduleRender(true);
-  });
-  panel.element.querySelector('[data-action="remove"]').addEventListener("click", () => removePanel(panel));
+  panel.element.querySelector('[data-action="reset-view"]').addEventListener("click", () => followLiveCommand(panel.id));
+  panel.element.querySelector('[data-action="remove"]').addEventListener("click", () => removePanelCommand(panel.id));
   panel.canvas.addEventListener("wheel", (event) => onWheel(panel, event), { passive: false });
   panel.canvas.addEventListener("pointerdown", (event) => onPointerDown(panel, event));
   panel.canvas.addEventListener("pointermove", (event) => onPointerMove(panel, event));
@@ -146,13 +155,7 @@ function refreshPanelControls(panel) {
     const input = document.createElement("input");
     input.type = "checkbox";
     input.checked = panel.metricIds.includes(id);
-    input.addEventListener("change", () => {
-      if (input.checked) panel.metricIds.push(id);
-      else panel.metricIds = panel.metricIds.filter((candidate) => candidate !== id);
-      panel.view = null;
-      refreshPanelControls(panel);
-      scheduleRender(true);
-    });
+    input.addEventListener("change", () => setPanelMetric(panel, id, input.checked));
     const swatch = document.createElement("span");
     swatch.className = "results-series-swatch";
     swatch.style.setProperty("--series-color", colorFor(id));
@@ -190,6 +193,7 @@ function refreshPanelControls(panel) {
     item.append(swatch, name);
     panel.legend.append(item);
   }
+  publishResults();
   refreshEmptyState();
 }
 
@@ -218,19 +222,14 @@ function updateStatus() {
   if (!status) return;
   const total = [...samples.values()].reduce((sum, series) => sum + series.length, 0);
   const dropped = Number(lastBuffer?.dropped_samples ?? 0);
-  if (dropped > 0) {
-    status.textContent = `${total.toLocaleString()} samples · ${dropped.toLocaleString()} dropped`;
-    status.dataset.state = "warning";
-  } else if (total > 0) {
-    status.textContent = `${total.toLocaleString()} samples · complete`;
-    status.dataset.state = "ok";
-  } else if (definitions.size) {
-    status.textContent = "Waiting for metric samples";
-    status.dataset.state = "idle";
-  } else {
-    status.textContent = "No metrics configured";
-    status.dataset.state = "idle";
-  }
+  let next;
+  if (dropped > 0) next = { text: `${total.toLocaleString()} samples · ${dropped.toLocaleString()} dropped`, state: "warning" };
+  else if (total > 0) next = { text: `${total.toLocaleString()} samples · complete`, state: "ok" };
+  else if (definitions.size) next = { text: "Waiting for metric samples", state: "idle" };
+  else next = { text: "No metrics configured", state: "idle" };
+  resultsModel.set({ status: Object.freeze(next) });
+  status.textContent = resultsModel.get().status.text;
+  status.dataset.state = resultsModel.get().status.state;
 }
 
 function receiveDefinitions(ir) {
@@ -251,6 +250,7 @@ function receiveDefinitions(ir) {
   }
 
   refreshAllPanels();
+  publishResults();
   updateStatus();
 }
 
@@ -265,6 +265,7 @@ function receiveBatch(batch) {
   if (newMetric) {
     if (panels.length === 1 && panels[0].metricIds.length === 0) panels[0].metricIds = defaultMetricIds();
     refreshAllPanels();
+    publishResults();
   }
   updateStatus();
   scheduleRender(false);
@@ -274,6 +275,7 @@ function resetSamples() {
   samples.clear();
   lastBuffer = null;
   for (const panel of panels) panel.view = null;
+  publishResults();
   updateStatus();
   scheduleRender(true);
 }
@@ -485,6 +487,52 @@ document.addEventListener("vlab:metric-batch", (event) => receiveBatch(event.det
 document.addEventListener("vlab:metric-reset", resetSamples);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) scheduleRender(true); });
 window.addEventListener("resize", () => scheduleRender(true));
+
+// The results controller (#564): every view acts through these commands.
+function panelById(panelId) {
+  return panels.find((panel) => panel.id === panelId) ?? null;
+}
+
+function setPanelMetric(panel, id, visible) {
+  if (visible) panel.metricIds.push(id);
+  else panel.metricIds = panel.metricIds.filter((candidate) => candidate !== id);
+  panel.view = null;
+  refreshPanelControls(panel);
+  scheduleRender(true);
+}
+
+function addPanelCommand() {
+  if (!resultsModel.get().canAdd) return;
+  const id = defaultMetricIdForNewPanel();
+  if (!id) return;
+  addPanel([id]);
+}
+
+function removePanelCommand(panelId) {
+  const panel = panelById(panelId);
+  if (panel) removePanel(panel);
+}
+
+// Only configured metrics can be shown or hidden in a plot.
+function toggleMetricCommand(panelId, metricId) {
+  const panel = panelById(panelId);
+  if (!panel || !definitions.has(metricId)) return;
+  setPanelMetric(panel, metricId, !panel.metricIds.includes(metricId));
+}
+
+function followLiveCommand(panelId) {
+  const panel = panelById(panelId);
+  if (!panel) return;
+  panel.view = null;
+  scheduleRender(true);
+}
+
+provideResultsCommands({
+  addPanel: addPanelCommand,
+  removePanel: removePanelCommand,
+  toggleMetric: toggleMetricCommand,
+  followLive: followLiveCommand,
+});
 
 mount();
 updateStatus();

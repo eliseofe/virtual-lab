@@ -10,7 +10,9 @@ const text = (relative) => readFile(path.join(repo, relative), "utf8");
 
 test("#198 owner UX: configured metric is visible without creating an empty plot", async () => {
   const source = await text("web/src/results-ui.js");
-  assert.match(source, /button\.disabled = definitions\.size === 0/);
+  // #564: the results panel reads the results model and acts through the results controller.
+  assert.match(source, /resultsModel\.set\(\{ canAdd: definitions\.size > 0 \}\)/);
+  assert.match(source, /button\.disabled = !resultsModel\.get\(\)\.canAdd/);
   assert.match(source, /defaultMetricIdForNewPanel\(\)/);
   assert.match(source, /addPanel\(\[id\]\)/);
   assert.match(source, /else if \(!panels\.length\) \{\s*addPanel\(defaultMetricIds\(\)\.slice\(0, 1\)\)/s);

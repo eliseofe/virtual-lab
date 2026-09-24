@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const webRoot = fileURLToPath(new URL('.', import.meta.url));
+const SHARED_MODULE = /\/(runtime|results-panel)\/(runtime-model|simulation-commands|results-model|results-commands)\.js$/;
 
 export default defineConfig({
   plugins: [react()],
@@ -22,15 +23,15 @@ export default defineConfig({
       cssFileName: 'react-migration-root',
     },
     rollupOptions: {
-      // #560/#562: the runtime model and the simulation commands must be one
-      // instance shared with main.js, so the bundle imports them at runtime
-      // (./runtime/… next to the bundle in the asset directory) instead of
-      // inlining its own copies.
-      external: [/\/runtime\/(runtime-model|simulation-commands)\.js$/],
+      // #560/#562/#564: models and command modules must be one instance shared
+      // with the page's own modules (main.js, results-ui.js), so the bundle
+      // imports them at runtime from the asset directory instead of inlining
+      // its own copies.
+      external: [SHARED_MODULE],
       output: {
         paths: (id) => {
-          const shared = id.match(/\/runtime\/(runtime-model|simulation-commands)\.js$/);
-          return shared ? `./runtime/${shared[1]}.js` : id;
+          const shared = id.match(SHARED_MODULE);
+          return shared ? `./${shared[1]}/${shared[2]}.js` : id;
         },
       },
     },
