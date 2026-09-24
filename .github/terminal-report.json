@@ -1,18 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "One controller now owns applying code edits; Apply is a real command; two Metrics-marker defects fixed",
-  "owner_impact": "Applying edits now has a single owner. Before, the editor code (configuration, initialization, controller) and the Metrics code both wrote the status line and the Apply button, and the Metrics code applied Metrics-only edits by catching the Apply click before anyone else. Now one authoring controller decides; the simulator and the Metrics code report to it, and Apply is a direct command. Two existing defects are fixed. (1) If you edited Metrics and the controller and the controller had an error, the Metrics tab lost its 'unapplied' marker although nothing was applied; it now keeps it. (2) When an Experiment load applied the configuration, it also applied your Metrics edits, but the Metrics tab kept saying 'unapplied'; it is now cleared. Everything else behaves exactly as before: on the complete page, all other steps of 28 apply scenarios (Metrics only, while running, Metrics errors, invalid configuration, Metrics with configuration or controller, double Apply, applies started by the Experiment loader) matched production, as did the earlier editor, simulation and results checks. Test now: yes, a short check. Edit only Metrics and Apply; edit Metrics and the controller and Apply; put an error in the controller while Metrics is also edited, press Apply, and check that both tabs still show unapplied edits.",
+  "outcome": "Page-wide watchers no longer do work on every simulation update (about 10 times less main-thread work during runs)",
+  "owner_impact": "Nothing changes on screen. Three pieces of code watch the whole page so they can react when panels, dialogs and controls appear (the collection organizer, the accessibility layer and the workspace shell). Because they watched everything, every number the simulation updated woke all three, about 4,500 times in 10 seconds of running, costing about half a second of the page's main thread. They now ignore updates that are only text or attribute changes inside the simulation section, and still react to everything else. Measured over 10 seconds of running: about 50 ms instead of about 520 ms. Before making the change I checked, on the current version, that in 4,370 such updates these watchers never changed anything on the page. Test now: optional. Run a simulation and open the account, library and collection dialogs; everything should work as before and may feel lighter while running.",
   "next": {
     "kind": "epic_continues",
     "issue": 569,
-    "text": "Next is #569, the last stage of the plan: stop building the hidden duplicate old views and replace the whole-page watchers that fire on every page change, one panel at a time. Nothing changes on screen."
+    "text": "#569 continues: stop building and updating the hidden duplicate old views where nothing reads them any more, starting with the simulation labels, one panel at a time. Nothing changes on screen."
   },
   "technical_evidence": [
-    "New web/src/authoring-panel/authoring-machine.js (pure apply rules) and authoring-controller.js (wiring, loaded early by metrics-runtime-bridge.js so it works even if later modules fail). Metrics-only edits go to the metrics participant; otherwise setup, else controller. A setup/controller apply requested through Apply or by another module clears pending Metrics on success and leaves every edit pending on failure.",
-    "main.js reports setup/controller outcomes (sourceStatus) and requests (sourceApplyRequest) in the runtime model and exposes applySetup/applyController as simulation commands; the legacy #apply-setup/#compile buttons call them. controls.applySources replaces reading their disabled state.",
-    "metrics-runtime-bridge.js no longer intercepts the Apply click, watches feedback text or writes the status; it reports edits, success and failure. authoring-workspace.js keeps only tab plumbing.",
-    "Full-page A/B (production versus this build, mirrored libraries): 28 extended apply scenarios identical except the 6 steps showing the two intended fixes; editor 16/16, simulation 18/18, results 11/11 identical; baseline repeatability checked (production versus production identical). A planted rule change is detected.",
-    "New web/tests/authoring-machine.test.mjs: 10 behaviour tests including both fixes; planted rule changes are each caught. 683 tests pass. Style comparison identical at all four viewports."
-  ],
-  "close_issue": 567
+    "New web/src/live-region.js: onlyLiveRuntimeUpdates(records) is true when every record is a text or attribute change inside #simulation. Element insertions and removals there, and any change elsewhere, still count.",
+    "collection-organization.js, workspace-shell.js and ux-hardening.js skip such batches in their document.body observers.",
+    "Safety proof on the production build: 4,370 noise-only batches during run, add plot, pause, restart, new seed and run; the observers' reactions changed the document in 0 of them (full outerHTML compared before and after); 45 structural batches still handled.",
+    "Measured over 10 s runs (instrumented observers, two runs each): 508 to 526 ms before, 48 to 50 ms after; same simulated time.",
+    "Full-page A/B, production versus this build: simulation 18/18, results 11/11, editor 16/16, extended apply scenarios 28/28 identical. New live-region.test.mjs (4 tests); 687 tests pass. Style comparison identical at all four viewports."
+  ]
 }

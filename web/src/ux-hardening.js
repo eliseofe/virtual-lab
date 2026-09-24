@@ -1,3 +1,4 @@
+import { onlyLiveRuntimeUpdates } from "./live-region.js";
 const root = document.documentElement;
 root.dataset.vlabUxHardened = "true";
 
@@ -158,7 +159,10 @@ document.addEventListener("focusin", (event) => {
   if (tab instanceof HTMLElement) tab.scrollIntoView({ block: "nearest", inline: "nearest" });
 });
 
-const discoveryObserver = new MutationObserver(enhanceAll);
+// Skips pure live-runtime updates (#569).
+const discoveryObserver = new MutationObserver((records) => {
+  if (!onlyLiveRuntimeUpdates(records)) enhanceAll();
+});
 discoveryObserver.observe(document.body, { childList: true, subtree: true });
 
 enhanceAll();

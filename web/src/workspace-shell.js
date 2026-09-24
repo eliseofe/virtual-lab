@@ -1,3 +1,4 @@
+import { onlyLiveRuntimeUpdates } from "./live-region.js";
 import "./registry-ui-v3.js";
 import "./experiment-library.js";
 import "./student-registration.js";
@@ -89,7 +90,10 @@ utilityDialog.addEventListener("click", (event) => {
   if (event.target === utilityDialog) utilityDialog.close();
 });
 
-const observer = new MutationObserver(syncUtilityPanels);
+// Skips pure live-runtime updates (#569).
+const observer = new MutationObserver((records) => {
+  if (!onlyLiveRuntimeUpdates(records)) syncUtilityPanels();
+});
 observer.observe(document.body, {
   childList: true,
   subtree: true,
