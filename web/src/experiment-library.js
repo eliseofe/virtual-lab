@@ -40,93 +40,6 @@ function bridge() {
   return value;
 }
 
-function installStyles() {
-  if (document.querySelector("style[data-vlab-experiment-library]")) return;
-  const style = document.createElement("style");
-  style.dataset.vlabExperimentLibrary = "";
-  style.textContent = `
-    .vlab-library { width: min(72rem, calc(100vw - 2rem)); height: min(52rem, calc(100dvh - 2rem)); max-height: calc(100dvh - 2rem); border: 0; border-radius: 16px; padding: 0; color: #172127; box-shadow: 0 18px 70px rgba(16,35,44,.28); }
-    .vlab-library::backdrop { background: rgba(16,27,33,.42); }
-    .vlab-library-shell { height: 100%; min-height: 0; display: grid; grid-template-rows: auto auto auto auto 1fr; background: #fff; container-type: inline-size; }
-    .vlab-library-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px 11px; border-bottom: 1px solid #e6ecef; }
-    .vlab-library-head h2 { margin: 0; font-size: 18px; }
-    .vlab-library-head-actions { display: flex; gap: 7px; }
-    .vlab-library-loaded { margin: 10px 18px 0; min-height: 38px; padding: 7px 10px; display: flex; align-items: center; gap: 6px; text-align: left; border: 1px solid #d8e3e7; border-radius: 9px; background: #f8fbfc; }
-    .vlab-library-loaded span { color: #6a7b82; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
-    .vlab-library-loaded strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-    .vlab-library-sources { padding: 10px 18px 0; }
-    .vlab-library-source-tabs { display: none; gap: 6px; }
-    .vlab-library-source-tabs button { min-height: 36px; }
-    .vlab-library-source-tabs button[aria-selected="true"] { background: #1d5166; border-color: #1d5166; color: #fff; }
-    .vlab-library-source-select { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 8px; }
-    .vlab-library-source-select label { font-size: 11px; font-weight: 750; color: #52666f; }
-    .vlab-library-source-select select,
-    .vlab-library-search input,
-    .vlab-library-search select,
-    .vlab-library-sort,
-    .vlab-library-copy input,
-    .vlab-library-copy select { min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; background: #fff; padding: 7px 9px; color: #172127; }
-    .vlab-library-toolbar { padding: 9px 18px 0; display: grid; gap: 8px; }
-    .vlab-library-search { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 7px; }
-    .vlab-library-search input { width: 100%; min-width: 0; }
-    .vlab-library-clear[hidden] { display: none !important; }
-    .vlab-library-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-height: 30px; color: #63767e; font-size: 11px; }
-    .vlab-library-breadcrumb button { min-height: 28px; padding: 3px 7px; border-radius: 7px; }
-    .vlab-library-breadcrumb strong { color: #243b45; }
-    .vlab-library-layout { min-height: 0; display: grid; grid-template-columns: 1fr; gap: 12px; padding: 9px 18px 18px; overflow: hidden; }
-    .vlab-library-directory { min-height: 0; display: grid; align-content: start; gap: 5px; overflow: auto; padding-bottom: 8px; border-bottom: 1px solid #e6ecef; }
-    .vlab-library-directory button { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 7px 9px; text-align: left; border-radius: 8px; }
-    .vlab-library-directory button[aria-selected="true"] { background: #edf4f6; border-color: #b8ccd4; color: #244e5f; font-weight: 750; }
-    .vlab-library-directory small { color: #718087; }
-    .vlab-library-results-wrap { min-height: 0; display: grid; grid-template-rows: auto 1fr; gap: 7px; }
-    .vlab-library-results-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .vlab-library-status { margin: 0; color: #687a82; font-size: 11px; }
-    .vlab-library-results { min-height: 0; display: grid; align-content: start; gap: 7px; overflow: auto; padding-right: 3px; }
-    .vlab-library-group { display: grid; gap: 6px; }
-    .vlab-library-group + .vlab-library-group { margin-top: 7px; }
-    .vlab-library-group-head { margin: 0; padding: 4px 2px; border-bottom: 1px solid #e7ecef; font-size: 12px; }
-    .vlab-library-row { border: 1px solid #dfe7ea; border-radius: 10px; background: #fff; padding: 9px 10px; display: grid; gap: 6px; }
-    .vlab-library-row[data-loaded="true"] { border-color: #7ea8ba; box-shadow: inset 3px 0 0 #4f8399; background: #f7fbfc; }
-    .vlab-library-row-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-    .vlab-library-row-title { min-width: 0; display: grid; gap: 3px; }
-    .vlab-library-row-title strong { font-size: 12.5px; overflow-wrap: anywhere; }
-    .vlab-library-meta { color: #718087; font-size: 10.5px; line-height: 1.4; }
-    .vlab-library-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
-    .vlab-library-badge { border: 1px solid #d7e0e4; border-radius: 999px; padding: 2px 6px; color: #52666f; background: #fafcfd; font-size: 9.5px; font-weight: 750; white-space: nowrap; }
-    .vlab-library-badge.loaded { background: #e6f2f5; border-color: #9abcc9; color: #214c60; }
-    .vlab-library-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-    .vlab-library-row-actions button { min-height: 36px; }
-    .vlab-library-details { display: grid; gap: 7px; padding-top: 7px; border-top: 1px solid #e7ecef; color: #52666f; font-size: 11px; line-height: 1.45; }
-    .vlab-library-details p { margin: 0; }
-    .vlab-library-details dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 9px; margin: 0; }
-    .vlab-library-details dt { color: #718087; }
-    .vlab-library-details dd { margin: 0; color: #2b424c; overflow-wrap: anywhere; }
-    .vlab-library-copy { display: grid; grid-template-columns: minmax(0,1fr) minmax(9rem, .7fr) auto auto; gap: 6px; align-items: center; }
-    .vlab-library-empty { margin: 12px 2px; color: #718087; font-size: 12px; }
-    .vlab-library-error { margin: 0; color: #9e2d29; font-size: 11.5px; }
-    @container (min-width: 40rem) {
-      .vlab-library-source-tabs { display: flex; }
-      .vlab-library-source-select { display: none; }
-    }
-    @container (min-width: 48rem) {
-      .vlab-library-layout { grid-template-columns: 14rem minmax(0,1fr); gap: 1rem; }
-      .vlab-library-directory { border-bottom: 0; border-right: 1px solid #e6ecef; padding-right: 12px; padding-bottom: 0; }
-    }
-    @media (max-width: 520px) {
-      .vlab-library { width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
-      .vlab-library-head { padding-inline: 12px; }
-      .vlab-library-loaded, .vlab-library-sources, .vlab-library-toolbar { margin-left: 0; margin-right: 0; padding-left: 12px; padding-right: 12px; }
-      .vlab-library-loaded { margin-left: 12px; margin-right: 12px; }
-      .vlab-library-layout { padding-left: 12px; padding-right: 12px; }
-      .vlab-library-search { grid-template-columns: minmax(0,1fr) auto; }
-      .vlab-library-search select { grid-column: 1 / -1; }
-      .vlab-library-copy { grid-template-columns: 1fr; }
-      .vlab-library-copy button, .vlab-library-head button, .vlab-library-source-select select { min-height: 44px; }
-    }
-  `;
-  document.head.append(style);
-}
-
 function button(text, className = "") {
   const element = document.createElement("button");
   element.type = "button";
@@ -228,8 +141,6 @@ function buildUi() {
     status, sort, results,
   };
 }
-
-installStyles();
 const ui = buildUi();
 
 function availableSources() {

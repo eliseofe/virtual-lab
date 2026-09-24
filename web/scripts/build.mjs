@@ -54,12 +54,15 @@ let index = await readFile(path.join(src, "index.html"), "utf8");
 index = index
   .replace('href="./style.css"', `href="./${assetDirName}/style.css"`)
   .replace('href="./ux-hardening.css"', `href="./${assetDirName}/ux-hardening.css"`)
+  .replace(/href="\.\/(results-ui\.css|styles\/[a-z0-9-]+\.css)"/g, (_match, file) => `href="./${assetDirName}/${file}"`)
   .replace('src="./metrics-runtime-bridge.js"', `src="./${assetDirName}/metrics-runtime-bridge.js"`)
   .replace('src="./main.js"', `src="./${assetDirName}/main.js"`)
   .replace('src="./runtime-speed.js"', `src="./${assetDirName}/runtime-speed.js"`)
   .replace('src="./workspace-shell.js"', `src="./${assetDirName}/workspace-shell.js"`)
   .replace("<head>", `<head>\n  <meta name="vlab-build" content="${token}">`)
-  .replace("</head>", `  <link rel="stylesheet" href="./${assetDirName}/react-migration-root.css">\n</head>`)
+  .replace(/<!-- vlab:react-stylesheet[^>]*-->|<\/head>/, (marker) => marker === "</head>"
+    ? `  <link rel="stylesheet" href="./${assetDirName}/react-migration-root.css">\n</head>`
+    : `<link rel="stylesheet" href="./${assetDirName}/react-migration-root.css">`)
   .replace("<body>", `<body>\n  <div id="react-migration-root" aria-label="Virtual Lab application navigation"></div>`)
   .replace("</body>", `  <script type="module" src="./${assetDirName}/react-migration-root.js"></script>\n</body>`);
 await writeFile(path.join(dist, "index.html"), index);

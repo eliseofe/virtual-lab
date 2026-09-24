@@ -1,0 +1,5 @@
+/* Moved verbatim from web/src/showcase-professor-placement.js (#543). */
+@media (max-width: 680px) {
+  .showcase-head-actions button,
+  .showcase-promote-current { min-height: 44px; }
+}

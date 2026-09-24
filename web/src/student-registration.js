@@ -25,22 +25,6 @@ if (!panel || !auth || !email || !password || !signIn || !message || !heading ||
   throw new Error("Student registration UI mismatch.");
 }
 
-function installStyles() {
-  if (document.querySelector("style[data-vlab-student-registration]")) return;
-  const style = document.createElement("style");
-  style.dataset.vlabStudentRegistration = "";
-  style.textContent = `
-    .registry-signup-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .registry-auth input { width: 100%; }
-    .registry-auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .registry-auth-actions > button { width: 100%; min-height: 44px; }
-    @media (max-width: 460px) {
-      .registry-signup-name-row, .registry-auth-actions { grid-template-columns: 1fr; }
-    }
-  `;
-  document.head.append(style);
-}
-
 function setMessage(text, state = "idle") {
   message.textContent = text;
   message.dataset.state = state;
@@ -235,8 +219,6 @@ if (chromeRoot) {
     subtree: true,
   });
 }
-
-installStyles();
 applyAuthMode();
 syncAuthPresentation();
 panel.setAttribute("data-vlab-student-registration", "ready");

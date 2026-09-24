@@ -28,6 +28,14 @@ if (!index.includes('id="react-migration-root" aria-label="Virtual Lab applicati
 if (index.includes('id="react-migration-root" hidden')) throw new Error("React application chrome is still hidden");
 if (index.includes('href="./ux-hardening.css"')) throw new Error("index still references unversioned ux-hardening.css");
 if (index.includes('src="./runtime-speed.js"')) throw new Error("index still references unversioned runtime-speed.js");
+// #543: moved stylesheets are versioned and load after the React stylesheet.
+const reactStyles = index.indexOf(`./${manifest.assetDir}/react-migration-root.css`);
+const movedStyles = [...index.matchAll(/href="\.\/([^"]+\/)?(results-ui\.css|styles\/[a-z0-9-]+\.css)"/g)];
+if (movedStyles.length < 2) throw new Error("index does not link the moved stylesheets");
+for (const link of movedStyles) {
+  if (link[1] !== `${manifest.assetDir}/`) throw new Error(`unversioned stylesheet link: ${link[0]}`);
+  if (link.index < reactStyles) throw new Error(`stylesheet loads before the React stylesheet: ${link[2]}`);
+}
 const main = await readFile(path.join(assetDir, "main.js"), "utf8");
 for (const required of [
   'import "./catalog-workspace.js"',

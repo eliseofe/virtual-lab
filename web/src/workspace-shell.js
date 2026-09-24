@@ -3,7 +3,6 @@ import "./experiment-library.js";
 import "./student-registration.js";
 import "./student-onboarding.js";
 import "./showcase.js";
-import "./showcase-professor-placement.js";
 import "./results-presentation-bridge.js";
 import "./authoring-workspace.js";
 import "./collection-organization.js";

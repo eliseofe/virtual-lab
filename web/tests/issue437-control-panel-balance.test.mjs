@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
-const management = await readFile(new URL("../src/experiment-management.js", import.meta.url), "utf8");
+const management = await sourceWithStyles("experiment-management.js");
 
 test("#437 keeps peer Control Panel cards balanced without forced card heights", () => {
   assert.match(management, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);

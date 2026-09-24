@@ -33,86 +33,6 @@ const PROFESSOR_REVIEW_DECISIONS = Object.freeze([
   ["Already supported", "already_supported", false],
 ]);
 
-function installStyles() {
-  if (document.querySelector("style[data-vlab-professor-inbox]")) return;
-  const style = document.createElement("style");
-  style.dataset.vlabProfessorInbox = "";
-  style.textContent = `
-    .professor-panel[hidden], .professor-inbox[hidden] { display: none !important; }
-    .professor-panel { display: grid; gap: 8px; }
-    .professor-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .professor-panel-title { margin: 0; font-size: 12px; font-weight: 750; color: #26373e; }
-    .professor-inbox-open { width: 100%; min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .professor-pending-count { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 22px; padding: 2px 7px; border-radius: 999px; background: #edf4f6; color: #315a69; font-size: 10.5px; font-weight: 750; }
-    .professor-panel-note { margin: 0; color: #78888e; font-size: 10.5px; line-height: 1.4; }
-    .professor-inbox { width: min(900px, calc(100vw - 28px)); max-height: min(780px, calc(100vh - 28px)); border: 0; border-radius: 16px; padding: 0; box-shadow: 0 18px 70px rgba(16,35,44,.28); color: #172127; }
-    .professor-inbox::backdrop { background: rgba(16,27,33,.42); }
-    .professor-inbox-shell { display: grid; grid-template-rows: auto 1fr; max-height: inherit; min-height: 480px; background: #fff; }
-    .professor-inbox-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 18px 12px; border-bottom: 1px solid #e6ecef; }
-    .professor-inbox-head h2 { margin: 0; font-size: 17px; }
-    .professor-inbox-head-actions { display: flex; gap: 7px; }
-    .professor-inbox-summary { margin: 0; padding: 11px 18px; color: #64757c; font-size: 11.5px; line-height: 1.4; border-bottom: 1px solid #eef2f4; }
-    .professor-inbox-message { margin: 0; padding: 0 18px 10px; min-height: 1.4em; color: #64757c; font-size: 11px; }
-    .professor-inbox-message[data-state="error"] { color: #9e2d29; }
-    .professor-request-list { display: grid; align-content: start; gap: 10px; overflow: auto; padding: 0 18px 18px; }
-    .professor-request-empty { margin: 16px 2px; color: #718087; font-size: 12px; }
-    .professor-request-card { display: grid; gap: 8px; padding: 11px 12px; border: 1px solid #dfe7ea; border-radius: 12px; background: #fff; }
-    .professor-request-card[data-status="pending"] { border-color: #bdd1d9; }
-    .professor-request-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-    .professor-request-top h3 { margin: 0; font-size: 13.5px; line-height: 1.35; }
-    .professor-request-domain { margin: 2px 0 0; color: #6c7c83; font-size: 10.5px; }
-    .professor-request-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
-    .professor-request-class, .professor-evidence-count, .professor-generalization-needed { display: inline-flex; width: fit-content; min-height: 24px; align-items: center; padding: 3px 7px; border-radius: 999px; background: #edf4f6; color: #315a69; font-size: 10px; font-weight: 700; }
-    .professor-evidence-count { background: #f2f0f7; color: #5a4d73; }
-    .professor-generalization-needed { background: #fff0dd; color: #805018; }
-    .professor-status { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 8px; border-radius: 999px; background: #eef3f5; color: #50626a; font-size: 10px; font-weight: 750; text-transform: capitalize; }
-    .professor-status[data-status="pending"] { background: #fff4d8; color: #7a5712; }
-    .professor-status[data-status="accepted"] { background: #e7f3ec; color: #265f43; }
-    .professor-status[data-status="rejected"] { background: #f8e9e8; color: #8b3731; }
-    .professor-status[data-status="revise"] { background: #fff0dd; color: #805018; }
-    .professor-status[data-status="deferred"] { background: #eef1f7; color: #495c7a; }
-    .professor-status[data-status="future"] { background: #f1ecf8; color: #654c7d; }
-    .professor-status[data-status="already_supported"] { background: #e7f3ec; color: #265f43; }
-    .professor-support-resolution { display: grid; gap: 6px; padding: 8px 9px; border: 1px solid #e5ebed; border-radius: 9px; background: #fafcfc; }
-    .professor-support-resolution label { display: grid; gap: 4px; color: #52666f; font-size: 10.5px; font-weight: 700; }
-    .professor-support-resolution select { min-height: 92px; border: 1px solid #cfd8dc; border-radius: 8px; padding: 6px; background: #fff; }
-    .professor-support-resolution input { border: 1px solid #cfd8dc; border-radius: 8px; padding: 7px 8px; font: inherit; }
-    .professor-status[data-status="in_progress"] { background: #e8f0f6; color: #315a69; }
-    .professor-status[data-status="implemented"] { background: #e7f3ec; color: #265f43; }
-    .professor-request-definition { margin: 0; color: #344850; font-size: 11.5px; line-height: 1.45; }
-    .professor-request-details { border-top: 1px solid #edf1f3; padding-top: 6px; }
-    .professor-request-details summary { cursor: pointer; color: #52666f; font-size: 10.5px; font-weight: 700; }
-    .professor-request-detail-grid { display: grid; gap: 8px; padding: 8px 0 2px; }
-    .professor-request-detail-source { display: grid; gap: 3px; padding: 8px 9px; border: 1px solid #e5ebed; border-radius: 8px; background: #fafcfc; }
-    .professor-request-detail-source h4 { margin: 0; font-size: 10.8px; color: #334951; }
-    .professor-request-detail-line { margin: 0; color: #62737a; font-size: 10.3px; line-height: 1.4; white-space: pre-wrap; }
-    .professor-request-detail-line strong { color: #43575f; }
-    .professor-request-note-label { display: grid; gap: 4px; color: #52666f; font-size: 10.5px; font-weight: 700; }
-    .professor-request-note { width: 100%; min-height: 54px; resize: vertical; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; font: inherit; color: #172127; background: #fff; }
-    .professor-request-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-    .professor-request-actions button { min-height: 36px; padding: 6px 10px; }
-    @media (max-width: 680px) { .professor-request-actions button { min-height: 44px; } }
-    .professor-request-review { margin: 0; color: #65767d; font-size: 10.5px; line-height: 1.4; }
-    .professor-generalization-editor { border-top: 1px solid #edf1f3; padding-top: 7px; }
-    .professor-generalization-editor > summary { cursor: pointer; color: #315a69; font-size: 10.8px; font-weight: 750; }
-    .professor-generalization-form { display: grid; gap: 9px; padding: 9px 0 2px; }
-    .professor-generalization-intro { margin: 0; color: #65767d; font-size: 10.5px; line-height: 1.45; }
-    .professor-generalization-field { display: grid; gap: 4px; color: #52666f; font-size: 10.5px; font-weight: 700; }
-    .professor-generalization-field input, .professor-generalization-field textarea, .professor-generalization-field select { width: 100%; border: 1px solid #cfd8dc; border-radius: 8px; padding: 7px 8px; font: inherit; color: #172127; background: #fff; }
-    .professor-generalization-field textarea { min-height: 72px; resize: vertical; }
-    .professor-generalization-surfaces { display: grid; gap: 6px; }
-    .professor-generalization-surface { display: grid; grid-template-columns: 1.15fr 1fr 1.8fr 1fr auto; gap: 6px; align-items: end; padding: 7px; border: 1px solid #e1e8eb; border-radius: 9px; background: #fafcfc; }
-    .professor-generalization-surface label { display: grid; gap: 3px; color: #65767d; font-size: 9.8px; font-weight: 700; }
-    .professor-generalization-surface input, .professor-generalization-surface select { min-width: 0; border: 1px solid #cfd8dc; border-radius: 7px; padding: 6px 7px; font: inherit; }
-    .professor-generalization-cover { display: flex; align-items: flex-start; gap: 7px; color: #52666f; font-size: 10.5px; line-height: 1.4; }
-    .professor-generalization-cover input { margin-top: 2px; }
-    .professor-generalization-actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
-    @media (max-width: 760px) { .professor-generalization-surface { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 680px) { .professor-inbox-shell { min-height: min(620px, calc(100vh - 28px)); } }
-  `;
-  document.head.append(style);
-}
-
 function buildUi() {
   const panel = document.createElement("section");
   panel.className = "panel professor-panel";
@@ -959,8 +879,6 @@ function run(task) {
     setMessage(error instanceof Error ? error.message : String(error), "error");
   });
 }
-
-installStyles();
 const ui = buildUi();
 ui.open.addEventListener("click", () => {
   if (profile?.role !== "professor") return;

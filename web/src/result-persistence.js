@@ -518,28 +518,9 @@ function downloadExperimentPackage() {
   renderControls();
 }
 
-function installStyles() {
-  if (document.querySelector("style[data-vlab-result-storage]")) return;
-  const style = document.createElement("style");
-  style.dataset.vlabResultStorage = "";
-  style.textContent = `
-    .results-storage { display:flex; flex-wrap:wrap; align-items:center; gap:7px; padding:8px 0 0; border-top:1px solid #e7edef; }
-    .results-storage-status { min-width:150px; flex:1 1 190px; font-size:11px; color:#65757c; }
-    .results-storage-status[data-state="error"] { color:#9e2d29; }
-    .results-storage-status[data-state="ok"] { color:#246240; }
-    .results-storage label { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:#607178; }
-    .results-storage button, .results-storage select { min-height:32px; }
-    .results-storage button { padding:5px 9px; font-size:11px; }
-    .results-storage select { border:1px solid #cfd8dc; border-radius:8px; background:#fff; padding:4px 6px; }
-    @media (max-width:560px) { .results-storage-status { flex-basis:100%; } }
-  `;
-  document.head.append(style);
-}
-
 function mountControls() {
   const results = document.querySelector("#live-results");
   if (!results || results.querySelector(".results-storage")) return;
-  installStyles();
   const controls = document.createElement("div");
   controls.className = "results-storage";
   controls.innerHTML = `

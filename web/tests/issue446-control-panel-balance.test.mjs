@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
 const [management, organization] = await Promise.all([
-  readFile(new URL("../src/experiment-management.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/collection-organization.js", import.meta.url), "utf8"),
+  sourceWithStyles("experiment-management.js"),
+  sourceWithStyles("collection-organization.js"),
 ]);
 
 test("#446 gives Current Experiment one title-first identity flow followed by its action group", () => {

@@ -4,19 +4,6 @@ import { supabase } from "./supabase-client.js";
 const dialog = document.querySelector(".professor-inbox");
 if (!dialog) throw new Error("Professor development links require the Professor inbox UI.");
 
-function installStyles() {
-  if (document.querySelector("style[data-vlab-professor-development-links]")) return;
-  const style = document.createElement("style");
-  style.dataset.vlabProfessorDevelopmentLinks = "";
-  style.textContent = `
-    .professor-request-development { display: grid; gap: 5px; }
-    .professor-development-link-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 9px; font-size: 10.5px; line-height: 1.35; }
-    .professor-development-link-status { color: #718087; text-transform: capitalize; }
-    .professor-development-link-row a { color: #1d5166; font-weight: 700; }
-  `;
-  document.head.append(style);
-}
-
 function formatIssueLabel(request) {
   return request.github_issue_number
     ? `Issue #${request.github_issue_number}`
@@ -101,8 +88,6 @@ function runLoad() {
     render([]);
   });
 }
-
-installStyles();
 dialog.addEventListener("vlab:professor-requests-rendered", runLoad);
 supabase.auth.onAuthStateChange(() => queueMicrotask(runLoad));
 runLoad();

@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+import { MOVED_STYLES, sourceWithStyles } from "./support/source-with-styles.mjs";
+
 async function source(path) {
+  const moved = path.match(/^\.\.\/src\/([a-z0-9-]+\.js)$/);
+  if (moved && MOVED_STYLES[moved[1]]) return sourceWithStyles(moved[1]);
   return readFile(new URL(path, import.meta.url), "utf8");
 }
 

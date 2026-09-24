@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
 const [index, workspaceShell, authoring, management, organization] = await Promise.all([
   readFile(new URL("../src/index.html", import.meta.url), "utf8"),
   readFile(new URL("../src/workspace-shell.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/authoring-workspace.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/experiment-management.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/collection-organization.js", import.meta.url), "utf8"),
+  sourceWithStyles("authoring-workspace.js"),
+  sourceWithStyles("experiment-management.js"),
+  sourceWithStyles("collection-organization.js"),
 ]);
 
 assert.ok(workspaceShell.includes('import "./experiment-management.js";'), "workspace shell must load the unified Experiment management adapter");

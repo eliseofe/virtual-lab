@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
-const showcase = readFileSync(new URL("../src/showcase.js", import.meta.url), "utf8");
-const placement = readFileSync(new URL("../src/showcase-professor-placement.js", import.meta.url), "utf8");
+const showcase = sourceWithStyles("showcase.js");
+const placement = sourceWithStyles("showcase-professor-placement.js");
 
 test("#240 Showcase contains no synthetic built-in publication exception", () => {
   assert.doesNotMatch(showcase, /BUILTIN_SHOWCASE_ID/);
