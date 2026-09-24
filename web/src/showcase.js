@@ -1,18 +1,12 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.111.0";
+import { supabase } from "./supabase-client.js";
 import { captureExperimentArtifacts } from "./experiment-artifacts.js";
 import { isCatalogSelectValue } from "./experiment-catalog.js";
 
-const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYbJUyik9zN7WA_r4ie2P5d";
-const AUTH_STORAGE_KEY = "vlab-production-registry-auth-v1";
 const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 const SHOWCASE_QUERY = "showcase";
 const REGISTRY_SCHEMA_VERSION = "vlab.registry-experiment/3";
 const ARTIFACT_INTERFACE_VERSION = "vlab.experiment-artifacts/3";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: { storageKey: AUTH_STORAGE_KEY },
-});
 
 const experimentSelect = document.querySelector("#experiment-select");
 const experimentPanel = experimentSelect?.closest(".experiment-panel");

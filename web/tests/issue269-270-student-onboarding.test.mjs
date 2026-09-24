@@ -30,8 +30,10 @@ test('Getting started ignores Professor presentation when deciding to auto-open'
   assert.match(onboarding, /currentProfessor\.hidden/);
 });
 
-test('Grok and Claude use the production MCP endpoint', () => {
-  assert.ok(onboarding.includes(MCP_URL));
+test('Grok and Claude use the production MCP endpoint', async () => {
+  const config = await import('../src/supabase-config.js');
+  assert.equal(config.MCP_URL, MCP_URL);
+  assert.match(onboarding, /import \{ MCP_URL \} from "\.\/supabase-config\.js"/);
   assert.match(onboarding, /Use with Grok/);
   assert.match(onboarding, /Use with Claude/);
   assert.match(onboarding, /grok\.com\/connectors/);

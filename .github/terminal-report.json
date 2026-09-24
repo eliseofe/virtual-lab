@@ -1,17 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The simulator's Rust code is tidied, with every result proven unchanged",
-  "owner_impact": "Nothing changes in how the Lab looks, behaves or computes. The Rust simulator code now uses standard formatting, a normal file structure instead of an unusual file-inclusion trick, and a few harmless shortcuts rewritten in their standard form. The recorded reference runs prove that every agent position and every metric value is bit-for-bit identical, both in the browser's simulator and the native one, and the simulator's browser interface is byte-identical. CI now also rejects unformatted Rust code.",
+  "outcome": "The Lab now uses one shared database connection instead of eight",
+  "owner_impact": "Nothing changes in what you see or how you sign in: your existing login stays valid because the login storage is unchanged, and the AI-authorization page still reuses it. Behind the scenes the browser now keeps one shared connection to the database instead of seven parallel ones sharing your login, so the login is refreshed once instead of seven times and the Library, Professor inbox and collection panels no longer reload on each other's duplicate refresh events. The database address is now written in one place instead of eight.",
   "next": {
     "kind": "epic_continues",
-    "issue": 541,
-    "text": "Next is #541 — one shared database connection in the browser: the Lab currently opens 8 separate connections to its database (7 sharing your login), which I will replace with one shared connection without changing what you see or how you sign in. #541 has not started."
+    "issue": 543,
+    "text": "Next is #543 — move the appearance rules out of JavaScript into proper style files, with before/after screenshots at phone, tablet and desktop sizes proving that nothing looks different. #543 has not started."
   },
   "technical_evidence": [
-    "crates/kernel: src/entry.rs with include!(\"lib.rs\") removed; lib.rs is the crate root and declares metrics_ir; Cargo.toml lib path default.",
-    "cargo fmt applied across the workspace; CI runs cargo fmt --all --check (rustfmt component added).",
-    "Behaviour-free rewrites only: div_ceil, is_multiple_of (strides validated >= 1), is_none_or, derived Default with the same value, test-only imports moved into the test module. Remaining clippy warnings (argument counts, unused fields/methods, examples) are out of scope.",
-    "#532 references unchanged and passing: native cargo test and WebAssembly replay bit-identical; generated vlab_kernel.d.ts and vlab_kernel.js byte-identical before/after."
+    "New web/src/supabase-config.js (import-free coordinates, AUTH_STORAGE_KEY, MCP_URL) and web/src/supabase-client.js (the one persisted client, storage key vlab-production-registry-auth-v1).",
+    "registry-ui-v3, experiment-library, professor-inbox, professor-development-links, showcase, collection-organization and results-presentation-bridge import the shared client; student-registration keeps its deliberately non-persisted sign-up client using the shared coordinates; student-onboarding imports MCP_URL.",
+    "All seven former clients had identical options and one storage key; supabase-js already relayed auth changes between them via BroadcastChannel, so listeners receive the same sign-in/out events, minus duplicate per-client token refreshes.",
+    "web/tests/supabase-client.test.mjs guards exactly one persisted client and no repeated project coordinates; the OAuth consent test now checks the consent page against the shared storage key.",
+    "Signed-out product surfaces (Library/Showcase, registration, Professor review) verified by the pre-publish and live smoke; signed-in behaviour relies on the unchanged storage key, as no test credentials are available to agents."
   ],
-  "close_issue": 537
+  "close_issue": 541
 }
