@@ -1,5 +1,5 @@
-import { resultsCommands } from './results/results-commands.js';
-import { resultsModel } from './results/results-model.js';
+import { resultsCommands } from './results-panel/results-commands.js';
+import { resultsModel } from './results-panel/results-model.js';
 
 export type ResultsMetricPresentation = {
   id: string;

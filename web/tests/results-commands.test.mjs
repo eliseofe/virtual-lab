@@ -3,8 +3,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { provideResultsCommands, resultsCommands } from "../src/results/results-commands.js";
-import { RESULTS_INITIAL_STATE, resultsModel } from "../src/results/results-model.js";
+import { provideResultsCommands, resultsCommands } from "../src/results-panel/results-commands.js";
+import { RESULTS_INITIAL_STATE, resultsModel } from "../src/results-panel/results-model.js";
 
 test("the results model starts empty with the page's initial status", async () => {
   const { readFile } = await import("node:fs/promises");

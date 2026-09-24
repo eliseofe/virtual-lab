@@ -1,5 +1,5 @@
-import { resultsModel } from "./results/results-model.js";
-import { provideResultsCommands } from "./results/results-commands.js";
+import { resultsModel } from "./results-panel/results-model.js";
+import { provideResultsCommands } from "./results-panel/results-commands.js";
 
 const definitions = new Map();
 const samples = new Map();

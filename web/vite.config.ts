@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const webRoot = fileURLToPath(new URL('.', import.meta.url));
-const SHARED_MODULE = /\/(runtime|results)\/(runtime-model|simulation-commands|results-model|results-commands)\.js$/;
+const SHARED_MODULE = /\/(runtime|results-panel)\/(runtime-model|simulation-commands|results-model|results-commands)\.js$/;
 
 export default defineConfig({
   plugins: [react()],

@@ -104,13 +104,13 @@ if (!reactRoot.includes('from "./runtime/simulation-commands.js"')) throw new Er
 if (reactRoot.includes("provideSimulationCommands")) throw new Error("React bundle inlines its own copy of the simulation commands");
 if (!(await readFile(path.join(assetDir, "main.js"), "utf8")).includes('from "./runtime/simulation-commands.js"')) throw new Error("main.js does not provide the shared simulation commands");
 // #564: likewise the results model and commands, shared with results-ui.js.
-for (const shared of ["results/results-model.js", "results/results-commands.js"]) {
+for (const shared of ["results-panel/results-model.js", "results-panel/results-commands.js"]) {
   if (!reactRoot.includes(`from "./${shared}"`)) throw new Error(`React bundle does not import the shared ${shared}`);
 }
 if (reactRoot.includes("RESULTS_INITIAL_STATE") || reactRoot.includes("provideResultsCommands")) throw new Error("React bundle inlines its own copy of the results model or commands");
 {
   const resultsUi = await readFile(path.join(assetDir, "results-ui.js"), "utf8");
-  if (!resultsUi.includes('from "./results/results-model.js"') || !resultsUi.includes('from "./results/results-commands.js"')) throw new Error("results-ui.js does not use the shared results model and commands");
+  if (!resultsUi.includes('from "./results-panel/results-model.js"') || !resultsUi.includes('from "./results-panel/results-commands.js"')) throw new Error("results-ui.js does not use the shared results model and commands");
 }
 for (const file of ["main.js", "runtime-speed.js"]) {
   const source = await readFile(path.join(assetDir, file), "utf8");
