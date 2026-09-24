@@ -50,12 +50,13 @@ test("#149 browser exposes public Showcase discovery plus reversible Professor c
   assert.match(library, /"All Showcase"/);
   assert.match(library, /"Uncategorized"/);
   assert.match(showcase, /launcher\.textContent = "Manage Showcase"/);
-  assert.match(showcase, /profile\?\.role !== "professor"/);
+  // #552: behaviour covered by showcase-curation.test.mjs; this checks showcase.js uses the rule.
+  assert.match(showcase, /ui\.launcher\.hidden = !isProfessor\(profile\)/);
   assert.match(showcase, /supabase\.rpc\("promote_experiment_to_showcase"/);
   assert.match(showcase, /supabase\.rpc\("remove_showcase_entry"/);
   assert.match(showcase, /p_showcase_id: entry\.showcase_id/);
   assert.match(showcase, /Save private copy/);
-  assert.match(showcase, /Showcase · Read-only/);
+  assert.match(showcase, /origin\.textContent = labels\.origin/);
   assert.match(showcase, /remove\.textContent = "Remove"/);
   assert.match(showcase, /remove\.addEventListener\("click", \(\) => run\(\(\) => removeEntry\(entry, remove\)\)\)/);
 });

@@ -45,8 +45,9 @@ test("#430 keeps Showcase publication in Professor controls rather than Current 
 });
 
 test("#430 preserves role and publication semantics in authoritative modules", () => {
-  assert.match(showcase, /profile\?\.role === "professor"/);
-  assert.match(showcase, /Professor role required/);
+  // #552: behaviour covered by showcase-curation.test.mjs; this checks showcase.js uses the rule.
+  assert.match(showcase, /const professor = isProfessor\(profile\)/);
+  assert.equal(showcase.match(/assertProfessor\(profile\);/g)?.length, 6, "every curation action requires the Professor role");
   assert.match(inbox, /panel\.hidden = true/);
   assert.match(inbox, /professor-pending-count/);
 });

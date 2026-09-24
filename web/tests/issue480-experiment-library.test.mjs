@@ -72,7 +72,8 @@ test("#480 ordinary Showcase browsing is unified; old Showcase surface is curati
 
   assert.match(showcase, /launcher\.textContent = "Manage Showcase"/);
   assert.match(showcase, /launcher\.hidden = true/);
-  assert.match(showcase, /profile\?\.role !== "professor"/);
+  // #552: behaviour covered by showcase-curation.test.mjs; this checks showcase.js uses the rule.
+  assert.match(showcase, /ui\.launcher\.hidden = !isProfessor\(profile\)/);
   assert.match(showcase, /set_showcase_entry_collection/);
   assert.match(showcase, /create_showcase_collection/);
   assert.doesNotMatch(showcase, /launcher\.textContent = "Showcase"/);
