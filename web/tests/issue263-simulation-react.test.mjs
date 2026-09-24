@@ -23,13 +23,13 @@ test('Simulation presentation is mounted inside the established React/Mantine ro
   assert.match(presentation, /#worker-status/);
 });
 
-test('Simulation adapter proxies authoritative runtime controls instead of owning simulator state', () => {
-  for (const selector of ['#run', '#pause', '#restart', '#restart-new-seed', '#simulation-speed', '#fit-arena', '#agent-glyph']) {
-    assert.match(adapter, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+test('Simulation adapter drives the authoritative simulator through its controller instead of owning simulator state', () => {
+  // #562: the panel calls the simulation controller's commands rather than
+  // clicking the legacy view's hidden buttons; the simulator stays in main.js.
+  for (const command of ['run', 'pause', 'restart', 'restartWithNewSeed', 'fitArena', 'setSpeed', 'setGlyph']) {
+    assert.match(adapter, new RegExp(`simulationCommands\\.${command}`));
   }
-  assert.match(adapter, /\.click\(\)/);
-  assert.match(adapter, /dispatchEvent\(new Event\('input'/);
-  assert.match(adapter, /dispatchEvent\(new Event\('change'/);
+  assert.doesNotMatch(adapter, /\.click\(\)|dispatchEvent\(/);
   assert.doesNotMatch(adapter, /new Worker|postMessage|ArenaCamera|drawSnapshot|compileController|compileInitializer/);
   assert.doesNotMatch(presentation, /new Worker|postMessage|ArenaCamera|simulationSetupFromRuntime|compileController/);
 });

@@ -5,7 +5,9 @@ import {
   formatRunState,
   formatScientificTime,
   formatSeed,
+  formatTargetSpeed,
 } from './runtime/runtime-format.js';
+import { simulationCommands } from './runtime/simulation-commands.js';
 
 export type SimulationPresentationSnapshot = {
   stage: HTMLElement;
@@ -47,114 +49,61 @@ function numberAttribute(element: HTMLInputElement, name: 'min' | 'max' | 'step'
 }
 
 export function readSimulationPresentation(): SimulationPresentationSnapshot | null {
+  // The panel is placed into the legacy stage and needs the complete page; all
+  // values come from the runtime model and actions go to the simulation
+  // controller (#560, #562).
   const stage = document.querySelector<HTMLElement>('.stage-panel');
   const legacyHeading = stage?.querySelector<HTMLElement>(':scope > .stage-heading') ?? null;
-  const runState = document.querySelector<HTMLElement>('#run-state');
-  const seed = document.querySelector<HTMLElement>('#run-seed');
   const speed = document.querySelector<HTMLInputElement>('#simulation-speed');
-  const targetSpeed = document.querySelector<HTMLElement>('#simulation-speed-value');
-  const actualSpeed = document.querySelector<HTMLElement>('#actual-simulation-speed');
-  const scientificTime = document.querySelector<HTMLElement>('#scientific-time');
-  const physicsTicks = document.querySelector<HTMLElement>('#physics-ticks');
-  const controlUpdates = document.querySelector<HTMLElement>('#control-updates');
-  const cameraStatus = document.querySelector<HTMLElement>('#camera-status');
-  const glyph = document.querySelector<HTMLSelectElement>('#agent-glyph');
-  const run = document.querySelector<HTMLButtonElement>('#run');
-  const pause = document.querySelector<HTMLButtonElement>('#pause');
-  const restart = document.querySelector<HTMLButtonElement>('#restart');
-  const newSeed = document.querySelector<HTMLButtonElement>('#restart-new-seed');
-  const fit = document.querySelector<HTMLButtonElement>('#fit-arena');
+  if (!stage || !legacyHeading || !speed) return null;
 
-  if (!stage || !legacyHeading || !runState || !seed || !speed || !targetSpeed || !actualSpeed
-    || !scientificTime || !physicsTicks || !controlUpdates || !cameraStatus || !glyph
-    || !run || !pause || !restart || !newSeed || !fit) return null;
-
-  // Runtime values come from the runtime model (#560); the legacy elements are
-  // still required above so the panel appears only on the complete page.
   const runtime = runtimeModel.get();
-  const numericSpeed = Number(speed.value);
   return {
     stage,
     mount: ensureMount(stage, legacyHeading),
     boundaryLabel: legacyHeading.querySelector<HTMLElement>('.badge')?.textContent?.trim() || 'Arena',
     runState: formatRunState(runtime.runState),
     seed: formatSeed(runtime.seed),
-    speed: Number.isFinite(numericSpeed) ? numericSpeed : 1,
+    speed: Number.isFinite(runtime.requestedSpeed) ? runtime.requestedSpeed : 1,
     speedMin: numberAttribute(speed, 'min', 1),
     speedMax: numberAttribute(speed, 'max', 100),
     speedStep: numberAttribute(speed, 'step', 1),
-    targetSpeed: targetSpeed.textContent?.trim() || '—',
+    targetSpeed: formatTargetSpeed(runtime.requestedSpeed),
     actualSpeed: formatActualSpeed(runtime.actualSpeed),
     scientificTime: formatScientificTime(runtime.scientificTime),
     physicsTicks: formatCount(runtime.physicsTicks),
     controlUpdates: formatCount(runtime.controlUpdates),
-    cameraStatus: cameraStatus.textContent?.trim() || 'Fit',
-    glyph: glyph.value || 'directional',
-    runDisabled: run.disabled,
-    pauseDisabled: pause.disabled,
-    restartDisabled: restart.disabled,
-    newSeedDisabled: newSeed.disabled,
-    speedDisabled: speed.disabled,
-    fitDisabled: fit.disabled,
+    cameraStatus: runtime.camera.label,
+    glyph: runtime.glyph || 'directional',
+    runDisabled: !runtime.controls.run,
+    pauseDisabled: !runtime.controls.pause,
+    restartDisabled: !runtime.controls.restart,
+    newSeedDisabled: !runtime.controls.newSeed,
+    speedDisabled: !runtime.controls.speed,
+    fitDisabled: !runtime.controls.fit,
   };
 }
 
-const actionSelectors = {
-  run: '#run',
-  pause: '#pause',
-  restart: '#restart',
-  newSeed: '#restart-new-seed',
-  fit: '#fit-arena',
+const actions = {
+  run: simulationCommands.run,
+  pause: simulationCommands.pause,
+  restart: simulationCommands.restart,
+  newSeed: simulationCommands.restartWithNewSeed,
+  fit: simulationCommands.fitArena,
 } as const;
 
-export function invokeSimulationAction(action: keyof typeof actionSelectors): void {
-  document.querySelector<HTMLButtonElement>(actionSelectors[action])?.click();
+export function invokeSimulationAction(action: keyof typeof actions): void {
+  actions[action]();
 }
 
 export function setSimulationSpeed(value: number): void {
-  const speed = document.querySelector<HTMLInputElement>('#simulation-speed');
-  if (!speed) return;
-  speed.value = String(value);
-  speed.dispatchEvent(new Event('input', { bubbles: true }));
+  simulationCommands.setSpeed(value);
 }
 
 export function setSimulationGlyph(value: string): void {
-  const glyph = document.querySelector<HTMLSelectElement>('#agent-glyph');
-  if (!glyph) return;
-  glyph.value = value;
-  glyph.dispatchEvent(new Event('change', { bubbles: true }));
+  simulationCommands.setGlyph(value);
 }
 
 export function subscribeSimulationPresentation(callback: () => void): () => void {
-  // Runtime values notify through the runtime model; the remaining controls are
-  // still legacy elements until their own stage of #560's plan.
-  const unsubscribeRuntime = runtimeModel.subscribe(() => callback());
-  const observed = [
-    '#simulation-speed-value', '#camera-status',
-    '#run', '#pause', '#restart', '#restart-new-seed', '#simulation-speed', '#fit-arena',
-  ].map((selector) => document.querySelector(selector)).filter(Boolean) as Element[];
-
-  const observers = observed.map((element) => {
-    const observer = new MutationObserver(callback);
-    observer.observe(element, {
-      attributes: true,
-      attributeFilter: ['disabled', 'data-fit'],
-      childList: true,
-      characterData: true,
-      subtree: true,
-    });
-    return observer;
-  });
-
-  const speed = document.querySelector<HTMLInputElement>('#simulation-speed');
-  const glyph = document.querySelector<HTMLSelectElement>('#agent-glyph');
-  speed?.addEventListener('input', callback);
-  glyph?.addEventListener('change', callback);
-
-  return () => {
-    unsubscribeRuntime();
-    observers.forEach((observer) => observer.disconnect());
-    speed?.removeEventListener('input', callback);
-    glyph?.removeEventListener('change', callback);
-  };
+  return runtimeModel.subscribe(() => callback());
 }

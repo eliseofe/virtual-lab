@@ -28,3 +28,9 @@ export function formatCount(count) {
 export function formatActualSpeed(actualSpeed) {
   return actualSpeed === null ? "—" : formatRuntimeFactor(actualSpeed);
 }
+
+// The requested speed as the page labels it; an unusable value falls back to 1×.
+export function formatTargetSpeed(requestedSpeed) {
+  const speed = Number(requestedSpeed);
+  return `${Number.isFinite(speed) && speed > 0 ? speed : 1}×`;
+}

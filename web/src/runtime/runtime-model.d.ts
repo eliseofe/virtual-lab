@@ -7,6 +7,10 @@ export type RuntimeState = Readonly<{
   physicsTicks: unknown;
   controlUpdates: unknown;
   actualSpeed: number | null;
+  requestedSpeed: number;
+  glyph: string;
+  camera: Readonly<{ label: string; fit: boolean }>;
+  controls: Readonly<{ run: boolean; pause: boolean; restart: boolean; newSeed: boolean; speed: boolean; fit: boolean }>;
 }>;
 
 export type RuntimeModel = {

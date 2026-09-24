@@ -1,5 +1,5 @@
-// The simulation's runtime model (#560): the one place that holds what the
-// simulator is doing. main.js is its only writer (from the worker's messages)
+// The simulation's runtime model (#560, #562): the one place that holds what
+// the simulator is doing and which commands are available. main.js is its only writer (from the worker's messages)
 // and the runtime-speed meter writes the measured speed; views subscribe to it
 // instead of reading each other's text.
 //
@@ -14,6 +14,11 @@ export const RUNTIME_INITIAL_STATE = Object.freeze({
   physicsTicks: 0,
   controlUpdates: 0,
   actualSpeed: null, // measured model-seconds per wall-second, or null when not measured
+  requestedSpeed: 20, // the execution-speed multiplier asked for
+  glyph: "directional", // how agents are drawn: "directional" | "arrow" | "dot"
+  camera: Object.freeze({ label: "Fit", fit: true }),
+  // Which simulation commands are available right now (#562).
+  controls: Object.freeze({ run: false, pause: false, restart: false, newSeed: false, speed: true, fit: false }),
 });
 
 export function createRuntimeModel(initialState = RUNTIME_INITIAL_STATE) {

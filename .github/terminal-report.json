@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The simulation now has one runtime model that every view reads (MVC stage 1)",
-  "owner_impact": "Nothing changes on screen. Before, the simulation's state (running or paused, time, step counts, seed, measured speed) existed only as text on the old page, and the React panel and the speed meter read it back from that text. Now that state lives in one model. The simulator writes it, the old page text is drawn from it, and the React panel and speed meter read the model directly. Proof in a real browser: during a full run (start, speed changes, pause, restart, new seed), the panel never showed a value the old page did not hold (about 2,100 panel updates), and at every quiet point the two matched exactly. The measured speed uses the same formula and inputs; its last digit can flicker differently in about 2% of updates (at most 0.15%) because it reads the clock a few milliseconds later in the same frame. Two copies of the old meter already disagree among themselves in the same way. Test now: optional quick look. Run an Experiment, change the speed, pause and restart: time, steps, seed and the measured speed behave as before.",
+  "outcome": "The simulation has one controller: views call commands instead of pressing each other's buttons (MVC stage 2)",
+  "owner_impact": "Nothing changes on screen. Before, pressing Run in the simulation panel actually pressed a hidden button on the old page, and the panel then read the old page to learn what happened. Now there is one set of simulation commands (run, pause, restart, new seed, fit arena, speed, agent glyph). The panel, the old buttons and the modules that start or pause runs (library, results, metrics) all call them, and every command refuses when its control is unavailable, as a disabled button does. The model now also holds speed, glyph, camera and which controls are available, so the panel no longer watches the old page at all. Proof: the same real clicks and key presses on the current production version and on this one gave identical results at all 18 steps (33 simulator messages, button states, refusals, speed, glyph, camera, page state). The only difference was the elapsed simulated time, which depends on wall-clock timing. Test now: optional quick look. Run, pause, restart, new seed, change the speed and the agent style, zoom and Fit arena; everything should behave as before.",
   "next": {
     "kind": "epic_continues",
-    "issue": 562,
-    "text": "Next is #562, stage 2 of the approved plan: one set of simulation commands (run, pause, restart, speed, seed). The React panel will call them directly instead of clicking the old page's hidden buttons. Nothing changes on screen."
+    "issue": 564,
+    "text": "Next is #564, stage 3 of the approved plan: the results and authoring panels get the same treatment (their own models and commands, no reading of the old page). Nothing changes on screen."
   },
   "technical_evidence": [
-    "New web/src/runtime/runtime-model.js: get/set/subscribe with typed state (runState, seed, scientificTime, physicsTicks, controlUpdates, actualSpeed). Listeners hear every write, as the page-text observers did.",
-    "New web/src/runtime/runtime-format.js: the exact display strings. main.js writes the model and draws the page text from it. runtime-speed.js and simulation-react-adapter.ts read and subscribe to the model instead of parsing and watching text (the panel's watched page elements went from 14 to 8).",
-    "The React bundle imports the model as an external module (vite.config.ts), so there is one shared instance. verify-dist fails if the bundle inlines a copy or main.js / runtime-speed.js stop using the shared module.",
-    "New web/tests/runtime-model.test.mjs: 6 behaviour tests (initial model equals the page's initial text; formatters equal the old expressions on 2,000 random values; write notification semantics; shared instance; views no longer read runtime text). Planted changes (seed without >>>0, relabelled state, 2-decimal time, wrong initial state) are each caught. 666 tests pass.",
-    "Real-browser proof on the local build, with the original speed meter from git loaded unchanged alongside: 0 panel values the page never held (about 2,100 updates), exact match at 7 quiet points, speed within 0.15% (control: old versus old within 0.04%, similar last-digit rate).",
-    "Style comparison identical to the previous production build at all four viewports."
+    "runtime-model.js now also holds requestedSpeed, glyph, camera {label, fit} and controls {run, pause, restart, newSeed, speed, fit}. main.js writes them where it used to set page text and disabled flags, and draws the page from them.",
+    "New web/src/runtime/simulation-commands.js (shared instance, external to the React bundle, guarded by verify-dist): main.js provides run, pause, restart, restartWithNewSeed, fitArena, setSpeed and setGlyph. Each refuses when unavailable. The legacy buttons, slider and select call the same commands.",
+    "simulation-react-adapter.ts reads only the model and calls only the commands: no page watchers, no hidden clicks, no synthetic events. runtime-speed.js restarts on requested-speed writes from the model.",
+    "A/B in a real browser, old (production) build versus new, same scripted real input (mouse, keyboard, wheel, select, and a legacy button pressed by another module): 18/18 steps identical apart from elapsed simulated time; 33 worker messages identical; no page exceptions.",
+    "Command refusal checked in the browser (pause while paused, run while running, fit when fitted send nothing); removing the pause refusal in a planted copy of the build is detected.",
+    "Tests: 668 pass (new simulation-commands.test.mjs; #263's hidden-click assertions replaced by 'panel calls the controller'). Style comparison identical at all four viewports."
   ],
-  "close_issue": 560
+  "close_issue": 562
 }

@@ -22,12 +22,16 @@ export default defineConfig({
       cssFileName: 'react-migration-root',
     },
     rollupOptions: {
-      // #560: the runtime model must be one instance shared with main.js, so the
-      // bundle imports it at runtime (./runtime/runtime-model.js next to the
-      // bundle in the asset directory) instead of inlining its own copy.
-      external: [/\/runtime\/runtime-model\.js$/],
+      // #560/#562: the runtime model and the simulation commands must be one
+      // instance shared with main.js, so the bundle imports them at runtime
+      // (./runtime/… next to the bundle in the asset directory) instead of
+      // inlining its own copies.
+      external: [/\/runtime\/(runtime-model|simulation-commands)\.js$/],
       output: {
-        paths: (id) => (/\/runtime\/runtime-model\.js$/.test(id) ? './runtime/runtime-model.js' : id),
+        paths: (id) => {
+          const shared = id.match(/\/runtime\/(runtime-model|simulation-commands)\.js$/);
+          return shared ? `./runtime/${shared[1]}.js` : id;
+        },
       },
     },
   },

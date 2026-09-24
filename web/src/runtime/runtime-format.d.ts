@@ -5,3 +5,4 @@ export function formatSeed(seed: number): string;
 export function formatScientificTime(scientificTime: number): string;
 export function formatCount(count: unknown): string;
 export function formatActualSpeed(actualSpeed: number | null): string;
+export function formatTargetSpeed(requestedSpeed: number): string;
