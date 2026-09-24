@@ -32,9 +32,9 @@ test("#413 preserves the one-step Professor inbox while global chrome no longer 
 
 test("#413 Showcase curation remains authoritative while #430 owns its final placement", () => {
   assert.match(showcase, /promote\.className = "primary showcase-promote-current"/);
-  assert.match(showcase, /"Promote to Showcase"/);
-  assert.match(showcase, /"Publish current revision"/);
-  assert.match(showcase, /"In Showcase"/);
+  // #552: behaviour covered by showcase-curation.test.mjs; this checks showcase.js uses the rule.
+  assert.match(showcase, /const state = promoteButtonState\(\{/);
+  assert.match(showcase, /ui\.promote\.textContent = state\.text/);
   assert.match(showcase, /ui\.promote\.addEventListener\("click", \(\) => run\(promoteCurrent\)\)/);
   assert.match(showcase, /supabase\.rpc\("promote_experiment_to_showcase"/);
   assert.match(management, /showcaseActions\.append\(showcaseLauncher, promote\)/);

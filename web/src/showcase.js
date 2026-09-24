@@ -1,6 +1,27 @@
 import { supabase } from "./supabase-client.js";
 import { captureExperimentArtifacts } from "./experiment-artifacts.js";
 import { isCatalogSelectValue } from "./experiment-catalog.js";
+import {
+  activeEntryForCatalog,
+  activeEntryForExperiment,
+  assertProfessor,
+  catalogSourceTitle,
+  collectionChoices,
+  collectionLabel,
+  collectionNameError,
+  curationAvailable,
+  deleteCollectionConfirmation,
+  entryCountMessage,
+  entryMeta,
+  isProfessor,
+  movedMessage,
+  privateCopyTitle,
+  promoteButtonState,
+  promotionReadiness,
+  removeEntryConfirmation,
+  renamedCollectionName,
+  showcaseSourceLabels,
+} from "./showcase/curation.js";
 
 const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
 const SHOWCASE_QUERY = "showcase";
@@ -143,12 +164,6 @@ function setMessage(text, state = "idle") {
   ui.message.dataset.state = state;
 }
 
-function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(date);
-}
-
 function activeShowcaseId() {
   return new URL(window.location.href).searchParams.get(SHOWCASE_QUERY);
 }
@@ -163,22 +178,12 @@ function currentCatalogSource() {
   if (!isCatalogSelectValue(value)) return null;
   return {
     key: value,
-    title: experimentSelect.selectedOptions?.[0]?.textContent?.replace(/\s+·\s+Showcase$/, "")?.trim() || value,
+    title: catalogSourceTitle(experimentSelect.selectedOptions?.[0]?.textContent, value),
   };
 }
 
 function currentRegistryDirtyState() {
   return registrySaveState.dataset?.state || "";
-}
-
-function activeEntryForExperiment(experimentId) {
-  if (!experimentId) return null;
-  return entries.find((entry) => entry.source_experiment_id === experimentId) || null;
-}
-
-function activeEntryForCatalog(sourceKey) {
-  if (!sourceKey) return null;
-  return entries.find((entry) => entry.source_key === sourceKey) || null;
 }
 
 async function loadSessionAndProfile() {
@@ -194,7 +199,7 @@ async function loadSessionAndProfile() {
     .maybeSingle();
   if (profileError) throw profileError;
   profile = profileData;
-  ui.launcher.hidden = profile?.role !== "professor";
+  ui.launcher.hidden = !isProfessor(profile);
 }
 
 async function loadEntries() {
@@ -216,14 +221,10 @@ function collectionOptions(selectedId = null) {
   const select = document.createElement("select");
   select.className = "showcase-entry-collection";
   select.setAttribute("aria-label", "Showcase collection");
-  const uncategorized = document.createElement("option");
-  uncategorized.value = "";
-  uncategorized.textContent = "Uncategorized";
-  select.append(uncategorized);
-  for (const collection of showcaseCollections) {
+  for (const [value, label] of collectionChoices(showcaseCollections)) {
     const option = document.createElement("option");
-    option.value = collection.showcase_collection_id;
-    option.textContent = collection.name;
+    option.value = value;
+    option.textContent = label;
     select.append(option);
   }
   select.value = selectedId || "";
@@ -236,7 +237,7 @@ function renderCollectionManager() {
     const item = document.createElement("div");
     item.className = "showcase-manager-collection";
     const name = document.createElement("strong");
-    name.textContent = `${collection.name} · ${collection.experiment_count}`;
+    name.textContent = collectionLabel(collection);
     const rename = document.createElement("button");
     rename.type = "button";
     rename.textContent = "Rename";
@@ -261,9 +262,7 @@ function renderList() {
     const title = document.createElement("strong");
     title.textContent = entry.title;
     const meta = document.createElement("span");
-    const date = formatDate(entry.published_at);
-    const revision = entry.source_revision == null ? "Catalog" : `R${entry.source_revision}`;
-    meta.textContent = `${revision}${date ? ` · ${date}` : ""}`;
+    meta.textContent = entryMeta(entry);
     summary.append(title, meta);
 
     const collection = collectionOptions(entry.showcase_collection_id);
@@ -277,7 +276,7 @@ function renderList() {
         if (error) throw error;
         if (data !== true) throw new Error("Showcase entry is no longer active.");
         await loadEntries();
-        setMessage(`Moved “${entry.title}” to ${entry.showcase_collection_name || "Showcase collection"}.`);
+        setMessage(movedMessage(entry));
       } finally {
         collection.disabled = false;
       }
@@ -296,9 +295,10 @@ function renderList() {
 }
 
 async function createCollection() {
-  if (profile?.role !== "professor") throw new Error("Professor role required.");
+  assertProfessor(profile);
   const name = ui.collectionName.value.trim();
-  if (!name) throw new Error("Enter a Showcase collection name.");
+  const nameError = collectionNameError(name);
+  if (nameError) throw new Error(nameError);
   const { error } = await supabase.rpc("create_showcase_collection", { p_name: name });
   if (error) throw error;
   ui.collectionName.value = "";
@@ -307,9 +307,9 @@ async function createCollection() {
 }
 
 async function renameCollection(collection) {
-  if (profile?.role !== "professor") throw new Error("Professor role required.");
-  const name = window.prompt("Rename Showcase collection", collection.name)?.trim();
-  if (!name || name === collection.name) return;
+  assertProfessor(profile);
+  const name = renamedCollectionName(window.prompt("Rename Showcase collection", collection.name), collection.name);
+  if (!name) return;
   const { data, error } = await supabase.rpc("rename_showcase_collection", {
     p_collection_id: collection.showcase_collection_id,
     p_name: name,
@@ -321,8 +321,8 @@ async function renameCollection(collection) {
 }
 
 async function deleteCollection(collection) {
-  if (profile?.role !== "professor") throw new Error("Professor role required.");
-  if (!window.confirm(`Delete Showcase collection “${collection.name}”? Its Experiments will move to Uncategorized.`)) return;
+  assertProfessor(profile);
+  if (!window.confirm(deleteCollectionConfirmation(collection))) return;
   const { data, error } = await supabase.rpc("delete_showcase_collection", {
     p_collection_id: collection.showcase_collection_id,
   });
@@ -351,9 +351,9 @@ async function ensureCurrentSavedForPromotion() {
   if (!experiment) throw new Error("Open one of your Experiments to promote it.");
 
   let state = currentRegistryDirtyState();
-  if (state === "conflict") throw new Error("Resolve the save conflict before publishing this Experiment.");
-  if (state === "saved") return experiment;
-  if (state !== "dirty") throw new Error("This Experiment is not ready for promotion yet.");
+  const readiness = promotionReadiness(state);
+  if (readiness.action === "error") throw new Error(readiness.error);
+  if (readiness.action === "publish") return experiment;
 
   const saveButton = document.querySelector(".experiment-revision-actions .primary");
   if (!saveButton || saveButton.hidden || saveButton.disabled) throw new Error("The current Experiment cannot be saved right now.");
@@ -378,58 +378,38 @@ async function ensureCurrentSavedForPromotion() {
 }
 
 async function syncCurationUi() {
-  const professor = profile?.role === "professor";
-  ui.promote.hidden = !professor || Boolean(currentShowcase);
+  const professor = isProfessor(profile);
+  const showcaseOpen = Boolean(currentShowcase);
+  ui.promote.hidden = !curationAvailable({ professor, showcaseOpen });
   ui.curationStatus.textContent = "";
   ui.curationStatus.dataset.state = "idle";
-  if (!professor || currentShowcase) return;
+  if (ui.promote.hidden) return;
 
   const registryId = currentRegistryId();
-  if (registryId) {
-    const experiment = await readCurrentOwnedExperiment();
-    if (!experiment) {
-      ui.promote.hidden = true;
-      return;
-    }
-
-    const state = currentRegistryDirtyState();
-    const active = activeEntryForExperiment(experiment.id);
-    ui.promote.hidden = false;
-
-    if (active?.source_revision === experiment.revision && state === "saved") {
-      ui.promote.textContent = "In Showcase";
-      ui.promote.disabled = true;
-      return;
-    }
-
-    if (state === "conflict") {
-      ui.promote.textContent = "Publish to Showcase";
-      ui.promote.disabled = true;
-      ui.curationStatus.textContent = "Save conflict";
-      ui.curationStatus.dataset.state = "error";
-      return;
-    }
-
-    ui.promote.textContent = active ? "Publish current revision" : "Promote to Showcase";
-    ui.promote.disabled = busy;
-    return;
+  const experiment = registryId ? await readCurrentOwnedExperiment() : null;
+  const state = promoteButtonState({
+    professor,
+    showcaseOpen,
+    registryId,
+    experiment,
+    catalogSource: registryId ? null : currentCatalogSource(),
+    entries,
+    saveState: currentRegistryDirtyState(),
+    busy,
+  });
+  ui.promote.hidden = state.hidden;
+  if (state.hidden) return;
+  ui.promote.textContent = state.text;
+  ui.promote.disabled = state.disabled;
+  if (state.status) {
+    ui.curationStatus.textContent = state.status.text;
+    ui.curationStatus.dataset.state = state.status.state;
   }
-
-  const source = currentCatalogSource();
-  if (!source) {
-    ui.promote.hidden = true;
-    return;
-  }
-
-  const active = activeEntryForCatalog(source.key);
-  ui.promote.hidden = false;
-  ui.promote.textContent = active ? "In Showcase" : "Promote to Showcase";
-  ui.promote.disabled = busy || Boolean(active);
 }
 
 async function promoteCurrent() {
   if (busy) return;
-  if (profile?.role !== "professor") throw new Error("Professor role required.");
+  assertProfessor(profile);
 
   busy = true;
   ui.promote.disabled = true;
@@ -477,8 +457,8 @@ async function promoteCurrent() {
 
 async function removeEntry(entry, button) {
   if (busy) return;
-  if (profile?.role !== "professor") throw new Error("Professor role required.");
-  if (!window.confirm(`Remove “${entry.title}” from Showcase?`)) return;
+  assertProfessor(profile);
+  if (!window.confirm(removeEntryConfirmation(entry))) return;
 
   busy = true;
   button.disabled = true;
@@ -501,10 +481,6 @@ async function removeEntry(entry, button) {
     button.disabled = false;
     button.textContent = original;
   }
-}
-
-function hasUnsavedPrivateEdits() {
-  return currentRegistryDirtyState() === "dirty" || currentRegistryDirtyState() === "conflict";
 }
 
 function clearShowcaseLocation() {
@@ -547,15 +523,16 @@ function decorateShowcaseSource(entry) {
   const origin = experimentPanel.querySelector(".experiment-origin");
   const location = experimentPanel.querySelector(".experiment-location");
   if (title) title.textContent = entry.title;
+  const labels = showcaseSourceLabels(entry);
   if (origin) {
     origin.dataset.kind = "readonly";
-    origin.textContent = "Showcase · Read-only";
+    origin.textContent = labels.origin;
   }
-  if (location) location.textContent = `Showcase / ${entry.showcase_collection_name || "Uncategorized"}`;
-  metadataRevision.textContent = entry.source_revision == null ? "Showcase · Catalog" : `Showcase · R${entry.source_revision}`;
+  if (location) location.textContent = labels.location;
+  metadataRevision.textContent = labels.revision;
   ui.current.hidden = false;
   ui.currentTitle.textContent = entry.title;
-  ui.currentMeta.textContent = entry.source_revision == null ? "Curated snapshot." : `Curated revision ${entry.source_revision}.`;
+  ui.currentMeta.textContent = labels.meta;
   ui.saveCopy.hidden = !sessionUser;
 }
 
@@ -580,7 +557,7 @@ async function loadShowcaseFromLocation() {
 
 async function savePrivateCopy() {
   if (!sessionUser || !currentShowcase) throw new Error("Sign in and open a Showcase Experiment first.");
-  const title = `${currentShowcase.title} copy`;
+  const title = privateCopyTitle(currentShowcase);
   const { data, error } = await supabase
     .from("experiments")
     .insert({
@@ -609,10 +586,10 @@ async function savePrivateCopy() {
 }
 
 async function openDialog() {
-  if (profile?.role !== "professor") throw new Error("Professor role required.");
+  assertProfessor(profile);
   setMessage("Loading…");
   await loadEntries();
-  setMessage(`${entries.length} Showcase experiment${entries.length === 1 ? "" : "s"}.`);
+  setMessage(entryCountMessage(entries.length));
   ui.dialog.showModal();
   ui.collectionName.focus({ preventScroll: true });
 }
@@ -631,7 +608,7 @@ async function run(action) {
     console.error(error);
     const message = error instanceof Error ? error.message : String(error);
     setMessage(message, "error");
-    if (profile?.role === "professor" && !ui.promote.hidden) {
+    if (isProfessor(profile) && !ui.promote.hidden) {
       ui.curationStatus.textContent = message;
       ui.curationStatus.dataset.state = "error";
     }
@@ -645,7 +622,7 @@ ui.collectionName.addEventListener("keydown", (event) => {
 });
 ui.refresh.addEventListener("click", () => run(async () => {
   await loadEntries();
-  setMessage(`${entries.length} Showcase experiment${entries.length === 1 ? "" : "s"}.`);
+  setMessage(entryCountMessage(entries.length));
 }));
 ui.close.addEventListener("click", () => ui.dialog.close());
 ui.dialog.addEventListener("click", (event) => {
@@ -668,7 +645,7 @@ experimentSelect.addEventListener("change", () => {
 });
 
 const registrySaveObserver = new MutationObserver(() => {
-  if (profile?.role === "professor") queueMicrotask(() => run(syncCurationUi));
+  if (isProfessor(profile)) queueMicrotask(() => run(syncCurationUi));
 });
 registrySaveObserver.observe(registrySaveState, { attributes: true, attributeFilter: ["data-state"] });
 

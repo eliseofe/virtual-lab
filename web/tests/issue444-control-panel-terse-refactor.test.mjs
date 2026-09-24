@@ -50,6 +50,7 @@ test("#444 removes stale Control Panel placement glue", () => {
 test("#444 repairs Showcase saving to the authoritative Revisions control", () => {
   assert.match(showcase, /querySelector\("\.experiment-revision-actions \.primary"\)/);
   assert.doesNotMatch(showcase, /querySelector\("\.registry-save-actions \.primary"\)/);
-  assert.match(showcase, /ui\.curationStatus\.textContent = "Save conflict"/);
+  // #552: behaviour covered by showcase-curation.test.mjs; this checks showcase.js uses the rule.
+  assert.match(showcase, /ui\.curationStatus\.textContent = state\.status\.text/);
   assert.match(showcase, /Published ·/);
 });

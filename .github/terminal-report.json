@@ -1,18 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Professor inbox's review rules now have real behaviour tests",
-  "owner_impact": "Nothing changes in the Professor inbox: same requests, same six decisions, same messages. Its rules (the six decisions, the six request types, the single current state of each request, pending-first ordering, that only a Professor may review a still-pending request, that Revise needs guidance and Already supported needs concrete existing support, and the review summary line) now live in one small module with 10 tests that check what happens instead of searching the code for exact lines. Test now: optional quick look — sign in as Professor and open the inbox; it should look and behave as before. The public checks for the inbox passed before and after publishing.",
+  "outcome": "Showcase curation rules now have real behaviour tests",
+  "owner_impact": "Nothing changes in the Showcase: same buttons, same labels, same messages. Its curation rules now live in one small module with 10 tests that check what happens instead of searching the code for exact lines. The rules covered: only a Professor may curate; when the promote button shows 'Promote to Showcase', 'Publish current revision', 'In Showcase' or a save conflict; saving before publishing; placing entries in collections with Uncategorized first; and how an open Showcase entry labels itself read-only. Test now: optional quick look. Sign in as Professor, open one of your Experiments and check the promote button, then open Manage Showcase. Everything should look and behave as before.",
   "next": {
     "kind": "epic_continues",
-    "issue": 552,
-    "text": "Next is #552 — the same treatment for Showcase curation (who may publish to or remove from the Showcase, and how entries are placed in collections): behaviour tests instead of code-text checks, with nothing changing on screen. #552 has not started."
+    "issue": 554,
+    "text": "Next is #554: splitting the Experiment registry module (the largest file, the signed-in workspace) into smaller tested parts, starting with a written plan. #554 has not started and waits for the owner's go-ahead."
   },
   "technical_evidence": [
-    "New web/src/professor/requests.js (pure): decisions and review contract, request-class labels, current state, ordering and counts, review permission, Revise/Already-supported validation, candidate naming, evidence badge, review summary.",
-    "professor-inbox.js delegates those decisions (-108/+47 lines), texts and the review contract marker unchanged.",
-    "New web/tests/professor-requests.test.mjs: 10 behaviour tests; planted rule changes (students may review, Revise without guidance) are caught.",
-    "Retired only the source-text assertions whose behaviour the new tests cover (7 test files), replaced by checks that the inbox uses the rules; the #346 taxonomy cross-check now reads the inbox's class list from the module; 609 tests pass.",
+    "New web/src/showcase/curation.js (pure): Professor check, promote-button state, promotion readiness, entry matching, collection choices and labels, confirmations and messages, open-entry labels.",
+    "showcase.js delegates those decisions (-99/+76 lines), texts unchanged; an unused helper (hasUnsavedPrivateEdits) removed.",
+    "New web/tests/showcase-curation.test.mjs: 10 behaviour tests; three planted rule changes (anyone may curate, 'In Showcase' ignoring unsaved edits, a catalog entry promotable twice) are each caught.",
+    "Retired only the 11 source-text assertions (7 test files) whose behaviour the new tests cover, replaced by checks that showcase.js uses the rules; 619 tests pass.",
     "Style comparison of the built Lab identical to the current production build at all four viewports."
   ],
-  "close_issue": 551
+  "close_issue": 552
 }

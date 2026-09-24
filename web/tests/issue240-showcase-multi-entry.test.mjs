@@ -24,7 +24,8 @@ test("#240 Showcase discovery separates Open from explicit Open & run", () => {
 test("#240 destructive curation is bound to the Showcase entry, not its source type", () => {
   assert.match(showcase, /showcase-entry-remove/);
   assert.match(showcase, /Remove \$\{entry\.title\} from Showcase/);
-  assert.match(showcase, /Remove “\$\{entry\.title\}” from Showcase\?/);
+  // #552: behaviour covered by showcase-curation.test.mjs; this checks showcase.js uses the rule.
+  assert.match(showcase, /window\.confirm\(removeEntryConfirmation\(entry\)\)/);
   assert.match(showcase, /remove_showcase_entry/);
   assert.match(showcase, /p_showcase_id: entry\.showcase_id/);
   assert.doesNotMatch(showcase, /if \(!entry\?\.source_experiment_id\) return/);
