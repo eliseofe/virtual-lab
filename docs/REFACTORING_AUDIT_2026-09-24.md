@@ -225,6 +225,7 @@ assert.match(discard, /\.delete\(\{ count: "exact" \}\)/);
 
 - `.github/workflows/ci-pages.yml` concurrency group is named `virtual-lab-ci-pages-v3-…`. Harmless, but the version suffix has no meaning now.
 - `main.js` has 17 module-level `let`s; worker message types are untyped string literals on both sides. A shared `worker-protocol.js` with constants and JSDoc typedefs would catch typos.
+- `Cargo.lock` is not committed (and isn't in `.gitignore`), so every CI run resolves the newest `serde`/`wasm-bindgen` versions. Since the crate builds a shipped WASM artifact, committing the lockfile would make builds reproducible, which fits the project's reproducibility goals.
 - `react-migration-root.tsx` / `#react-migration-root` naming: the migration is the production UI now; rename when F3/F4 settle.
 
 ---
