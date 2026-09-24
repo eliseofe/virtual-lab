@@ -4,17 +4,25 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 
+import { dockerSkipReason } from "./support/docker.mjs";
+
 const migration = readFileSync(
   new URL("../../supabase/migrations/20260921173000_blocked_experiment_revision_snapshots.sql", import.meta.url),
   "utf8",
 );
 
-test("#465 blocked Experiment snapshots are revision-exact and immutable", async () => {
+test("#465 blocked Experiment snapshots are revision-exact and immutable", async (t) => {
   assert.match(migration, /origin_experiment_revision = v_origin\.revision/);
   assert.match(migration, /Blocked Experiment origin revision conflict/);
   assert.match(migration, /v_draft\.origin_experiment_id/);
   assert.match(migration, /v_draft\.origin_experiment_revision/);
   assert.doesNotMatch(migration, /create or replace function public\.revalidate_extension_closure/i);
+
+  const skipReason = dockerSkipReason();
+  if (skipReason) {
+    t.skip(skipReason);
+    return;
+  }
 
   const container = `vlab-issue465-${process.pid}-${Date.now()}`;
   let started = false;

@@ -10,10 +10,10 @@ When the owner approves a sequence with language such as `go ahead`, `proceed`, 
 
 All development work is governed by the execution-granularity rules in this section. No interpretation of scope, intent, urgency, discovered work, or continuation may bypass those rules.
 
-Every issue must state exactly one `Execution owner`: **ChatGPT**, **Eliseo Ferrante**, or **Work**. No issue may be left without an owner.
+Every issue must state exactly one `Execution owner`: **ChatGPT**, **Claude**, **Eliseo Ferrante**, or **Work**. No issue may be left without an owner.
 
 Ownership is assigned in this order:
-1. **ChatGPT by default.**
+1. **ChatGPT by default.** The owner may instead assign **Claude**; an agent assigned as execution owner carries every duty this document gives ChatGPT.
 2. **Eliseo Ferrante** only when strictly necessary owner testing is a blocker to completing the ticket. Before handing over, ChatGPT must prepare everything and tell Eliseo exactly what to do, including any exact prompts, copy-paste text, URLs, or steps required.
 3. **Work** only when neither of the above applies and the required work can only be performed in Work.
 

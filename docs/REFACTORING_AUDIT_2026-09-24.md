@@ -257,3 +257,40 @@ Tickets 1–5 are safe to hand to any agent. Tickets 6 onward change how modules
 - **Removing the vendored edge copies** by importing across directories. It is unverified that the Supabase bundler would accept this, and it would break the self-contained function directory. Automate the copy (F8) instead.
 - **Editing or squashing applied migrations.**
 - **Changing any scientific semantics** (units, RNG streams, measurement phase, observation contract) as part of a refactor.
+
+---
+
+## 8. Addendum: owner decisions and new findings (24 September 2026)
+
+### Decisions
+
+- Claude may be the execution owner of tickets (recorded in `DEVELOPMENT_WORKFLOW.md`).
+- Approved order: **#532** behaviour-preservation safety net → **#533** reliable release loop (L1–L4 below) → L5 proposal-first merging → kernel tidy-up → single Supabase client → CSS out of JavaScript → behavioural tests replacing source-text tests → (with review) DOM-state/adapters, shared translator core, grammar unification.
+- F11 (superseded database functions) stays with #301/#302.
+- **Grammar direction (owner):** Controller, Metrics and Initialization should share **one** grammar; Configuration stays a plain list of named values. Permissions (what each artifact may read or do) stay different, as the scientific contract requires. `while` stays forbidden everywhere. The unification is a separate, owner-approved contract change **after** the behaviour-preserving shared-core refactor (F9).
+
+### F16 — Grammar drift between the authoring translators
+
+Measured with the current compilers:
+
+| Construct | Controller | Metrics | Initialization | Configuration |
+|---|---|---|---|---|
+| arithmetic, `**` | yes | yes | yes | values only |
+| `abs sqrt min max atan2 …` | yes | yes | yes | — |
+| `%`, `//` | **no** | **no** | yes | — |
+| `and` / `or` / `not` | yes | yes | **no** | — |
+| `if / elif / else` | yes | yes | yes | — |
+| `for k in range(n)` | **no** | **no** | yes | — |
+| `x if c else y`, `while` | no | no | no | — |
+
+The gaps follow feature history (#383 Controller and #385 Metrics control flow were never mirrored into Initialization). A shared core (F9) prevents new drift. Closing the existing gaps changes the authoring contract, so it needs Rust IR support for new operators and a new contract version.
+
+### F17 — Native and WebAssembly trajectories differ in the last digits
+
+The #532 reference runs show that the same input on the native kernel and on the production WebAssembly kernel gives identical random numbers but trajectories that differ by up to ~1e-13 after 20 s of Active Elastic. The cause is the transcendental math (`pow`, `sin`, `cos`, …): the native build uses the platform math library, the WebAssembly build uses Rust's bundled one.
+
+No current product behaviour is affected, because all execution is in the browser. It matters for the future native/HPC backend (#8): the Scientific Contract promises reproduction "within the documented backend guarantees", but no cross-backend guarantee is documented yet. Options when #8 activates: document the tolerance, or use one bundled math library on every backend for bit-identical results. That is a scientific/performance decision for the owner, not a refactor. The #532 safety net records native and WebAssembly expectations separately.
+
+### F18 — Release-loop evidence
+
+Of the last 20 pushes to `main` before this audit, 9 were green, 10 red and 1 cancelled. Most red runs failed before publishing. For #504, however, four consecutive versions **were published and then failed the live smoke** (about 30 minutes of unverified production). No CI run hung: every run finished within 1–5 minutes, so reported "stuck" monitoring comes from how agents wait (no run triggered for docs/workflow-only pushes, runs cancelled by a newer push, polling from a chat). Remedies L1–L4 are in #533; L5 (branch protection) needs an owner setting; L6 (one-command restore) is to be discussed.

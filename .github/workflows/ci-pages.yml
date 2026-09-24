@@ -57,6 +57,8 @@ jobs:
         run: cargo test --workspace
 
       - name: Test browser/compiler contracts
+        env:
+          VLAB_REQUIRE_DOCKER: '1'
         run: node --test web/tests/*.test.mjs
 
       - name: Typecheck frontend
@@ -66,6 +68,9 @@ jobs:
       - name: Build Rust kernel for browser
         working-directory: crates/kernel
         run: wasm-pack build --release --target web --out-dir ../../web/public/wasm --out-name vlab_kernel
+
+      - name: Replay behaviour references on the browser kernel
+        run: node web/scripts/reference-runs-wasm.mjs
 
       - name: Build static browser artifact
         working-directory: web

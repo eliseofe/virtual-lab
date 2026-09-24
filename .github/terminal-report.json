@@ -1,18 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Metrics now uses one extensible read-only scientific-state snapshot",
-  "owner_impact": "The former hard-coded Metrics whitelist is replaced by a single scientific snapshot boundary. Metrics can measure actual backend kinematics, applied actions, run-local agent identity, authored per-agent private scientific state, Experiment configuration, named references and the active environment without granting mutation or host access. Existing Metrics source remains compatible, and future simulator-owned scientific state must declare its Metrics projection instead of adding another one-off field.",
+  "outcome": "The Lab now has a recorded 'before' photograph that later refactoring must reproduce exactly",
+  "owner_impact": "Nothing changes in how the Lab looks or behaves. Behind the scenes, five reference Experiments (the catalog Active Elastic Experiment, its random-start variant, and small examples covering controller randomness, per-agent state, the scalar Environment and named references) are now compiled and run on every change. Their compiled form, every agent's final position and every metric value must match the recorded reference to the last bit, both in the browser's simulator and in the native one, and in both the Lab and the AI connection. Any future refactor that changes a result, even in the 15th digit, is stopped before it is published.",
   "next": {
     "kind": "epic_continues",
-    "issue": 526,
-    "text": "Next is #526 — population identity and opt-in local recognition. It will add stable population/group identity plus separately enabled local recognition, using the scientific snapshot introduced here for global measurement. #526 has not started."
+    "issue": 533,
+    "text": "Next is #533 — reliable release loop. It will check each new version in a real browser before it is published, stop releases from being cancelled halfway, and give every agent one reliable way to wait for its exact version, while keeping 'done means verified live'. #533 has not started."
   },
   "technical_evidence": [
-    "Kernel measurement now uses vlab.scientific-snapshot/0.1 instead of raw AgentPhysicalState plus ad-hoc reference arguments.",
-    "Planar velocity and angular velocity are retained from the actual physics integration step rather than reconstructed from post-step heading or controller commands.",
-    "Metrics static snapshot fields/functions are derived from implemented capability bindings; Experiment-specific configuration, reference and private-state projections are added at compile time.",
-    "Browser and MCP Metrics compilers remain mirrored and existing Active Elastic Metrics remain source-compatible.",
-    "The read-only boundary excludes RNG engine internals, neighbour-index internals, host state, transport buffers and mutation APIs."
+    "New: web/tests/fixtures/reference-experiments.mjs, web/scripts/reference-runs.mjs, web/scripts/reference-runs-wasm.mjs, crates/kernel/tests/reference_runs.rs, web/scripts/sync-edge-vendor.mjs, web/tests/behaviour-reference.test.mjs.",
+    "Browser and MCP edge compilers reproduce the recorded compiled artifacts and exact simulator input for all 5 reference Experiments.",
+    "Native (cargo test) and production WebAssembly (new CI step after wasm-pack) replay 803 metric samples and final agent state bit-identically, with 100-tick and 7-tick batching giving identical results.",
+    "Mutation checks: a 1e-15 change in periodic distance, swapped pow arguments in the Controller and Metrics compilers, and a changed RNG uniform mapping are each caught.",
+    "Native and WebAssembly trajectories differ by up to ~1e-13 because of platform math libraries; recorded separately and documented as audit finding F17.",
+    "The 8 edge-function compiler copies are checked by one list/test; the Docker database tests skip locally and are required in CI via VLAB_REQUIRE_DOCKER=1."
   ],
-  "close_issue": 525
+  "close_issue": 532
 }
