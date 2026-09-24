@@ -42,7 +42,8 @@ test("loaded experiment exposes ownership, revision and location context", async
 
 test("library uses fixed role-aware sources with source-specific browse hierarchy", async () => {
   const source = await librarySource();
-  assert.match(source, /SOURCE_ORDER = \["showcase", "mine", "shared", "supervised"\]/);
+  // #547: behaviour covered by library-browse.test.mjs; these check the Library uses the rules.
+  assert.match(source, /availableSourcesFor\(\{ signedIn: Boolean\(sessionUser\), role: profile\?\.role \}\)/);
   assert.match(source, /"All Showcase"/);
   assert.match(source, /"Uncategorized"/);
   assert.match(source, /"All in Mine"/);
@@ -57,9 +58,9 @@ test("library uses fixed role-aware sources with source-specific browse hierarch
 test("search accelerates browsing but does not define the navigation tree", async () => {
   const source = await librarySource();
   assert.match(source, /function renderDirectory\(\)/);
-  assert.match(source, /function hereRows\(/);
+  // #547: behaviour covered by library-browse.test.mjs; these check the Library uses the rules.
+  assert.match(source, /results\(\{ navigation, data: libraryData\(\), sources: availableSources\(\) \}\)/);
   assert.match(source, /\["here", "Here"\], \["all", "All sources"\]/);
-  assert.match(source, /if \(query && navigation\.scope === "all"\)/);
   assert.match(source, /if \(!navigation\.query\.trim\(\) && navigation\.scope === "all"\) navigation\.scope = "here"/);
   assert.doesNotMatch(source, /filterButton\("All experiments"/);
 });

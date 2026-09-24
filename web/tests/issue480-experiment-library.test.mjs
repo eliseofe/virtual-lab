@@ -13,10 +13,6 @@ async function source(path) {
 test("#480 Experiment Library is browse-first and source-coherent", async () => {
   const library = await source("../src/experiment-library.js");
   for (const required of [
-    'showcase: "Showcase"',
-    'mine: "Mine"',
-    'shared: "Shared"',
-    'supervised: "Supervised"',
     '"All Showcase"',
     '"Uncategorized"',
     '"All in Mine"',
@@ -28,6 +24,8 @@ test("#480 Experiment Library is browse-first and source-coherent", async () => 
     '"Loaded"',
   ]) assert.ok(library.includes(required), `missing library contract marker: ${required}`);
 
+  // #547: behaviour covered by library-browse.test.mjs; these check the Library uses the rules.
+  assert.match(library, /from "\.\/library\/browse\.js"/);
   assert.doesNotMatch(library, /Built-in|All experiments/);
   assert.match(library, /grid-template-columns: 1fr/);
   assert.match(library, /@container \(min-width: 48rem\)/);
@@ -41,9 +39,10 @@ test("#480 source hierarchies do not depend on search", async () => {
   assert.match(library, /navigation\.shared\.kind === "owner"/);
   assert.match(library, /navigation\.supervised\.researcherId/);
   assert.match(library, /navigation\.supervised\.kind === "collection"/);
-  assert.match(library, /function hereRows/);
+  // #547: behaviour covered by library-browse.test.mjs; these check the Library uses the rules.
+  assert.match(library, /contextLabel\(navigation, libraryData\(\)\)/);
   assert.match(library, /function renderDirectory/);
-  assert.match(library, /if \(query && navigation\.scope === "all"\)/);
+  assert.match(library, /results\(\{ navigation, data: libraryData\(\), sources: availableSources\(\) \}\)/);
 });
 
 test("#480 backend read model preserves private collection boundaries", async () => {

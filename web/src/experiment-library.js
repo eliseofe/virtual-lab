@@ -1,13 +1,22 @@
 import { supabase } from "./supabase-client.js";
+import {
+  SOURCE_LABEL,
+  SOURCE_ORDER,
+  availableSources as availableSourcesFor,
+  contextLabel,
+  effectiveSort,
+  entryId,
+  loadedMatches as loadedMatchesFor,
+  normalizedName,
+  ownerGroups,
+  results,
+  revisionBadge,
+  rowMeta,
+  searchPlaceholder as searchPlaceholderFor,
+  sortChoices,
+} from "./library/browse.js";
 
 
-const SOURCE_ORDER = ["showcase", "mine", "shared", "supervised"];
-const SOURCE_LABEL = Object.freeze({
-  showcase: "Showcase",
-  mine: "Mine",
-  shared: "Shared",
-  supervised: "Supervised",
-});
 const STATE_PREFIX = "vlab-experiment-library-state-v1:";
 
 let sessionUser = null;
@@ -144,10 +153,7 @@ function buildUi() {
 const ui = buildUi();
 
 function availableSources() {
-  const list = ["showcase"];
-  if (sessionUser) list.push("mine", "shared");
-  if (sessionUser && profile?.role === "professor") list.push("supervised");
-  return list;
+  return availableSourcesFor({ signedIn: Boolean(sessionUser), role: profile?.role });
 }
 
 function stateKey() {
@@ -203,149 +209,27 @@ function restoreNavigation() {
   navigation.scrollTop = Number.isFinite(stored.scrollTop) ? stored.scrollTop : 0;
 }
 
-function normalizedName(value, fallback = "Researcher") {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text || fallback;
-}
-
-function ownerGroups(rows) {
-  const map = new Map();
-  for (const row of rows) {
-    const id = row.owner_id;
-    if (!id) continue;
-    const existing = map.get(id) ?? {
-      id,
-      name: normalizedName(row.owner_display_name),
-      count: 0,
-    };
-    existing.count += 1;
-    map.set(id, existing);
-  }
-  const groups = [...map.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
-  const collisions = new Map();
-  for (const group of groups) collisions.set(group.name, (collisions.get(group.name) ?? 0) + 1);
-  for (const group of groups) {
-    if ((collisions.get(group.name) ?? 0) > 1) group.label = `${group.name} · ${group.id.slice(0, 6)}`;
-    else group.label = group.name;
-  }
-  return groups;
-}
-
-function sourceRows(source) {
-  if (source === "showcase") return showcaseEntries;
-  if (source === "mine") return mineExperiments;
-  if (source === "shared") return sharedExperiments;
-  if (source === "supervised") return supervisedExperiments;
-  return [];
-}
-
-function entryId(source, row) {
-  return source === "showcase" ? row.showcase_id : row.experiment_id;
+function libraryData() {
+  return {
+    showcase: showcaseEntries,
+    mine: mineExperiments,
+    shared: sharedExperiments,
+    supervised: supervisedExperiments,
+    showcaseCollections,
+    mineCollections,
+  };
 }
 
 function loadedMatches(source, row) {
-  const loaded = bridge().getState().loaded;
-  if (!loaded || loaded.source !== source) return false;
-  if (source === "showcase") {
-    return loaded.id === row.showcase_id
-      || (row.source_key && loaded.id === row.source_key)
-      || (row.source_key && loaded.catalogKey && row.source_key === `catalog:${loaded.catalogKey}`);
-  }
-  return loaded.id === row.experiment_id;
-}
-
-function rowCollectionName(source, row) {
-  if (source === "showcase") return row.showcase_collection_name || "Uncategorized";
-  if (source === "mine" || source === "supervised") return row.collection_name || "Unfiled";
-  return "";
+  return loadedMatchesFor(bridge().getState().loaded, source, row);
 }
 
 function activeContextLabel() {
-  const source = navigation.source;
-  if (source === "showcase") {
-    if (navigation.showcase.kind === "collection") {
-      return showcaseCollections.find((item) => item.showcase_collection_id === navigation.showcase.id)?.name || "Showcase";
-    }
-    if (navigation.showcase.kind === "uncategorized") return "Uncategorized";
-    return "Showcase";
-  }
-  if (source === "mine") {
-    if (navigation.mine.kind === "collection") {
-      return mineCollections.find((item) => item.id === navigation.mine.id)?.name || "Mine";
-    }
-    if (navigation.mine.kind === "unfiled") return "Unfiled";
-    return "Mine";
-  }
-  if (source === "shared") {
-    if (navigation.shared.kind === "owner") {
-      return ownerGroups(sharedExperiments).find((item) => item.id === navigation.shared.id)?.label || "Shared";
-    }
-    return "Shared";
-  }
-  const researcher = ownerGroups(supervisedExperiments).find((item) => item.id === navigation.supervised.researcherId);
-  if (!researcher) return "Supervised";
-  if (navigation.supervised.kind === "collection") {
-    const row = supervisedExperiments.find((item) =>
-      item.owner_id === researcher.id && item.collection_id === navigation.supervised.id
-    );
-    return row?.collection_name || "Collection";
-  }
-  if (navigation.supervised.kind === "unfiled") return "Unfiled";
-  return researcher.label;
+  return contextLabel(navigation, libraryData());
 }
 
 function searchPlaceholder() {
-  if (navigation.source === "supervised" && !navigation.supervised.researcherId) return "Search researchers";
-  return `Search ${activeContextLabel()}`;
-}
-
-function hereRows(source = navigation.source) {
-  const rows = sourceRows(source);
-  if (source === "showcase") {
-    if (navigation.showcase.kind === "collection") return rows.filter((row) => row.showcase_collection_id === navigation.showcase.id);
-    if (navigation.showcase.kind === "uncategorized") return rows.filter((row) => !row.showcase_collection_id);
-    return rows;
-  }
-  if (source === "mine") {
-    if (navigation.mine.kind === "collection") return rows.filter((row) => row.collection_id === navigation.mine.id);
-    if (navigation.mine.kind === "unfiled") return rows.filter((row) => !row.collection_id);
-    return rows;
-  }
-  if (source === "shared") {
-    if (navigation.shared.kind === "owner") return rows.filter((row) => row.owner_id === navigation.shared.id);
-    return rows;
-  }
-  if (!navigation.supervised.researcherId) return [];
-  const researcherRows = rows.filter((row) => row.owner_id === navigation.supervised.researcherId);
-  if (navigation.supervised.kind === "collection") {
-    return researcherRows.filter((row) => row.collection_id === navigation.supervised.id);
-  }
-  if (navigation.supervised.kind === "unfiled") return researcherRows.filter((row) => !row.collection_id);
-  return researcherRows;
-}
-
-function searchableText(source, row) {
-  return [
-    row.title,
-    row.description,
-    row.owner_display_name,
-    source === "showcase" ? row.showcase_collection_name : row.collection_name,
-    SOURCE_LABEL[source],
-  ].filter(Boolean).join(" ").toLocaleLowerCase();
-}
-
-function sortRows(source, rows) {
-  const result = [...rows];
-  if (navigation.sort === "title") {
-    result.sort((a, b) => a.title.localeCompare(b.title) || entryId(source, a).localeCompare(entryId(source, b)));
-    return result;
-  }
-  if (source === "showcase" && navigation.sort === "published") {
-    result.sort((a, b) => String(b.published_at || "").localeCompare(String(a.published_at || "")) || entryId(source, a).localeCompare(entryId(source, b)));
-    return result;
-  }
-  result.sort((a, b) => String(b.updated_at || b.published_at || "").localeCompare(String(a.updated_at || a.published_at || "")) || entryId(source, a).localeCompare(entryId(source, b)));
-  return result;
+  return searchPlaceholderFor(navigation, libraryData());
 }
 
 function directoryButton(label, count, selected, handler) {
@@ -589,22 +473,6 @@ function formatDateTime(value) {
   }).format(date);
 }
 
-function rowMeta(source, row) {
-  if (source === "showcase") {
-    const collection = row.showcase_collection_name || "Uncategorized";
-    return `${collection} · Read-only`;
-  }
-  if (source === "mine") return row.collection_name ? row.collection_name : "Unfiled";
-  if (source === "shared") return `${normalizedName(row.owner_display_name)} · Read-only`;
-  return `${normalizedName(row.owner_display_name)} · ${row.collection_name || "Unfiled"} · Read-only`;
-}
-
-function revisionBadge(source, row) {
-  if (source === "showcase" && row.source_revision == null) return "Catalog";
-  const revision = source === "showcase" ? row.source_revision : row.revision;
-  return revision == null ? "Revision —" : `R${revision}`;
-}
-
 async function openRow(source, row, runAfter = false) {
   if (busy) return;
   if (loadedMatches(source, row)) {
@@ -798,77 +666,37 @@ function experimentRow(source, row) {
   return container;
 }
 
-function queryMatches(source, row, query) {
-  return searchableText(source, row).includes(query);
-}
-
-function appendGroup(label, source, rows) {
-  if (!rows.length) return;
-  const section = document.createElement("section");
-  section.className = "vlab-library-group";
-  const heading = document.createElement("h3");
-  heading.className = "vlab-library-group-head";
-  heading.textContent = label;
-  section.append(heading);
-  for (const row of sortRows(source, rows)) section.append(experimentRow(source, row));
-  ui.results.append(section);
-}
-
-function renderSearchAll(query) {
-  let total = 0;
-  for (const source of availableSources()) {
-    const rows = sourceRows(source).filter((row) => queryMatches(source, row, query));
-    total += rows.length;
-    appendGroup(SOURCE_LABEL[source], source, rows);
-  }
-  return total;
-}
-
 function renderResults() {
   ui.results.replaceChildren();
-  const query = navigation.query.trim().toLocaleLowerCase();
-  let total = 0;
-
-  if (query && navigation.scope === "all") {
-    total = renderSearchAll(query);
-  } else {
-    let rows = hereRows();
-    if (query) rows = rows.filter((row) => queryMatches(navigation.source, row, query));
-    if (navigation.source === "supervised" && !navigation.supervised.researcherId && !query) {
-      const empty = document.createElement("p");
-      empty.className = "vlab-library-empty";
-      empty.textContent = supervisedExperiments.length ? "Choose a researcher." : "No researcher experiments.";
-      ui.results.append(empty);
-      ui.status.textContent = supervisedExperiments.length
-        ? `${ownerGroups(supervisedExperiments).length} researcher${ownerGroups(supervisedExperiments).length === 1 ? "" : "s"}`
-        : "0 experiments";
-      return;
+  const shown = results({ navigation, data: libraryData(), sources: availableSources() });
+  for (const group of shown.groups) {
+    if (group.label === null) {
+      for (const row of group.rows) ui.results.append(experimentRow(group.source, row));
+      continue;
     }
-    total = rows.length;
-    for (const row of sortRows(navigation.source, rows)) ui.results.append(experimentRow(navigation.source, row));
+    const section = document.createElement("section");
+    section.className = "vlab-library-group";
+    const heading = document.createElement("h3");
+    heading.className = "vlab-library-group-head";
+    heading.textContent = group.label;
+    section.append(heading);
+    for (const row of group.rows) section.append(experimentRow(group.source, row));
+    ui.results.append(section);
   }
-
-  if (!total) {
+  if (shown.empty) {
     const empty = document.createElement("p");
     empty.className = "vlab-library-empty";
-    if (query) empty.textContent = "No matches.";
-    else if (navigation.source === "mine") empty.textContent = "No experiments here.";
-    else if (navigation.source === "shared") empty.textContent = "Nothing shared with you.";
-    else if (navigation.source === "showcase") empty.textContent = "No Showcase experiments.";
-    else empty.textContent = "No researcher experiments.";
+    empty.textContent = shown.empty;
     ui.results.append(empty);
   }
-  ui.status.textContent = `${total} experiment${total === 1 ? "" : "s"}`;
+  ui.status.textContent = shown.status;
 }
 
 function renderSort() {
   ui.sort.replaceChildren();
   const source = navigation.source;
-  const choices = source === "showcase"
-    ? [["title", "Title A–Z"], ["published", "Published newest"]]
-    : [["updated", "Updated newest"], ["title", "Title A–Z"]];
-  if (!choices.some(([value]) => value === navigation.sort)) navigation.sort = choices[0][0];
-  for (const [value, label] of choices) {
+  navigation.sort = effectiveSort(source, navigation.sort);
+  for (const [value, label] of sortChoices(source)) {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = label;
