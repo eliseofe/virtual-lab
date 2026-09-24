@@ -1,4 +1,6 @@
-import { RuntimeRateMeter, formatRuntimeFactor } from "./runtime/rate-meter.js";
+import { RuntimeRateMeter } from "./runtime/rate-meter.js";
+import { runtimeModel } from "./runtime/runtime-model.js";
+import { formatActualSpeed, formatScientificTime } from "./runtime/runtime-format.js";
 
 const scientificTime = document.querySelector("#scientific-time");
 const runState = document.querySelector("#run-state");
@@ -9,16 +11,28 @@ if (!scientificTime || !runState || !requestedSpeed || !actualSpeed) {
   throw new Error("Runtime speed meter UI mismatch.");
 }
 
+// The measured speed is derived from the runtime model (#560), never from the
+// displayed text. It reads scientific time at the displayed precision
+// (milliseconds), as it always has, so the measured factor is unchanged.
 const meter = new RuntimeRateMeter({ minElapsedMs: 250 });
 
+function isRunning() {
+  return runtimeModel.get().runState === "running";
+}
+
 function currentModelSeconds() {
-  const value = Number(scientificTime.textContent);
+  const value = Number(formatScientificTime(runtimeModel.get().scientificTime));
   return Number.isFinite(value) ? value : null;
+}
+
+function showActualSpeed(factor) {
+  runtimeModel.set({ actualSpeed: factor });
+  actualSpeed.textContent = formatActualSpeed(runtimeModel.get().actualSpeed);
 }
 
 function resetMeasurement() {
   meter.reset();
-  actualSpeed.textContent = "—";
+  showActualSpeed(null);
 }
 
 function startMeasurement() {
@@ -28,28 +42,50 @@ function startMeasurement() {
     return;
   }
   meter.start(performance.now(), modelSeconds);
-  actualSpeed.textContent = "—";
+  showActualSpeed(null);
 }
 
 function sampleMeasurement() {
-  if (runState.textContent !== "Running") return;
+  if (!isRunning()) return;
 
   const modelSeconds = currentModelSeconds();
   if (modelSeconds === null) return;
 
   const factor = meter.sample(performance.now(), modelSeconds);
-  if (factor !== null) actualSpeed.textContent = formatRuntimeFactor(factor);
+  if (factor !== null) showActualSpeed(factor);
 }
 
-new MutationObserver(sampleMeasurement).observe(scientificTime, { childList: true, characterData: true, subtree: true });
-new MutationObserver(() => {
-  if (runState.textContent === "Running") startMeasurement();
+function restartOrReset() {
+  if (isRunning()) startMeasurement();
   else resetMeasurement();
-}).observe(runState, { childList: true, characterData: true, subtree: true });
-requestedSpeed.addEventListener("input", () => {
-  if (runState.textContent === "Running") startMeasurement();
-  else resetMeasurement();
+}
+
+// React to each write of scientific time and run state after the current task
+// step, time first: the same moment and order in which the page-text observers
+// this replaces used to fire.
+let timeWritten = false;
+let runStateWritten = false;
+let flushQueued = false;
+
+function flush() {
+  flushQueued = false;
+  const sample = timeWritten;
+  const restart = runStateWritten;
+  timeWritten = false;
+  runStateWritten = false;
+  if (sample) sampleMeasurement();
+  if (restart) restartOrReset();
+}
+
+runtimeModel.subscribe((_state, written) => {
+  if (written.includes("scientificTime")) timeWritten = true;
+  if (written.includes("runState")) runStateWritten = true;
+  if ((timeWritten || runStateWritten) && !flushQueued) {
+    flushQueued = true;
+    queueMicrotask(flush);
+  }
 });
+requestedSpeed.addEventListener("input", restartOrReset);
 
 resetMeasurement();
 

@@ -1,19 +1,19 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Experiment workspace module is split into tested parts (#554 complete)",
-  "owner_impact": "Nothing changes on screen. This last slice moves every database read and write of the Experiment workspace (loading, autosaving, saving revisions, moving, sharing, copying, creating) behind named functions with 13 tests that check the exact queries. #554 is now complete. The workspace module went from 2,248 to 1630 lines. Its rules now live in five tested modules (labels, status, location and switching, database access, plus the earlier revision rules), with 41 new behaviour tests across slices 2–5. Test now: yes, a short check of the whole workspace. Sign in, open one of your Experiments, edit and save a revision, move it to another collection, share it read-only and revoke the share, use Save as new, then reload the page: your Experiment should reopen.",
+  "outcome": "The simulation now has one runtime model that every view reads (MVC stage 1)",
+  "owner_impact": "Nothing changes on screen. Before, the simulation's state (running or paused, time, step counts, seed, measured speed) existed only as text on the old page, and the React panel and the speed meter read it back from that text. Now that state lives in one model. The simulator writes it, the old page text is drawn from it, and the React panel and speed meter read the model directly. Proof in a real browser: during a full run (start, speed changes, pause, restart, new seed), the panel never showed a value the old page did not hold (about 2,100 panel updates), and at every quiet point the two matched exactly. The measured speed uses the same formula and inputs; its last digit can flicker differently in about 2% of updates (at most 0.15%) because it reads the clock a few milliseconds later in the same frame. Two copies of the old meter already disagree among themselves in the same way. Test now: optional quick look. Run an Experiment, change the speed, pause and restart: time, steps, seed and the measured speed behave as before.",
   "next": {
     "kind": "epic_continues",
-    "issue": 560,
-    "text": "Next is #560: a small state module so the simulation display and speed meter stop reading on-screen text (the first stage of the 'with review' step of the plan). #560 waits for the owner's review before it starts."
+    "issue": 562,
+    "text": "Next is #562, stage 2 of the approved plan: one set of simulation commands (run, pause, restart, speed, seed). The React panel will call them directly instead of clicking the old page's hidden buttons. Nothing changes on screen."
   },
   "technical_evidence": [
-    "New web/src/registry/data.js: 22 named database operations (working copies, revisions, lists, reads, create/copy/move, sharing), with errors and messages unchanged.",
-    "registry-ui-v3.js calls them in the same places and order; only sign-in/out and the live revision subscription still touch the client directly (1,756 → 1630 lines).",
-    "New web/tests/registry-data.test.mjs: 13 behaviour tests against a recording fake client. Planted changes (move without the owner filter, discard without the one-row check, shared order lost, shares without shared_by) are each caught.",
-    "Differential check: the 22 data-touching workspace functions from before and after, run against the same recording fake database, produced identical queries, calls, state, results and errors across 1,540 runs (success, error, empty, zero-count and duplicate responses). Planted changes produced 11 to 163 differences.",
-    "Retired only the source-text query assertions now covered (39 lines in 14 test files), replaced by checks that the workspace uses the named operations. 660 tests pass.",
-    "Style comparison of the built Lab identical to the slice 4 build at all four viewports."
+    "New web/src/runtime/runtime-model.js: get/set/subscribe with typed state (runState, seed, scientificTime, physicsTicks, controlUpdates, actualSpeed). Listeners hear every write, as the page-text observers did.",
+    "New web/src/runtime/runtime-format.js: the exact display strings. main.js writes the model and draws the page text from it. runtime-speed.js and simulation-react-adapter.ts read and subscribe to the model instead of parsing and watching text (the panel's watched page elements went from 14 to 8).",
+    "The React bundle imports the model as an external module (vite.config.ts), so there is one shared instance. verify-dist fails if the bundle inlines a copy or main.js / runtime-speed.js stop using the shared module.",
+    "New web/tests/runtime-model.test.mjs: 6 behaviour tests (initial model equals the page's initial text; formatters equal the old expressions on 2,000 random values; write notification semantics; shared instance; views no longer read runtime text). Planted changes (seed without >>>0, relabelled state, 2-decimal time, wrong initial state) are each caught. 666 tests pass.",
+    "Real-browser proof on the local build, with the original speed meter from git loaded unchanged alongside: 0 panel values the page never held (about 2,100 updates), exact match at 7 quiet points, speed within 0.15% (control: old versus old within 0.04%, similar last-digit rate).",
+    "Style comparison identical to the previous production build at all four viewports."
   ],
-  "close_issue": 554
+  "close_issue": 560
 }

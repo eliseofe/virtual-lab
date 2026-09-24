@@ -1,0 +1,20 @@
+export type RuntimeRunState = 'initializing' | 'running' | 'paused';
+
+export type RuntimeState = Readonly<{
+  runState: RuntimeRunState;
+  seed: number;
+  scientificTime: number;
+  physicsTicks: unknown;
+  controlUpdates: unknown;
+  actualSpeed: number | null;
+}>;
+
+export type RuntimeModel = {
+  get(): RuntimeState;
+  set(patch: Partial<RuntimeState>): void;
+  subscribe(listener: (state: RuntimeState, written: string[]) => void): () => void;
+};
+
+export const RUNTIME_INITIAL_STATE: RuntimeState;
+export function createRuntimeModel(initialState?: RuntimeState): RuntimeModel;
+export const runtimeModel: RuntimeModel;
