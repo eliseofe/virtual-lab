@@ -20,7 +20,8 @@ test("issue #153 makes experiment switching global while #480 gives browsing sou
   assert.match(source, /experimentLabel\.textContent = "Experiment"/);
   assert.match(source, /experimentSelect\.setAttribute\("aria-label", "Switch experiment"\)/);
   assert.doesNotMatch(source, /Quick switch within the current collection/);
-  assert.match(source, /group\.label = "Your experiments"/);
+  // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
+  assert.match(source, /const switcher = quickSwitchOptions\(\{/);
   assert.match(source, /browse\.textContent = "Browse experiments"/);
   assert.match(source, /vlab-open-experiment-library/);
   assert.match(library, /"All Showcase"/);

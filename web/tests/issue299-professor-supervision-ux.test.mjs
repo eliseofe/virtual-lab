@@ -23,7 +23,8 @@ test("#299 makes the Experiment library the Professor supervision discovery surf
 
 test("#299 supervised cards show researcher identity and remain read-only", () => {
   // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
-  assert.match(registry, /supervisedResearcherName\(currentRemote\.owner_id\)/);
+  // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
+  assert.match(registry, /const switcher = quickSwitchOptions\(\{/);
   // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
   assert.match(registry, /ui\.save\.hidden = status\.saveHidden/);
   assert.match(registry, /ui\.createNew\.textContent = status\.createNewText/);
@@ -31,7 +32,9 @@ test("#299 supervised cards show researcher identity and remain read-only", () =
 });
 
 test("#299 preserves supervised Experiment continuity across reload and refresh", () => {
-  assert.match(registry, /supervisedExperiments\.some\(\(experiment\) => experiment\.id === id\)[\s\S]*access: "supervised"/);
+  // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
+  assert.match(registry, /rememberedRegistryAccess\(target\.id, \{[\s\S]*?supervised: supervisedExperiments,/);
+  assert.match(registry, /selectedRegistryAccess\(id, \{ shared: sharedExperiments, supervised: supervisedExperiments \}\)/);
   assert.match(registry, /previousAccess === "supervised"[\s\S]*supervisedExperiments/);
   assert.match(registry, /loadSupervisedExperimentList\(\)/);
 });

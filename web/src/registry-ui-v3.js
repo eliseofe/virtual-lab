@@ -13,8 +13,6 @@ import {
   DEFAULT_CATALOG_EXPERIMENT,
   EXPERIMENT_CATALOG,
   catalogExperimentByValue,
-  catalogSelectValue,
-  isCatalogSelectValue,
 } from "./experiment-catalog.js";
 import { loadCatalogExperiment } from "./catalog-workspace.js";
 import {
@@ -44,9 +42,16 @@ import {
   shareRecipientLabel as shareRecipientLabelFor,
   shareRecipientOptionLabel,
   sharedWithLabel,
-  supervisedResearcherName as supervisedResearcherNameFor,
 } from "./registry/labels.js";
 import { workspaceStatus } from "./registry/workspace-status.js";
+import {
+  libraryLoadedState,
+  parseWorkspaceValue,
+  quickSwitchOptions,
+  rememberedRegistryAccess,
+  selectedRegistryAccess,
+  workspaceValue,
+} from "./registry/workspace-location.js";
 
 
 const experimentSelect = document.querySelector("#experiment-select");
@@ -103,10 +108,6 @@ function populateCollectionSelect(select, selectedId = null) {
 
 function selectedCollectionId(select) {
   return select.value || null;
-}
-
-function supervisedResearcherName(ownerId) {
-  return supervisedResearcherNameFor(supervisedProfiles, ownerId);
 }
 
 function currentOutgoingShares() {
@@ -771,11 +772,7 @@ function workspaceStorageKey() {
 function rememberCurrentWorkspace() {
   const key = workspaceStorageKey();
   if (!key) return;
-  const value = currentRemote
-    ? `registry:${currentRemote.id}`
-    : currentShowcase
-      ? `showcase:${currentShowcase.showcase_id}`
-      : catalogSelectValue((currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).key);
+  const value = workspaceValue({ remote: currentRemote, showcase: currentShowcase, catalog: currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT });
   try {
     window.localStorage.setItem(key, value);
   } catch (error) {
@@ -806,64 +803,30 @@ function clearRememberedWorkspace() {
 
 function setQuickSwitchOptions() {
   experimentSelect.replaceChildren();
-
-  for (const experiment of EXPERIMENT_CATALOG) {
-    const option = document.createElement("option");
-    option.value = catalogSelectValue(experiment.key);
-    option.textContent = `${experiment.title} · Showcase`;
-    experimentSelect.append(option);
-  }
-
-  const ownedExperiments = [...remoteExperiments];
-  if (currentRemote && currentRemote.owner_id === user?.id && !ownedExperiments.some((experiment) => experiment.id === currentRemote.id)) {
-    ownedExperiments.unshift(currentRemote);
-  }
-
-  if (user && ownedExperiments.length) {
-    const group = document.createElement("optgroup");
-    group.label = "Your experiments";
-    for (const experiment of ownedExperiments) {
+  const switcher = quickSwitchOptions({
+    catalogExperiments: EXPERIMENT_CATALOG,
+    ownedExperiments: remoteExperiments,
+    remote: currentRemote,
+    userId: user?.id,
+    access: currentRemoteAccess,
+    showcase: currentShowcase,
+    catalog: currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT,
+    collections,
+    supervisedProfiles,
+  });
+  for (const { label, options } of switcher.groups) {
+    const parent = label === null ? experimentSelect : document.createElement("optgroup");
+    if (label !== null) parent.label = label;
+    for (const { value, text } of options) {
       const option = document.createElement("option");
-      option.value = `registry:${experiment.id}`;
-      const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";
-      option.textContent = `${experiment.title} · r${experiment.revision} · ${location}`;
-      group.append(option);
+      option.value = value;
+      option.textContent = text;
+      parent.append(option);
     }
-    experimentSelect.append(group);
+    if (label !== null) experimentSelect.append(parent);
   }
-
-  if (user && currentRemote && currentRemote.owner_id !== user.id) {
-    const group = document.createElement("optgroup");
-    group.label = currentRemoteAccess === "shared" ? "Shared with me · Read-only" : "Supervised research · Read-only";
-    const option = document.createElement("option");
-    option.value = `registry:${currentRemote.id}`;
-    option.textContent = currentRemoteAccess === "supervised"
-      ? `${currentRemote.title} · ${supervisedResearcherName(currentRemote.owner_id)} · r${currentRemote.revision}`
-      : `${currentRemote.title} · r${currentRemote.revision}`;
-    group.append(option);
-    experimentSelect.append(group);
-  }
-
-  if (currentShowcase) {
-    const group = document.createElement("optgroup");
-    group.label = "Showcase · Curated snapshot";
-    const option = document.createElement("option");
-    option.value = `showcase:${currentShowcase.showcase_id}`;
-    option.textContent = currentShowcase.source_revision == null
-      ? `${currentShowcase.title} · Catalog`
-      : `${currentShowcase.title} · R${currentShowcase.source_revision}`;
-    group.append(option);
-    experimentSelect.append(group);
-  }
-
-  experimentSelect.value = currentRemote
-    ? `registry:${currentRemote.id}`
-    : currentShowcase
-      ? `showcase:${currentShowcase.showcase_id}`
-      : catalogSelectValue((currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT).key);
-  currentUi.quickHint.textContent = user
-    ? "Switch directly here, or use Browse experiments for Showcase, Mine, Shared and Supervised navigation."
-    : "Browse Showcase Experiments now. Sign in to add your private Experiments.";
+  experimentSelect.value = switcher.value;
+  currentUi.quickHint.textContent = switcher.hint;
 }
 function updateMoveButton() {
   const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
@@ -1189,27 +1152,13 @@ async function loadShowcaseExperiment(entry) {
 }
 
 function currentLibraryLoadedState() {
-  if (currentRemote) {
-    return {
-      source: currentRemoteAccess === "shared" ? "shared" : currentRemoteAccess === "supervised" ? "supervised" : "mine",
-      id: currentRemote.id,
-      title: currentRemote.title,
-      ownerId: currentRemote.owner_id,
-      collectionId: currentRemote.collection_id ?? null,
-      revision: currentRevisionSnapshot()?.revision ?? currentRemote.revision,
-    };
-  }
-  if (currentShowcase) {
-    return {
-      source: "showcase",
-      id: currentShowcase.showcase_id,
-      title: currentShowcase.title,
-      collectionId: currentShowcase.showcase_collection_id ?? null,
-      revision: currentShowcase.source_revision ?? null,
-    };
-  }
-  const catalog = currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT;
-  return { source: "showcase", id: catalogSelectValue(catalog.key), title: catalog.title, catalogKey: catalog.key, revision: null };
+  return libraryLoadedState({
+    remote: currentRemote,
+    access: currentRemoteAccess,
+    viewedRevision: currentRevisionSnapshot(),
+    showcase: currentShowcase,
+    catalog: currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT,
+  });
 }
 
 async function copyShowcaseToWorkspace(entry, title, collectionId) {
@@ -1527,7 +1476,8 @@ async function restoreRememberedWorkspace() {
   if (!user || currentRemote) return false;
   const remembered = rememberedWorkspaceValue();
   if (!remembered) return false;
-  if (isCatalogSelectValue(remembered)) {
+  const target = parseWorkspaceValue(remembered);
+  if (target.kind === "catalog") {
     const experiment = catalogExperimentByValue(remembered);
     if (experiment) {
       await restoreCatalog(experiment, { apply: currentRemote !== null });
@@ -1536,11 +1486,10 @@ async function restoreRememberedWorkspace() {
     clearRememberedWorkspace();
     return false;
   }
-  if (remembered.startsWith("showcase:")) {
-    const showcaseId = remembered.slice("showcase:".length);
+  if (target.kind === "showcase") {
     const { data, error } = await supabase.rpc("list_showcase_experiments");
     if (error) throw error;
-    const entry = (data ?? []).find((candidate) => candidate.showcase_id === showcaseId);
+    const entry = (data ?? []).find((candidate) => candidate.showcase_id === target.id);
     if (entry) {
       await loadShowcaseExperiment(entry);
       return true;
@@ -1548,21 +1497,17 @@ async function restoreRememberedWorkspace() {
     clearRememberedWorkspace();
     return false;
   }
-  if (!remembered.startsWith("registry:")) {
+  if (target.kind !== "registry") {
     clearRememberedWorkspace();
     return false;
   }
-  const id = remembered.slice("registry:".length);
-  if (remoteExperiments.some((experiment) => experiment.id === id)) {
-    await loadRemoteExperiment(id, { access: "owned" });
-    return true;
-  }
-  if (sharedExperiments.some((experiment) => experiment.id === id)) {
-    await loadRemoteExperiment(id, { access: "shared" });
-    return true;
-  }
-  if (supervisedExperiments.some((experiment) => experiment.id === id)) {
-    await loadRemoteExperiment(id, { access: "supervised" });
+  const access = rememberedRegistryAccess(target.id, {
+    owned: remoteExperiments,
+    shared: sharedExperiments,
+    supervised: supervisedExperiments,
+  });
+  if (access) {
+    await loadRemoteExperiment(target.id, { access });
     return true;
   }
   clearRememberedWorkspace();
@@ -1715,7 +1660,8 @@ revisionHistory.dialog.addEventListener("click", (event) => {
 
 experimentSelect.addEventListener("change", () => run(async () => {
   const value = experimentSelect.value;
-  if (isCatalogSelectValue(value)) {
+  const target = parseWorkspaceValue(value);
+  if (target.kind === "catalog") {
     const experiment = catalogExperimentByValue(value);
     if (!experiment) throw new Error("Catalog Experiment not found.");
     if ((currentRemote || currentShowcase) && !(await confirmDiscardIfNeeded())) {
@@ -1725,23 +1671,19 @@ experimentSelect.addEventListener("change", () => run(async () => {
     if (currentRemote || currentShowcase || currentCatalog?.key !== experiment.key) await restoreCatalog(experiment);
     return;
   }
-  if (value.startsWith("showcase:")) {
-    if (currentShowcase?.showcase_id === value.slice("showcase:".length)) return;
+  if (target.kind === "showcase") {
+    if (currentShowcase?.showcase_id === target.id) return;
     setQuickSwitchOptions();
     return;
   }
-  if (!value.startsWith("registry:")) return;
-  const id = value.slice("registry:".length);
+  if (target.kind !== "registry") return;
+  const id = target.id;
   if (currentRemote?.id === id) return;
   if (!(await confirmDiscardIfNeeded())) {
     setQuickSwitchOptions();
     return;
   }
-  const access = sharedExperiments.some((experiment) => experiment.id === id)
-    ? "shared"
-    : supervisedExperiments.some((experiment) => experiment.id === id)
-      ? "supervised"
-      : "owned";
+  const access = selectedRegistryAccess(id, { shared: sharedExperiments, supervised: supervisedExperiments });
   await loadRemoteExperiment(id, { access });
 }));
 
