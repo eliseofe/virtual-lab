@@ -33,9 +33,9 @@ Keep that relationship current if the plan changes. It is project-state metadata
 
 For each substantial user-facing/deployable ticket:
 
-1. implement and test; CI then verifies the exact built package in a real browser before publishing it (pre-publish smoke), and a failure there stops publication;
+1. implement and test. CI then checks the exact built version in a real browser before publishing it (pre-publish smoke). If that check fails, the version is not published (the live Lab stays on the last green version), the run counts as **red**, and step 6 applies. A pre-publish failure never completes the ticket;
 2. deploy the exact candidate;
-3. follow only that exact candidate using bounded exact-run status checks (`node web/scripts/wait-for-run.mjs <sha>` where a shell is available; see *Exact-run outcomes*);
+3. follow only that exact candidate using bounded exact-run status checks. An agent that can run commands uses `node web/scripts/wait-for-run.mjs <sha>`; an agent without a shell follows the same run through its GitHub connector. Either way the result is one of the *Exact-run outcomes* below;
 4. while it is pending, keep the chat visibly alive; pending checks must not inspect jobs/logs repeatedly;
 5. if the exact candidate is green, stop immediately; one green is terminal and no further Actions query is made;
 6. if it is red, diagnose, repair, and repeat with the repaired candidate;
@@ -66,14 +66,14 @@ Do not run a second green candidate merely for reassurance. The first verified g
 
 ### Exact-run outcomes
 
-Following an exact candidate ends in exactly one of these outcomes (the exit codes of `web/scripts/wait-for-run.mjs`):
+Following an exact candidate ends in exactly one of these outcomes (the exit codes of `web/scripts/wait-for-run.mjs`). **Only green completes a ticket.** Every other outcome requires the stated action and never counts as completion:
 
 - **green** — the candidate is built, pre-publish verified, deployed and live-verified. This completes the loop.
 - **red** — diagnose the named failing job/step, repair, and follow the repaired candidate.
 - **superseded** — a newer push replaced this run. Follow the newer candidate; the ticket completes only when a green candidate contains its change. A running release on `main` is never cancelled halfway; when several pushes queue, GitHub keeps only the newest pending one.
 - **not-a-candidate** — every changed file is documentation excluded from CI; nothing was deployed. This is not completion of a deployable ticket.
 - **no-run** — a run was expected but did not start; start it with `workflow_dispatch`. This is not a blocker.
-- **timeout** — report the run as still pending with its link; never assume a result.
+- **timeout** — the run is still going after the time limit. Report it as still pending with its link, never assume a result, and keep following the same run; a pending run is not a blocker.
 
 Work/browser/computer verification is valid completion evidence when appropriate to the affected deployed behavior. Long-running scientific benchmarks that are not product-completion gates may remain autonomous outside the completion loop.
 
