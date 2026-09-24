@@ -50,8 +50,9 @@ test("#290 browser manages outgoing grants and uses only the eligible recipient 
 test("#290 preserves copy and supervision as independent mechanisms", () => {
   // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
   assert.match(registry, /ui\.createNew\.textContent = status\.createNewText/);
-  assert.match(registry, /vlab:open-supervised-experiment/);
-  assert.match(registry, /access: "supervised"/);
+  // #569: supervised opening goes through the Library with access "supervised".
+  assert.match(registry, /openRegistry: async \(experimentId, access\) => \{[\s\S]*?loadRemoteExperiment\(experimentId, \{ access \}\)/);
+  assert.match(registry, /previousAccess === "supervised"/);
   assert.match(migration, /experiments_select_explicit_share|experiment_shares/);
   assert.doesNotMatch(migration, /drop policy if exists "experiments_select_student_for_professor"/i);
 });

@@ -241,6 +241,14 @@ function drawLegacyCounters() {
 
 new MutationObserver(drawLegacyCounters).observe(document.body, { attributes: true, attributeFilter: ["class"] });
 
+// The simulator status lives in the runtime model (#569); the page line is
+// drawn from it. A message without a state keeps the previous state.
+function showSimulatorStatus(text, state = runtimeModel.get().simulatorStatus.state) {
+  runtimeModel.set({ simulatorStatus: Object.freeze({ state, text }) });
+  ui.status.textContent = text;
+  if (ui.status.dataset.state !== state) ui.status.dataset.state = state;
+}
+
 // The run state lives in the runtime model; the page label is drawn from it.
 function showRunState(runState) {
   runtimeModel.set({ runState });
@@ -289,15 +297,14 @@ function initializeIfReady() {
     updateSeedLabel();
     setFeedback(ui.setupFeedback, "Configuration and initializer valid.", "success");
     setFeedback(ui.feedback, "Controller valid.", "success");
-    ui.status.textContent = "Starting simulation…";
+    showSimulatorStatus("Starting simulation…");
     worker.postMessage({ type: "initialize", setup, ir: controller.compiled, parameters: controller.parameters });
     initialized = true;
   } catch (error) {
     initialized = false;
     ui.setupError.textContent = error instanceof Error ? error.message : String(error);
     setFeedback(ui.setupFeedback, "Configuration or initializer is invalid.", "error");
-    ui.status.textContent = "Experiment setup error";
-    ui.status.dataset.state = "error";
+    showSimulatorStatus("Experiment setup error", "error");
   }
 }
 
@@ -478,7 +485,7 @@ worker.addEventListener("message", (event) => {
   const message = event.data ?? {};
   if (message.type === "wasm-ready") {
     wasmReady = true;
-    ui.status.textContent = "Preparing experiment…";
+    showSimulatorStatus("Preparing experiment…");
     initializeIfReady();
     return;
   }
@@ -492,8 +499,7 @@ worker.addEventListener("message", (event) => {
     return;
   }
   if (message.type === "ready") {
-    ui.status.textContent = "Simulator ready";
-    ui.status.dataset.state = "ready";
+    showSimulatorStatus("Simulator ready", "ready");
     running = false;
     showRunState("paused");
     setControlsEnabled(true);
@@ -504,12 +510,12 @@ worker.addEventListener("message", (event) => {
     if (message.type === "completed") {
       setRunning(false, { notifyWorker: false });
       const duration = appliedConfig?.values?.EXPERIMENT_DURATION;
-      ui.status.textContent = Number.isFinite(duration) ? `Run complete (${duration} s)` : "Run complete";
+      showSimulatorStatus(Number.isFinite(duration) ? `Run complete (${duration} s)` : "Run complete");
     } else if (message.type === "controller-applied") {
       if (pendingController) appliedController = pendingController;
       pendingController = null;
       setFeedback(ui.feedback, "Controller applied. Run restarted.", "success");
-      ui.status.textContent = "Controller applied";
+      showSimulatorStatus("Controller applied");
       setRunning(false, { notifyWorker: false });
     } else if (message.type === "setup-applied") {
       if (pendingSetup) {
@@ -522,10 +528,10 @@ worker.addEventListener("message", (event) => {
       }
       pendingSetup = null;
       setFeedback(ui.setupFeedback, "Configuration applied. Run restarted.", "success");
-      ui.status.textContent = "Configuration applied";
+      showSimulatorStatus("Configuration applied");
       setRunning(false, { notifyWorker: false });
     } else if (message.type === "reset") {
-      ui.status.textContent = `Run restarted · seed ${activeSeed}`;
+      showSimulatorStatus(`Run restarted · seed ${activeSeed}`);
       setRunning(false, { notifyWorker: false });
     }
     return;
@@ -534,8 +540,7 @@ worker.addEventListener("message", (event) => {
     pendingSetup = null;
     ui.setupError.textContent = message.message;
     setFeedback(ui.setupFeedback, "Could not apply configuration.", "error");
-    ui.status.textContent = "Configuration error";
-    ui.status.dataset.state = "error";
+    showSimulatorStatus("Configuration error", "error");
     setRunning(false, { notifyWorker: false });
     return;
   }
@@ -543,14 +548,12 @@ worker.addEventListener("message", (event) => {
     pendingController = null;
     ui.error.textContent = `Controller initialization: ${message.message}`;
     setFeedback(ui.feedback, "Could not apply controller. Previous controller remains active.", "error");
-    ui.status.textContent = "Controller error";
-    ui.status.dataset.state = "error";
+    showSimulatorStatus("Controller error", "error");
     setRunning(false, { notifyWorker: false });
     return;
   }
   if (message.type === "error") {
-    ui.status.textContent = `Simulation error: ${message.message}`;
-    ui.status.dataset.state = "error";
+    showSimulatorStatus(`Simulation error: ${message.message}`, "error");
     setRunning(false, { notifyWorker: false });
   }
 });
@@ -559,8 +562,7 @@ worker.addEventListener("error", (event) => {
   running = false;
   setControlsEnabled(false);
   showRunState("paused");
-  ui.status.textContent = `Simulator error: ${event.message || "failed to start"}`;
-  ui.status.dataset.state = "error";
+  showSimulatorStatus(`Simulator error: ${event.message || "failed to start"}`, "error");
   ui.setupError.textContent = event.message || "Simulator failed to start.";
   setFeedback(ui.setupFeedback, "Simulator failed to start.", "error");
 });

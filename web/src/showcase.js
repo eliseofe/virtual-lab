@@ -1,3 +1,5 @@
+import { runtimeModel } from "./runtime/runtime-model.js";
+import { simulationCommands } from "./runtime/simulation-commands.js";
 import { supabase } from "./supabase-client.js";
 import { captureExperimentArtifacts } from "./experiment-artifacts.js";
 import { isCatalogSelectValue } from "./experiment-catalog.js";
@@ -512,9 +514,9 @@ async function waitForSetupApplied() {
 
 async function startShowcaseRun() {
   const deadline = performance.now() + 15000;
-  while (runButton.disabled && performance.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
-  if (runButton.disabled) throw new Error("Showcase Experiment is not runnable yet.");
-  if (runState.textContent?.trim().toLowerCase() !== "running") runButton.click();
+  while (!runtimeModel.get().controls.run && performance.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+  if (!runtimeModel.get().controls.run) throw new Error("Showcase Experiment is not runnable yet.");
+  if (runtimeModel.get().runState !== "running") simulationCommands.run();
 }
 
 function decorateShowcaseSource(entry) {

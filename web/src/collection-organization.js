@@ -246,7 +246,7 @@ function syncRenameName() {
 
 function refreshRegistry() {
   window.vlabExperimentLibraryBridge?.refreshRegistry?.();
-  window.dispatchEvent(new Event("vlab-refresh-experiment-library"));
+  window.dispatchEvent(new Event("vlab:refresh-experiment-library"));
 }
 
 async function createCollection() {

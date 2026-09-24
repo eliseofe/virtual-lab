@@ -529,6 +529,7 @@ function followLiveCommand(panelId) {
 
 provideResultsCommands({
   addPanel: addPanelCommand,
+  addPanelWithMetrics: (metricIds) => { addPanel(metricIds); },
   removePanel: removePanelCommand,
   toggleMetric: toggleMetricCommand,
   followLive: followLiveCommand,

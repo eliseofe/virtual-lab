@@ -16,18 +16,7 @@ function stateColor(state: string) {
   return state === 'Running' ? 'teal' : 'gray';
 }
 
-type SimulatorReadiness = {
-  state: string;
-  text: string;
-};
-
-function readSimulatorReadiness(): SimulatorReadiness {
-  const worker = document.querySelector<HTMLElement>('#worker-status');
-  return {
-    state: worker?.dataset.state || 'loading',
-    text: worker?.textContent?.trim() || 'Starting simulator…',
-  };
-}
+type SimulatorReadiness = SimulationPresentationSnapshot['readiness'];
 
 function readinessColor(state: string) {
   if (state === 'ready') return 'teal';
@@ -41,30 +30,7 @@ function readinessLabel(readiness: SimulatorReadiness) {
   return 'Simulator starting';
 }
 
-function useSimulatorReadiness() {
-  const [readiness, setReadiness] = useState<SimulatorReadiness>(() => readSimulatorReadiness());
-
-  useEffect(() => {
-    const worker = document.querySelector<HTMLElement>('#worker-status');
-    if (!worker) return;
-    const update = () => setReadiness(readSimulatorReadiness());
-    const observer = new MutationObserver(update);
-    observer.observe(worker, {
-      attributes: true,
-      attributeFilter: ['data-state'],
-      childList: true,
-      characterData: true,
-      subtree: true,
-    });
-    update();
-    return () => observer.disconnect();
-  }, []);
-
-  return readiness;
-}
-
 export function SimulationPresentation() {
-  const readiness = useSimulatorReadiness();
   const [snapshot, setSnapshot] = useState<SimulationPresentationSnapshot | null>(() => readSimulationPresentation());
   const sync = () => setSnapshot(readSimulationPresentation());
   const syncSoon = () => queueMicrotask(sync);
@@ -81,6 +47,7 @@ export function SimulationPresentation() {
   }, [Boolean(snapshot)]);
 
   if (!snapshot) return null;
+  const readiness = snapshot.readiness;
 
   const action = (name: 'run' | 'pause' | 'restart' | 'newSeed' | 'fit') => {
     invokeSimulationAction(name);

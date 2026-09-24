@@ -119,6 +119,8 @@ test("#200 deployed-contract source increments versions and keeps Results outsid
   assert.match(migration, /before update on public\.experiment_results_presentations/);
   assert.doesNotMatch(migration, /before update on public\.experiments/);
   assert.match(bridge, /experiment_results_presentations/);
-  assert.match(bridge, /api\.addPanel\(ids\)/);
+  // #569: plots are added through the results controller, not a global handle.
+  assert.match(bridge, /resultsCommands\.addPanelWithMetrics\(ids\)/);
+  assert.doesNotMatch(bridge, /__vlabResultsUI|\.click\(\)/);
   assert.match(shell, /import "\.\/results-presentation-bridge\.js"/);
 });

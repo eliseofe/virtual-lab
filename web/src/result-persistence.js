@@ -1,3 +1,4 @@
+import { simulationCommands } from "./runtime/simulation-commands.js";
 import {
   DEFAULT_FLUSH_INTERVAL_MS,
   PENDING_SAMPLE_LIMIT,
@@ -375,7 +376,7 @@ async function flushAllUnsavedToRoot() {
 function pauseForBackpressure() {
   if (!activeRun || activeRun.status !== "running") return;
   stats.autoPauseCount += 1;
-  document.querySelector("#pause")?.click();
+  simulationCommands.pause();
 }
 
 function enforcePendingBound(run) {

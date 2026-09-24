@@ -55,7 +55,7 @@ assert.match(workspaceShell, /button:not\(:disabled\):not\(\[hidden\]\)/);
 
 // #554: the retired flat browser and the no-op hook that mentioned it were removed.
 assert.doesNotMatch(organization, /simplifyExperimentBrowser|experiment-result-meta/);
-assert.match(organization, /vlab-refresh-experiment-library/);
+assert.match(organization, /vlab:refresh-experiment-library/);
 assert.match(organization, /\.experiment-organize/);
 assert.ok(!organization.includes("simulator"), "organization adapter must remain browser presentation/persistence only");
 

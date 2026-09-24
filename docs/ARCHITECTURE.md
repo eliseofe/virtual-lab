@@ -247,3 +247,29 @@ Repository development procedure is defined only in `DEVELOPMENT_WORKFLOW.md`. A
 ## 18. Replaceability rule
 
 Supabase, MCP, GitHub Pages, Rust/WASM and specific browser APIs are current implementations. Replacement is permitted when justified, but replacements must preserve versioned scientific/domain contracts and the zero-cost/local-first baseline unless the owner explicitly approves a change.
+
+## 19. Browser page: models, controllers and page events
+
+The simulation, live-results and authoring panels follow model-view-controller (#560–#569):
+
+- **Models** hold state and notify subscribers with the fields written: `web/src/runtime/runtime-model.js` (what the simulator is doing, its status, which commands are available, source-apply outcomes), `web/src/results-panel/results-model.js` and `web/src/authoring-panel/authoring-model.js`. Each exists once in the page; the React bundle imports them as external modules (`web/vite.config.ts`), and `verify-dist` checks they are not inlined.
+- **Controllers** own the rules and expose commands: `web/src/runtime/simulation-commands.js` (provided by `main.js`), `web/src/results-panel/results-commands.js` (provided by `results-ui.js`) and `web/src/authoring-panel/authoring-commands.js` (the authoring controller). A command refuses when unavailable, as a disabled button does. Modules that need the simulator to run, pause or apply sources call these commands; they do not press page buttons or read another module's page text.
+- **Views** draw from a model and call commands. The React panels are the views users see; the older page elements are a fallback shown only when the React panels are not mounted, and per-frame values are drawn into them only while they are visible.
+
+### Page events
+
+Remaining coordination between page modules uses DOM `CustomEvent`s. Every name uses the `vlab:` prefix and is listed here; `web/tests/page-events.test.mjs` checks that each event sent in `web/src` is listed and listened to, and each one listened to is sent.
+
+| Event | Target | Sent by | Listened to by | Meaning |
+| --- | --- | --- | --- | --- |
+| `vlab:metrics-definition` | `document` | `metrics-runtime-bridge.js` | `results-ui.js`, `result-persistence.js`, `results-presentation-bridge.js` | The compiled Metrics definition (`detail.ir`) now in effect. |
+| `vlab:metric-batch` | `document` | `metrics-runtime-bridge.js` | `results-ui.js`, `result-persistence.js` | New metric samples from the simulator. |
+| `vlab:metric-reset` | `document` | `metrics-runtime-bridge.js` | `results-ui.js`, `result-persistence.js`, `react-migration-root.tsx` | Samples were reset (restart, new setup or Metrics). |
+| `vlab:run-start` | `document` | `metrics-runtime-bridge.js` | `result-persistence.js` | A run started or resumed. |
+| `vlab:run-paused` | `document` | `metrics-runtime-bridge.js` | `result-persistence.js` | The run paused. |
+| `vlab:run-complete` | `document` | `metrics-runtime-bridge.js` | `result-persistence.js` | The run reached its configured end. |
+| `vlab:run-error` | `document` | `metrics-runtime-bridge.js` | `result-persistence.js` | The run failed (`detail.message`). |
+| `vlab:apply-metrics` | `document` | `metrics-runtime-bridge.js` | `metrics-runtime-bridge.js` | The authoring controller asked for a Metrics-only apply. |
+| `vlab:professor-requests-rendered` | inbox dialog | `professor-inbox.js` | `professor-development-links.js` | The Professor inbox list was redrawn. |
+| `vlab:open-experiment-library` | `window` | `registry-ui-v3.js` | `experiment-library.js` | Open the Experiment Library. |
+| `vlab:refresh-experiment-library` | `window` | `collection-organization.js` | `experiment-library.js` | Collections changed; reload the Library. |

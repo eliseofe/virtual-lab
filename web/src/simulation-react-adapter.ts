@@ -12,7 +12,7 @@ import { simulationCommands } from './runtime/simulation-commands.js';
 export type SimulationPresentationSnapshot = {
   stage: HTMLElement;
   mount: HTMLElement;
-  boundaryLabel: string;
+  readiness: { state: string; text: string };
   runState: string;
   seed: string;
   speed: number;
@@ -61,7 +61,10 @@ export function readSimulationPresentation(): SimulationPresentationSnapshot | n
   return {
     stage,
     mount: ensureMount(stage, legacyHeading),
-    boundaryLabel: legacyHeading.querySelector<HTMLElement>('.badge')?.textContent?.trim() || 'Arena',
+    readiness: {
+      state: runtime.simulatorStatus.state || 'loading',
+      text: runtime.simulatorStatus.text.trim() || 'Starting simulator…',
+    },
     runState: formatRunState(runtime.runState),
     seed: formatSeed(runtime.seed),
     speed: Number.isFinite(runtime.requestedSpeed) ? runtime.requestedSpeed : 1,

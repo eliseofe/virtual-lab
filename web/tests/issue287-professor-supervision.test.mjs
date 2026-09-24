@@ -29,7 +29,10 @@ test("#287 keeps supervised student Experiments outside My Experiments and read-
   assert.doesNotMatch(registry, /function renderBrowser|const browser = null/);
   // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
   assert.match(registry, /ui\.save\.hidden = status\.saveHidden/);
-  assert.match(registry, /vlab:open-supervised-experiment/);
+  // #569: supervised Experiments open from the Library (the separate supervision
+  // dialog and its event were removed earlier); the source is passed as the access.
+  assert.doesNotMatch(registry, /vlab:open-supervised-experiment/);
+  assert.match(registry, /openRegistry: async \(experimentId, access\) => \{[\s\S]*?loadRemoteExperiment\(experimentId, \{ access \}\)/);
   assert.match(registry, /Experiment not found in your library or not available to this account/);
   assert.doesNotMatch(registry, /\.eq\("id", id\)\s*\.eq\("owner_id", user\.id\)/);
 });
@@ -40,7 +43,7 @@ test("#287 Professor supervision remains read-only and is now integrated into Ex
   assert.match(registry, /registryData\.listExperimentsOwnedBy\(supabase, ids\)/);
   // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
   assert.match(registry, /const switcher = quickSwitchOptions\(\{/);
-  assert.match(registry, /access: "supervised"/);
+  assert.match(registry, /loadRemoteExperiment\(experimentId, \{ access \}\)/);
   // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
   assert.match(registry, /ui\.save\.hidden = status\.saveHidden/);
   assert.doesNotMatch(registry, /\.from\("experiments"\)[\s\S]{0,400}\.(insert|update|delete)\([^\n]*supervised/i);

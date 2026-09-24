@@ -1,3 +1,5 @@
+import { runtimeModel } from "./runtime/runtime-model.js";
+import { simulationCommands } from "./runtime/simulation-commands.js";
 import { supabase } from "./supabase-client.js";
 import {
   EXPERIMENT_ARTIFACTS,
@@ -974,13 +976,13 @@ async function readWorkingCopy(id) {
 }
 async function waitForSimulatorReady() {
   const deadline = performance.now() + 15000;
-  while (applySetup.disabled && performance.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
-  if (applySetup.disabled) throw new Error("Simulator is not ready yet.");
+  while (!runtimeModel.get().controls.applySources && performance.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+  if (!runtimeModel.get().controls.applySources) throw new Error("Simulator is not ready yet.");
 }
 
 async function applyLoadedSources() {
   await waitForSimulatorReady();
-  applySetup.click();
+  simulationCommands.applySetup();
 }
 
 async function confirmDiscardIfNeeded() {
@@ -1509,10 +1511,9 @@ window.vlabExperimentLibraryBridge = Object.freeze({
   copyRegistry: copyRegistryRevisionToWorkspace,
   refreshRegistry,
 });
-window.dispatchEvent(new Event("vlab-experiment-library-bridge-ready"));
 
 currentUi.browse.addEventListener("click", () => {
-  window.dispatchEvent(new CustomEvent("vlab-open-experiment-library"));
+  window.dispatchEvent(new CustomEvent("vlab:open-experiment-library"));
 });
 currentUi.revisionTrigger.addEventListener("click", () => run(openRevisionHistory));
 currentUi.editFromRevision.addEventListener("click", () => run(editFromViewedRevision));
@@ -1612,14 +1613,6 @@ window.addEventListener("beforeunload", (event) => {
   event.preventDefault();
   event.returnValue = "";
 });
-
-window.addEventListener("vlab:open-supervised-experiment", (event) => run(async () => {
-  const id = event instanceof CustomEvent ? event.detail?.id : null;
-  if (typeof id !== "string" || !id) throw new Error("Student Experiment identifier is missing.");
-  if (profile?.role !== "professor") throw new Error("Professor supervision is not available to this account.");
-  if (!(await confirmDiscardIfNeeded())) return;
-  await loadRemoteExperiment(id, { access: "supervised" });
-}));
 
 supabase.auth.onAuthStateChange((_event, session) => {
   if (session?.user?.id === user?.id || (!session && !user)) return;

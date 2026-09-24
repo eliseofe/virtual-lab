@@ -1,3 +1,4 @@
+import { simulationCommands } from "./runtime/simulation-commands.js";
 import { supabase } from "./supabase-client.js";
 import {
   SOURCE_LABEL,
@@ -477,7 +478,7 @@ async function openRow(source, row, runAfter = false) {
   if (busy) return;
   if (loadedMatches(source, row)) {
     ui.dialog.close();
-    if (runAfter) document.querySelector("#run")?.click();
+    if (runAfter) simulationCommands.run();
     return;
   }
   busy = true;
@@ -487,7 +488,7 @@ async function openRow(source, row, runAfter = false) {
       ? await bridge().openShowcase(row)
       : await bridge().openRegistry(row.experiment_id, source === "mine" ? "owned" : source);
     if (opened === false) return;
-    if (runAfter) document.querySelector("#run")?.click();
+    if (runAfter) simulationCommands.run();
     ui.dialog.close();
   } finally {
     busy = false;
@@ -921,8 +922,8 @@ ui.results.addEventListener("scroll", () => {
   navigation.scrollTop = ui.results.scrollTop;
 }, { passive: true });
 
-window.addEventListener("vlab-open-experiment-library", () => run(openLibrary));
-window.addEventListener("vlab-refresh-experiment-library", () => run(async () => {
+window.addEventListener("vlab:open-experiment-library", () => run(openLibrary));
+window.addEventListener("vlab:refresh-experiment-library", () => run(async () => {
   if (!ui.dialog.open) return;
   await loadData();
   render();
