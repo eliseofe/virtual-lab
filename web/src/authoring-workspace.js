@@ -17,43 +17,6 @@ if (!workbench || !tablist || !applyWorkspace || !runtimeState || !applySetup ||
   throw new Error("Authoring workspace UI mismatch.");
 }
 
-function installStyles() {
-  if (document.querySelector("style[data-vlab-authoring-workspace]")) return;
-  const style = document.createElement("style");
-  style.dataset.vlabAuthoringWorkspace = "";
-  style.textContent = `
-    #authoring-workbench { padding: 18px; overflow: hidden; }
-    .authoring-body { padding-top: 13px; }
-    .authoring-pane[hidden] { display: none !important; }
-    .authoring-pane-head { margin-bottom: 10px; }
-    .authoring-pane-head h3 { margin: 0; font-size: 15px; }
-    .authoring-pane-head .muted { margin: 4px 0 0; }
-    #authoring-workbench textarea { min-height: 390px; }
-    #authoring-workbench #apply-setup,
-    #authoring-workbench #compile { display: none !important; }
-    #additional-experiment-artifacts { display: contents; }
-    #additional-experiment-artifacts > .generic-artifact-panel { margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
-    #additional-experiment-artifacts > .generic-artifact-panel .editor-heading { margin-bottom: 10px; }
-    .authoring-persistence { margin-top: 14px; padding-top: 13px; border-top: 1px solid #e5ebed; }
-    .authoring-persistence[hidden] { display: none !important; }
-    .authoring-persistence-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-    .authoring-persistence-head strong { font-size: 12px; }
-    .authoring-persistence-message { margin: 0; color: #64757c; font-size: 11.5px; line-height: 1.4; }
-    .authoring-persistence-message[data-state="error"] { color: #9e2d29; }
-    .authoring-persistence-message[data-state="success"] { color: #246240; }
-    #authoring-persistence-slot { display: grid; gap: 8px; }
-    #authoring-persistence-slot .registry-save-row { margin-top: 2px; }
-    #authoring-persistence-slot .registry-note { margin-top: 0; }
-    .technical-ir-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 15px 15px 37px; }
-    .technical-ir-grid .ir-details { margin: 0; padding: 10px 0 0; }
-    @media (max-width: 720px) {
-      #authoring-workbench textarea { min-height: 330px; }
-      .technical-ir-grid { grid-template-columns: 1fr; padding-left: 15px; }
-    }
-  `;
-  document.head.append(style);
-}
-
 let activeArtifact = "configuration";
 let setupDirty = false;
 let controllerDirty = false;
@@ -277,8 +240,6 @@ if (!attachPersistenceUi()) {
   });
   discoveryObserver.observe(document.body, { childList: true, subtree: true });
 }
-
-installStyles();
 syncAdditionalArtifacts();
 activateArtifact(activeArtifact);
 updateRuntimeUi();

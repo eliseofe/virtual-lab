@@ -91,6 +91,7 @@ async function connectBrowser(port) {
   let nextId = 1;
   const pending = new Map();
   const exceptionSinks = new Map();
+  const eventListeners = new Map();
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
@@ -100,6 +101,9 @@ async function connectBrowser(port) {
       if (message.error) reject(new Error(message.error.message));
       else resolve(message.result);
       return;
+    }
+    if (message.method && message.sessionId) {
+      for (const listener of eventListeners.get(message.sessionId) ?? []) listener(message.method, message.params ?? {});
     }
     if (message.method === "Runtime.exceptionThrown" && message.sessionId) {
       const sink = exceptionSinks.get(message.sessionId);
@@ -119,7 +123,7 @@ async function connectBrowser(port) {
     return promise;
   };
 
-  return { socket, send, exceptionSinks };
+  return { socket, send, exceptionSinks, eventListeners };
 }
 
 export async function createSmokeSession({ url, initialUrl = url }) {
@@ -155,6 +159,12 @@ export async function createSmokeSession({ url, initialUrl = url }) {
     send(method, params = {}) {
       return browser.send(method, params, sessionId);
     },
+    // Subscribe to this session's DevTools events: listener(method, params).
+    onEvent(listener) {
+      const listeners = browser.eventListeners.get(sessionId) ?? [];
+      listeners.push(listener);
+      browser.eventListeners.set(sessionId, listeners);
+    },
   };
 
   return {
@@ -164,6 +174,7 @@ export async function createSmokeSession({ url, initialUrl = url }) {
       if (closed) return;
       closed = true;
       browser.exceptionSinks.delete(sessionId);
+      browser.eventListeners.delete(sessionId);
       try { await browser.send("Target.closeTarget", { targetId }); } catch {}
       try { await browser.send("Target.disposeBrowserContext", { browserContextId }); } catch {}
       try { browser.socket.close(); } catch {}

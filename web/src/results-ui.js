@@ -1,8 +1,3 @@
-const css = document.createElement("link");
-css.rel = "stylesheet";
-css.href = new URL("./results-ui.css", import.meta.url).href;
-document.head.append(css);
-
 const definitions = new Map();
 const samples = new Map();
 const panels = [];

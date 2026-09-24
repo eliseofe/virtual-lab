@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
 const [index, baseCss, hardeningCss, workspaceShell, authoring, organization, hardening, responsiveSmoke, productSurfaceSource] = await Promise.all([
   readFile(new URL("../src/index.html", import.meta.url), "utf8"),
   readFile(new URL("../src/style.css", import.meta.url), "utf8"),
   readFile(new URL("../src/ux-hardening.css", import.meta.url), "utf8"),
   readFile(new URL("../src/workspace-shell.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/authoring-workspace.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/collection-organization.js", import.meta.url), "utf8"),
+  sourceWithStyles("authoring-workspace.js"),
+  sourceWithStyles("collection-organization.js"),
   readFile(new URL("../src/ux-hardening.js", import.meta.url), "utf8"),
   readFile(new URL("../scripts/responsive-smoke.mjs", import.meta.url), "utf8"),
   readFile(new URL("../product-surface.json", import.meta.url), "utf8"),

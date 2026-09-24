@@ -1,39 +1,6 @@
 import { supabase } from "./supabase-client.js";
 
 
-function installStyles() {
-  if (document.querySelector("style[data-vlab-collection-organization]")) return;
-  const style = document.createElement("style");
-  style.dataset.vlabCollectionOrganization = "";
-  style.textContent = `
-    .experiment-organize { min-height: 24px; padding: 3px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
-    .collection-organizer { width: min(620px, calc(100vw - 32px)); max-height: min(720px, calc(100vh - 32px)); border: 0; border-radius: 16px; padding: 0; box-shadow: 0 18px 70px rgba(16,35,44,.28); color: #172127; }
-    .collection-organizer::backdrop { background: rgba(16,27,33,.42); }
-    .collection-organizer-shell { display: grid; gap: 0; background: #fff; }
-    .collection-organizer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 18px 12px; border-bottom: 1px solid #e6ecef; }
-    .collection-organizer-head h2 { margin: 0; font-size: 17px; }
-    .collection-organizer-body { display: grid; gap: 16px; padding: 16px 18px 18px; overflow: auto; }
-    .collection-organizer-intro, .collection-organizer-status { margin: 0; color: #64757c; font-size: 11.5px; line-height: 1.45; }
-    .collection-organizer-status[data-state="error"] { color: #9e2d29; }
-    .collection-organizer-status[data-state="success"] { color: #246240; }
-    .collection-organizer-section { display: grid; gap: 9px; padding-top: 14px; border-top: 1px solid #e6ecef; }
-    .collection-organizer-section:first-of-type { padding-top: 0; border-top: 0; }
-    .collection-organizer-section h3 { margin: 0; font-size: 13px; }
-    .collection-organizer-section .registry-move-row { margin: 0; }
-    .collection-organizer-manage-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
-    .collection-organizer-field { display: grid; gap: 4px; color: #52656d; font-size: 10.5px; font-weight: 650; }
-    .collection-organizer-field input, .collection-organizer-field select { width: 100%; min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; padding: 8px 10px; color: #172127; background: #fff; }
-    .collection-organizer-field input:focus, .collection-organizer-field select:focus { outline: 2px solid rgba(29,81,102,.16); border-color: #92acb7; }
-    .collection-organizer-manage-grid button { min-height: 38px; padding: 7px 10px; }
-    @media (max-width: 680px) {
-      .collection-organizer { width: calc(100vw - 18px); max-height: calc(100vh - 18px); }
-      .collection-organizer-manage-grid { grid-template-columns: 1fr; }
-      .collection-organizer-manage-grid button { min-height: 44px; }
-    }
-  `;
-  document.head.append(style);
-}
-
 function buildOrganizer() {
   const dialog = document.createElement("dialog");
   dialog.id = "collection-organizer";
@@ -145,8 +112,6 @@ function buildOrganizer() {
     status,
   };
 }
-
-installStyles();
 const organizer = buildOrganizer();
 let organizeButton = null;
 let collectionRows = [];

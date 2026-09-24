@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
 const [management, registry, showcase] = await Promise.all([
-  readFile(new URL("../src/experiment-management.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/registry-ui-v3.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/showcase.js", import.meta.url), "utf8"),
+  sourceWithStyles("experiment-management.js"),
+  sourceWithStyles("registry-ui-v3.js"),
+  sourceWithStyles("showcase.js"),
 ]);
 
 test("#444 removes prose from the four primary Control Panel areas", () => {

@@ -3,10 +3,11 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "../..");
-const registry = await readFile(path.join(repo, "web/src/registry-ui-v3.js"), "utf8");
+const registry = await sourceWithStyles("registry-ui-v3.js");
 const migration = await readFile(
   path.join(repo, "supabase/migrations/20260920101436_experiment_head_realtime.sql"),
   "utf8",

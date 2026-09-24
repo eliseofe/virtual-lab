@@ -1,15 +1,16 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
 const [management, showcase, shell, inbox, react, index, placement] = await Promise.all([
-  readFile(new URL("../src/experiment-management.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/showcase.js", import.meta.url), "utf8"),
+  sourceWithStyles("experiment-management.js"),
+  sourceWithStyles("showcase.js"),
   readFile(new URL("../src/workspace-shell.js", import.meta.url), "utf8"),
-  readFile(new URL("../src/professor-inbox.js", import.meta.url), "utf8"),
+  sourceWithStyles("professor-inbox.js"),
   readFile(new URL("../src/react-migration-root.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/index.html", import.meta.url), "utf8"),
-  readFile(new URL("../src/showcase-professor-placement.js", import.meta.url), "utf8"),
+  sourceWithStyles("showcase-professor-placement.js"),
 ]);
 
 test("#413 keeps Experiment identity singular and uses one library entry", () => {

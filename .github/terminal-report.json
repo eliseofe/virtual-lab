@@ -1,18 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Lab now uses one shared database connection instead of eight",
-  "owner_impact": "Nothing changes in what you see or how you sign in: your existing login stays valid because the login storage is unchanged, and the AI-authorization page still reuses it. Behind the scenes the browser now keeps one shared connection to the database instead of seven parallel ones sharing your login, so the login is refreshed once instead of seven times and the Library, Professor inbox and collection panels no longer reload on each other's duplicate refresh events. The database address is now written in one place instead of eight.",
+  "outcome": "The Lab's appearance rules now live in style files instead of JavaScript, with pixel-identical pages",
+  "owner_impact": "Nothing looks different. The appearance rules that 13 parts of the Lab used to write into the page from JavaScript now live, unchanged, in 13 ordinary style files that the page loads directly, in the same order as before. Before/after captures at phone, foldable, desktop and ultra-wide sizes are pixel-identical, and every one of the roughly 900 page elements has exactly the same computed style and position. Styles are now present from the first moment instead of appearing as each part loads.",
   "next": {
     "kind": "epic_continues",
-    "issue": 543,
-    "text": "Next is #543 — move the appearance rules out of JavaScript into proper style files, with before/after screenshots at phone, tablet and desktop sizes proving that nothing looks different. #543 has not started."
+    "issue": 545,
+    "text": "Next is #545 — behaviour tests for Experiment revisions and the Working copy: the revision rules will be moved into a small separate module with tests that check what happens, not how the code is written, preparing the later split of the largest file. #545 has not started."
   },
   "technical_evidence": [
-    "New web/src/supabase-config.js (import-free coordinates, AUTH_STORAGE_KEY, MCP_URL) and web/src/supabase-client.js (the one persisted client, storage key vlab-production-registry-auth-v1).",
-    "registry-ui-v3, experiment-library, professor-inbox, professor-development-links, showcase, collection-organization and results-presentation-bridge import the shared client; student-registration keeps its deliberately non-persisted sign-up client using the shared coordinates; student-onboarding imports MCP_URL.",
-    "All seven former clients had identical options and one storage key; supabase-js already relayed auth changes between them via BroadcastChannel, so listeners receive the same sign-in/out events, minus duplicate per-client token refreshes.",
-    "web/tests/supabase-client.test.mjs guards exactly one persisted client and no repeated project coordinates; the OAuth consent test now checks the consent page against the shared storage key.",
-    "Signed-out product surfaces (Library/Showcase, registration, Professor review) verified by the pre-publish and live smoke; signed-in behaviour relies on the unchanged storage key, as no test credentials are available to agents."
+    "13 injected <style> blocks moved verbatim (dedented) into web/src/styles/*.css; showcase-professor-placement.js removed; results-ui.css is now a static link at its former position.",
+    "index.html links the moved stylesheets after a vlab:react-stylesheet marker in the former runtime order (results-ui, result-persistence, registry, library, registration, onboarding, showcase, touch targets, authoring, collections, management, ui-clarity, inbox, development links); build.mjs inserts the React stylesheet at the marker; verify-dist checks versioned links and order.",
+    "New web/scripts/style-snapshot.mjs (computed style and box of every body element plus full-page screenshots at four viewports, with an offline library mirror option); the shared smoke harness gained an optional event subscription.",
+    "Before/after capture comparison identical at all four viewports (885-913 elements, screenshots byte-identical); three captures of the unchanged build were identical; a planted 1px padding change was detected.",
+    "Source-text tests read moved CSS through tests/support/source-with-styles.mjs; tests/styles-in-css.test.mjs forbids <style> injection and pins link order."
   ],
-  "close_issue": 541
+  "close_issue": 543
 }

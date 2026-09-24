@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
-const showcase = readFileSync(new URL("../src/showcase.js", import.meta.url), "utf8");
-const library = readFileSync(new URL("../src/experiment-library.js", import.meta.url), "utf8");
+const showcase = sourceWithStyles("showcase.js");
+const library = sourceWithStyles("experiment-library.js");
 const shell = readFileSync(new URL("../src/workspace-shell.js", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../../supabase/migrations/20260916221000_showcase_unified_sources.sql", import.meta.url), "utf8");
 

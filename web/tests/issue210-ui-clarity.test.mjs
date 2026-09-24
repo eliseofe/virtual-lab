@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { sourceWithStyles } from "./support/source-with-styles.mjs";
 
-const clarity = await readFile(new URL("../src/ui-clarity.js", import.meta.url), "utf8");
+const clarity = await sourceWithStyles("ui-clarity.js");
 const shell = await readFile(new URL("../src/workspace-shell.js", import.meta.url), "utf8");
 
 test("#210 clarity layer is loaded after the existing workspace presentation adapters", () => {

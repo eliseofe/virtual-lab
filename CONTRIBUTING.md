@@ -31,6 +31,10 @@ Refactors must leave behaviour unchanged, and the repository records what "uncha
 
 Re-record a reference (`--update` / `VLAB_UPDATE_REFERENCE=1`) only for an intended scientific or compiler change, or after a toolchain/platform upgrade that changes only floating-point last digits, and say which in the commit message. Native and WebAssembly results are recorded separately because their math libraries differ in the last digits.
 
+## Visual no-change evidence
+
+For presentation refactors that must not change appearance, capture the built Lab before and after with `node web/scripts/style-snapshot.mjs capture <url> <dir>` (serve `web/dist` with `web/scripts/serve-dist.mjs`) and require `node web/scripts/style-snapshot.mjs compare <before> <after>` to report identical computed styles and screenshots at the four responsive viewports. Offline environments can pass `--mirror <dir>` to serve the Supabase and Ace libraries locally.
+
 ## User-visible validation
 
 For user-visible changes, follow `DEVELOPMENT_WORKFLOW.md`: test the actual application and verify the affected deployed behavior before reporting completion.

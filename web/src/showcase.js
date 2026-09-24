@@ -29,60 +29,6 @@ let showcaseCollections = [];
 let currentShowcase = null;
 let busy = false;
 
-function installStyles() {
-  if (document.querySelector("style[data-vlab-showcase]")) return;
-  const style = document.createElement("style");
-  style.dataset.vlabShowcase = "";
-  style.textContent = `
-    .showcase-launcher { min-height: 34px; }
-    .showcase-dialog { width: min(820px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 28px)); border: 0; border-radius: 16px; padding: 0; box-shadow: 0 18px 70px rgba(16,35,44,.28); color: #172127; }
-    .showcase-dialog::backdrop { background: rgba(16,27,33,.42); }
-    .showcase-shell { display: grid; grid-template-rows: auto auto auto 1fr; max-height: inherit; min-height: min(520px, calc(100vh - 28px)); background: #fff; }
-    .showcase-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 17px 18px 12px; border-bottom: 1px solid #e6ecef; }
-    .showcase-head h2 { margin: 0; font-size: 17px; }
-    .showcase-head-actions { display: flex; gap: 7px; }
-    .showcase-message { margin: 0; padding: 8px 18px; min-height: 1.4em; color: #64757c; font-size: 11.5px; line-height: 1.4; }
-    .showcase-message:empty { display: none; }
-    .showcase-message[data-state="error"] { color: #9e2d29; }
-    .showcase-manager { display: grid; gap: 8px; padding: 8px 18px 12px; border-bottom: 1px solid #e6ecef; }
-    .showcase-manager-create { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px; }
-    .showcase-manager-create input, .showcase-entry-collection { min-height: 38px; border: 1px solid #cfd8dc; border-radius: 9px; background: #fff; padding: 7px 9px; color: #172127; }
-    .showcase-manager-collections { display: flex; flex-wrap: wrap; gap: 6px; }
-    .showcase-manager-collection { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #dfe7ea; border-radius: 9px; padding: 4px 5px 4px 8px; }
-    .showcase-manager-collection strong { font-size: 11px; }
-    .showcase-manager-collection button { min-height: 30px; padding: 3px 7px; font-size: 10px; }
-    .showcase-list { display: grid; align-content: start; gap: 8px; overflow: auto; padding: 0 18px 18px; }
-    .showcase-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(10rem, 14rem) auto; gap: 8px; align-items: center; }
-    .showcase-entry { display: grid; gap: 5px; width: 100%; padding: 11px 12px; text-align: left; border: 1px solid #dfe7ea; border-radius: 11px; background: #fff; }
-    .showcase-entry:hover { background: #f6f9fa; }
-    .showcase-entry strong { font-size: 13px; }
-    .showcase-entry span { color: #718087; font-size: 10.5px; line-height: 1.4; }
-    .showcase-entry .showcase-entry-action { color: #315e71; font-size: 11px; font-weight: 750; }
-    .showcase-entry-row[data-active="true"] .showcase-entry { border-color: #7ea8ba; background: #f0f7fa; box-shadow: inset 3px 0 0 #4f8399; }
-    .showcase-entry-row[data-active="true"] .showcase-entry-action { color: #214c60; }
-    .showcase-entry-remove { min-width: 88px; padding-inline: 12px; }
-    .showcase-current { display: grid; gap: 7px; padding: 10px 12px; border: 1px solid #c9dce4; border-radius: 11px; background: #f5fafc; }
-    .showcase-current[hidden] { display: none !important; }
-    .showcase-current-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
-    .showcase-current-title { margin: 0; font-size: 12px; font-weight: 750; }
-    .showcase-current-meta { margin: 0; color: #64757c; font-size: 10.5px; }
-    .showcase-current-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-    .showcase-promote-current[hidden] { display: none !important; }
-    .showcase-curation-status { margin: 5px 0 0; color: #5f7077; font-size: 11.5px; line-height: 1.4; }
-    .showcase-curation-status:empty { display: none; }
-    .showcase-curation-status[data-state="error"] { color: #9e2d29; }
-    .showcase-curation-status[data-state="success"] { color: #246240; }
-    @media (max-width: 680px) {
-      .showcase-dialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
-      .showcase-shell { min-height: min(620px, calc(100vh - 20px)); }
-      .showcase-head-actions button, .showcase-promote-current, .showcase-entry-remove { min-height: 44px; }
-      .showcase-manager-create, .showcase-entry-row { grid-template-columns: 1fr; }
-      .showcase-entry-remove { width: 100%; }
-    }
-  `;
-  document.head.append(style);
-}
-
 function buildUi() {
   const launcher = document.createElement("button");
   launcher.type = "button";
@@ -190,8 +136,6 @@ function buildUi() {
     curationStatus, promote,
   };
 }
-
-installStyles();
 const ui = buildUi();
 
 function setMessage(text, state = "idle") {
