@@ -126,7 +126,9 @@ test("production runnability preflight accepts a generic valid experiment and re
 
 test("production registry read path remains ownership-scoped, session-isolated, artifact-aware and runnable-only", async () => {
   const registryUi = await readFile(path.join(src, "registry-ui-v3.js"), "utf8");
-  assert.match(registryUi, /storageKey: "vlab-production-registry-auth-v1"/);
+  assert.match(registryUi, /import \{ supabase \} from "\.\/supabase-client\.js"/);
+  const { AUTH_STORAGE_KEY } = await import("../src/supabase-config.js");
+  assert.equal(AUTH_STORAGE_KEY, "vlab-production-registry-auth-v1");
   assert.match(registryUi, /\.from\("experiments"\)/);
   assert.match(registryUi, /\.eq\("owner_id", user\.id\)/);
   assert.match(registryUi, /\.eq\("lifecycle", "active"\)/);

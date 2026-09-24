@@ -1,4 +1,4 @@
-const MCP_URL = "https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp";
+import { MCP_URL } from "./supabase-config.js";
 const SEEN_KEY = "vlab-student-getting-started-v1";
 
 function installStyles() {

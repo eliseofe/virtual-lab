@@ -1,7 +1,6 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.111.0";
+import { createClient } from "./supabase-client.js";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabase-config.js";
 
-const SUPABASE_URL = "https://izdmmudfrmqhvlgepwes.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MKaLNxnqvYbJUyik9zN7WA_r4ie2P5d";
 
 // Registration is intentionally isolated from the authoritative registry session.
 // The existing registry client remains the only client that persists/signs in users.
