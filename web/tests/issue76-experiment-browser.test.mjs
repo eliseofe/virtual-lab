@@ -21,7 +21,8 @@ test("main Lab exposes one direct switcher and one unified Experiment Library", 
   assert.match(registry, /experimentLabel\.textContent = "Experiment"/);
   assert.match(registry, /experimentSelect\.setAttribute\("aria-label", "Switch experiment"\)/);
   assert.match(registry, /function setQuickSwitchOptions\(\)/);
-  assert.match(registry, /group\.label = "Your experiments"/);
+  // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
+  assert.match(registry, /const switcher = quickSwitchOptions\(\{/);
   assert.match(registry, /browse\.textContent = "Browse experiments"/);
   assert.match(registry, /vlab-open-experiment-library/);
   assert.match(library, /dialog\.className = "vlab-library"/);
@@ -35,8 +36,6 @@ test("loaded experiment exposes ownership, revision and location context", async
   assert.match(source, /currentUi\.origin\.textContent = status\.origin\.text/);
   assert.match(source, /Showcase · Read-only/);
   assert.match(source, /currentUi\.location\.textContent = status\.location/);
-  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
-  assert.match(source, /No collection/);
   assert.match(source, /experiment-location/);
 });
 

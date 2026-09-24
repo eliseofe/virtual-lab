@@ -48,8 +48,9 @@ test("#289 UI separates shared sources from My Experiments and keeps them read-o
   assert.match(registry, /let sharedExperiments = \[\]/);
   // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
   assert.doesNotMatch(registry, /function renderBrowser|const browser = null/);
-  assert.match(registry, /Shared with me · Read-only/);
-  assert.match(registry, /currentRemoteAccess === "shared"/);
+  // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
+  assert.match(registry, /const switcher = quickSwitchOptions\(\{/);
+  assert.match(registry, /access: currentRemoteAccess/);
   // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
   assert.match(registry, /ui\.save\.hidden = status\.saveHidden/);
   assert.match(management, /locationText === "Shared with me"/);

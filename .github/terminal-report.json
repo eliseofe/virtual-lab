@@ -1,18 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Experiment workspace's status rules now have real behaviour tests",
-  "owner_impact": "Nothing changes on screen. This slice covers the core of the Experiment workspace: what the save-state line says (Saved, Working, pending, Historical, Read-only), the explanatory note under it, the revision badge and the 'New · R3' notice, and which of Save Revision, Save as new, Move, Share, Edit from this revision and Discard Working copy appear. These rules now live in one small module with 10 tests. A side-by-side comparison of the old and new code over 29,160 workspace situations found no difference. This is slice 3 of 5 of #554 (splitting the Experiment workspace module). Test now: yes, a quick check. Sign in, open one of your Experiments, edit a line (the state should say 'Working · pending'), click outside the editor (it should autosave to 'Working'), then Save Revision (it should say 'Saved'). Open an older revision from the history: it should say 'Historical'.",
+  "outcome": "Remembering and switching the open Experiment now has real behaviour tests",
+  "owner_impact": "Nothing changes on screen. The rules for which Experiment reopens when you come back, what the Experiment switcher lists (Showcase, your Experiments with revision and collection, the open shared or supervised one, the open Showcase entry), and what the Library is told about the open Experiment now live in one small module with 10 tests. A side-by-side comparison of the old and new code over 960 situations found no difference. This is slice 4 of 5 of #554 (splitting the Experiment workspace module). Test now: optional quick check. Sign in, open one of your Experiments, reload the page: the same Experiment should reopen. Use the switcher to change Experiment.",
   "next": {
     "kind": "epic_continues",
     "issue": 554,
-    "text": "#554 continues with slice 4 of 5: remembering the last open Experiment and switching between Experiments. It moves into a tested module. Nothing changes on screen."
+    "text": "#554 continues with slice 5 of 5: the workspace's database reads and writes move behind named, tested functions. After that, #554 is complete. Nothing changes on screen."
   },
   "technical_evidence": [
-    "New web/src/registry/workspace-status.js (pure): one workspaceStatus() decision for title, origin, location, revision badge, notice, save/share/move/discard visibility and enabled state, editor locking, save-state text and note.",
-    "registry-ui-v3.js updateCurrentUi now applies that result in the same order (1,889 → 1,819 lines).",
-    "New web/tests/registry-workspace-status.test.mjs: 10 behaviour tests. Three planted rule changes (Working copy never protected, non-owners able to save, anyone treated as owner) are each caught.",
-    "Differential check: the old updateCurrentUi (from git) and the new one produced identical control states across 29,160 combinations of account, Experiment, access, Working copy, viewed revision, Showcase, unsaved edits and sharing. The same harness reported 3,240 differences for a planted change.",
-    "Retired only the 38 source-text assertions (12 test files) whose behaviour the new tests cover, replaced by checks that the workspace applies each rule. 637 tests pass.",
-    "Style comparison of the built Lab identical to the slice 2 build at all four viewports."
+    "New web/src/registry/workspace-location.js (pure): open-Experiment value, parsing remembered/selected values, access routing when reopening and when switching, quick-switcher groups and hint, the state reported to the Library.",
+    "registry-ui-v3.js delegates setQuickSwitchOptions, currentLibraryLoadedState, restoreRememberedWorkspace routing and the switcher change routing (1,819 → 1756 lines); unused imports and wrapper removed.",
+    "New web/tests/registry-workspace-location.test.mjs: 10 behaviour tests. Planted rule changes (own Experiments not reopened, read-only groups shown signed out, supervised before shared) are each caught.",
+    "Differential check: old and new setQuickSwitchOptions + currentLibraryLoadedState produced identical switcher contents, hint and Library state across 960 combinations. The same harness reported 336 differences for a planted change.",
+    "Retired only the 9 source-text assertions (6 test files) whose behaviour the new tests cover, replaced by checks that the workspace uses the rules. 647 tests pass.",
+    "Style comparison of the built Lab identical to the slice 3 build at all four viewports."
   ]
 }
