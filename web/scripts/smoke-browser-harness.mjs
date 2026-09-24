@@ -3,7 +3,9 @@ import { readFile, rm } from "node:fs/promises";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function waitForDevToolsPort(child, profile, attempts = 120) {
+// Chrome can take well over 10 s to publish its DevTools port on a busy CI
+// runner (for example right after the WASM/Vite build), so allow 30 s.
+async function waitForDevToolsPort(child, profile, attempts = 300) {
   let lastError;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     if (child.exitCode !== null) {
@@ -27,7 +29,13 @@ async function httpJson(port, path) {
   return response.json();
 }
 
-export async function launchSmokeBrowserHost({ launchAttempts = 2 } = {}) {
+function stopChrome(child) {
+  if (child.exitCode !== null) return;
+  child.kill("SIGTERM");
+  setTimeout(() => { if (child.exitCode === null) child.kill("SIGKILL"); }, 2_000).unref();
+}
+
+export async function launchSmokeBrowserHost({ launchAttempts = 3 } = {}) {
   const chrome = process.env.CHROME_BIN ?? "google-chrome";
   let lastError;
 
@@ -54,12 +62,12 @@ export async function launchSmokeBrowserHost({ launchAttempts = 2 } = {}) {
         port,
         getChromeLog: () => chromeLog,
         async close() {
-          if (child.exitCode === null) child.kill("SIGTERM");
+          stopChrome(child);
           await rm(profile, { recursive: true, force: true }).catch(() => {});
         },
       };
     } catch (error) {
-      if (child.exitCode === null) child.kill("SIGTERM");
+      stopChrome(child);
       await rm(profile, { recursive: true, force: true }).catch(() => {});
       if (chromeLog.trim()) error.message += `\nChrome stderr:\n${chromeLog}`;
       lastError = error;
