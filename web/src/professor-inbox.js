@@ -1,14 +1,29 @@
 import { supabase } from "./supabase-client.js";
+import {
+  CANDIDATE_ARTIFACTS,
+  PROFESSOR_REVIEW_CONTRACT,
+  PROFESSOR_REVIEW_DECISIONS,
+  artifactSummary,
+  candidateDefinition as candidateDefinitionFor,
+  candidateDomain as candidateDomainFor,
+  candidateName as candidateNameFor,
+  canReview,
+  checkDecision,
+  evidenceBadge,
+  formatDate,
+  orderedRequests,
+  parseContractPaths,
+  pendingCount as pendingCountOf,
+  pendingCountLabel,
+  pendingSummary,
+  progressMessage,
+  requestClassLabel,
+  requestCurrentState,
+  reviewSummary,
+  stateLabel,
+  unresolvedGeneralization,
+} from "./professor/requests.js";
 
-
-const REQUEST_CLASS_LABELS = {
-  semantic_capability: "Semantic capability",
-  authoring_language: "Authoring language",
-  runtime_configuration: "Runtime / configuration",
-  artifact_workflow: "Artifact / workflow",
-  implementation_optimization: "Implementation / optimization",
-  security_boundary: "Security / forbidden boundary",
-};
 
 const accountPanel = document.querySelector(".registry-panel");
 if (!accountPanel) throw new Error("Professor inbox requires the registry account panel.");
@@ -21,17 +36,6 @@ let supportByRequest = new Map();
 let implementedCapabilities = [];
 let busyRequestId = null;
 
-const CANDIDATE_ARTIFACTS = ["configuration", "initialization", "controller", "metrics", "environment", "runtime"];
-
-const PROFESSOR_REVIEW_CONTRACT = "vlab.professor-review/3";
-const PROFESSOR_REVIEW_DECISIONS = Object.freeze([
-  ["Accept", "accepted", true],
-  ["Revise", "revise", false],
-  ["Defer", "deferred", false],
-  ["Future", "future", false],
-  ["Reject", "rejected", false],
-  ["Already supported", "already_supported", false],
-]);
 
 function buildUi() {
   const panel = document.createElement("section");
@@ -101,24 +105,6 @@ function buildUi() {
   return { panel, open, count, dialog, refresh, close, message, list };
 }
 
-function formatDate(value) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat(undefined, {
-    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  }).format(date);
-}
-
-function artifactSummary(artifacts) {
-  if (!Array.isArray(artifacts) || artifacts.length === 0) return "no preserved draft artifacts";
-  return artifacts.map((artifact) => {
-    const id = typeof artifact?.id === "string" ? artifact.id : "artifact";
-    const type = typeof artifact?.type === "string" ? artifact.type : null;
-    return type && type !== id ? `${id} (${type})` : id;
-  }).join(", ");
-}
-
 function evidenceForRequest(requestId) {
   return evidenceByRequest.get(requestId) ?? [];
 }
@@ -128,38 +114,19 @@ function candidateForRequest(requestId) {
 }
 
 function unresolvedGeneralizationEvidence(requestId) {
-  return evidenceForRequest(requestId).filter(
-    (item) => item.relationship === "generalization_needed" && !item.generalization_resolved_at,
-  );
+  return unresolvedGeneralization(evidenceForRequest(requestId));
 }
 
 function candidateName(request) {
-  const candidate = candidateForRequest(request.id);
-  if (candidate?.kind === "semantic_capability") return candidate.data.capability_name;
-  if (candidate?.kind === "contract_delta") return candidate.data.delta_name;
-  return request.extension_name || request.capability_name;
+  return candidateNameFor(request, candidateForRequest(request.id));
 }
 
 function candidateDomain(request) {
-  const candidate = candidateForRequest(request.id);
-  if (candidate?.kind === "semantic_capability") return candidate.data.capability_domain;
-  if (candidate?.kind === "contract_delta") return candidate.data.target_contract_path;
-  return request.extension_domain || request.capability_domain;
+  return candidateDomainFor(request, candidateForRequest(request.id));
 }
 
 function candidateDefinition(request) {
-  const candidate = candidateForRequest(request.id);
-  if (candidate?.kind === "semantic_capability") return candidate.data.canonical_definition;
-  if (candidate?.kind === "contract_delta") return candidate.data.requested_change;
-  return request.extension_definition || request.capability_name || "Scientific extension request";
-}
-
-function requestCurrentState(request) {
-  if (request.status === "implemented" || request.status === "in_progress") return request.status;
-  if (request.status === "approved") return "accepted";
-  if (request.status === "declined") return "rejected";
-  if (request.status === "resolved") return "already_supported";
-  return request.professor_disposition || "pending";
+  return candidateDefinitionFor(request, candidateForRequest(request.id));
 }
 
 function supportForRequest(requestId) {
@@ -466,13 +433,13 @@ function setMessage(text, state = "idle") {
 }
 
 function pendingCount() {
-  return requests.filter((request) => requestCurrentState(request) === "pending").length;
+  return pendingCountOf(requests);
 }
 
 function render() {
   const pending = pendingCount();
   ui.count.textContent = String(pending);
-  ui.count.setAttribute("aria-label", `${pending} pending extension request${pending === 1 ? "" : "s"}`);
+  ui.count.setAttribute("aria-label", pendingCountLabel(pending));
   ui.list.replaceChildren();
 
   if (requests.length === 0) {
@@ -483,12 +450,7 @@ function render() {
     return;
   }
 
-  const ordered = [...requests].sort((left, right) => {
-    const leftPending = requestCurrentState(left) === "pending" ? 0 : 1;
-    const rightPending = requestCurrentState(right) === "pending" ? 0 : 1;
-    if (leftPending !== rightPending) return leftPending - rightPending;
-    return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
-  });
+  const ordered = orderedRequests(requests);
 
   for (const request of ordered) {
     const card = document.createElement("article");
@@ -511,19 +473,19 @@ function render() {
     badges.className = "professor-request-badges";
     const requestClass = document.createElement("span");
     requestClass.className = "professor-request-class";
-    requestClass.textContent = REQUEST_CLASS_LABELS[request.request_class] || "Extension request";
+    requestClass.textContent = requestClassLabel(request);
     const status = document.createElement("span");
     status.className = "professor-status";
     status.dataset.status = currentState;
-    status.textContent = currentState.replaceAll("_", " ");
+    status.textContent = stateLabel(currentState);
     badges.append(requestClass, status);
 
     const requestEvidence = evidenceForRequest(request.id);
-    const evidenceCount = requestEvidence.length;
-    if (evidenceCount > 1) {
+    const evidenceText = evidenceBadge(requestEvidence.length);
+    if (evidenceText) {
       const count = document.createElement("span");
       count.className = "professor-evidence-count";
-      count.textContent = `${evidenceCount} linked sources`;
+      count.textContent = evidenceText;
       badges.append(count);
     }
     if (unresolvedGeneralizationEvidence(request.id).length > 0) {
@@ -576,19 +538,7 @@ function render() {
     } else {
       const review = document.createElement("p");
       review.className = "professor-request-review";
-      const parts = [];
-      if (request.professor_disposition && request.professor_disposition !== "pending") parts.push(`Professor decision: ${request.professor_disposition.replaceAll("_", " ")}`);
-      if (request.professor_disposition_reviewed_at || request.reviewed_at) parts.push(formatDate(request.professor_disposition_reviewed_at || request.reviewed_at));
-      if (request.professor_guidance || request.professor_notes) parts.push(`Professor guidance: ${request.professor_guidance || request.professor_notes}`);
-      const support = supportForRequest(request.id);
-      if (support.length > 0) {
-        const labels = support.map((item) => item.support_kind === "canonical_capability"
-          ? item.capability_key || item.canonical_capability_id
-          : item.contract_path);
-        parts.push(`Existing support: ${labels.join(", ")}`);
-      }
-      if (request.status !== "requested") parts.push(`Technical state: ${request.status.replaceAll("_", " ")}`);
-      review.textContent = parts.join(" · ") || "No Professor note.";
+      review.textContent = reviewSummary(request, supportForRequest(request.id));
       card.append(review);
     }
 
@@ -739,7 +689,7 @@ async function loadRequests() {
   }
   render();
   ui.dialog.dispatchEvent(new CustomEvent("vlab:professor-requests-rendered"));
-  setMessage(`${pendingCount()} pending request${pendingCount() === 1 ? "" : "s"}.`);
+  setMessage(pendingSummary(pendingCount()));
 }
 
 async function generalizeCandidate(request, candidate, payload, resolveEvidence, note) {
@@ -767,18 +717,14 @@ async function generalizeCandidate(request, candidate, payload, resolveEvidence,
 }
 
 async function triage(request, decision, note, card) {
-  if (profile?.role !== "professor" || request.status !== "requested" || request.professor_disposition !== "pending") return;
+  if (!canReview(profile?.role, request)) return;
   const guidance = note.trim();
   if (decision === "already_supported") {
     const capabilityIds = [...card.querySelectorAll(".professor-support-capabilities option:checked")].map((option) => option.value);
-    const contractPaths = (card.querySelector(".professor-support-contract-paths")?.value || "")
-      .split(",").map((value) => value.trim()).filter(Boolean);
-    if (request.request_class === "semantic_capability" && capabilityIds.length === 0) {
-      setMessage("Already supported requires at least one implemented canonical capability for a semantic request.", "error");
-      return;
-    }
-    if (capabilityIds.length === 0 && contractPaths.length === 0) {
-      setMessage("Already supported requires machine-readable existing support.", "error");
+    const contractPaths = parseContractPaths(card.querySelector(".professor-support-contract-paths")?.value);
+    const check = checkDecision({ decision, guidance, requestClass: request.request_class, capabilityIds, contractPaths });
+    if (!check.ok) {
+      setMessage(check.error, "error");
       return;
     }
     busyRequestId = request.id;
@@ -802,21 +748,14 @@ async function triage(request, decision, note, card) {
     }
     return;
   }
-  if (decision === "revise" && !guidance) {
-    setMessage("Revise requires Professor guidance describing what must change.", "error");
+  const check = checkDecision({ decision, guidance, requestClass: request.request_class });
+  if (!check.ok) {
+    setMessage(check.error, "error");
     return;
   }
-  const labels = {
-    accepted: "Accepting",
-    rejected: "Rejecting",
-    revise: "Sending back for revision",
-    deferred: "Deferring",
-    future: "Marking as future",
-    already_supported: "Resolving as already supported",
-  };
   busyRequestId = request.id;
   render();
-  setMessage(`${labels[decision] || "Reviewing"} request…`);
+  setMessage(progressMessage(decision));
   try {
     const { data, error } = await supabase.rpc("triage_extension_request", {
       p_request_id: request.id,

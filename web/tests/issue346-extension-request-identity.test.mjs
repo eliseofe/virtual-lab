@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { REQUEST_CLASS_LABELS } from "../src/professor/requests.js";
 
 const migration = readFileSync(
   new URL("../../supabase/migrations/20260918190000_extension_request_identity_workflow.sql", import.meta.url),
@@ -29,7 +30,7 @@ test("#346 exposes the owner-approved six-class request taxonomy without automat
   for (const value of classes) {
     assert.equal(migration.includes(value), true, "migration missing request class " + value);
     assert.equal(mcp.includes(value), true, "MCP missing request class " + value);
-    assert.equal(inbox.includes(value), true, "Professor inbox missing request class " + value);
+    assert.equal(Object.hasOwn(REQUEST_CLASS_LABELS, value), true, "Professor inbox missing request class " + value);
   }
   assert.match(mcp, /automatic_rejection_classes: \[\]/);
   assert.doesNotMatch(migration, /request_class in .*declined/i);
@@ -67,12 +68,9 @@ test("#346 stores publication identity separately and makes canonical provenance
 
 test("#346 typed request identity remains Professor-triaged after later decision-only UI cleanup", () => {
   assert.match(inbox, /triage_extension_request/);
-  assert.match(inbox, /REQUEST_CLASS_LABELS/);
-  assert.ok(inbox.includes('["Accept", "accepted", true]'));
-  assert.ok(inbox.includes('["Reject", "rejected", false]'));
-  assert.ok(inbox.includes('["Revise", "revise", false]'));
-  assert.ok(inbox.includes('["Defer", "deferred", false]'));
-  assert.ok(inbox.includes('["Future", "future", false]'));
+  // #551: behaviour covered by professor-requests.test.mjs; this checks the inbox uses the rule.
+  assert.match(inbox, /requestClass\.textContent = requestClassLabel\(request\)/);
+  assert.match(inbox, /for \(const \[label, decision, primary\] of PROFESSOR_REVIEW_DECISIONS\)/);
   assert.doesNotMatch(inbox, /Create new canonical capability|Bind existing:|list_canonical_capability_registry/);
   assert.match(migration, /Only a Professor may triage extension requests/i);
 });

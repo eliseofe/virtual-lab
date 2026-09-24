@@ -21,20 +21,15 @@ const manifest = JSON.parse(readFileSync(new URL("../product-surface.json", impo
 const smoke = readFileSync(new URL("../scripts/professor-review-smoke.mjs", import.meta.url), "utf8");
 
 test("#472 Professor decision surface remains extensible plus pending as system state", () => {
-  for (const pair of [
-    '["Accept", "accepted", true]',
-    '["Reject", "rejected", false]',
-    '["Revise", "revise", false]',
-    '["Defer", "deferred", false]',
-    '["Future", "future", false]',
-    '["Already supported", "already_supported", false]',
-  ]) assert.ok(inbox.includes(pair), pair);
+  // #551: the six decisions are covered by professor-requests.test.mjs; this checks the inbox renders them.
+  assert.match(inbox, /for \(const \[label, decision, primary\] of PROFESSOR_REVIEW_DECISIONS\)/);
   assert.match(inbox, /requestCurrentState\(request\) === "pending"/);
   assert.match(inbox, /Professor guidance/);
-  assert.match(inbox, /Revise requires Professor guidance/);
+  // #551: behaviour covered by professor-requests.test.mjs; this checks the inbox uses the rule.
+  assert.match(inbox, /const check = checkDecision\(\{ decision, guidance, requestClass: request\.request_class \}\)/);
   assert.doesNotMatch(inbox, /approve\.textContent = "Approve"/);
   assert.doesNotMatch(inbox, /decline\.textContent = "Decline"/);
-  assert.match(inbox, /vlab\.professor-review\/3/);
+  assert.match(inbox, /panel\.dataset\.vlabProfessorReviewContract = PROFESSOR_REVIEW_CONTRACT/);
   assert.match(inbox, /vlabProfessorReviewDecisions/);
   assert.match(inbox, /vlabProfessorReviseGuidanceRequired/);
 });

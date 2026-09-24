@@ -6,15 +6,12 @@ const inbox = readFileSync(new URL("../src/professor-inbox.js", import.meta.url)
 
 test("#359 keeps the default Professor card compact and science-oriented", () => {
   assert.match(inbox, /title\.textContent = candidateName\(request\)/);
-  assert.match(inbox, /REQUEST_CLASS_LABELS\[request\.request_class\]/);
-  assert.match(inbox, /status\.textContent = currentState\.replaceAll/);
+  // #551: behaviour covered by professor-requests.test.mjs; this checks the inbox uses the rule.
+  assert.match(inbox, /requestClass\.textContent = requestClassLabel\(request\)/);
+  assert.match(inbox, /status\.textContent = stateLabel\(currentState\)/);
   assert.match(inbox, /definition\.textContent = candidateDefinition\(request\)/);
   assert.match(inbox, /Professor guidance/);
-  assert.match(inbox, /\["Accept", "accepted", true\]/);
-  assert.match(inbox, /\["Revise", "revise", false\]/);
-  assert.match(inbox, /\["Defer", "deferred", false\]/);
-  assert.match(inbox, /\["Future", "future", false\]/);
-  assert.match(inbox, /\["Reject", "rejected", false\]/);
+  assert.match(inbox, /for \(const \[label, decision, primary\] of PROFESSOR_REVIEW_DECISIONS\)/);
   assert.doesNotMatch(inbox, /professor-semantic-editor|Create new canonical capability|Bind existing:/);
 });
 
@@ -24,8 +21,7 @@ test("#359 nests durable multi-source evidence beneath one request card", () => 
   assert.match(inbox, /\.from\("blocked_experiment_drafts"\)/);
   assert.match(inbox, /document\.createElement\("details"\)/);
   assert.match(inbox, /summary\.textContent = "Evidence and details"/);
-  assert.match(inbox, /if \(evidenceCount > 1\)/);
-  assert.match(inbox, /\$\{evidenceCount\} linked sources/);
+  assert.match(inbox, /const evidenceText = evidenceBadge\(requestEvidence\.length\)/);
 
   const render = inbox.match(/function render\(\)[\s\S]*?async function loadRequestEvidence/)?.[0] ?? "";
   assert.equal((render.match(/document\.createElement\("article"\)/g) ?? []).length, 1);

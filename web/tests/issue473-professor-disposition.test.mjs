@@ -63,11 +63,12 @@ test("#473 keeps reviewed non-binary candidates unavailable and discoverable", (
 });
 
 test("#473 pending Professor inbox semantics use disposition, while visual redesign remains for successor", () => {
-  assert.match(inbox, /function requestCurrentState\(request\)/);
+  // #551: behaviour covered by professor-requests.test.mjs; this checks the inbox uses the rule.
+  assert.match(inbox, /const currentState = requestCurrentState\(request\)/);
   assert.match(inbox, /requestCurrentState\(request\) === "pending"/);
-  assert.match(inbox, /requestCurrentState\(left\) === "pending"/);
-  assert.match(inbox, /requestCurrentState\(right\) === "pending"/);
-  assert.match(inbox, /request\.professor_disposition !== "pending"/);
+  assert.match(inbox, /const ordered = orderedRequests\(requests\)/);
+  assert.match(inbox, /if \(!canReview\(profile\?\.role, request\)\) return;/);
   assert.match(inbox, /professor_disposition, professor_guidance, professor_disposition_reviewed_at/);
-  for (const pair of ['["Accept", "accepted", true]', '["Reject", "rejected", false]', '["Revise", "revise", false]', '["Defer", "deferred", false]', '["Future", "future", false]', '["Already supported", "already_supported", false]']) assert.ok(inbox.includes(pair), pair);
+  // #551: the six decisions are covered by professor-requests.test.mjs; this checks the inbox renders them.
+  assert.match(inbox, /for \(const \[label, decision, primary\] of PROFESSOR_REVIEW_DECISIONS\)/);
 });
