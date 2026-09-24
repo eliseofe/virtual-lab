@@ -25,10 +25,19 @@ function currentModelSeconds() {
   return Number.isFinite(value) ? value : null;
 }
 
-function showActualSpeed(factor) {
-  runtimeModel.set({ actualSpeed: factor });
+// The legacy label is the fallback view, hidden while the React simulation
+// panel is mounted (#569): drawn only while visible, redrawn when it becomes so.
+function drawLegacyActualSpeed() {
+  if (document.body.classList.contains("vlab-react-simulation-mounted")) return;
   actualSpeed.textContent = formatActualSpeed(runtimeModel.get().actualSpeed);
 }
+
+function showActualSpeed(factor) {
+  runtimeModel.set({ actualSpeed: factor });
+  drawLegacyActualSpeed();
+}
+
+new MutationObserver(drawLegacyActualSpeed).observe(document.body, { attributes: true, attributeFilter: ["class"] });
 
 function resetMeasurement() {
   meter.reset();

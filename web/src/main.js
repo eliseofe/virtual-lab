@@ -219,8 +219,27 @@ function updateSpeedLabel() {
 
 function updateSeedLabel() {
   runtimeModel.set({ seed: activeSeed });
-  ui.runSeed.textContent = formatSeed(runtimeModel.get().seed);
+  const text = formatSeed(runtimeModel.get().seed);
+  // Every snapshot carries the seed; redraw only when it changes (#569).
+  if (ui.runSeed.textContent !== text) ui.runSeed.textContent = text;
 }
+
+// The legacy stage labels are the fallback view: hidden while the React
+// simulation panel is mounted (#569), so the per-frame counters are drawn only
+// while they are visible, and redrawn when they become visible again.
+function legacyRuntimeVisible() {
+  return !document.body.classList.contains("vlab-react-simulation-mounted");
+}
+
+function drawLegacyCounters() {
+  if (!legacyRuntimeVisible()) return;
+  const runtime = runtimeModel.get();
+  ui.time.textContent = formatScientificTime(runtime.scientificTime);
+  ui.physicsTicks.textContent = formatCount(runtime.physicsTicks);
+  ui.controlUpdates.textContent = formatCount(runtime.controlUpdates);
+}
+
+new MutationObserver(drawLegacyCounters).observe(document.body, { attributes: true, attributeFilter: ["class"] });
 
 // The run state lives in the runtime model; the page label is drawn from it.
 function showRunState(runState) {
@@ -285,7 +304,8 @@ function initializeIfReady() {
 function updateSnapshot(message) {
   if (Array.isArray(message.state) || ArrayBuffer.isView(message.state)) {
     latestState = Array.from(message.state);
-    ui.canvasEmpty.hidden = latestState.length > 0;
+    const hasData = latestState.length > 0;
+    if (ui.canvasEmpty.hidden !== hasData) ui.canvasEmpty.hidden = hasData;
   }
   if (Number.isFinite(message.arenaSize)) setActiveArenaSize(Number(message.arenaSize));
   if (Number.isInteger(message.seed)) {
@@ -293,11 +313,9 @@ function updateSnapshot(message) {
     updateSeedLabel();
   }
   runtimeModel.set({ scientificTime: Number(message.scientificTime ?? 0) });
-  ui.time.textContent = formatScientificTime(runtimeModel.get().scientificTime);
   runtimeModel.set({ physicsTicks: message.physicsTicks ?? 0 });
-  ui.physicsTicks.textContent = formatCount(runtimeModel.get().physicsTicks);
   runtimeModel.set({ controlUpdates: message.controlUpdates ?? 0 });
-  ui.controlUpdates.textContent = formatCount(runtimeModel.get().controlUpdates);
+  drawLegacyCounters();
 }
 
 function rebuildEnvironmentGridImage() {
