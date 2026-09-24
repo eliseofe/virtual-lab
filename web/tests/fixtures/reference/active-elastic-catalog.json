@@ -1,0 +1,1243 @@
+{
+  "id": "active-elastic-catalog",
+  "purpose": "Catalog Active Elastic exactly as shipped: hexagonal start, sensing noise, two metrics.",
+  "ticks": 2000,
+  "compiled": {
+    "config": {
+      "version": "vlab.config/0.2",
+      "values": {
+        "N": 91,
+        "ARENA_SIZE": 10,
+        "INITIALIZATION_METHOD": "hexagon_perturbed",
+        "INITIAL_POSITION_NOISE": 0,
+        "CONTROL_DT": 0.1,
+        "SENSOR_NOISE": 0.1,
+        "EXPERIMENT_DURATION": 25000,
+        "U": 0.005,
+        "OMEGA_MAX": 1.5707963267948966,
+        "K1": 0.005,
+        "K2": 0.06,
+        "POTENTIAL_ALPHA": 2,
+        "POTENTIAL_EPSILON": 1.5,
+        "DESIRED_DISTANCE": 0.45,
+        "PROXIMAL_RANGE": 0.81,
+        "INTERACTION_RADIUS": 0.81,
+        "MAX_FORWARD_SPEED": 0.005,
+        "MAX_ANGULAR_SPEED": 1.5707963267948966
+      }
+    },
+    "initializer": {
+      "version": "vlab.initializer-state/0.4",
+      "method": "hexagon_perturbed",
+      "state": [
+        {
+          "x": -2.25,
+          "y": 0,
+          "heading": 4.19305201743496
+        },
+        {
+          "x": -2.025,
+          "y": 0.3897114317029974,
+          "heading": 4.56413230006682
+        },
+        {
+          "x": -1.8,
+          "y": 0.7794228634059948,
+          "heading": 2.10389713533839
+        },
+        {
+          "x": -1.575,
+          "y": 1.169134295108992,
+          "heading": 5.6666055009929
+        },
+        {
+          "x": -1.35,
+          "y": 1.5588457268119895,
+          "heading": 4.041870538583977
+        },
+        {
+          "x": -1.125,
+          "y": 1.948557158514987,
+          "heading": 1.9550160950042716
+        },
+        {
+          "x": -2.025,
+          "y": -0.3897114317029974,
+          "heading": 3.9952657794319197
+        },
+        {
+          "x": -1.8,
+          "y": 0,
+          "heading": 0.9552756289278168
+        },
+        {
+          "x": -1.575,
+          "y": 0.3897114317029974,
+          "heading": 4.095884325511402
+        },
+        {
+          "x": -1.35,
+          "y": 0.7794228634059948,
+          "heading": 4.727161005445887
+        },
+        {
+          "x": -1.125,
+          "y": 1.169134295108992,
+          "heading": 2.5556336036982676
+        },
+        {
+          "x": -0.9,
+          "y": 1.5588457268119895,
+          "heading": 0.788185618978816
+        },
+        {
+          "x": -0.675,
+          "y": 1.948557158514987,
+          "heading": 5.721913346622405
+        },
+        {
+          "x": -1.8,
+          "y": -0.7794228634059948,
+          "heading": 3.1112980584713377
+        },
+        {
+          "x": -1.575,
+          "y": -0.3897114317029974,
+          "heading": 1.723710254708735
+        },
+        {
+          "x": -1.35,
+          "y": 0,
+          "heading": 4.128739698077147
+        },
+        {
+          "x": -1.125,
+          "y": 0.3897114317029974,
+          "heading": 4.9298022275447435
+        },
+        {
+          "x": -0.9,
+          "y": 0.7794228634059948,
+          "heading": 1.1350126223986248
+        },
+        {
+          "x": -0.675,
+          "y": 1.169134295108992,
+          "heading": 0.7456492069252473
+        },
+        {
+          "x": -0.45,
+          "y": 1.5588457268119895,
+          "heading": 6.165984366487945
+        },
+        {
+          "x": -0.225,
+          "y": 1.948557158514987,
+          "heading": 0.40256824457634494
+        },
+        {
+          "x": -1.575,
+          "y": -1.169134295108992,
+          "heading": 0.8402129375619835
+        },
+        {
+          "x": -1.35,
+          "y": -0.7794228634059948,
+          "heading": 0.5881092199020088
+        },
+        {
+          "x": -1.125,
+          "y": -0.3897114317029974,
+          "heading": 2.1761798852729086
+        },
+        {
+          "x": -0.9,
+          "y": 0,
+          "heading": 3.6123138522235405
+        },
+        {
+          "x": -0.675,
+          "y": 0.3897114317029974,
+          "heading": 5.7104348083457985
+        },
+        {
+          "x": -0.45,
+          "y": 0.7794228634059948,
+          "heading": 1.8412673036500333
+        },
+        {
+          "x": -0.225,
+          "y": 1.169134295108992,
+          "heading": 2.2262702627665303
+        },
+        {
+          "x": 0,
+          "y": 1.5588457268119895,
+          "heading": 4.821650006843583
+        },
+        {
+          "x": 0.225,
+          "y": 1.948557158514987,
+          "heading": 3.6363398653265486
+        },
+        {
+          "x": -1.35,
+          "y": -1.5588457268119895,
+          "heading": 2.532970583290597
+        },
+        {
+          "x": -1.125,
+          "y": -1.169134295108992,
+          "heading": 0.5997981306658465
+        },
+        {
+          "x": -0.9,
+          "y": -0.7794228634059948,
+          "heading": 1.0105839000817127
+        },
+        {
+          "x": -0.675,
+          "y": -0.3897114317029974,
+          "heading": 4.693641004909456
+        },
+        {
+          "x": -0.45,
+          "y": 0,
+          "heading": 3.161151498271221
+        },
+        {
+          "x": -0.225,
+          "y": 0.3897114317029974,
+          "heading": 3.220266376990269
+        },
+        {
+          "x": 0,
+          "y": 0.7794228634059948,
+          "heading": 3.724761467587838
+        },
+        {
+          "x": 0.225,
+          "y": 1.169134295108992,
+          "heading": 5.296719519375185
+        },
+        {
+          "x": 0.45,
+          "y": 1.5588457268119895,
+          "heading": 3.198519093401307
+        },
+        {
+          "x": 0.675,
+          "y": 1.948557158514987,
+          "heading": 5.504539614523831
+        },
+        {
+          "x": -1.125,
+          "y": -1.948557158514987,
+          "heading": 5.806990578684231
+        },
+        {
+          "x": -0.9,
+          "y": -1.5588457268119895,
+          "heading": 5.843825108751524
+        },
+        {
+          "x": -0.675,
+          "y": -1.169134295108992,
+          "heading": 2.063227044781022
+        },
+        {
+          "x": -0.45,
+          "y": -0.7794228634059948,
+          "heading": 0.9276582304845857
+        },
+        {
+          "x": -0.225,
+          "y": -0.3897114317029974,
+          "heading": 1.4250524472502926
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "heading": 2.3758675768063
+        },
+        {
+          "x": 0.225,
+          "y": 0.3897114317029974,
+          "heading": 3.5901637037199
+        },
+        {
+          "x": 0.45,
+          "y": 0.7794228634059948,
+          "heading": 0.882395938941602
+        },
+        {
+          "x": 0.675,
+          "y": 1.169134295108992,
+          "heading": 2.408606889958441
+        },
+        {
+          "x": 0.9,
+          "y": 1.5588457268119895,
+          "heading": 5.852016171770995
+        },
+        {
+          "x": 1.125,
+          "y": 1.948557158514987,
+          "heading": 3.062957986566122
+        },
+        {
+          "x": -0.675,
+          "y": -1.948557158514987,
+          "heading": 6.066816367894751
+        },
+        {
+          "x": -0.45,
+          "y": -1.5588457268119895,
+          "heading": 1.698312491084488
+        },
+        {
+          "x": -0.225,
+          "y": -1.169134295108992,
+          "heading": 5.817762519659938
+        },
+        {
+          "x": 0,
+          "y": -0.7794228634059948,
+          "heading": 1.8633691162609116
+        },
+        {
+          "x": 0.225,
+          "y": -0.3897114317029974,
+          "heading": 0.008583158792599965
+        },
+        {
+          "x": 0.45,
+          "y": 0,
+          "heading": 1.2027568040831562
+        },
+        {
+          "x": 0.675,
+          "y": 0.3897114317029974,
+          "heading": 2.9643971416943695
+        },
+        {
+          "x": 0.9,
+          "y": 0.7794228634059948,
+          "heading": 0.8626129097835511
+        },
+        {
+          "x": 1.125,
+          "y": 1.169134295108992,
+          "heading": 4.948567208102658
+        },
+        {
+          "x": 1.35,
+          "y": 1.5588457268119895,
+          "heading": 4.269289910247131
+        },
+        {
+          "x": -0.225,
+          "y": -1.948557158514987,
+          "heading": 2.2718527583812937
+        },
+        {
+          "x": 0,
+          "y": -1.5588457268119895,
+          "heading": 0.7594095866187319
+        },
+        {
+          "x": 0.225,
+          "y": -1.169134295108992,
+          "heading": 3.9378154247026345
+        },
+        {
+          "x": 0.45,
+          "y": -0.7794228634059948,
+          "heading": 4.181132686619779
+        },
+        {
+          "x": 0.675,
+          "y": -0.3897114317029974,
+          "heading": 5.664335719072393
+        },
+        {
+          "x": 0.9,
+          "y": 0,
+          "heading": 5.482765508877319
+        },
+        {
+          "x": 1.125,
+          "y": 0.3897114317029974,
+          "heading": 2.8247436104849144
+        },
+        {
+          "x": 1.35,
+          "y": 0.7794228634059948,
+          "heading": 4.732473384322522
+        },
+        {
+          "x": 1.575,
+          "y": 1.169134295108992,
+          "heading": 0.1541211212889648
+        },
+        {
+          "x": 0.225,
+          "y": -1.948557158514987,
+          "heading": 5.957585506780022
+        },
+        {
+          "x": 0.45,
+          "y": -1.5588457268119895,
+          "heading": 3.5932792562564195
+        },
+        {
+          "x": 0.675,
+          "y": -1.169134295108992,
+          "heading": 3.355317489057782
+        },
+        {
+          "x": 0.9,
+          "y": -0.7794228634059948,
+          "heading": 1.1602142989447761
+        },
+        {
+          "x": 1.125,
+          "y": -0.3897114317029974,
+          "heading": 6.152104921543566
+        },
+        {
+          "x": 1.35,
+          "y": 0,
+          "heading": 6.039143001874199
+        },
+        {
+          "x": 1.575,
+          "y": 0.3897114317029974,
+          "heading": 5.357956195581666
+        },
+        {
+          "x": 1.8,
+          "y": 0.7794228634059948,
+          "heading": 3.791854343749881
+        },
+        {
+          "x": 0.675,
+          "y": -1.948557158514987,
+          "heading": 0.11005803778832358
+        },
+        {
+          "x": 0.9,
+          "y": -1.5588457268119895,
+          "heading": 6.050759594505705
+        },
+        {
+          "x": 1.125,
+          "y": -1.169134295108992,
+          "heading": 0.28341846863358094
+        },
+        {
+          "x": 1.35,
+          "y": -0.7794228634059948,
+          "heading": 5.008101883436955
+        },
+        {
+          "x": 1.575,
+          "y": -0.3897114317029974,
+          "heading": 5.803451803778951
+        },
+        {
+          "x": 1.8,
+          "y": 0,
+          "heading": 0.5307138176106941
+        },
+        {
+          "x": 2.025,
+          "y": 0.3897114317029974,
+          "heading": 4.161914886878605
+        },
+        {
+          "x": 1.125,
+          "y": -1.948557158514987,
+          "heading": 0.5065365974867165
+        },
+        {
+          "x": 1.35,
+          "y": -1.5588457268119895,
+          "heading": 2.247565562409215
+        },
+        {
+          "x": 1.575,
+          "y": -1.169134295108992,
+          "heading": 4.179805714527173
+        },
+        {
+          "x": 1.8,
+          "y": -0.7794228634059948,
+          "heading": 0.4772153762081257
+        },
+        {
+          "x": 2.025,
+          "y": -0.3897114317029974,
+          "heading": 0.22052816215364704
+        },
+        {
+          "x": 2.25,
+          "y": 0,
+          "heading": 3.2086495158160937
+        }
+      ],
+      "world_references": {
+        "schema": "vlab.world-references/0.1",
+        "references": [],
+        "sensors": []
+      }
+    },
+    "environment": null,
+    "controller": {
+      "schema": "vlab.controller-ir/0.1",
+      "language": "python-vlab/0.1",
+      "controller": "ActiveElasticAgent",
+      "entry": "step",
+      "parameters": {
+        "N": "scalar",
+        "ARENA_SIZE": "scalar",
+        "INITIAL_POSITION_NOISE": "scalar",
+        "CONTROL_DT": "scalar",
+        "SENSOR_NOISE": "scalar",
+        "EXPERIMENT_DURATION": "scalar",
+        "U": "scalar",
+        "OMEGA_MAX": "scalar",
+        "K1": "scalar",
+        "K2": "scalar",
+        "POTENTIAL_ALPHA": "scalar",
+        "POTENTIAL_EPSILON": "scalar",
+        "DESIRED_DISTANCE": "scalar",
+        "PROXIMAL_RANGE": "scalar",
+        "INTERACTION_RADIUS": "scalar",
+        "MAX_FORWARD_SPEED": "scalar",
+        "MAX_ANGULAR_SPEED": "scalar"
+      },
+      "references": [],
+      "state": [],
+      "body": [
+        {
+          "kind": "assign",
+          "target": "proximal",
+          "value": {
+            "kind": "call",
+            "name": "Vec2",
+            "args": [
+              {
+                "kind": "const",
+                "value": 0,
+                "line": 3
+              },
+              {
+                "kind": "const",
+                "value": 0,
+                "line": 3
+              }
+            ],
+            "line": 3
+          },
+          "line": 3
+        },
+        {
+          "kind": "assign",
+          "target": "sigma_lj",
+          "value": {
+            "kind": "binary",
+            "op": "/",
+            "left": {
+              "kind": "load",
+              "path": "DESIRED_DISTANCE",
+              "line": 4
+            },
+            "right": {
+              "kind": "call",
+              "name": "pow",
+              "args": [
+                {
+                  "kind": "const",
+                  "value": 2,
+                  "line": 4
+                },
+                {
+                  "kind": "binary",
+                  "op": "/",
+                  "left": {
+                    "kind": "const",
+                    "value": 1,
+                    "line": 4
+                  },
+                  "right": {
+                    "kind": "load",
+                    "path": "POTENTIAL_ALPHA",
+                    "line": 4
+                  },
+                  "line": 4
+                }
+              ],
+              "line": 4
+            },
+            "line": 4
+          },
+          "line": 4
+        },
+        {
+          "kind": "for_each",
+          "variable": "neighbour",
+          "iterable": {
+            "kind": "load",
+            "path": "obs.neighbours",
+            "line": 5
+          },
+          "body": [
+            {
+              "kind": "assign",
+              "target": "displacement",
+              "value": {
+                "kind": "load",
+                "path": "neighbour.relative_position",
+                "line": 6
+              },
+              "line": 6
+            },
+            {
+              "kind": "assign",
+              "target": "distance",
+              "value": {
+                "kind": "call",
+                "name": "norm",
+                "args": [
+                  {
+                    "kind": "load",
+                    "path": "displacement",
+                    "line": 7
+                  }
+                ],
+                "line": 7
+              },
+              "line": 7
+            },
+            {
+              "kind": "assign",
+              "target": "ratio",
+              "value": {
+                "kind": "binary",
+                "op": "/",
+                "left": {
+                  "kind": "load",
+                  "path": "sigma_lj",
+                  "line": 8
+                },
+                "right": {
+                  "kind": "load",
+                  "path": "distance",
+                  "line": 8
+                },
+                "line": 8
+              },
+              "line": 8
+            },
+            {
+              "kind": "assign",
+              "target": "magnitude",
+              "value": {
+                "kind": "binary",
+                "op": "*",
+                "left": {
+                  "kind": "unary",
+                  "op": "-",
+                  "value": {
+                    "kind": "binary",
+                    "op": "/",
+                    "left": {
+                      "kind": "binary",
+                      "op": "*",
+                      "left": {
+                        "kind": "binary",
+                        "op": "*",
+                        "left": {
+                          "kind": "const",
+                          "value": 4,
+                          "line": 9
+                        },
+                        "right": {
+                          "kind": "load",
+                          "path": "POTENTIAL_ALPHA",
+                          "line": 9
+                        },
+                        "line": 9
+                      },
+                      "right": {
+                        "kind": "load",
+                        "path": "POTENTIAL_EPSILON",
+                        "line": 9
+                      },
+                      "line": 9
+                    },
+                    "right": {
+                      "kind": "load",
+                      "path": "distance",
+                      "line": 9
+                    },
+                    "line": 9
+                  },
+                  "line": 9
+                },
+                "right": {
+                  "kind": "binary",
+                  "op": "-",
+                  "left": {
+                    "kind": "binary",
+                    "op": "*",
+                    "left": {
+                      "kind": "const",
+                      "value": 2,
+                      "line": 9
+                    },
+                    "right": {
+                      "kind": "call",
+                      "name": "pow",
+                      "args": [
+                        {
+                          "kind": "load",
+                          "path": "ratio",
+                          "line": 9
+                        },
+                        {
+                          "kind": "binary",
+                          "op": "*",
+                          "left": {
+                            "kind": "const",
+                            "value": 2,
+                            "line": 9
+                          },
+                          "right": {
+                            "kind": "load",
+                            "path": "POTENTIAL_ALPHA",
+                            "line": 9
+                          },
+                          "line": 9
+                        }
+                      ],
+                      "line": 9
+                    },
+                    "line": 9
+                  },
+                  "right": {
+                    "kind": "call",
+                    "name": "pow",
+                    "args": [
+                      {
+                        "kind": "load",
+                        "path": "ratio",
+                        "line": 9
+                      },
+                      {
+                        "kind": "load",
+                        "path": "POTENTIAL_ALPHA",
+                        "line": 9
+                      }
+                    ],
+                    "line": 9
+                  },
+                  "line": 9
+                },
+                "line": 9
+              },
+              "line": 9
+            },
+            {
+              "kind": "aug_assign",
+              "target": "proximal",
+              "op": "+",
+              "value": {
+                "kind": "binary",
+                "op": "/",
+                "left": {
+                  "kind": "binary",
+                  "op": "*",
+                  "left": {
+                    "kind": "load",
+                    "path": "magnitude",
+                    "line": 10
+                  },
+                  "right": {
+                    "kind": "load",
+                    "path": "displacement",
+                    "line": 10
+                  },
+                  "line": 10
+                },
+                "right": {
+                  "kind": "load",
+                  "path": "distance",
+                  "line": 10
+                },
+                "line": 10
+              },
+              "line": 10
+            }
+          ],
+          "line": 5
+        },
+        {
+          "kind": "assign",
+          "target": "forward",
+          "value": {
+            "kind": "binary",
+            "op": "+",
+            "left": {
+              "kind": "binary",
+              "op": "*",
+              "left": {
+                "kind": "load",
+                "path": "K1",
+                "line": 11
+              },
+              "right": {
+                "kind": "call",
+                "name": "dot",
+                "args": [
+                  {
+                    "kind": "load",
+                    "path": "proximal",
+                    "line": 11
+                  },
+                  {
+                    "kind": "load",
+                    "path": "obs.heading",
+                    "line": 11
+                  }
+                ],
+                "line": 11
+              },
+              "line": 11
+            },
+            "right": {
+              "kind": "load",
+              "path": "U",
+              "line": 11
+            },
+            "line": 11
+          },
+          "line": 11
+        },
+        {
+          "kind": "assign",
+          "target": "turning",
+          "value": {
+            "kind": "binary",
+            "op": "*",
+            "left": {
+              "kind": "load",
+              "path": "K2",
+              "line": 12
+            },
+            "right": {
+              "kind": "call",
+              "name": "dot",
+              "args": [
+                {
+                  "kind": "load",
+                  "path": "proximal",
+                  "line": 12
+                },
+                {
+                  "kind": "call",
+                  "name": "perpendicular",
+                  "args": [
+                    {
+                      "kind": "load",
+                      "path": "obs.heading",
+                      "line": 12
+                    }
+                  ],
+                  "line": 12
+                }
+              ],
+              "line": 12
+            },
+            "line": 12
+          },
+          "line": 12
+        },
+        {
+          "kind": "return",
+          "value": {
+            "kind": "call",
+            "name": "Motion",
+            "args": [
+              {
+                "kind": "load",
+                "path": "forward",
+                "line": 13
+              },
+              {
+                "kind": "load",
+                "path": "turning",
+                "line": 13
+              }
+            ],
+            "line": 13
+          },
+          "line": 13
+        }
+      ]
+    },
+    "metrics": {
+      "language": "python-vlab-metrics/0.1",
+      "schema": "vlab.metrics-ir/0.1",
+      "measurement_phase": "post-physics-wrapped-state/1",
+      "observation_contract": {
+        "mode": "read-only-global-snapshot",
+        "fields": [
+          "snapshot.scientific_time",
+          "snapshot.physics_ticks",
+          "snapshot.control_updates",
+          "snapshot.agent_count",
+          "snapshot.agents[].index",
+          "snapshot.agents[].position",
+          "snapshot.agents[].velocity",
+          "snapshot.agents[].angular_velocity",
+          "snapshot.agents[].heading",
+          "snapshot.agents[].heading_angle",
+          "snapshot.agents[].action.forward",
+          "snapshot.agents[].action.turning",
+          "snapshot.config.N",
+          "snapshot.config.ARENA_SIZE",
+          "snapshot.config.INITIAL_POSITION_NOISE",
+          "snapshot.config.CONTROL_DT",
+          "snapshot.config.SENSOR_NOISE",
+          "snapshot.config.EXPERIMENT_DURATION",
+          "snapshot.config.U",
+          "snapshot.config.OMEGA_MAX",
+          "snapshot.config.K1",
+          "snapshot.config.K2",
+          "snapshot.config.POTENTIAL_ALPHA",
+          "snapshot.config.POTENTIAL_EPSILON",
+          "snapshot.config.DESIRED_DISTANCE",
+          "snapshot.config.PROXIMAL_RANGE",
+          "snapshot.config.INTERACTION_RADIUS",
+          "snapshot.config.MAX_FORWARD_SPEED",
+          "snapshot.config.MAX_ANGULAR_SPEED"
+        ],
+        "intrinsics": []
+      },
+      "references": [],
+      "metrics": [
+        {
+          "id": "polarization",
+          "name": "Polarization order parameter",
+          "unit": null,
+          "sampling": {
+            "kind": "periodic",
+            "interval_seconds": 0.1
+          },
+          "function": "polarization",
+          "body": [
+            {
+              "kind": "assign",
+              "target": "total",
+              "value": {
+                "kind": "call",
+                "name": "Vec2",
+                "args": [
+                  {
+                    "kind": "const",
+                    "value": 0,
+                    "line": 10
+                  },
+                  {
+                    "kind": "const",
+                    "value": 0,
+                    "line": 10
+                  }
+                ],
+                "line": 10
+              },
+              "line": 10
+            },
+            {
+              "kind": "for_each",
+              "variable": "agent",
+              "iterable": {
+                "kind": "load",
+                "path": "snapshot.agents",
+                "line": 11
+              },
+              "body": [
+                {
+                  "kind": "aug_assign",
+                  "target": "total",
+                  "op": "+",
+                  "value": {
+                    "kind": "load",
+                    "path": "agent.heading",
+                    "line": 12
+                  },
+                  "line": 12
+                }
+              ],
+              "line": 11
+            },
+            {
+              "kind": "return",
+              "value": {
+                "kind": "binary",
+                "op": "/",
+                "left": {
+                  "kind": "call",
+                  "name": "norm",
+                  "args": [
+                    {
+                      "kind": "load",
+                      "path": "total",
+                      "line": 13
+                    }
+                  ],
+                  "line": 13
+                },
+                "right": {
+                  "kind": "load",
+                  "path": "snapshot.agent_count",
+                  "line": 13
+                },
+                "line": 13
+              },
+              "line": 13
+            }
+          ],
+          "source_line": 8
+        },
+        {
+          "id": "angular_momentum",
+          "name": "Angular momentum order parameter",
+          "unit": null,
+          "sampling": {
+            "kind": "periodic",
+            "interval_seconds": 0.1
+          },
+          "function": "angular_momentum",
+          "body": [
+            {
+              "kind": "assign",
+              "target": "center",
+              "value": {
+                "kind": "call",
+                "name": "Vec2",
+                "args": [
+                  {
+                    "kind": "const",
+                    "value": 0,
+                    "line": 17
+                  },
+                  {
+                    "kind": "const",
+                    "value": 0,
+                    "line": 17
+                  }
+                ],
+                "line": 17
+              },
+              "line": 17
+            },
+            {
+              "kind": "for_each",
+              "variable": "agent",
+              "iterable": {
+                "kind": "load",
+                "path": "snapshot.agents",
+                "line": 18
+              },
+              "body": [
+                {
+                  "kind": "aug_assign",
+                  "target": "center",
+                  "op": "+",
+                  "value": {
+                    "kind": "load",
+                    "path": "agent.position",
+                    "line": 19
+                  },
+                  "line": 19
+                }
+              ],
+              "line": 18
+            },
+            {
+              "kind": "assign",
+              "target": "center",
+              "value": {
+                "kind": "binary",
+                "op": "/",
+                "left": {
+                  "kind": "load",
+                  "path": "center",
+                  "line": 20
+                },
+                "right": {
+                  "kind": "load",
+                  "path": "snapshot.agent_count",
+                  "line": 20
+                },
+                "line": 20
+              },
+              "line": 20
+            },
+            {
+              "kind": "assign",
+              "target": "rotation",
+              "value": {
+                "kind": "const",
+                "value": 0,
+                "line": 21
+              },
+              "line": 21
+            },
+            {
+              "kind": "for_each",
+              "variable": "agent",
+              "iterable": {
+                "kind": "load",
+                "path": "snapshot.agents",
+                "line": 22
+              },
+              "body": [
+                {
+                  "kind": "assign",
+                  "target": "radial",
+                  "value": {
+                    "kind": "binary",
+                    "op": "-",
+                    "left": {
+                      "kind": "load",
+                      "path": "agent.position",
+                      "line": 23
+                    },
+                    "right": {
+                      "kind": "load",
+                      "path": "center",
+                      "line": 23
+                    },
+                    "line": 23
+                  },
+                  "line": 23
+                },
+                {
+                  "kind": "assign",
+                  "target": "radial_hat",
+                  "value": {
+                    "kind": "binary",
+                    "op": "/",
+                    "left": {
+                      "kind": "load",
+                      "path": "radial",
+                      "line": 24
+                    },
+                    "right": {
+                      "kind": "call",
+                      "name": "max",
+                      "args": [
+                        {
+                          "kind": "call",
+                          "name": "norm",
+                          "args": [
+                            {
+                              "kind": "load",
+                              "path": "radial",
+                              "line": 24
+                            }
+                          ],
+                          "line": 24
+                        },
+                        {
+                          "kind": "const",
+                          "value": 1e-12,
+                          "line": 24
+                        }
+                      ],
+                      "line": 24
+                    },
+                    "line": 24
+                  },
+                  "line": 24
+                },
+                {
+                  "kind": "aug_assign",
+                  "target": "rotation",
+                  "op": "+",
+                  "value": {
+                    "kind": "call",
+                    "name": "cross2",
+                    "args": [
+                      {
+                        "kind": "load",
+                        "path": "radial_hat",
+                        "line": 25
+                      },
+                      {
+                        "kind": "load",
+                        "path": "agent.heading",
+                        "line": 25
+                      }
+                    ],
+                    "line": 25
+                  },
+                  "line": 25
+                }
+              ],
+              "line": 22
+            },
+            {
+              "kind": "return",
+              "value": {
+                "kind": "binary",
+                "op": "/",
+                "left": {
+                  "kind": "call",
+                  "name": "abs",
+                  "args": [
+                    {
+                      "kind": "load",
+                      "path": "rotation",
+                      "line": 26
+                    }
+                  ],
+                  "line": 26
+                },
+                "right": {
+                  "kind": "load",
+                  "path": "snapshot.agent_count",
+                  "line": 26
+                },
+                "line": 26
+              },
+              "line": 26
+            }
+          ],
+          "source_line": 15
+        }
+      ]
+    }
+  },
+  "kernel_input": {
+    "initial_state_json": "[{\"x\":-2.25,\"y\":0,\"heading\":4.19305201743496},{\"x\":-2.025,\"y\":0.3897114317029974,\"heading\":4.56413230006682},{\"x\":-1.8,\"y\":0.7794228634059948,\"heading\":2.10389713533839},{\"x\":-1.575,\"y\":1.169134295108992,\"heading\":5.6666055009929},{\"x\":-1.35,\"y\":1.5588457268119895,\"heading\":4.041870538583977},{\"x\":-1.125,\"y\":1.948557158514987,\"heading\":1.9550160950042716},{\"x\":-2.025,\"y\":-0.3897114317029974,\"heading\":3.9952657794319197},{\"x\":-1.8,\"y\":0,\"heading\":0.9552756289278168},{\"x\":-1.575,\"y\":0.3897114317029974,\"heading\":4.095884325511402},{\"x\":-1.35,\"y\":0.7794228634059948,\"heading\":4.727161005445887},{\"x\":-1.125,\"y\":1.169134295108992,\"heading\":2.5556336036982676},{\"x\":-0.9,\"y\":1.5588457268119895,\"heading\":0.788185618978816},{\"x\":-0.675,\"y\":1.948557158514987,\"heading\":5.721913346622405},{\"x\":-1.8,\"y\":-0.7794228634059948,\"heading\":3.1112980584713377},{\"x\":-1.575,\"y\":-0.3897114317029974,\"heading\":1.723710254708735},{\"x\":-1.35,\"y\":0,\"heading\":4.128739698077147},{\"x\":-1.125,\"y\":0.3897114317029974,\"heading\":4.9298022275447435},{\"x\":-0.9,\"y\":0.7794228634059948,\"heading\":1.1350126223986248},{\"x\":-0.675,\"y\":1.169134295108992,\"heading\":0.7456492069252473},{\"x\":-0.45,\"y\":1.5588457268119895,\"heading\":6.165984366487945},{\"x\":-0.225,\"y\":1.948557158514987,\"heading\":0.40256824457634494},{\"x\":-1.575,\"y\":-1.169134295108992,\"heading\":0.8402129375619835},{\"x\":-1.35,\"y\":-0.7794228634059948,\"heading\":0.5881092199020088},{\"x\":-1.125,\"y\":-0.3897114317029974,\"heading\":2.1761798852729086},{\"x\":-0.9,\"y\":0,\"heading\":3.6123138522235405},{\"x\":-0.675,\"y\":0.3897114317029974,\"heading\":5.7104348083457985},{\"x\":-0.45,\"y\":0.7794228634059948,\"heading\":1.8412673036500333},{\"x\":-0.225,\"y\":1.169134295108992,\"heading\":2.2262702627665303},{\"x\":0,\"y\":1.5588457268119895,\"heading\":4.821650006843583},{\"x\":0.225,\"y\":1.948557158514987,\"heading\":3.6363398653265486},{\"x\":-1.35,\"y\":-1.5588457268119895,\"heading\":2.532970583290597},{\"x\":-1.125,\"y\":-1.169134295108992,\"heading\":0.5997981306658465},{\"x\":-0.9,\"y\":-0.7794228634059948,\"heading\":1.0105839000817127},{\"x\":-0.675,\"y\":-0.3897114317029974,\"heading\":4.693641004909456},{\"x\":-0.45,\"y\":0,\"heading\":3.161151498271221},{\"x\":-0.225,\"y\":0.3897114317029974,\"heading\":3.220266376990269},{\"x\":0,\"y\":0.7794228634059948,\"heading\":3.724761467587838},{\"x\":0.225,\"y\":1.169134295108992,\"heading\":5.296719519375185},{\"x\":0.45,\"y\":1.5588457268119895,\"heading\":3.198519093401307},{\"x\":0.675,\"y\":1.948557158514987,\"heading\":5.504539614523831},{\"x\":-1.125,\"y\":-1.948557158514987,\"heading\":5.806990578684231},{\"x\":-0.9,\"y\":-1.5588457268119895,\"heading\":5.843825108751524},{\"x\":-0.675,\"y\":-1.169134295108992,\"heading\":2.063227044781022},{\"x\":-0.45,\"y\":-0.7794228634059948,\"heading\":0.9276582304845857},{\"x\":-0.225,\"y\":-0.3897114317029974,\"heading\":1.4250524472502926},{\"x\":0,\"y\":0,\"heading\":2.3758675768063},{\"x\":0.225,\"y\":0.3897114317029974,\"heading\":3.5901637037199},{\"x\":0.45,\"y\":0.7794228634059948,\"heading\":0.882395938941602},{\"x\":0.675,\"y\":1.169134295108992,\"heading\":2.408606889958441},{\"x\":0.9,\"y\":1.5588457268119895,\"heading\":5.852016171770995},{\"x\":1.125,\"y\":1.948557158514987,\"heading\":3.062957986566122},{\"x\":-0.675,\"y\":-1.948557158514987,\"heading\":6.066816367894751},{\"x\":-0.45,\"y\":-1.5588457268119895,\"heading\":1.698312491084488},{\"x\":-0.225,\"y\":-1.169134295108992,\"heading\":5.817762519659938},{\"x\":0,\"y\":-0.7794228634059948,\"heading\":1.8633691162609116},{\"x\":0.225,\"y\":-0.3897114317029974,\"heading\":0.008583158792599965},{\"x\":0.45,\"y\":0,\"heading\":1.2027568040831562},{\"x\":0.675,\"y\":0.3897114317029974,\"heading\":2.9643971416943695},{\"x\":0.9,\"y\":0.7794228634059948,\"heading\":0.8626129097835511},{\"x\":1.125,\"y\":1.169134295108992,\"heading\":4.948567208102658},{\"x\":1.35,\"y\":1.5588457268119895,\"heading\":4.269289910247131},{\"x\":-0.225,\"y\":-1.948557158514987,\"heading\":2.2718527583812937},{\"x\":0,\"y\":-1.5588457268119895,\"heading\":0.7594095866187319},{\"x\":0.225,\"y\":-1.169134295108992,\"heading\":3.9378154247026345},{\"x\":0.45,\"y\":-0.7794228634059948,\"heading\":4.181132686619779},{\"x\":0.675,\"y\":-0.3897114317029974,\"heading\":5.664335719072393},{\"x\":0.9,\"y\":0,\"heading\":5.482765508877319},{\"x\":1.125,\"y\":0.3897114317029974,\"heading\":2.8247436104849144},{\"x\":1.35,\"y\":0.7794228634059948,\"heading\":4.732473384322522},{\"x\":1.575,\"y\":1.169134295108992,\"heading\":0.1541211212889648},{\"x\":0.225,\"y\":-1.948557158514987,\"heading\":5.957585506780022},{\"x\":0.45,\"y\":-1.5588457268119895,\"heading\":3.5932792562564195},{\"x\":0.675,\"y\":-1.169134295108992,\"heading\":3.355317489057782},{\"x\":0.9,\"y\":-0.7794228634059948,\"heading\":1.1602142989447761},{\"x\":1.125,\"y\":-0.3897114317029974,\"heading\":6.152104921543566},{\"x\":1.35,\"y\":0,\"heading\":6.039143001874199},{\"x\":1.575,\"y\":0.3897114317029974,\"heading\":5.357956195581666},{\"x\":1.8,\"y\":0.7794228634059948,\"heading\":3.791854343749881},{\"x\":0.675,\"y\":-1.948557158514987,\"heading\":0.11005803778832358},{\"x\":0.9,\"y\":-1.5588457268119895,\"heading\":6.050759594505705},{\"x\":1.125,\"y\":-1.169134295108992,\"heading\":0.28341846863358094},{\"x\":1.35,\"y\":-0.7794228634059948,\"heading\":5.008101883436955},{\"x\":1.575,\"y\":-0.3897114317029974,\"heading\":5.803451803778951},{\"x\":1.8,\"y\":0,\"heading\":0.5307138176106941},{\"x\":2.025,\"y\":0.3897114317029974,\"heading\":4.161914886878605},{\"x\":1.125,\"y\":-1.948557158514987,\"heading\":0.5065365974867165},{\"x\":1.35,\"y\":-1.5588457268119895,\"heading\":2.247565562409215},{\"x\":1.575,\"y\":-1.169134295108992,\"heading\":4.179805714527173},{\"x\":1.8,\"y\":-0.7794228634059948,\"heading\":0.4772153762081257},{\"x\":2.025,\"y\":-0.3897114317029974,\"heading\":0.22052816215364704},{\"x\":2.25,\"y\":0,\"heading\":3.2086495158160937}]",
+    "world_references_json": "{\"schema\":\"vlab.world-references/0.1\",\"references\":[],\"sensors\":[]}",
+    "seed": 2026,
+    "physics_dt_bits": "0x3f847ae147ae147b",
+    "control_dt_bits": "0x3fb999999999999a",
+    "metric_dt_bits": "0x3fb999999999999a",
+    "interaction_radius_bits": "0x3fe9eb851eb851ec",
+    "arena_size_bits": "0x4024000000000000",
+    "sensor_noise_bits": "0x3fb999999999999a",
+    "max_forward_speed_bits": "0x3f747ae147ae147b",
+    "max_angular_speed_bits": "0x3ff921fb54442d18",
+    "environment_ir_json": "null",
+    "controller_ir_json": "{\"schema\":\"vlab.controller-ir/0.1\",\"language\":\"python-vlab/0.1\",\"controller\":\"ActiveElasticAgent\",\"entry\":\"step\",\"parameters\":{\"N\":\"scalar\",\"ARENA_SIZE\":\"scalar\",\"INITIAL_POSITION_NOISE\":\"scalar\",\"CONTROL_DT\":\"scalar\",\"SENSOR_NOISE\":\"scalar\",\"EXPERIMENT_DURATION\":\"scalar\",\"U\":\"scalar\",\"OMEGA_MAX\":\"scalar\",\"K1\":\"scalar\",\"K2\":\"scalar\",\"POTENTIAL_ALPHA\":\"scalar\",\"POTENTIAL_EPSILON\":\"scalar\",\"DESIRED_DISTANCE\":\"scalar\",\"PROXIMAL_RANGE\":\"scalar\",\"INTERACTION_RADIUS\":\"scalar\",\"MAX_FORWARD_SPEED\":\"scalar\",\"MAX_ANGULAR_SPEED\":\"scalar\"},\"references\":[],\"state\":[],\"body\":[{\"kind\":\"assign\",\"target\":\"proximal\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":3},{\"kind\":\"const\",\"value\":0,\"line\":3}],\"line\":3},\"line\":3},{\"kind\":\"assign\",\"target\":\"sigma_lj\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"DESIRED_DISTANCE\",\"line\":4},\"right\":{\"kind\":\"call\",\"name\":\"pow\",\"args\":[{\"kind\":\"const\",\"value\":2,\"line\":4},{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"const\",\"value\":1,\"line\":4},\"right\":{\"kind\":\"load\",\"path\":\"POTENTIAL_ALPHA\",\"line\":4},\"line\":4}],\"line\":4},\"line\":4},\"line\":4},{\"kind\":\"for_each\",\"variable\":\"neighbour\",\"iterable\":{\"kind\":\"load\",\"path\":\"obs.neighbours\",\"line\":5},\"body\":[{\"kind\":\"assign\",\"target\":\"displacement\",\"value\":{\"kind\":\"load\",\"path\":\"neighbour.relative_position\",\"line\":6},\"line\":6},{\"kind\":\"assign\",\"target\":\"distance\",\"value\":{\"kind\":\"call\",\"name\":\"norm\",\"args\":[{\"kind\":\"load\",\"path\":\"displacement\",\"line\":7}],\"line\":7},\"line\":7},{\"kind\":\"assign\",\"target\":\"ratio\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"sigma_lj\",\"line\":8},\"right\":{\"kind\":\"load\",\"path\":\"distance\",\"line\":8},\"line\":8},\"line\":8},{\"kind\":\"assign\",\"target\":\"magnitude\",\"value\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"unary\",\"op\":\"-\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"const\",\"value\":4,\"line\":9},\"right\":{\"kind\":\"load\",\"path\":\"POTENTIAL_ALPHA\",\"line\":9},\"line\":9},\"right\":{\"kind\":\"load\",\"path\":\"POTENTIAL_EPSILON\",\"line\":9},\"line\":9},\"right\":{\"kind\":\"load\",\"path\":\"distance\",\"line\":9},\"line\":9},\"line\":9},\"right\":{\"kind\":\"binary\",\"op\":\"-\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"const\",\"value\":2,\"line\":9},\"right\":{\"kind\":\"call\",\"name\":\"pow\",\"args\":[{\"kind\":\"load\",\"path\":\"ratio\",\"line\":9},{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"const\",\"value\":2,\"line\":9},\"right\":{\"kind\":\"load\",\"path\":\"POTENTIAL_ALPHA\",\"line\":9},\"line\":9}],\"line\":9},\"line\":9},\"right\":{\"kind\":\"call\",\"name\":\"pow\",\"args\":[{\"kind\":\"load\",\"path\":\"ratio\",\"line\":9},{\"kind\":\"load\",\"path\":\"POTENTIAL_ALPHA\",\"line\":9}],\"line\":9},\"line\":9},\"line\":9},\"line\":9},{\"kind\":\"aug_assign\",\"target\":\"proximal\",\"op\":\"+\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"magnitude\",\"line\":10},\"right\":{\"kind\":\"load\",\"path\":\"displacement\",\"line\":10},\"line\":10},\"right\":{\"kind\":\"load\",\"path\":\"distance\",\"line\":10},\"line\":10},\"line\":10}],\"line\":5},{\"kind\":\"assign\",\"target\":\"forward\",\"value\":{\"kind\":\"binary\",\"op\":\"+\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"K1\",\"line\":11},\"right\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"proximal\",\"line\":11},{\"kind\":\"load\",\"path\":\"obs.heading\",\"line\":11}],\"line\":11},\"line\":11},\"right\":{\"kind\":\"load\",\"path\":\"U\",\"line\":11},\"line\":11},\"line\":11},{\"kind\":\"assign\",\"target\":\"turning\",\"value\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"K2\",\"line\":12},\"right\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"proximal\",\"line\":12},{\"kind\":\"call\",\"name\":\"perpendicular\",\"args\":[{\"kind\":\"load\",\"path\":\"obs.heading\",\"line\":12}],\"line\":12}],\"line\":12},\"line\":12},\"line\":12},{\"kind\":\"return\",\"value\":{\"kind\":\"call\",\"name\":\"Motion\",\"args\":[{\"kind\":\"load\",\"path\":\"forward\",\"line\":13},{\"kind\":\"load\",\"path\":\"turning\",\"line\":13}],\"line\":13},\"line\":13}]}",
+    "metrics_ir_json": "{\"language\":\"python-vlab-metrics/0.1\",\"schema\":\"vlab.metrics-ir/0.1\",\"measurement_phase\":\"post-physics-wrapped-state/1\",\"observation_contract\":{\"mode\":\"read-only-global-snapshot\",\"fields\":[\"snapshot.scientific_time\",\"snapshot.physics_ticks\",\"snapshot.control_updates\",\"snapshot.agent_count\",\"snapshot.agents[].index\",\"snapshot.agents[].position\",\"snapshot.agents[].velocity\",\"snapshot.agents[].angular_velocity\",\"snapshot.agents[].heading\",\"snapshot.agents[].heading_angle\",\"snapshot.agents[].action.forward\",\"snapshot.agents[].action.turning\",\"snapshot.config.N\",\"snapshot.config.ARENA_SIZE\",\"snapshot.config.INITIAL_POSITION_NOISE\",\"snapshot.config.CONTROL_DT\",\"snapshot.config.SENSOR_NOISE\",\"snapshot.config.EXPERIMENT_DURATION\",\"snapshot.config.U\",\"snapshot.config.OMEGA_MAX\",\"snapshot.config.K1\",\"snapshot.config.K2\",\"snapshot.config.POTENTIAL_ALPHA\",\"snapshot.config.POTENTIAL_EPSILON\",\"snapshot.config.DESIRED_DISTANCE\",\"snapshot.config.PROXIMAL_RANGE\",\"snapshot.config.INTERACTION_RADIUS\",\"snapshot.config.MAX_FORWARD_SPEED\",\"snapshot.config.MAX_ANGULAR_SPEED\"],\"intrinsics\":[]},\"references\":[],\"metrics\":[{\"id\":\"polarization\",\"name\":\"Polarization order parameter\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.1},\"function\":\"polarization\",\"body\":[{\"kind\":\"assign\",\"target\":\"total\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":10},{\"kind\":\"const\",\"value\":0,\"line\":10}],\"line\":10},\"line\":10},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":11},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"total\",\"op\":\"+\",\"value\":{\"kind\":\"load\",\"path\":\"agent.heading\",\"line\":12},\"line\":12}],\"line\":11},{\"kind\":\"return\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"norm\",\"args\":[{\"kind\":\"load\",\"path\":\"total\",\"line\":13}],\"line\":13},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":13},\"line\":13},\"line\":13}],\"source_line\":8},{\"id\":\"angular_momentum\",\"name\":\"Angular momentum order parameter\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.1},\"function\":\"angular_momentum\",\"body\":[{\"kind\":\"assign\",\"target\":\"center\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":17},{\"kind\":\"const\",\"value\":0,\"line\":17}],\"line\":17},\"line\":17},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":18},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"center\",\"op\":\"+\",\"value\":{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":19},\"line\":19}],\"line\":18},{\"kind\":\"assign\",\"target\":\"center\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"center\",\"line\":20},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":20},\"line\":20},\"line\":20},{\"kind\":\"assign\",\"target\":\"rotation\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":21},\"line\":21},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":22},\"body\":[{\"kind\":\"assign\",\"target\":\"radial\",\"value\":{\"kind\":\"binary\",\"op\":\"-\",\"left\":{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":23},\"right\":{\"kind\":\"load\",\"path\":\"center\",\"line\":23},\"line\":23},\"line\":23},{\"kind\":\"assign\",\"target\":\"radial_hat\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"radial\",\"line\":24},\"right\":{\"kind\":\"call\",\"name\":\"max\",\"args\":[{\"kind\":\"call\",\"name\":\"norm\",\"args\":[{\"kind\":\"load\",\"path\":\"radial\",\"line\":24}],\"line\":24},{\"kind\":\"const\",\"value\":1e-12,\"line\":24}],\"line\":24},\"line\":24},\"line\":24},{\"kind\":\"aug_assign\",\"target\":\"rotation\",\"op\":\"+\",\"value\":{\"kind\":\"call\",\"name\":\"cross2\",\"args\":[{\"kind\":\"load\",\"path\":\"radial_hat\",\"line\":25},{\"kind\":\"load\",\"path\":\"agent.heading\",\"line\":25}],\"line\":25},\"line\":25}],\"line\":22},{\"kind\":\"return\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"abs\",\"args\":[{\"kind\":\"load\",\"path\":\"rotation\",\"line\":26}],\"line\":26},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":26},\"line\":26},\"line\":26}],\"source_line\":15}]}",
+    "parameters_json": "{\"N\":91,\"ARENA_SIZE\":10,\"INITIAL_POSITION_NOISE\":0,\"CONTROL_DT\":0.1,\"SENSOR_NOISE\":0.1,\"EXPERIMENT_DURATION\":25000,\"U\":0.005,\"OMEGA_MAX\":1.5707963267948966,\"K1\":0.005,\"K2\":0.06,\"POTENTIAL_ALPHA\":2,\"POTENTIAL_EPSILON\":1.5,\"DESIRED_DISTANCE\":0.45,\"PROXIMAL_RANGE\":0.81,\"INTERACTION_RADIUS\":0.81,\"MAX_FORWARD_SPEED\":0.005,\"MAX_ANGULAR_SPEED\":1.5707963267948966}"
+  }
+}

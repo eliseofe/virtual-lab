@@ -4,19 +4,27 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 
+import { dockerSkipReason } from "./support/docker.mjs";
+
 const migrationPath = new URL(
   "../../supabase/migrations/20260921170000_capability_request_integrity.sql",
   import.meta.url,
 );
 const migration = readFileSync(migrationPath, "utf8");
 
-test("#466 capability-request evidence is complete, retained safely, and lossless", async () => {
+test("#466 capability-request evidence is complete, retained safely, and lossless", async (t) => {
   // Keep this ticket bounded: it must not replace the closure RPCs whose
   // revision/readback behavior belongs to later tickets.
   assert.doesNotMatch(migration, /create or replace function public\.submit_extension_closure/i);
   assert.doesNotMatch(migration, /create or replace function public\.revalidate_extension_closure/i);
   assert.match(migration, /create constraint trigger enforce_extension_requirement_coverage/i);
   assert.match(migration, /deferrable initially deferred/i);
+
+  const skipReason = dockerSkipReason();
+  if (skipReason) {
+    t.skip(skipReason);
+    return;
+  }
 
   const container = `vlab-issue466-${process.pid}-${Date.now()}`;
   let started = false;
