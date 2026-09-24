@@ -103,7 +103,7 @@ export function SimulationPresentation() {
               {readinessLabel(readiness)}
             </Badge>
             <Badge variant="light" color={stateColor(snapshot.runState)} data-vlab-simulation-state>{snapshot.runState}</Badge>
-            <Badge variant="outline" color="gray">Seed {snapshot.seed}</Badge>
+            <Badge variant="outline" color="gray" data-vlab-simulation-seed={snapshot.seed}>Seed {snapshot.seed}</Badge>
           </Group>
         </Group>
 
@@ -120,7 +120,7 @@ export function SimulationPresentation() {
               <Group justify="space-between" align="end">
                 <Box>
                   <Text size="sm" fw={700}>Execution speed</Text>
-                  <Text size="xs" c="dimmed">Target {snapshot.targetSpeed}</Text>
+                  <Text size="xs" c="dimmed" data-vlab-simulation-target={snapshot.targetSpeed}>Target {snapshot.targetSpeed}</Text>
                 </Box>
                 <Box ta="right">
                   <Text size="xs" c="dimmed">Actual</Text>

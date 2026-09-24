@@ -14,12 +14,25 @@ async function state(send) {
     configValue: document.querySelector('#experiment-config')?.value ?? null,
     initializerValue: document.querySelector('#initializer-source')?.value ?? null,
     controllerValue: document.querySelector('#controller-source')?.value ?? null,
-    scientificTime: document.querySelector('#scientific-time')?.textContent ?? null,
-    physicsTicks: document.querySelector('#physics-ticks')?.textContent ?? null,
+    // #569: runtime values as the user sees them: the React simulation panel
+    // when it is mounted (the legacy labels are then hidden and not redrawn),
+    // otherwise the legacy labels.
+    ...(() => {
+      const react = document.body.classList.contains('vlab-react-simulation-mounted');
+      const shown = (reactSelector, legacySelector, attribute = null) => {
+        if (!react) return document.querySelector(legacySelector)?.textContent ?? null;
+        const node = document.querySelector(reactSelector);
+        return (attribute ? node?.getAttribute(attribute) : node?.textContent) ?? null;
+      };
+      return {
+        scientificTime: shown('[data-vlab-simulation-time]', '#scientific-time'),
+        physicsTicks: shown('[data-vlab-simulation-physics]', '#physics-ticks'),
+        speedLabel: shown('[data-vlab-simulation-target]', '#simulation-speed-value', 'data-vlab-simulation-target'),
+        actualSpeed: shown('[data-vlab-simulation-actual-speed]', '#actual-simulation-speed'),
+        runSeed: shown('[data-vlab-simulation-seed]', '#run-seed', 'data-vlab-simulation-seed'),
+      };
+    })(),
     speed: document.querySelector('#simulation-speed')?.value ?? null,
-    speedLabel: document.querySelector('#simulation-speed-value')?.textContent ?? null,
-    actualSpeed: document.querySelector('#actual-simulation-speed')?.textContent ?? null,
-    runSeed: document.querySelector('#run-seed')?.textContent ?? null,
     metricRuntimeBridge: Boolean(globalThis.__vlabMetricRuntime),
     codeEditorsReady: document.querySelectorAll('[data-vlab-code-editor-ready="true"]').length,
     codeEditorErrors: document.querySelectorAll('[data-vlab-code-editor-ready="error"]').length,
