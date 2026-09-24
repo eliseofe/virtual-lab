@@ -98,11 +98,7 @@ mod tests {
                 initialization.next_u64(),
                 initialization.next_u64(),
             ],
-            [
-                0xDB9C559891948D23,
-                0x78BC927DED35455D,
-                0xAAD71E75CDE2B88E,
-            ]
+            [0xDB9C559891948D23, 0x78BC927DED35455D, 0xAAD71E75CDE2B88E,]
         );
 
         assert_eq!(
@@ -111,16 +107,8 @@ mod tests {
         );
         let mut sensing = ScientificRng::for_domain(2026, RNG_DOMAIN_SENSING, 0).unwrap();
         assert_eq!(
-            [
-                sensing.next_u64(),
-                sensing.next_u64(),
-                sensing.next_u64(),
-            ],
-            [
-                0xACB00A4D94376943,
-                0xD1950AA56F146E6C,
-                0xA1739EB99746500B,
-            ]
+            [sensing.next_u64(), sensing.next_u64(), sensing.next_u64(),],
+            [0xACB00A4D94376943, 0xD1950AA56F146E6C, 0xA1739EB99746500B,]
         );
 
         assert_eq!(
@@ -148,13 +136,15 @@ mod tests {
     #[test]
     fn domain_and_stream_separation_are_draw_count_independent() {
         let mut sensing = ScientificRng::for_domain(2026, RNG_DOMAIN_SENSING, 0).unwrap();
-        let controller_before =
-            ScientificRng::for_domain(2026, RNG_DOMAIN_CONTROLLER, 7).unwrap().next_u64();
+        let controller_before = ScientificRng::for_domain(2026, RNG_DOMAIN_CONTROLLER, 7)
+            .unwrap()
+            .next_u64();
         for _ in 0..1000 {
             sensing.next_u64();
         }
-        let controller_after =
-            ScientificRng::for_domain(2026, RNG_DOMAIN_CONTROLLER, 7).unwrap().next_u64();
+        let controller_after = ScientificRng::for_domain(2026, RNG_DOMAIN_CONTROLLER, 7)
+            .unwrap()
+            .next_u64();
         assert_eq!(controller_before, controller_after);
         assert_ne!(
             derive_scientific_stream_seed(2026, RNG_DOMAIN_CONTROLLER, 7).unwrap(),

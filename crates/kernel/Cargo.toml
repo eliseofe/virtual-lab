@@ -6,7 +6,6 @@ license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-path = "src/entry.rs"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

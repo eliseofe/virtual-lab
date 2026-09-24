@@ -1,24 +1,22 @@
 use std::collections::BTreeMap;
 
-use wasm_bindgen::prelude::*;
 use serde::Deserialize;
+use wasm_bindgen::prelude::*;
 
 mod adaptive_neighbour_index;
 mod controller_ir;
 mod environment_ir;
+mod metrics_ir;
 mod neighbour_index;
 mod rng;
 pub use adaptive_neighbour_index::{AdaptivePeriodicBvh, PRODUCTION_NEIGHBOUR_STRATEGY};
 pub use controller_ir::IrControllerRuntime;
 pub use environment_ir::EnvironmentRuntime;
+pub use metrics_ir::MetricProbeSimulation;
 pub use neighbour_index::PeriodicGridNeighbourIndex;
 pub use rng::{
-    derive_scientific_stream_seed,
-    ScientificRng,
-    RNG_CONTRACT_VERSION,
-    RNG_DOMAIN_CONTROLLER,
-    RNG_DOMAIN_INITIALIZATION,
-    RNG_DOMAIN_SENSING,
+    derive_scientific_stream_seed, ScientificRng, RNG_CONTRACT_VERSION, RNG_DOMAIN_CONTROLLER,
+    RNG_DOMAIN_INITIALIZATION, RNG_DOMAIN_SENSING,
 };
 
 const TAU: f64 = std::f64::consts::PI * 2.0;
@@ -31,9 +29,15 @@ pub struct Vec2 {
 
 impl Vec2 {
     pub const ZERO: Vec2 = Vec2 { x: 0.0, y: 0.0 };
-    pub fn new(x: f64, y: f64) -> Self { Self { x, y } }
-    pub fn dot(self, other: Vec2) -> f64 { self.x * other.x + self.y * other.y }
-    pub fn norm_squared(self) -> f64 { self.dot(self) }
+    pub fn new(x: f64, y: f64) -> Self {
+        Self { x, y }
+    }
+    pub fn dot(self, other: Vec2) -> f64 {
+        self.x * other.x + self.y * other.y
+    }
+    pub fn norm_squared(self) -> f64 {
+        self.dot(self)
+    }
     pub fn rotate(self, angle: f64) -> Vec2 {
         let (sin, cos) = angle.sin_cos();
         Vec2::new(cos * self.x - sin * self.y, sin * self.x + cos * self.y)
@@ -42,15 +46,21 @@ impl Vec2 {
 
 impl std::ops::Add for Vec2 {
     type Output = Vec2;
-    fn add(self, rhs: Vec2) -> Vec2 { Vec2::new(self.x + rhs.x, self.y + rhs.y) }
+    fn add(self, rhs: Vec2) -> Vec2 {
+        Vec2::new(self.x + rhs.x, self.y + rhs.y)
+    }
 }
 impl std::ops::Sub for Vec2 {
     type Output = Vec2;
-    fn sub(self, rhs: Vec2) -> Vec2 { Vec2::new(self.x - rhs.x, self.y - rhs.y) }
+    fn sub(self, rhs: Vec2) -> Vec2 {
+        Vec2::new(self.x - rhs.x, self.y - rhs.y)
+    }
 }
 impl std::ops::Mul<f64> for Vec2 {
     type Output = Vec2;
-    fn mul(self, rhs: f64) -> Vec2 { Vec2::new(self.x * rhs, self.y * rhs) }
+    fn mul(self, rhs: f64) -> Vec2 {
+        Vec2::new(self.x * rhs, self.y * rhs)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -60,8 +70,12 @@ pub struct AgentPhysicalState {
 }
 
 impl AgentPhysicalState {
-    pub fn heading(self) -> Vec2 { Vec2::new(self.heading_angle.cos(), self.heading_angle.sin()) }
-    pub fn heading_perpendicular(self) -> Vec2 { Vec2::new(-self.heading_angle.sin(), self.heading_angle.cos()) }
+    pub fn heading(self) -> Vec2 {
+        Vec2::new(self.heading_angle.cos(), self.heading_angle.sin())
+    }
+    pub fn heading_perpendicular(self) -> Vec2 {
+        Vec2::new(-self.heading_angle.sin(), self.heading_angle.cos())
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -70,11 +84,18 @@ pub struct AgentKinematics {
     pub angular_velocity: f64,
 }
 impl Default for AgentKinematics {
-    fn default() -> Self { Self { velocity: Vec2::ZERO, angular_velocity: 0.0 } }
+    fn default() -> Self {
+        Self {
+            velocity: Vec2::ZERO,
+            angular_velocity: 0.0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NeighbourObservation { pub relative_position: Vec2 }
+pub struct NeighbourObservation {
+    pub relative_position: Vec2,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Observation {
@@ -85,7 +106,10 @@ pub struct Observation {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Action { pub forward: f64, pub turning: f64 }
+pub struct Action {
+    pub forward: f64,
+    pub turning: f64,
+}
 
 pub trait PhysicsModel {
     fn step(&self, state: &mut [AgentPhysicalState], actuators: &[Action], dt: f64);
@@ -100,7 +124,9 @@ pub trait PhysicsModel {
         assert_eq!(state.len(), kinematics.len());
         let previous = state.to_vec();
         self.step(state, actuators, dt);
-        for ((before, after), measured) in previous.iter().zip(state.iter()).zip(kinematics.iter_mut()) {
+        for ((before, after), measured) in
+            previous.iter().zip(state.iter()).zip(kinematics.iter_mut())
+        {
             measured.velocity = (after.position - before.position) * (1.0 / dt);
             measured.angular_velocity = (after.heading_angle - before.heading_angle) / dt;
         }
@@ -143,13 +169,18 @@ pub trait ControllerRuntime {
             ));
         }
         if private_state.iter().any(|profile| !profile.is_empty()) {
-            return Err("controller runtime does not support per-agent private-state initialization".to_owned());
+            return Err(
+                "controller runtime does not support per-agent private-state initialization"
+                    .to_owned(),
+            );
         }
         self.reset(agent_count);
         Ok(())
     }
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action;
-    fn scientific_private_state_value(&self, _agent_index: usize, _name: &str) -> Option<f64> { None }
+    fn scientific_private_state_value(&self, _agent_index: usize, _name: &str) -> Option<f64> {
+        None
+    }
 }
 pub trait MetricRuntime {
     fn reset(&mut self);
@@ -205,7 +236,11 @@ impl PhysicsModel for KinematicPhysics {
     ) {
         assert_eq!(state.len(), actuators.len());
         assert_eq!(state.len(), kinematics.len());
-        for ((agent, measured), action) in state.iter_mut().zip(kinematics.iter_mut()).zip(actuators.iter()) {
+        for ((agent, measured), action) in state
+            .iter_mut()
+            .zip(kinematics.iter_mut())
+            .zip(actuators.iter())
+        {
             // This backend integrates translation along the pre-turn heading. Record that
             // exact physical velocity instead of reconstructing it from post-step heading.
             measured.velocity = agent.heading() * action.forward;
@@ -231,9 +266,13 @@ impl NeighbourIndex for BruteForceNeighbourIndex {
         let origin = state[agent_index].position;
         let radius2 = radius * radius;
         for (index, candidate) in state.iter().enumerate() {
-            if index == agent_index { continue; }
+            if index == agent_index {
+                continue;
+            }
             let displacement = minimum_image(candidate.position - origin, arena_size);
-            if displacement.norm_squared() <= radius2 { out.push(index); }
+            if displacement.norm_squared() <= radius2 {
+                out.push(index);
+            }
         }
     }
 }
@@ -257,7 +296,9 @@ impl LocalObservationModel {
         out.heading = state[agent_index].heading();
         out.environmental_scalar = None;
         out.neighbours.clear();
-        if neighbour_indices.is_empty() { return; }
+        if neighbour_indices.is_empty() {
+            return;
+        }
         let (sin, cos) = bearing_noise.sin_cos();
         for &index in neighbour_indices.iter() {
             let relative = minimum_image(state[index].position - origin, arena_size);
@@ -265,7 +306,9 @@ impl LocalObservationModel {
                 cos * relative.x - sin * relative.y,
                 sin * relative.x + cos * relative.y,
             );
-            out.neighbours.push(NeighbourObservation { relative_position: relative });
+            out.neighbours.push(NeighbourObservation {
+                relative_position: relative,
+            });
         }
     }
 }
@@ -309,14 +352,26 @@ pub struct LocalCentroidProbeController {
 }
 impl LocalCentroidProbeController {
     pub fn new(base_speed: f64, attraction: f64, turning_gain: f64) -> Self {
-        Self { base_speed, attraction, turning_gain, private_steps: Vec::new() }
+        Self {
+            base_speed,
+            attraction,
+            turning_gain,
+            private_steps: Vec::new(),
+        }
     }
 }
 impl ControllerRuntime for LocalCentroidProbeController {
-    fn reset(&mut self, agent_count: usize) { self.private_steps = vec![0; agent_count]; }
+    fn reset(&mut self, agent_count: usize) {
+        self.private_steps = vec![0; agent_count];
+    }
     fn step(&mut self, agent_index: usize, observation: &Observation) -> Action {
         self.private_steps[agent_index] = self.private_steps[agent_index].saturating_add(1);
-        let force = observation.neighbours.iter().fold(Vec2::ZERO, |acc, neighbour| acc + neighbour.relative_position);
+        let force = observation
+            .neighbours
+            .iter()
+            .fold(Vec2::ZERO, |acc, neighbour| {
+                acc + neighbour.relative_position
+            });
         let perpendicular = Vec2::new(-observation.heading.y, observation.heading.x);
         Action {
             forward: self.base_speed + self.attraction * force.dot(observation.heading),
@@ -339,21 +394,37 @@ pub struct SimulationConfig {
 }
 impl SimulationConfig {
     fn validated_stride(period: f64, physics_dt: f64, name: &str) -> Result<u32, String> {
-        if !period.is_finite() || period <= 0.0 { return Err(format!("{name} must be finite and positive")); }
+        if !period.is_finite() || period <= 0.0 {
+            return Err(format!("{name} must be finite and positive"));
+        }
         let ratio = period / physics_dt;
         let rounded = ratio.round();
         if rounded < 1.0 || (ratio - rounded).abs() > 1e-9 {
-            return Err(format!("{name} must be an integer multiple of the simulator integration step"));
+            return Err(format!(
+                "{name} must be an integer multiple of the simulator integration step"
+            ));
         }
         Ok(rounded as u32)
     }
     fn validate(&self) -> Result<(u32, u32), String> {
-        if !self.physics_dt.is_finite() || self.physics_dt <= 0.0 { return Err("physics_dt must be finite and positive".to_owned()); }
-        if !self.interaction_radius.is_finite() || self.interaction_radius <= 0.0 { return Err("interaction radius must be finite and positive".to_owned()); }
-        if !self.arena_size.is_finite() || self.arena_size <= 0.0 { return Err("arena size must be finite and positive".to_owned()); }
-        if !self.sensor_noise.is_finite() || self.sensor_noise < 0.0 { return Err("sensor noise must be finite and non-negative".to_owned()); }
-        if !self.max_forward_speed.is_finite() || self.max_forward_speed <= 0.0 { return Err("maximum forward speed must be finite and positive".to_owned()); }
-        if !self.max_angular_speed.is_finite() || self.max_angular_speed <= 0.0 { return Err("maximum angular speed must be finite and positive".to_owned()); }
+        if !self.physics_dt.is_finite() || self.physics_dt <= 0.0 {
+            return Err("physics_dt must be finite and positive".to_owned());
+        }
+        if !self.interaction_radius.is_finite() || self.interaction_radius <= 0.0 {
+            return Err("interaction radius must be finite and positive".to_owned());
+        }
+        if !self.arena_size.is_finite() || self.arena_size <= 0.0 {
+            return Err("arena size must be finite and positive".to_owned());
+        }
+        if !self.sensor_noise.is_finite() || self.sensor_noise < 0.0 {
+            return Err("sensor noise must be finite and non-negative".to_owned());
+        }
+        if !self.max_forward_speed.is_finite() || self.max_forward_speed <= 0.0 {
+            return Err("maximum forward speed must be finite and positive".to_owned());
+        }
+        if !self.max_angular_speed.is_finite() || self.max_angular_speed <= 0.0 {
+            return Err("maximum angular speed must be finite and positive".to_owned());
+        }
         Ok((
             Self::validated_stride(self.control_dt, self.physics_dt, "control_dt")?,
             Self::validated_stride(self.metric_dt, self.physics_dt, "metric_dt")?,
@@ -362,19 +433,30 @@ impl SimulationConfig {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SwarmInitialization { pub state: Vec<AgentPhysicalState> }
+pub struct SwarmInitialization {
+    pub state: Vec<AgentPhysicalState>,
+}
 
 impl SwarmInitialization {
     fn validate(&self) -> Result<(), String> {
-        if self.state.is_empty() { return Err("initial state must contain at least one agent".to_owned()); }
+        if self.state.is_empty() {
+            return Err("initial state must contain at least one agent".to_owned());
+        }
         for (index, agent) in self.state.iter().enumerate() {
-            if !agent.position.x.is_finite() || !agent.position.y.is_finite() || !agent.heading_angle.is_finite() {
-                return Err(format!("initial state for agent {index} contains a non-finite value"));
+            if !agent.position.x.is_finite()
+                || !agent.position.y.is_finite()
+                || !agent.heading_angle.is_finite()
+            {
+                return Err(format!(
+                    "initial state for agent {index} contains a non-finite value"
+                ));
             }
         }
         Ok(())
     }
-    fn build_state(&self) -> Vec<AgentPhysicalState> { self.state.clone() }
+    fn build_state(&self) -> Vec<AgentPhysicalState> {
+        self.state.clone()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -385,12 +467,18 @@ pub struct WorldReferenceState {
 
 impl WorldReferenceState {
     fn empty(agent_count: usize) -> Self {
-        Self { positions: BTreeMap::new(), agent_sensors: vec![BTreeMap::new(); agent_count] }
+        Self {
+            positions: BTreeMap::new(),
+            agent_sensors: vec![BTreeMap::new(); agent_count],
+        }
     }
 
     fn validate(&self, agent_count: usize, arena_size: f64) -> Result<(), String> {
         if self.agent_sensors.len() != agent_count {
-            return Err(format!("reference-sensor profile count {} does not match agent count {agent_count}", self.agent_sensors.len()));
+            return Err(format!(
+                "reference-sensor profile count {} does not match agent count {agent_count}",
+                self.agent_sensors.len()
+            ));
         }
         let half = arena_size / 2.0;
         for (name, position) in &self.positions {
@@ -398,7 +486,9 @@ impl WorldReferenceState {
                 return Err(format!("reference '{name}' position must be finite"));
             }
             if position.x.abs() > half || position.y.abs() > half {
-                return Err(format!("reference '{name}' must fit inside arena size {arena_size}"));
+                return Err(format!(
+                    "reference '{name}' must fit inside arena size {arena_size}"
+                ));
             }
         }
         for (agent_index, sensors) in self.agent_sensors.iter().enumerate() {
@@ -424,8 +514,14 @@ impl WorldReferenceState {
         self.agent_sensors.get(agent_index)?.get(name).copied()
     }
 
-    pub(crate) fn relative_position(&self, name: &str, origin: Vec2, arena_size: f64) -> Option<Vec2> {
-        self.reference_position(name).map(|position| minimum_image(position - origin, arena_size))
+    pub(crate) fn relative_position(
+        &self,
+        name: &str,
+        origin: Vec2,
+        arena_size: f64,
+    ) -> Option<Vec2> {
+        self.reference_position(name)
+            .map(|position| minimum_image(position - origin, arena_size))
     }
 
     pub(crate) fn positions(&self) -> &BTreeMap<String, Vec2> {
@@ -440,11 +536,14 @@ impl WorldReferenceState {
         out: &mut BTreeMap<String, Vec2>,
     ) {
         out.clear();
-        let Some(sensors) = self.agent_sensors.get(agent_index) else { return; };
+        let Some(sensors) = self.agent_sensors.get(agent_index) else {
+            return;
+        };
         for (name, max_range) in sensors {
-            let relative = self.relative_position(name, origin, arena_size)
+            let relative = self
+                .relative_position(name, origin, arena_size)
                 .expect("validated reference sensor points to an existing reference");
-            if max_range.map_or(true, |range| relative.norm_squared() <= range * range) {
+            if max_range.is_none_or(|range| relative.norm_squared() <= range * range) {
                 out.insert(name.clone(), relative);
             }
         }
@@ -483,7 +582,9 @@ pub struct ScientificSnapshot<'a> {
 }
 
 impl ScientificSnapshot<'_> {
-    pub fn agent_count(&self) -> usize { self.agents.len() }
+    pub fn agent_count(&self) -> usize {
+        self.agents.len()
+    }
 
     pub fn value(&self, field: &str) -> Option<ScientificValue> {
         match field {
@@ -508,23 +609,35 @@ impl ScientificSnapshot<'_> {
             "heading_angle" => Some(ScientificValue::Scalar(agent.heading_angle)),
             "action.forward" => Some(ScientificValue::Scalar(action.forward)),
             "action.turning" => Some(ScientificValue::Scalar(action.turning)),
-            _ => field.strip_prefix("private_state.")
-                .and_then(|name| self.controller.scientific_private_state_value(agent_index, name))
+            _ => field
+                .strip_prefix("private_state.")
+                .and_then(|name| {
+                    self.controller
+                        .scientific_private_state_value(agent_index, name)
+                })
                 .map(ScientificValue::Scalar),
         }
     }
 
     pub fn reference_value(&self, name: &str, field: &str) -> Option<ScientificValue> {
         match field {
-            "position" => self.references.reference_position(name).map(ScientificValue::Vec2),
+            "position" => self
+                .references
+                .reference_position(name)
+                .map(ScientificValue::Vec2),
             _ => None,
         }
     }
 
-    pub fn has_environmental_scalar(&self) -> bool { self.environment.has_scalar() }
-    pub fn sample_environment(&self, position: Vec2) -> Option<f64> { self.environment.sample(position) }
+    pub fn has_environmental_scalar(&self) -> bool {
+        self.environment.has_scalar()
+    }
+    pub fn sample_environment(&self, position: Vec2) -> Option<f64> {
+        self.environment.sample(position)
+    }
     pub fn agent_private_scalar(&self, agent_index: usize, name: &str) -> Option<f64> {
-        self.controller.scientific_private_state_value(agent_index, name)
+        self.controller
+            .scientific_private_state_value(agent_index, name)
     }
 }
 
@@ -553,8 +666,17 @@ pub struct Simulation<C: ControllerRuntime> {
 }
 
 impl<C: ControllerRuntime> Simulation<C> {
-    pub fn new(initialization: SwarmInitialization, config: SimulationConfig, controller: C) -> Result<Self, String> {
-        Self::new_with_environment(initialization, config, controller, EnvironmentRuntime::default())
+    pub fn new(
+        initialization: SwarmInitialization,
+        config: SimulationConfig,
+        controller: C,
+    ) -> Result<Self, String> {
+        Self::new_with_environment(
+            initialization,
+            config,
+            controller,
+            EnvironmentRuntime::default(),
+        )
     }
 
     pub fn new_with_environment(
@@ -582,7 +704,12 @@ impl<C: ControllerRuntime> Simulation<C> {
     ) -> Result<Self, String> {
         let references = WorldReferenceState::empty(initialization.state.len());
         Self::new_with_environment_private_state_and_references(
-            initialization, controller_private_state, references, config, controller, environment,
+            initialization,
+            controller_private_state,
+            references,
+            config,
+            controller,
+            environment,
         )
     }
 
@@ -597,11 +724,14 @@ impl<C: ControllerRuntime> Simulation<C> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
         if controller_private_state.len() != initialization.state.len() {
-            return Err("controller private-state profile count must match initial agent count".to_owned());
+            return Err(
+                "controller private-state profile count must match initial agent count".to_owned(),
+            );
         }
         reference_initialization.validate(initialization.state.len(), config.arena_size)?;
         controller.set_run_seed(config.seed);
-        controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
+        controller
+            .reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         let mut state = initialization.build_state();
         wrap_state(&mut state, config.arena_size);
         let sensing_rng = ScientificRng::for_domain(config.seed, RNG_DOMAIN_SENSING, 0)
@@ -637,9 +767,16 @@ impl<C: ControllerRuntime> Simulation<C> {
         })
     }
 
-    pub fn add_metric(&mut self, mut metric: Box<dyn MetricRuntime>) { metric.reset(); self.metrics.push(metric); }
+    pub fn add_metric(&mut self, mut metric: Box<dyn MetricRuntime>) {
+        metric.reset();
+        self.metrics.push(metric);
+    }
 
-    pub fn replace_setup(&mut self, initialization: SwarmInitialization, config: SimulationConfig) -> Result<(), String> {
+    pub fn replace_setup(
+        &mut self,
+        initialization: SwarmInitialization,
+        config: SimulationConfig,
+    ) -> Result<(), String> {
         self.replace_setup_with_environment(initialization, config, EnvironmentRuntime::default())
     }
 
@@ -667,7 +804,11 @@ impl<C: ControllerRuntime> Simulation<C> {
     ) -> Result<(), String> {
         let references = WorldReferenceState::empty(initialization.state.len());
         self.replace_setup_with_environment_private_state_and_references(
-            initialization, controller_private_state, references, config, environment,
+            initialization,
+            controller_private_state,
+            references,
+            config,
+            environment,
         )
     }
 
@@ -682,11 +823,14 @@ impl<C: ControllerRuntime> Simulation<C> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
         if controller_private_state.len() != initialization.state.len() {
-            return Err("controller private-state profile count must match initial agent count".to_owned());
+            return Err(
+                "controller private-state profile count must match initial agent count".to_owned(),
+            );
         }
         reference_initialization.validate(initialization.state.len(), config.arena_size)?;
         self.controller.set_run_seed(config.seed);
-        self.controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
+        self.controller
+            .reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         self.initialization = initialization;
         self.controller_private_state = controller_private_state;
         self.reference_initialization = reference_initialization.clone();
@@ -709,7 +853,12 @@ impl<C: ControllerRuntime> Simulation<C> {
     ) -> Result<(), String> {
         let references = WorldReferenceState::empty(initialization.state.len());
         self.replace_setup_controller_and_references(
-            initialization, controller_private_state, references, config, environment, controller,
+            initialization,
+            controller_private_state,
+            references,
+            config,
+            environment,
+            controller,
         )
     }
 
@@ -725,11 +874,14 @@ impl<C: ControllerRuntime> Simulation<C> {
         initialization.validate()?;
         let (control_stride, metric_stride) = config.validate()?;
         if controller_private_state.len() != initialization.state.len() {
-            return Err("controller private-state profile count must match initial agent count".to_owned());
+            return Err(
+                "controller private-state profile count must match initial agent count".to_owned(),
+            );
         }
         reference_initialization.validate(initialization.state.len(), config.arena_size)?;
         controller.set_run_seed(config.seed);
-        controller.reset_with_private_state(initialization.state.len(), &controller_private_state)?;
+        controller
+            .reset_with_private_state(initialization.state.len(), &controller_private_state)?;
         self.initialization = initialization;
         self.controller_private_state = controller_private_state;
         self.reference_initialization = reference_initialization.clone();
@@ -745,7 +897,10 @@ impl<C: ControllerRuntime> Simulation<C> {
 
     pub fn replace_controller(&mut self, mut controller: C) -> Result<(), String> {
         controller.set_run_seed(self.config.seed);
-        controller.reset_with_private_state(self.initialization.state.len(), &self.controller_private_state)?;
+        controller.reset_with_private_state(
+            self.initialization.state.len(),
+            &self.controller_private_state,
+        )?;
         self.controller = controller;
         self.reset();
         Ok(())
@@ -770,13 +925,16 @@ impl<C: ControllerRuntime> Simulation<C> {
         self.controller
             .reset_with_private_state(self.state.len(), &self.controller_private_state)
             .expect("validated controller private-state initialization");
-        for metric in &mut self.metrics { metric.reset(); }
+        for metric in &mut self.metrics {
+            metric.reset();
+        }
     }
 
     pub fn advance_physics_ticks(&mut self, ticks: u32) {
         for _ in 0..ticks {
-            if self.physics_ticks % self.control_stride == 0 {
-                self.neighbour_index.rebuild(&self.state, self.config.arena_size);
+            if self.physics_ticks.is_multiple_of(self.control_stride) {
+                self.neighbour_index
+                    .rebuild(&self.state, self.config.arena_size);
                 let noise_scale = self.config.sensor_noise * TAU;
                 for agent_index in 0..self.state.len() {
                     let bearing_noise = self.sensing_rng.signed() * noise_scale;
@@ -790,7 +948,8 @@ impl<C: ControllerRuntime> Simulation<C> {
                         &mut self.neighbour_indices_scratch,
                         &mut self.observation_scratch,
                     );
-                    self.observation_scratch.environmental_scalar = self.environment.sample(self.state[agent_index].position);
+                    self.observation_scratch.environmental_scalar =
+                        self.environment.sample(self.state[agent_index].position);
                     self.reference_state.observe_for_agent(
                         agent_index,
                         self.state[agent_index].position,
@@ -799,16 +958,27 @@ impl<C: ControllerRuntime> Simulation<C> {
                     );
                     let raw = self.controller.step(agent_index, &self.observation_scratch);
                     self.actuators[agent_index] = Action {
-                        forward: raw.forward.clamp(-self.config.max_forward_speed, self.config.max_forward_speed),
-                        turning: raw.turning.clamp(-self.config.max_angular_speed, self.config.max_angular_speed),
+                        forward: raw.forward.clamp(
+                            -self.config.max_forward_speed,
+                            self.config.max_forward_speed,
+                        ),
+                        turning: raw.turning.clamp(
+                            -self.config.max_angular_speed,
+                            self.config.max_angular_speed,
+                        ),
                     };
                 }
                 self.control_updates = self.control_updates.saturating_add(1);
             }
-            self.physics.step_with_kinematics(&mut self.state, &mut self.kinematics, &self.actuators, self.config.physics_dt);
+            self.physics.step_with_kinematics(
+                &mut self.state,
+                &mut self.kinematics,
+                &self.actuators,
+                self.config.physics_dt,
+            );
             wrap_state(&mut self.state, self.config.arena_size);
             self.physics_ticks = self.physics_ticks.saturating_add(1);
-            if self.physics_ticks % self.metric_stride == 0 {
+            if self.physics_ticks.is_multiple_of(self.metric_stride) {
                 let snapshot = ScientificSnapshot {
                     scientific_time: self.scientific_time(),
                     physics_ticks: self.physics_ticks,
@@ -820,17 +990,31 @@ impl<C: ControllerRuntime> Simulation<C> {
                     environment: &self.environment,
                     controller: &self.controller,
                 };
-                for metric in &mut self.metrics { metric.observe(&snapshot); }
+                for metric in &mut self.metrics {
+                    metric.observe(&snapshot);
+                }
             }
         }
     }
 
-    pub fn scientific_time(&self) -> f64 { self.physics_ticks as f64 * self.config.physics_dt }
-    pub fn physics_ticks(&self) -> u32 { self.physics_ticks }
-    pub fn control_updates(&self) -> u32 { self.control_updates }
-    pub fn neighbour_strategy(&self) -> &'static str { PRODUCTION_NEIGHBOUR_STRATEGY }
+    pub fn scientific_time(&self) -> f64 {
+        self.physics_ticks as f64 * self.config.physics_dt
+    }
+    pub fn physics_ticks(&self) -> u32 {
+        self.physics_ticks
+    }
+    pub fn control_updates(&self) -> u32 {
+        self.control_updates
+    }
+    pub fn neighbour_strategy(&self) -> &'static str {
+        PRODUCTION_NEIGHBOUR_STRATEGY
+    }
     pub fn snapshot(&self) -> Snapshot {
-        Snapshot { scientific_time: self.scientific_time(), physics_ticks: self.physics_ticks, state: self.state.clone() }
+        Snapshot {
+            scientific_time: self.scientific_time(),
+            physics_ticks: self.physics_ticks,
+            state: self.state.clone(),
+        }
     }
     pub(crate) fn scientific_snapshot(&self) -> ScientificSnapshot<'_> {
         ScientificSnapshot {
@@ -845,9 +1029,13 @@ impl<C: ControllerRuntime> Simulation<C> {
             controller: &self.controller,
         }
     }
-    pub fn has_environmental_scalar(&self) -> bool { self.environment.has_scalar() }
+    pub fn has_environmental_scalar(&self) -> bool {
+        self.environment.has_scalar()
+    }
     pub fn sample_environment_grid(&self, resolution: u32) -> Vec<f64> {
-        if resolution == 0 || !self.environment.has_scalar() { return Vec::new(); }
+        if resolution == 0 || !self.environment.has_scalar() {
+            return Vec::new();
+        }
         let n = resolution as usize;
         let mut values = Vec::with_capacity(n * n);
         let half = self.config.arena_size / 2.0;
@@ -856,7 +1044,11 @@ impl<C: ControllerRuntime> Simulation<C> {
             let y = half - (row as f64 + 0.5) * step;
             for column in 0..resolution {
                 let x = -half + (column as f64 + 0.5) * step;
-                values.push(self.environment.sample(Vec2::new(x, y)).expect("environment is present"));
+                values.push(
+                    self.environment
+                        .sample(Vec2::new(x, y))
+                        .expect("environment is present"),
+                );
             }
         }
         values
@@ -878,13 +1070,16 @@ struct ParsedInitialState {
 }
 
 fn parse_initial_state(json: &str) -> Result<ParsedInitialState, String> {
-    let agents: Vec<InitialAgentJson> = serde_json::from_str(json).map_err(|error| format!("invalid initial state JSON: {error}"))?;
+    let agents: Vec<InitialAgentJson> = serde_json::from_str(json)
+        .map_err(|error| format!("invalid initial state JSON: {error}"))?;
     let mut state = Vec::with_capacity(agents.len());
     let mut controller_private_state = Vec::with_capacity(agents.len());
     for (index, agent) in agents.into_iter().enumerate() {
         for (name, value) in &agent.private_state {
             if !value.is_finite() {
-                return Err(format!("initial private state '{name}' for agent {index} must be finite"));
+                return Err(format!(
+                    "initial private state '{name}' for agent {index} must be finite"
+                ));
             }
         }
         state.push(AgentPhysicalState {
@@ -895,7 +1090,10 @@ fn parse_initial_state(json: &str) -> Result<ParsedInitialState, String> {
     }
     let initialization = SwarmInitialization { state };
     initialization.validate()?;
-    Ok(ParsedInitialState { initialization, controller_private_state })
+    Ok(ParsedInitialState {
+        initialization,
+        controller_private_state,
+    })
 }
 
 #[derive(Deserialize)]
@@ -942,20 +1140,32 @@ pub(crate) fn parse_world_reference_state(
     let mut positions = BTreeMap::new();
     for reference in payload.references {
         if !valid_reference_name(&reference.name) {
-            return Err(format!("reference '{}' name must be an identifier", reference.name));
+            return Err(format!(
+                "reference '{}' name must be an identifier",
+                reference.name
+            ));
         }
         if positions.contains_key(&reference.name) {
-            return Err(format!("reference '{}' was defined more than once", reference.name));
+            return Err(format!(
+                "reference '{}' was defined more than once",
+                reference.name
+            ));
         }
         positions.insert(reference.name, Vec2::new(reference.x, reference.y));
     }
     let mut agent_sensors = vec![BTreeMap::new(); agent_count];
     for sensor in payload.sensors {
         if sensor.agent_index >= agent_count {
-            return Err(format!("reference sensor agent index {} is outside [0, {agent_count})", sensor.agent_index));
+            return Err(format!(
+                "reference sensor agent index {} is outside [0, {agent_count})",
+                sensor.agent_index
+            ));
         }
         if !valid_reference_name(&sensor.name) {
-            return Err(format!("reference sensor '{}' name must be an identifier", sensor.name));
+            return Err(format!(
+                "reference sensor '{}' name must be an identifier",
+                sensor.name
+            ));
         }
         if agent_sensors[sensor.agent_index].contains_key(&sensor.name) {
             return Err(format!(
@@ -965,7 +1175,10 @@ pub(crate) fn parse_world_reference_state(
         }
         agent_sensors[sensor.agent_index].insert(sensor.name, sensor.max_range);
     }
-    let state = WorldReferenceState { positions, agent_sensors };
+    let state = WorldReferenceState {
+        positions,
+        agent_sensors,
+    };
     state.validate(agent_count, arena_size)?;
     Ok(state)
 }
@@ -995,7 +1208,9 @@ fn simulation_config(
 }
 
 #[wasm_bindgen]
-pub struct ProbeSimulation { simulation: Simulation<IrControllerRuntime> }
+pub struct ProbeSimulation {
+    simulation: Simulation<IrControllerRuntime>,
+}
 
 #[wasm_bindgen]
 impl ProbeSimulation {
@@ -1015,17 +1230,31 @@ impl ProbeSimulation {
         controller_ir_json: &str,
         parameters_json: &str,
     ) -> Result<ProbeSimulation, JsValue> {
-        let parsed = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
-        let config = simulation_config(seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size, sensor_noise, max_forward_speed, max_angular_speed);
-        let environment = EnvironmentRuntime::from_json(environment_ir_json).map_err(|message| JsValue::from_str(&message))?;
-        let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json).map_err(|message| JsValue::from_str(&message))?;
+        let parsed = parse_initial_state(initial_state_json)
+            .map_err(|message| JsValue::from_str(&message))?;
+        let config = simulation_config(
+            seed,
+            physics_dt,
+            control_dt,
+            metric_dt,
+            interaction_radius,
+            arena_size,
+            sensor_noise,
+            max_forward_speed,
+            max_angular_speed,
+        );
+        let environment = EnvironmentRuntime::from_json(environment_ir_json)
+            .map_err(|message| JsValue::from_str(&message))?;
+        let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
+            .map_err(|message| JsValue::from_str(&message))?;
         let simulation = Simulation::new_with_environment_and_private_state(
             parsed.initialization,
             parsed.controller_private_state,
             config,
             controller,
             environment,
-        ).map_err(|message| JsValue::from_str(&message))?;
+        )
+        .map_err(|message| JsValue::from_str(&message))?;
         Ok(Self { simulation })
     }
 
@@ -1043,30 +1272,68 @@ impl ProbeSimulation {
         max_angular_speed: f64,
         environment_ir_json: &str,
     ) -> Result<(), JsValue> {
-        let parsed = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
-        let config = simulation_config(seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size, sensor_noise, max_forward_speed, max_angular_speed);
-        let environment = EnvironmentRuntime::from_json(environment_ir_json).map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_setup_with_environment_and_private_state(
-            parsed.initialization,
-            parsed.controller_private_state,
-            config,
-            environment,
-        ).map_err(|message| JsValue::from_str(&message))
+        let parsed = parse_initial_state(initial_state_json)
+            .map_err(|message| JsValue::from_str(&message))?;
+        let config = simulation_config(
+            seed,
+            physics_dt,
+            control_dt,
+            metric_dt,
+            interaction_radius,
+            arena_size,
+            sensor_noise,
+            max_forward_speed,
+            max_angular_speed,
+        );
+        let environment = EnvironmentRuntime::from_json(environment_ir_json)
+            .map_err(|message| JsValue::from_str(&message))?;
+        self.simulation
+            .replace_setup_with_environment_and_private_state(
+                parsed.initialization,
+                parsed.controller_private_state,
+                config,
+                environment,
+            )
+            .map_err(|message| JsValue::from_str(&message))
     }
 
-    pub fn set_controller(&mut self, controller_ir_json: &str, parameters_json: &str) -> Result<(), JsValue> {
-        let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json).map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_controller(controller).map_err(|message| JsValue::from_str(&message))
+    pub fn set_controller(
+        &mut self,
+        controller_ir_json: &str,
+        parameters_json: &str,
+    ) -> Result<(), JsValue> {
+        let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
+            .map_err(|message| JsValue::from_str(&message))?;
+        self.simulation
+            .replace_controller(controller)
+            .map_err(|message| JsValue::from_str(&message))
     }
 
-    pub fn advance_ticks(&mut self, ticks: u32) -> f64 { self.simulation.advance_physics_ticks(ticks); self.simulation.scientific_time() }
-    pub fn reset(&mut self) { self.simulation.reset(); }
-    pub fn scientific_time(&self) -> f64 { self.simulation.scientific_time() }
-    pub fn physics_ticks(&self) -> u32 { self.simulation.physics_ticks() }
-    pub fn control_updates(&self) -> u32 { self.simulation.control_updates() }
-    pub fn neighbour_strategy(&self) -> String { self.simulation.neighbour_strategy().to_owned() }
-    pub fn has_environmental_scalar(&self) -> bool { self.simulation.has_environmental_scalar() }
-    pub fn sample_environment_grid(&self, resolution: u32) -> Vec<f64> { self.simulation.sample_environment_grid(resolution) }
+    pub fn advance_ticks(&mut self, ticks: u32) -> f64 {
+        self.simulation.advance_physics_ticks(ticks);
+        self.simulation.scientific_time()
+    }
+    pub fn reset(&mut self) {
+        self.simulation.reset();
+    }
+    pub fn scientific_time(&self) -> f64 {
+        self.simulation.scientific_time()
+    }
+    pub fn physics_ticks(&self) -> u32 {
+        self.simulation.physics_ticks()
+    }
+    pub fn control_updates(&self) -> u32 {
+        self.simulation.control_updates()
+    }
+    pub fn neighbour_strategy(&self) -> String {
+        self.simulation.neighbour_strategy().to_owned()
+    }
+    pub fn has_environmental_scalar(&self) -> bool {
+        self.simulation.has_environmental_scalar()
+    }
+    pub fn sample_environment_grid(&self, resolution: u32) -> Vec<f64> {
+        self.simulation.sample_environment_grid(resolution)
+    }
     pub fn snapshot_state(&self) -> Vec<f64> {
         let snapshot = self.simulation.snapshot();
         let mut values = Vec::with_capacity(snapshot.state.len() * 3);
@@ -1080,13 +1347,19 @@ impl ProbeSimulation {
 }
 
 #[wasm_bindgen]
-pub fn kernel_version() -> String { env!("CARGO_PKG_VERSION").to_owned() }
+pub fn kernel_version() -> String {
+    env!("CARGO_PKG_VERSION").to_owned()
+}
 
 #[wasm_bindgen]
-pub fn production_neighbour_strategy() -> String { PRODUCTION_NEIGHBOUR_STRATEGY.to_owned() }
+pub fn production_neighbour_strategy() -> String {
+    PRODUCTION_NEIGHBOUR_STRATEGY.to_owned()
+}
 
 #[wasm_bindgen]
-pub fn rng_contract_version() -> String { RNG_CONTRACT_VERSION.to_owned() }
+pub fn rng_contract_version() -> String {
+    RNG_CONTRACT_VERSION.to_owned()
+}
 
 #[cfg(test)]
 mod tests {
@@ -1107,75 +1380,115 @@ mod tests {
     }
     fn initialization(offset: f64, count: usize) -> SwarmInitialization {
         SwarmInitialization {
-            state: (0..count).map(|index| AgentPhysicalState {
-                position: Vec2::new(offset + index as f64 * 0.1, 0.0),
-                heading_angle: index as f64 * 0.01,
-            }).collect(),
+            state: (0..count)
+                .map(|index| AgentPhysicalState {
+                    position: Vec2::new(offset + index as f64 * 0.1, 0.0),
+                    heading_angle: index as f64 * 0.01,
+                })
+                .collect(),
         }
     }
     fn simulation(offset: f64) -> Simulation<LocalCentroidProbeController> {
-        Simulation::new(initialization(offset, 12), config(), LocalCentroidProbeController::new(0.1, 0.002, 0.04)).unwrap()
+        Simulation::new(
+            initialization(offset, 12),
+            config(),
+            LocalCentroidProbeController::new(0.1, 0.002, 0.04),
+        )
+        .unwrap()
     }
 
     #[test]
     fn production_simulation_reports_selected_neighbour_strategy() {
-        assert_eq!(simulation(0.0).neighbour_strategy(), "adaptive-periodic-bvh/v1");
+        assert_eq!(
+            simulation(0.0).neighbour_strategy(),
+            "adaptive-periodic-bvh/v1"
+        );
         assert_eq!(production_neighbour_strategy(), "adaptive-periodic-bvh/v1");
     }
 
     #[test]
     fn same_initial_state_schedule_and_seed_are_exactly_deterministic() {
-        let mut a = simulation(0.0); let mut b = simulation(0.0);
-        a.advance_physics_ticks(250); b.advance_physics_ticks(250);
+        let mut a = simulation(0.0);
+        let mut b = simulation(0.0);
+        a.advance_physics_ticks(250);
+        b.advance_physics_ticks(250);
         assert_eq!(a.snapshot(), b.snapshot());
     }
 
     #[test]
     fn explicit_initial_state_changes_simulator_start() {
-        assert_ne!(simulation(0.0).snapshot().state, simulation(1.0).snapshot().state);
+        assert_ne!(
+            simulation(0.0).snapshot().state,
+            simulation(1.0).snapshot().state
+        );
     }
 
     #[test]
     fn renderer_sampling_frequency_cannot_change_trajectory() {
-        let mut sparse_render = simulation(0.0); sparse_render.advance_physics_ticks(300); let expected = sparse_render.snapshot();
+        let mut sparse_render = simulation(0.0);
+        sparse_render.advance_physics_ticks(300);
+        let expected = sparse_render.snapshot();
         let mut frequent_render = simulation(0.0);
-        for _ in 0..30 { frequent_render.advance_physics_ticks(10); let _ = frequent_render.snapshot(); }
+        for _ in 0..30 {
+            frequent_render.advance_physics_ticks(10);
+            let _ = frequent_render.snapshot();
+        }
         assert_eq!(expected, frequent_render.snapshot());
     }
 
     #[test]
     fn control_and_physics_clocks_are_independent() {
-        let mut sim = simulation(0.0); sim.advance_physics_ticks(20);
-        assert_eq!(sim.physics_ticks(), 20); assert_eq!(sim.control_updates(), 4); assert!((sim.scientific_time() - 0.20).abs() < 1e-12);
+        let mut sim = simulation(0.0);
+        sim.advance_physics_ticks(20);
+        assert_eq!(sim.physics_ticks(), 20);
+        assert_eq!(sim.control_updates(), 4);
+        assert!((sim.scientific_time() - 0.20).abs() < 1e-12);
     }
 
     #[test]
     fn reset_reconstructs_exact_initial_state_and_noise_stream() {
-        let mut sim = simulation(0.0); let initial = sim.snapshot();
-        sim.advance_physics_ticks(100); let first = sim.snapshot();
-        sim.reset(); assert_eq!(initial, sim.snapshot());
-        sim.advance_physics_ticks(100); assert_eq!(first, sim.snapshot());
+        let mut sim = simulation(0.0);
+        let initial = sim.snapshot();
+        sim.advance_physics_ticks(100);
+        let first = sim.snapshot();
+        sim.reset();
+        assert_eq!(initial, sim.snapshot());
+        sim.advance_physics_ticks(100);
+        assert_eq!(first, sim.snapshot());
     }
 
     #[test]
     fn replacing_setup_restarts_with_new_explicit_state() {
-        let mut sim = simulation(0.0); sim.advance_physics_ticks(10);
+        let mut sim = simulation(0.0);
+        sim.advance_physics_ticks(10);
         let next = initialization(2.0, 5);
         sim.replace_setup(next.clone(), config()).unwrap();
-        assert_eq!(sim.snapshot().state, next.state); assert_eq!(sim.physics_ticks(), 0); assert_eq!(sim.control_updates(), 0);
+        assert_eq!(sim.snapshot().state, next.state);
+        assert_eq!(sim.physics_ticks(), 0);
+        assert_eq!(sim.control_updates(), 0);
     }
 
     #[test]
     fn periodic_neighbour_query_uses_minimum_image_distance() {
         let state = vec![
-            AgentPhysicalState { position: Vec2::new(-4.9, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(4.9, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState {
+                position: Vec2::new(-4.9, 0.0),
+                heading_angle: 0.0,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(4.9, 0.0),
+                heading_angle: 0.0,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(0.0, 0.0),
+                heading_angle: 0.0,
+            },
         ];
         let mut out = Vec::new();
         BruteForceNeighbourIndex.query(&state, 0, 0.5, 10.0, &mut out);
         assert_eq!(out, vec![1]);
-        let observation = LocalObservationModel.observe(&state, 0, &BruteForceNeighbourIndex, 0.5, 10.0, 0.0);
+        let observation =
+            LocalObservationModel.observe(&state, 0, &BruteForceNeighbourIndex, 0.5, 10.0, 0.0);
         assert!((observation.neighbours[0].relative_position.x + 0.2).abs() < 1e-12);
         assert_eq!(observation.environmental_scalar, None);
     }
@@ -1203,9 +1516,18 @@ mod tests {
     #[test]
     fn reusable_observation_path_matches_owned_observation() {
         let state = vec![
-            AgentPhysicalState { position: Vec2::new(-4.9, 0.0), heading_angle: 0.3 },
-            AgentPhysicalState { position: Vec2::new(4.9, 0.0), heading_angle: 1.0 },
-            AgentPhysicalState { position: Vec2::new(-4.7, 0.2), heading_angle: 2.0 },
+            AgentPhysicalState {
+                position: Vec2::new(-4.9, 0.0),
+                heading_angle: 0.3,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(4.9, 0.0),
+                heading_angle: 1.0,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(-4.7, 0.2),
+                heading_angle: 2.0,
+            },
         ];
         let mut grid = PeriodicGridNeighbourIndex::default();
         grid.rebuild(&state, 10.0);
@@ -1213,27 +1535,69 @@ mod tests {
         let mut indices = vec![999];
         let mut actual = Observation {
             heading: Vec2::new(99.0, 99.0),
-            neighbours: vec![NeighbourObservation { relative_position: Vec2::new(99.0, 99.0) }],
+            neighbours: vec![NeighbourObservation {
+                relative_position: Vec2::new(99.0, 99.0),
+            }],
             environmental_scalar: Some(99.0),
             references: BTreeMap::new(),
         };
-        LocalObservationModel.observe_into(&state, 0, &grid, 0.5, 10.0, 0.17, &mut indices, &mut actual);
+        LocalObservationModel.observe_into(
+            &state,
+            0,
+            &grid,
+            0.5,
+            10.0,
+            0.17,
+            &mut indices,
+            &mut actual,
+        );
         assert_eq!(actual, expected);
-        LocalObservationModel.observe_into(&state, 1, &grid, 0.5, 10.0, -0.23, &mut indices, &mut actual);
-        assert_eq!(actual, LocalObservationModel.observe(&state, 1, &grid, 0.5, 10.0, -0.23));
+        LocalObservationModel.observe_into(
+            &state,
+            1,
+            &grid,
+            0.5,
+            10.0,
+            -0.23,
+            &mut indices,
+            &mut actual,
+        );
+        assert_eq!(
+            actual,
+            LocalObservationModel.observe(&state, 1, &grid, 0.5, 10.0, -0.23)
+        );
     }
 
-    struct ConstantController { action: Action }
+    struct ConstantController {
+        action: Action,
+    }
     impl ControllerRuntime for ConstantController {
         fn reset(&mut self, _agent_count: usize) {}
-        fn step(&mut self, _agent_index: usize, _observation: &Observation) -> Action { self.action }
+        fn step(&mut self, _agent_index: usize, _observation: &Observation) -> Action {
+            self.action
+        }
     }
 
     #[test]
     fn returned_actions_are_applied_only_by_simulator_physics() {
-        let mut cfg = config(); cfg.physics_dt = 0.1; cfg.control_dt = 0.1; cfg.metric_dt = 0.1;
-        let mut sim = Simulation::new(initialization(0.0, 1), cfg, ConstantController { action: Action { forward: 1.0, turning: 0.0 } }).unwrap();
-        let before = sim.snapshot().state[0]; sim.advance_physics_ticks(1); let after = sim.snapshot().state[0];
+        let mut cfg = config();
+        cfg.physics_dt = 0.1;
+        cfg.control_dt = 0.1;
+        cfg.metric_dt = 0.1;
+        let mut sim = Simulation::new(
+            initialization(0.0, 1),
+            cfg,
+            ConstantController {
+                action: Action {
+                    forward: 1.0,
+                    turning: 0.0,
+                },
+            },
+        )
+        .unwrap();
+        let before = sim.snapshot().state[0];
+        sim.advance_physics_ticks(1);
+        let after = sim.snapshot().state[0];
         let displacement = minimum_image(after.position - before.position, 10.0);
         assert!((displacement.norm_squared().sqrt() - 0.1).abs() < 1e-12);
     }
@@ -1241,9 +1605,22 @@ mod tests {
     #[test]
     fn published_motion_limits_bound_controller_output() {
         let mut cfg = config();
-        cfg.physics_dt = 0.1; cfg.control_dt = 0.1; cfg.metric_dt = 0.1;
-        cfg.max_forward_speed = 0.5; cfg.max_angular_speed = 0.25;
-        let mut sim = Simulation::new(initialization(0.0, 1), cfg, ConstantController { action: Action { forward: 100.0, turning: -100.0 } }).unwrap();
+        cfg.physics_dt = 0.1;
+        cfg.control_dt = 0.1;
+        cfg.metric_dt = 0.1;
+        cfg.max_forward_speed = 0.5;
+        cfg.max_angular_speed = 0.25;
+        let mut sim = Simulation::new(
+            initialization(0.0, 1),
+            cfg,
+            ConstantController {
+                action: Action {
+                    forward: 100.0,
+                    turning: -100.0,
+                },
+            },
+        )
+        .unwrap();
         sim.advance_physics_ticks(1);
         let agent = sim.snapshot().state[0];
         assert!((agent.position.x - 0.05).abs() < 1e-12);
@@ -1254,7 +1631,12 @@ mod tests {
     impl ControllerRuntime for ScalarController {
         fn reset(&mut self, _agent_count: usize) {}
         fn step(&mut self, _agent_index: usize, observation: &Observation) -> Action {
-            Action { forward: observation.environmental_scalar.expect("scalar environment"), turning: 0.0 }
+            Action {
+                forward: observation
+                    .environmental_scalar
+                    .expect("scalar environment"),
+                turning: 0.0,
+            }
         }
     }
 
@@ -1267,22 +1649,41 @@ mod tests {
           "expression":{"kind":"binary","op":"+","left":{"kind":"x"},"right":{"kind":"const","value":1.0}}
         }"#).unwrap();
         let mut cfg = config();
-        cfg.physics_dt = 0.1; cfg.control_dt = 0.1; cfg.metric_dt = 0.1;
-        let init = SwarmInitialization { state: vec![AgentPhysicalState { position: Vec2::new(0.5, 0.0), heading_angle: 0.0 }] };
-        let mut sim = Simulation::new_with_environment(init, cfg, ScalarController, environment).unwrap();
+        cfg.physics_dt = 0.1;
+        cfg.control_dt = 0.1;
+        cfg.metric_dt = 0.1;
+        let init = SwarmInitialization {
+            state: vec![AgentPhysicalState {
+                position: Vec2::new(0.5, 0.0),
+                heading_angle: 0.0,
+            }],
+        };
+        let mut sim =
+            Simulation::new_with_environment(init, cfg, ScalarController, environment).unwrap();
         sim.advance_physics_ticks(1);
         assert!((sim.snapshot().state[0].position.x - 0.65).abs() < 1e-12);
     }
 
     #[test]
     fn environment_visual_grid_uses_same_runtime_evaluator_without_affecting_trajectory() {
-        let environment = EnvironmentRuntime::from_json(r#"{
+        let environment = EnvironmentRuntime::from_json(
+            r#"{
           "schema":"vlab.environment-scalar-ir/0.1",
           "language":"python-vlab/0.1",
           "entry":"environmental_scalar(x, y, config)",
           "expression":{"kind":"binary","op":"-","left":{"kind":"x"},"right":{"kind":"y"}}
-        }"#).unwrap();
-        let sim = Simulation::new_with_environment(initialization(0.0, 1), config(), ConstantController { action: Action::default() }, environment).unwrap();
+        }"#,
+        )
+        .unwrap();
+        let sim = Simulation::new_with_environment(
+            initialization(0.0, 1),
+            config(),
+            ConstantController {
+                action: Action::default(),
+            },
+            environment,
+        )
+        .unwrap();
         let grid = sim.sample_environment_grid(2);
         assert_eq!(grid.len(), 4);
         assert_eq!(grid, vec![-5.0, 0.0, 0.0, 5.0]);
@@ -1295,10 +1696,15 @@ mod tests {
             3,
             10.0,
         ).unwrap();
-        assert_eq!(references.reference_position("goal"), Some(Vec2::new(4.9, 0.0)));
+        assert_eq!(
+            references.reference_position("goal"),
+            Some(Vec2::new(4.9, 0.0))
+        );
         assert_eq!(references.sensor_range(0, "goal"), Some(None));
         assert_eq!(references.sensor_range(1, "goal"), Some(Some(2.0)));
-        let relative = references.relative_position("goal", Vec2::new(-4.9, 0.0), 10.0).unwrap();
+        let relative = references
+            .relative_position("goal", Vec2::new(-4.9, 0.0), 10.0)
+            .unwrap();
         assert!((relative.x + 0.2).abs() < 1e-12);
         assert!(relative.y.abs() < 1e-12);
 
@@ -1312,7 +1718,8 @@ mod tests {
             config(),
             LocalCentroidProbeController::new(0.0, 0.0, 0.0),
             EnvironmentRuntime::default(),
-        ).unwrap();
+        )
+        .unwrap();
         sim.reference_state.positions.get_mut("goal").unwrap().x = 1.0;
         sim.advance_physics_ticks(5);
         sim.reset();
@@ -1326,12 +1733,14 @@ mod tests {
             r#"{"references":[{"name":"goal","x":6.0,"y":0.0}],"sensors":[]}"#,
             1,
             10.0,
-        ).is_err());
+        )
+        .is_err());
         assert!(parse_world_reference_state(
             r#"{"references":[],"sensors":[{"agent_index":0,"name":"missing","max_range":null}]}"#,
             1,
             10.0,
-        ).is_err());
+        )
+        .is_err());
         assert!(parse_world_reference_state(
             r#"{"references":[{"name":"goal","x":0.0,"y":0.0}],"sensors":[{"agent_index":0,"name":"goal","max_range":0.0}]}"#,
             1,
@@ -1339,13 +1748,16 @@ mod tests {
         ).is_err());
     }
 
-
     struct ReferenceVisibilityController;
     impl ControllerRuntime for ReferenceVisibilityController {
         fn reset(&mut self, _agent_count: usize) {}
         fn step(&mut self, _agent_index: usize, observation: &Observation) -> Action {
             Action {
-                forward: if observation.references.contains_key("goal") { 1.0 } else { 0.0 },
+                forward: if observation.references.contains_key("goal") {
+                    1.0
+                } else {
+                    0.0
+                },
                 turning: 0.0,
             }
         }
@@ -1360,8 +1772,14 @@ mod tests {
         ).unwrap();
         let init = SwarmInitialization {
             state: vec![
-                AgentPhysicalState { position: Vec2::new(-4.9, 0.0), heading_angle: 0.0 },
-                AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
+                AgentPhysicalState {
+                    position: Vec2::new(-4.9, 0.0),
+                    heading_angle: 0.0,
+                },
+                AgentPhysicalState {
+                    position: Vec2::new(0.0, 0.0),
+                    heading_angle: 0.0,
+                },
             ],
         };
         let mut cfg = config();
@@ -1375,7 +1793,8 @@ mod tests {
             cfg,
             ReferenceVisibilityController,
             EnvironmentRuntime::default(),
-        ).unwrap();
+        )
+        .unwrap();
         sim.advance_physics_ticks(1);
         assert!((sim.state[0].position.x + 4.8).abs() < 1e-12);
         assert_eq!(sim.state[1].position.x, 0.0);
@@ -1384,9 +1803,27 @@ mod tests {
     #[test]
     fn positions_wrap_across_periodic_boundaries() {
         let mut cfg = config();
-        cfg.physics_dt = 0.1; cfg.control_dt = 0.1; cfg.metric_dt = 0.1; cfg.arena_size = 1.0;
-        let init = SwarmInitialization { state: vec![AgentPhysicalState { position: Vec2::new(0.49, 0.0), heading_angle: 0.0 }] };
-        let mut sim = Simulation::new(init, cfg, ConstantController { action: Action { forward: 0.2, turning: 0.0 } }).unwrap();
+        cfg.physics_dt = 0.1;
+        cfg.control_dt = 0.1;
+        cfg.metric_dt = 0.1;
+        cfg.arena_size = 1.0;
+        let init = SwarmInitialization {
+            state: vec![AgentPhysicalState {
+                position: Vec2::new(0.49, 0.0),
+                heading_angle: 0.0,
+            }],
+        };
+        let mut sim = Simulation::new(
+            init,
+            cfg,
+            ConstantController {
+                action: Action {
+                    forward: 0.2,
+                    turning: 0.0,
+                },
+            },
+        )
+        .unwrap();
         sim.advance_physics_ticks(1);
         assert!((sim.snapshot().state[0].position.x + 0.49).abs() < 1e-12);
     }
@@ -1394,10 +1831,23 @@ mod tests {
     #[test]
     fn bearing_noise_rotates_observed_neighbour_bearing_without_changing_range() {
         let state = vec![
-            AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new(1.0, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState {
+                position: Vec2::new(0.0, 0.0),
+                heading_angle: 0.0,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(1.0, 0.0),
+                heading_angle: 0.0,
+            },
         ];
-        let observation = LocalObservationModel.observe(&state, 0, &BruteForceNeighbourIndex, 2.0, 10.0, std::f64::consts::FRAC_PI_2);
+        let observation = LocalObservationModel.observe(
+            &state,
+            0,
+            &BruteForceNeighbourIndex,
+            2.0,
+            10.0,
+            std::f64::consts::FRAC_PI_2,
+        );
         let relative = observation.neighbours[0].relative_position;
         assert!(relative.x.abs() < 1e-12);
         assert!((relative.y - 1.0).abs() < 1e-12);
@@ -1405,13 +1855,24 @@ mod tests {
 
     #[test]
     fn invalid_clock_ratio_is_rejected() {
-        let mut cfg = config(); cfg.control_dt = 0.055;
-        assert!(Simulation::new(initialization(0.0, 3), cfg, LocalCentroidProbeController::new(0.1, 0.0, 0.0)).is_err());
+        let mut cfg = config();
+        cfg.control_dt = 0.055;
+        assert!(Simulation::new(
+            initialization(0.0, 3),
+            cfg,
+            LocalCentroidProbeController::new(0.1, 0.0, 0.0)
+        )
+        .is_err());
     }
 
     #[test]
     fn empty_initial_state_is_rejected() {
-        assert!(Simulation::new(SwarmInitialization { state: Vec::new() }, config(), LocalCentroidProbeController::new(0.1, 0.0, 0.0)).is_err());
+        assert!(Simulation::new(
+            SwarmInitialization { state: Vec::new() },
+            config(),
+            LocalCentroidProbeController::new(0.1, 0.0, 0.0)
+        )
+        .is_err());
     }
 
     #[test]

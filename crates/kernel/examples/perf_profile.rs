@@ -61,7 +61,8 @@ fn synthetic_state(agents: usize, arena_size: f64) -> Vec<AgentPhysicalState> {
 }
 
 fn controller() -> IrControllerRuntime {
-    IrControllerRuntime::from_json(PERF_IR, "{}").expect("science-neutral performance IR must validate")
+    IrControllerRuntime::from_json(PERF_IR, "{}")
+        .expect("science-neutral performance IR must validate")
 }
 
 fn config(radius: f64, arena_size: f64) -> SimulationConfig {
@@ -99,7 +100,8 @@ fn e2e_ms(
     cfg: &SimulationConfig,
     ticks: u32,
 ) -> f64 {
-    let mut simulation = Simulation::new(initialization.clone(), cfg.clone(), controller()).unwrap();
+    let mut simulation =
+        Simulation::new(initialization.clone(), cfg.clone(), controller()).unwrap();
     let mut samples = Vec::with_capacity(repetitions);
     for _ in 0..repetitions {
         simulation.reset();
@@ -139,13 +141,22 @@ fn run_workload(workload: Workload) {
     let observation_model = LocalObservationModel;
     let observation_ms = median_ms(repetitions, || {
         let observations: Vec<_> = (0..state.len())
-            .map(|agent| observation_model.observe(&state, agent, &index, workload.radius, arena_size, 0.0))
+            .map(|agent| {
+                observation_model.observe(&state, agent, &index, workload.radius, arena_size, 0.0)
+            })
             .collect();
-        black_box(observations.iter().map(|obs| obs.neighbours.len()).sum::<usize>());
+        black_box(
+            observations
+                .iter()
+                .map(|obs| obs.neighbours.len())
+                .sum::<usize>(),
+        );
     });
 
     let observations: Vec<_> = (0..state.len())
-        .map(|agent| observation_model.observe(&state, agent, &index, workload.radius, arena_size, 0.0))
+        .map(|agent| {
+            observation_model.observe(&state, agent, &index, workload.radius, arena_size, 0.0)
+        })
         .collect();
     let mut runtime = controller();
     runtime.reset(workload.agents);
@@ -157,20 +168,34 @@ fn run_workload(workload: Workload) {
 
     let physics = KinematicPhysics;
     let mut physics_state = state.clone();
-    let actions = vec![Action { forward: 0.1, turning: 0.01 }; workload.agents];
+    let actions = vec![
+        Action {
+            forward: 0.1,
+            turning: 0.01
+        };
+        workload.agents
+    ];
     let physics_ms = median_ms(repetitions, || {
         physics.step(&mut physics_state, &actions, PHYSICS_DT);
         black_box(&physics_state);
     });
 
-    let initialization = SwarmInitialization { state: state.clone() };
+    let initialization = SwarmInitialization {
+        state: state.clone(),
+    };
     let cfg = config(workload.radius, arena_size);
     let snapshot_sim = Simulation::new(initialization.clone(), cfg.clone(), controller()).unwrap();
     let snapshot_ms = median_ms(repetitions, || {
         black_box(snapshot_sim.snapshot());
     });
 
-    let ticks = if workload.agents >= 10_000 { 100 } else if workload.agents >= 1_000 { 300 } else { 1_000 };
+    let ticks = if workload.agents >= 10_000 {
+        100
+    } else if workload.agents >= 1_000 {
+        300
+    } else {
+        1_000
+    };
     let end_to_end_ms = e2e_ms(repetitions, &initialization, &cfg, ticks);
     let ticks_per_second = ticks as f64 / (end_to_end_ms / 1000.0);
     let model_seconds_per_wall_second = ticks_per_second * PHYSICS_DT;
@@ -197,16 +222,45 @@ fn run_workload(workload: Workload) {
 
 fn main() {
     println!("vlab_performance_profile_version=1");
-    println!("available_parallelism={}", std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1));
+    println!(
+        "available_parallelism={}",
+        std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+    );
     println!("case,agents,arena_size,radius,avg_neighbours,rebuild_ms,query_all_ms,observation_all_ms,controller_all_ms,physics_sweep_ms,snapshot_ms,e2e_ticks,e2e_ms,physics_ticks_per_s,model_seconds_per_wall_second");
 
     for workload in [
-        Workload { label: "agents-100", agents: 100, radius: 1.0 },
-        Workload { label: "agents-1000", agents: 1_000, radius: 1.0 },
-        Workload { label: "agents-10000", agents: 10_000, radius: 1.0 },
-        Workload { label: "radius-0.5", agents: 1_000, radius: 0.5 },
-        Workload { label: "radius-2.0", agents: 1_000, radius: 2.0 },
-        Workload { label: "radius-4.0", agents: 1_000, radius: 4.0 },
+        Workload {
+            label: "agents-100",
+            agents: 100,
+            radius: 1.0,
+        },
+        Workload {
+            label: "agents-1000",
+            agents: 1_000,
+            radius: 1.0,
+        },
+        Workload {
+            label: "agents-10000",
+            agents: 10_000,
+            radius: 1.0,
+        },
+        Workload {
+            label: "radius-0.5",
+            agents: 1_000,
+            radius: 0.5,
+        },
+        Workload {
+            label: "radius-2.0",
+            agents: 1_000,
+            radius: 2.0,
+        },
+        Workload {
+            label: "radius-4.0",
+            agents: 1_000,
+            radius: 4.0,
+        },
     ] {
         run_workload(workload);
     }

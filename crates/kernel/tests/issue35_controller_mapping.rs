@@ -56,7 +56,10 @@ fn signed_forward_velocity_really_moves_backward() {
     }];
     physics.step(
         &mut state,
-        &[Action { forward: -0.005, turning: 0.0 }],
+        &[Action {
+            forward: -0.005,
+            turning: 0.0,
+        }],
         1.0,
     );
     assert!((state[0].position.x + 0.005).abs() < 1e-12);
@@ -78,7 +81,10 @@ fn exact_controller_can_command_backward_motion() {
             references: std::collections::BTreeMap::new(),
         },
     );
-    assert!(action.forward < 0.0, "close neighbour ahead must produce a negative raw forward command");
+    assert!(
+        action.forward < 0.0,
+        "close neighbour ahead must produce a negative raw forward command"
+    );
     assert!(action.turning.abs() < 1e-12);
 }
 
@@ -98,15 +104,24 @@ fn exact_controller_turns_for_an_off_axis_neighbour() {
         },
     );
     assert!(action.forward > 0.0);
-    assert!(action.turning > 0.0, "a neighbour on the +body-y side must produce a +turn command in the simulator convention");
+    assert!(
+        action.turning > 0.0,
+        "a neighbour on the +body-y side must produce a +turn command in the simulator convention"
+    );
 }
 
 #[test]
 fn desired_distance_aligned_pair_translates_together() {
     let init = SwarmInitialization {
         state: vec![
-            AgentPhysicalState { position: Vec2::new(-0.225, 0.0), heading_angle: 0.0 },
-            AgentPhysicalState { position: Vec2::new( 0.225, 0.0), heading_angle: 0.0 },
+            AgentPhysicalState {
+                position: Vec2::new(-0.225, 0.0),
+                heading_angle: 0.0,
+            },
+            AgentPhysicalState {
+                position: Vec2::new(0.225, 0.0),
+                heading_angle: 0.0,
+            },
         ],
     };
     let config = SimulationConfig {

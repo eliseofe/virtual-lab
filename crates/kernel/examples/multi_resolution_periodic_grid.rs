@@ -100,10 +100,8 @@ impl GridLevel {
                             continue;
                         }
                         candidate_checks += 1;
-                        let displacement = minimum_image(
-                            state[candidate_index].position - origin,
-                            arena_size,
-                        );
+                        let displacement =
+                            minimum_image(state[candidate_index].position - origin, arena_size);
                         if displacement.norm_squared() <= radius2 {
                             out.push(candidate_index);
                         }
@@ -164,14 +162,18 @@ impl MultiResolutionPeriodicGrid {
         self.levels.clear();
         self.levels.reserve(cells_by_level.len());
         for cells_per_axis in cells_by_level {
-            self.levels.push(GridLevel::new(cells_per_axis, arena_size, state));
+            self.levels
+                .push(GridLevel::new(cells_per_axis, arena_size, state));
         }
         self.index_entries = self.levels.len() * state.len();
     }
 
     fn selected_level_index(&self, radius: f64) -> usize {
         assert!(radius.is_finite() && radius > 0.0);
-        assert!(!self.levels.is_empty(), "multi-resolution index queried before rebuild");
+        assert!(
+            !self.levels.is_empty(),
+            "multi-resolution index queried before rebuild"
+        );
         self.levels
             .iter()
             .position(|level| level.cell_size >= radius)
@@ -198,18 +200,10 @@ impl MultiResolutionPeriodicGrid {
         out: &mut Vec<usize>,
     ) -> QueryStats {
         debug_assert!(
-            (arena_size - self.arena_size).abs()
-                <= f64::EPSILON * arena_size.abs().max(1.0)
+            (arena_size - self.arena_size).abs() <= f64::EPSILON * arena_size.abs().max(1.0)
         );
         let level_index = self.selected_level_index(radius);
-        self.levels[level_index].query(
-            state,
-            agent_index,
-            radius,
-            arena_size,
-            level_index,
-            out,
-        )
+        self.levels[level_index].query(state, agent_index, radius, arena_size, level_index, out)
     }
 
     pub fn level_count(&self) -> usize {
@@ -268,8 +262,7 @@ impl RadiusMatchedGridReference {
         out: &mut Vec<usize>,
     ) -> QueryStats {
         debug_assert!(
-            (arena_size - self.arena_size).abs()
-                <= f64::EPSILON * arena_size.abs().max(1.0)
+            (arena_size - self.arena_size).abs() <= f64::EPSILON * arena_size.abs().max(1.0)
         );
         self.level
             .as_ref()
@@ -292,7 +285,11 @@ impl RadiusMatchedGridReference {
     }
 
     pub fn index_entries(&self, agent_count: usize) -> usize {
-        if self.level.is_some() { agent_count } else { 0 }
+        if self.level.is_some() {
+            agent_count
+        } else {
+            0
+        }
     }
 }
 

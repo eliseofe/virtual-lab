@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    parse_initial_state, parse_world_reference_state, simulation_config, Action, ControllerRuntime,
-    EnvironmentRuntime, IrControllerRuntime, ScientificSnapshot, ScientificValue, Simulation, Vec2,
+    parse_initial_state, parse_world_reference_state, simulation_config, EnvironmentRuntime,
+    IrControllerRuntime, ScientificSnapshot, ScientificValue, Simulation, Vec2,
 };
 
 const METRICS_LANGUAGE: &str = "python-vlab-metrics/0.1";
@@ -192,7 +192,9 @@ fn at_line(line: Option<usize>, message: impl AsRef<str>) -> String {
 
 fn validated_stride(period: f64, physics_dt: f64, metric_id: &str) -> Result<u32, String> {
     if !period.is_finite() || period <= 0.0 {
-        return Err(format!("metric '{metric_id}' periodic interval must be finite and positive"));
+        return Err(format!(
+            "metric '{metric_id}' periodic interval must be finite and positive"
+        ));
     }
     let ratio = period / physics_dt;
     let rounded = ratio.round();
@@ -243,8 +245,9 @@ fn eval_expression(
                 return Err(at_line(*line, "snapshot.agents is iterable only"));
             }
             if let Some(name) = path.strip_prefix("snapshot.config.") {
-                let value = context.parameters.get(name)
-                    .ok_or_else(|| at_line(*line, format!("unknown configuration value '{name}'")))?;
+                let value = context.parameters.get(name).ok_or_else(|| {
+                    at_line(*line, format!("unknown configuration value '{name}'"))
+                })?;
                 return Ok(Value::Scalar(*value));
             }
             if let Some(reference_path) = path.strip_prefix("snapshot.references.") {
@@ -254,7 +257,10 @@ fn eval_expression(
                 if let Some(value) = context.snapshot.reference_value(name, &field) {
                     return Ok(value.into());
                 }
-                return Err(at_line(*line, format!("unknown world reference snapshot field '{reference_path}'")));
+                return Err(at_line(
+                    *line,
+                    format!("unknown world reference snapshot field '{reference_path}'"),
+                ));
             }
             if let Some(field) = path.strip_prefix("snapshot.") {
                 if let Some(value) = context.snapshot.value(field) {
@@ -270,8 +276,9 @@ fn eval_expression(
             }
             if let Some((root, field)) = path.split_once('.') {
                 if let Some(index) = loop_agents.get(root) {
-                    let value = context.snapshot.agent_value(*index, field)
-                        .ok_or_else(|| at_line(*line, format!("unknown metric agent field '{field}'")))?;
+                    let value = context.snapshot.agent_value(*index, field).ok_or_else(|| {
+                        at_line(*line, format!("unknown metric agent field '{field}'"))
+                    })?;
                     return Ok(value.into());
                 }
             }
@@ -286,12 +293,22 @@ fn eval_expression(
                     Value::Bool(_) => Err(at_line(*line, "unary '-' cannot apply to bool")),
                 },
                 "not" => Ok(Value::Bool(!value.boolean("metric 'not' operand")?)),
-                _ => Err(at_line(*line, format!("unsupported metric unary operator '{op}'"))),
+                _ => Err(at_line(
+                    *line,
+                    format!("unsupported metric unary operator '{op}'"),
+                )),
             }
         }
-        Expression::Compare { op, left, right, line } => {
-            let left = eval_expression(left, context, locals, loop_agents)?.scalar("metric comparison left")?;
-            let right = eval_expression(right, context, locals, loop_agents)?.scalar("metric comparison right")?;
+        Expression::Compare {
+            op,
+            left,
+            right,
+            line,
+        } => {
+            let left = eval_expression(left, context, locals, loop_agents)?
+                .scalar("metric comparison left")?;
+            let right = eval_expression(right, context, locals, loop_agents)?
+                .scalar("metric comparison right")?;
             let value = match op.as_str() {
                 "<" => left < right,
                 "<=" => left <= right,
@@ -299,27 +316,48 @@ fn eval_expression(
                 ">=" => left >= right,
                 "==" => left == right,
                 "!=" => left != right,
-                _ => return Err(at_line(*line, format!("unsupported metric comparison operator '{op}'"))),
+                _ => {
+                    return Err(at_line(
+                        *line,
+                        format!("unsupported metric comparison operator '{op}'"),
+                    ))
+                }
             };
             Ok(Value::Bool(value))
         }
-        Expression::BoolOp { op, left, right, line } => {
-            let left = eval_expression(left, context, locals, loop_agents)?.boolean("metric boolean left")?;
-            let right = eval_expression(right, context, locals, loop_agents)?.boolean("metric boolean right")?;
+        Expression::BoolOp {
+            op,
+            left,
+            right,
+            line,
+        } => {
+            let left = eval_expression(left, context, locals, loop_agents)?
+                .boolean("metric boolean left")?;
+            let right = eval_expression(right, context, locals, loop_agents)?
+                .boolean("metric boolean right")?;
             match op.as_str() {
                 "and" => Ok(Value::Bool(left && right)),
                 "or" => Ok(Value::Bool(left || right)),
-                _ => Err(at_line(*line, format!("unsupported metric boolean operator '{op}'"))),
+                _ => Err(at_line(
+                    *line,
+                    format!("unsupported metric boolean operator '{op}'"),
+                )),
             }
         }
-        Expression::Binary { op, left, right, line } => binary(
+        Expression::Binary {
+            op,
+            left,
+            right,
+            line,
+        } => binary(
             op,
             eval_expression(left, context, locals, loop_agents)?,
             eval_expression(right, context, locals, loop_agents)?,
             *line,
         ),
         Expression::Call { name, args, line } => {
-            let values = args.iter()
+            let values = args
+                .iter()
                 .map(|arg| eval_expression(arg, context, locals, loop_agents))
                 .collect::<Result<Vec<_>, _>>()?;
             match name.as_str() {
@@ -328,7 +366,9 @@ fn eval_expression(
                     values[1].scalar("Vec2 argument 2")?,
                 ))),
                 "dot" if values.len() == 2 => Ok(Value::Scalar(
-                    values[0].vec2("dot argument 1")?.dot(values[1].vec2("dot argument 2")?),
+                    values[0]
+                        .vec2("dot argument 1")?
+                        .dot(values[1].vec2("dot argument 2")?),
                 )),
                 "cross2" if values.len() == 2 => {
                     let a = values[0].vec2("cross2 argument 1")?;
@@ -340,33 +380,69 @@ fn eval_expression(
                 )),
                 "environment_scalar_at" if values.len() == 1 => {
                     let position = values[0].vec2("environment_scalar_at argument")?;
-                    let value = context.snapshot.sample_environment(position)
-                        .ok_or_else(|| at_line(*line, "this Experiment has no scalar environment"))?;
+                    let value = context
+                        .snapshot
+                        .sample_environment(position)
+                        .ok_or_else(|| {
+                            at_line(*line, "this Experiment has no scalar environment")
+                        })?;
                     Ok(Value::Scalar(value))
                 }
-                "abs" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("abs argument")?.abs())),
-                "sqrt" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("sqrt argument")?.sqrt())),
-                "exp" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("exp argument")?.exp())),
-                "log" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("log argument")?.ln())),
-                "sin" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("sin argument")?.sin())),
-                "cos" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("cos argument")?.cos())),
-                "tan" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("tan argument")?.tan())),
-                "asin" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("asin argument")?.asin())),
-                "acos" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("acos argument")?.acos())),
-                "atan" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("atan argument")?.atan())),
+                "abs" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("abs argument")?.abs()))
+                }
+                "sqrt" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("sqrt argument")?.sqrt()))
+                }
+                "exp" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("exp argument")?.exp()))
+                }
+                "log" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("log argument")?.ln()))
+                }
+                "sin" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("sin argument")?.sin()))
+                }
+                "cos" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("cos argument")?.cos()))
+                }
+                "tan" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("tan argument")?.tan()))
+                }
+                "asin" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("asin argument")?.asin()))
+                }
+                "acos" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("acos argument")?.acos()))
+                }
+                "atan" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("atan argument")?.atan()))
+                }
                 "atan2" if values.len() == 2 => Ok(Value::Scalar(
-                    values[0].scalar("atan2 argument 1")?.atan2(values[1].scalar("atan2 argument 2")?),
+                    values[0]
+                        .scalar("atan2 argument 1")?
+                        .atan2(values[1].scalar("atan2 argument 2")?),
                 )),
-                "floor" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("floor argument")?.floor())),
-                "ceil" if values.len() == 1 => Ok(Value::Scalar(values[0].scalar("ceil argument")?.ceil())),
+                "floor" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("floor argument")?.floor()))
+                }
+                "ceil" if values.len() == 1 => {
+                    Ok(Value::Scalar(values[0].scalar("ceil argument")?.ceil()))
+                }
                 "pow" if values.len() == 2 => Ok(Value::Scalar(
-                    values[0].scalar("pow argument 1")?.powf(values[1].scalar("pow argument 2")?),
+                    values[0]
+                        .scalar("pow argument 1")?
+                        .powf(values[1].scalar("pow argument 2")?),
                 )),
                 "min" if values.len() == 2 => Ok(Value::Scalar(
-                    values[0].scalar("min argument 1")?.min(values[1].scalar("min argument 2")?),
+                    values[0]
+                        .scalar("min argument 1")?
+                        .min(values[1].scalar("min argument 2")?),
                 )),
                 "max" if values.len() == 2 => Ok(Value::Scalar(
-                    values[0].scalar("max argument 1")?.max(values[1].scalar("max argument 2")?),
+                    values[0]
+                        .scalar("max argument 1")?
+                        .max(values[1].scalar("max argument 2")?),
                 )),
                 _ => Err(at_line(*line, format!("unsupported metric call '{name}'"))),
             }
@@ -386,47 +462,82 @@ fn execute_statements(
                 let value = eval_expression(value, context, locals, loop_agents)?;
                 locals.insert(target.clone(), value);
             }
-            Statement::AugAssign { target, op, value, line } => {
+            Statement::AugAssign {
+                target,
+                op,
+                value,
+                line,
+            } => {
                 if op != "+" {
-                    return Err(at_line(*line, format!("unsupported metric augmented operator '{op}'")));
+                    return Err(at_line(
+                        *line,
+                        format!("unsupported metric augmented operator '{op}'"),
+                    ));
                 }
-                let current = *locals.get(target)
-                    .ok_or_else(|| at_line(*line, format!("metric local '{target}' must exist before '+='")))?;
+                let current = *locals.get(target).ok_or_else(|| {
+                    at_line(
+                        *line,
+                        format!("metric local '{target}' must exist before '+='"),
+                    )
+                })?;
                 let addition = eval_expression(value, context, locals, loop_agents)?;
                 locals.insert(target.clone(), binary("+", current, addition, *line)?);
             }
-            Statement::ForEach { variable, iterable, body, line } => {
+            Statement::ForEach {
+                variable,
+                iterable,
+                body,
+                line,
+            } => {
                 match iterable {
                     Expression::Load { path, .. } if path == "snapshot.agents" => {}
-                    _ => return Err(at_line(*line, "metric loops must iterate over snapshot.agents")),
+                    _ => {
+                        return Err(at_line(
+                            *line,
+                            "metric loops must iterate over snapshot.agents",
+                        ))
+                    }
                 }
                 for index in 0..context.snapshot.agent_count() {
                     let previous = loop_agents.insert(variable.clone(), index);
                     let returned = execute_statements(body, context, locals, loop_agents)?;
                     match previous {
-                        Some(previous) => { loop_agents.insert(variable.clone(), previous); }
-                        None => { loop_agents.remove(variable); }
+                        Some(previous) => {
+                            loop_agents.insert(variable.clone(), previous);
+                        }
+                        None => {
+                            loop_agents.remove(variable);
+                        }
                     }
                     if returned.is_some() {
                         return Ok(returned);
                     }
                 }
             }
-            Statement::If { branches, else_body, .. } => {
+            Statement::If {
+                branches,
+                else_body,
+                ..
+            } => {
                 let mut matched = false;
                 for branch in branches {
-                    let condition = eval_expression(&branch.condition, context, locals, loop_agents)?
-                        .boolean("metric if/elif condition")?;
+                    let condition =
+                        eval_expression(&branch.condition, context, locals, loop_agents)?
+                            .boolean("metric if/elif condition")?;
                     if condition {
                         matched = true;
-                        if let Some(value) = execute_statements(&branch.body, context, locals, loop_agents)? {
+                        if let Some(value) =
+                            execute_statements(&branch.body, context, locals, loop_agents)?
+                        {
                             return Ok(Some(value));
                         }
                         break;
                     }
                 }
                 if !matched {
-                    if let Some(value) = execute_statements(else_body, context, locals, loop_agents)? {
+                    if let Some(value) =
+                        execute_statements(else_body, context, locals, loop_agents)?
+                    {
                         return Ok(Some(value));
                     }
                 }
@@ -502,8 +613,17 @@ pub struct IrMetricsRuntime {
 }
 
 impl IrMetricsRuntime {
-    pub fn from_json(metrics_ir_json: &str, parameters_json: &str, physics_dt: f64) -> Result<Self, String> {
-        Self::from_json_with_capacity(metrics_ir_json, parameters_json, physics_dt, DEFAULT_BUFFER_CAPACITY)
+    pub fn from_json(
+        metrics_ir_json: &str,
+        parameters_json: &str,
+        physics_dt: f64,
+    ) -> Result<Self, String> {
+        Self::from_json_with_capacity(
+            metrics_ir_json,
+            parameters_json,
+            physics_dt,
+            DEFAULT_BUFFER_CAPACITY,
+        )
     }
 
     fn from_json_with_capacity(
@@ -524,7 +644,10 @@ impl IrMetricsRuntime {
             return Err(format!("unsupported Metrics language '{}'", ir.language));
         }
         if ir.measurement_phase != METRIC_MEASUREMENT_PHASE {
-            return Err(format!("unsupported Metrics measurement phase '{}'", ir.measurement_phase));
+            return Err(format!(
+                "unsupported Metrics measurement phase '{}'",
+                ir.measurement_phase
+            ));
         }
         let parameters: BTreeMap<String, f64> = serde_json::from_str(parameters_json)
             .map_err(|error| format!("invalid metric parameter JSON: {error}"))?;
@@ -544,7 +667,11 @@ impl IrMetricsRuntime {
                 },
                 SamplingPolicy::Final => RuntimeSampling::Final,
             };
-            metrics.push(RuntimeMetric { id: metric.id, sampling, body: metric.body });
+            metrics.push(RuntimeMetric {
+                id: metric.id,
+                sampling,
+                body: metric.body,
+            });
         }
 
         Ok(Self {
@@ -567,17 +694,22 @@ impl IrMetricsRuntime {
         self.finalized = false;
     }
 
-    pub fn metric_count(&self) -> usize { self.metrics.len() }
+    pub fn metric_count(&self) -> usize {
+        self.metrics.len()
+    }
 
     pub fn next_due_tick(&self, current_tick: u32, target_tick: u32) -> Option<u32> {
-        self.metrics.iter().filter_map(|metric| match metric.sampling {
-            RuntimeSampling::Periodic { stride } => {
-                let quotient = current_tick / stride;
-                let next = quotient.checked_add(1)?.checked_mul(stride)?;
-                (next <= target_tick).then_some(next)
-            }
-            RuntimeSampling::Final => None,
-        }).min()
+        self.metrics
+            .iter()
+            .filter_map(|metric| match metric.sampling {
+                RuntimeSampling::Periodic { stride } => {
+                    let quotient = current_tick / stride;
+                    let next = quotient.checked_add(1)?.checked_mul(stride)?;
+                    (next <= target_tick).then_some(next)
+                }
+                RuntimeSampling::Final => None,
+            })
+            .min()
     }
 
     fn evaluate_metric(
@@ -586,16 +718,29 @@ impl IrMetricsRuntime {
         snapshot: &ScientificSnapshot<'_>,
     ) -> Result<f64, String> {
         let metric = &self.metrics[metric_index];
-        let context = EvaluationContext { snapshot, parameters: &self.parameters };
+        let context = EvaluationContext {
+            snapshot,
+            parameters: &self.parameters,
+        };
         let mut locals = HashMap::new();
         let mut loop_agents = HashMap::new();
-        execute_statements(&metric.body, &context, &mut locals, &mut loop_agents)?
-            .ok_or_else(|| format!("metric '{}' completed without returning a scalar", metric.id))
+        execute_statements(&metric.body, &context, &mut locals, &mut loop_agents)?.ok_or_else(
+            || {
+                format!(
+                    "metric '{}' completed without returning a scalar",
+                    metric.id
+                )
+            },
+        )
     }
 
     fn append_sample(&mut self, metric_index: usize, scientific_time: f64, value: f64) {
         if self.buffer.len() < self.buffer_capacity {
-            self.buffer.push_back(RawSample { metric_index, scientific_time, value });
+            self.buffer.push_back(RawSample {
+                metric_index,
+                scientific_time,
+                value,
+            });
             return;
         }
         self.dropped_samples = self.dropped_samples.saturating_add(1);
@@ -605,12 +750,22 @@ impl IrMetricsRuntime {
     }
 
     pub fn observe_due(&mut self, snapshot: &ScientificSnapshot<'_>) -> Result<(), String> {
-        let due: Vec<usize> = self.metrics.iter().enumerate().filter_map(|(index, metric)| match metric.sampling {
-            RuntimeSampling::Periodic { stride } if snapshot.physics_ticks % stride == 0 => Some(index),
-            _ => None,
-        }).collect();
+        let due: Vec<usize> = self
+            .metrics
+            .iter()
+            .enumerate()
+            .filter_map(|(index, metric)| match metric.sampling {
+                RuntimeSampling::Periodic { stride }
+                    if snapshot.physics_ticks.is_multiple_of(stride) =>
+                {
+                    Some(index)
+                }
+                _ => None,
+            })
+            .collect();
         for index in due {
-            let value = self.evaluate_metric(index, snapshot)
+            let value = self
+                .evaluate_metric(index, snapshot)
                 .map_err(|message| format!("metric '{}': {message}", self.metrics[index].id))?;
             self.append_sample(index, snapshot.scientific_time, value);
         }
@@ -618,12 +773,20 @@ impl IrMetricsRuntime {
     }
 
     pub fn finalize(&mut self, snapshot: &ScientificSnapshot<'_>) -> Result<(), String> {
-        if self.finalized { return Ok(()); }
-        let final_metrics: Vec<usize> = self.metrics.iter().enumerate().filter_map(|(index, metric)| {
-            matches!(metric.sampling, RuntimeSampling::Final).then_some(index)
-        }).collect();
+        if self.finalized {
+            return Ok(());
+        }
+        let final_metrics: Vec<usize> = self
+            .metrics
+            .iter()
+            .enumerate()
+            .filter_map(|(index, metric)| {
+                matches!(metric.sampling, RuntimeSampling::Final).then_some(index)
+            })
+            .collect();
         for index in final_metrics {
-            let value = self.evaluate_metric(index, snapshot)
+            let value = self
+                .evaluate_metric(index, snapshot)
                 .map_err(|message| format!("metric '{}': {message}", self.metrics[index].id))?;
             self.append_sample(index, snapshot.scientific_time, value);
         }
@@ -660,7 +823,8 @@ impl IrMetricsRuntime {
             buffer: self.buffer_output(),
         };
         self.batch_sequence = self.batch_sequence.saturating_add(1);
-        serde_json::to_string(&output).map_err(|error| format!("could not serialize metric sample batch: {error}"))
+        serde_json::to_string(&output)
+            .map_err(|error| format!("could not serialize metric sample batch: {error}"))
     }
 
     pub fn status_json(&self) -> Result<String, String> {
@@ -695,16 +859,25 @@ impl MetricProbeSimulation {
         metrics_ir_json: &str,
         parameters_json: &str,
     ) -> Result<MetricProbeSimulation, JsValue> {
-        let parsed = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
+        let parsed = parse_initial_state(initial_state_json)
+            .map_err(|message| JsValue::from_str(&message))?;
         let config = simulation_config(
-            seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size,
-            sensor_noise, max_forward_speed, max_angular_speed,
+            seed,
+            physics_dt,
+            control_dt,
+            metric_dt,
+            interaction_radius,
+            arena_size,
+            sensor_noise,
+            max_forward_speed,
+            max_angular_speed,
         );
         let references = parse_world_reference_state(
             world_references_json,
             parsed.initialization.state.len(),
             arena_size,
-        ).map_err(|message| JsValue::from_str(&message))?;
+        )
+        .map_err(|message| JsValue::from_str(&message))?;
         let environment = EnvironmentRuntime::from_json(environment_ir_json)
             .map_err(|message| JsValue::from_str(&message))?;
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
@@ -718,8 +891,12 @@ impl MetricProbeSimulation {
             config,
             controller,
             environment,
-        ).map_err(|message| JsValue::from_str(&message))?;
-        Ok(Self { simulation, metrics })
+        )
+        .map_err(|message| JsValue::from_str(&message))?;
+        Ok(Self {
+            simulation,
+            metrics,
+        })
     }
 
     pub fn set_setup(
@@ -739,27 +916,38 @@ impl MetricProbeSimulation {
         metrics_ir_json: &str,
         parameters_json: &str,
     ) -> Result<(), JsValue> {
-        let parsed = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
+        let parsed = parse_initial_state(initial_state_json)
+            .map_err(|message| JsValue::from_str(&message))?;
         let config = simulation_config(
-            seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size,
-            sensor_noise, max_forward_speed, max_angular_speed,
+            seed,
+            physics_dt,
+            control_dt,
+            metric_dt,
+            interaction_radius,
+            arena_size,
+            sensor_noise,
+            max_forward_speed,
+            max_angular_speed,
         );
         let references = parse_world_reference_state(
             world_references_json,
             parsed.initialization.state.len(),
             arena_size,
-        ).map_err(|message| JsValue::from_str(&message))?;
+        )
+        .map_err(|message| JsValue::from_str(&message))?;
         let environment = EnvironmentRuntime::from_json(environment_ir_json)
             .map_err(|message| JsValue::from_str(&message))?;
         let metrics = IrMetricsRuntime::from_json(metrics_ir_json, parameters_json, physics_dt)
             .map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_setup_with_environment_private_state_and_references(
-            parsed.initialization,
-            parsed.controller_private_state,
-            references,
-            config,
-            environment,
-        ).map_err(|message| JsValue::from_str(&message))?;
+        self.simulation
+            .replace_setup_with_environment_private_state_and_references(
+                parsed.initialization,
+                parsed.controller_private_state,
+                references,
+                config,
+                environment,
+            )
+            .map_err(|message| JsValue::from_str(&message))?;
         self.metrics = metrics;
         Ok(())
     }
@@ -782,49 +970,70 @@ impl MetricProbeSimulation {
         metrics_ir_json: &str,
         parameters_json: &str,
     ) -> Result<(), JsValue> {
-        let parsed = parse_initial_state(initial_state_json).map_err(|message| JsValue::from_str(&message))?;
+        let parsed = parse_initial_state(initial_state_json)
+            .map_err(|message| JsValue::from_str(&message))?;
         let config = simulation_config(
-            seed, physics_dt, control_dt, metric_dt, interaction_radius, arena_size,
-            sensor_noise, max_forward_speed, max_angular_speed,
+            seed,
+            physics_dt,
+            control_dt,
+            metric_dt,
+            interaction_radius,
+            arena_size,
+            sensor_noise,
+            max_forward_speed,
+            max_angular_speed,
         );
         let references = parse_world_reference_state(
             world_references_json,
             parsed.initialization.state.len(),
             arena_size,
-        ).map_err(|message| JsValue::from_str(&message))?;
+        )
+        .map_err(|message| JsValue::from_str(&message))?;
         let environment = EnvironmentRuntime::from_json(environment_ir_json)
             .map_err(|message| JsValue::from_str(&message))?;
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
             .map_err(|message| JsValue::from_str(&message))?;
         let metrics = IrMetricsRuntime::from_json(metrics_ir_json, parameters_json, physics_dt)
             .map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_setup_controller_and_references(
-            parsed.initialization,
-            parsed.controller_private_state,
-            references,
-            config,
-            environment,
-            controller,
-        ).map_err(|message| JsValue::from_str(&message))?;
+        self.simulation
+            .replace_setup_controller_and_references(
+                parsed.initialization,
+                parsed.controller_private_state,
+                references,
+                config,
+                environment,
+                controller,
+            )
+            .map_err(|message| JsValue::from_str(&message))?;
         self.metrics = metrics;
         Ok(())
     }
 
-    pub fn set_controller(&mut self, controller_ir_json: &str, parameters_json: &str) -> Result<(), JsValue> {
+    pub fn set_controller(
+        &mut self,
+        controller_ir_json: &str,
+        parameters_json: &str,
+    ) -> Result<(), JsValue> {
         let controller = IrControllerRuntime::from_json(controller_ir_json, parameters_json)
             .map_err(|message| JsValue::from_str(&message))?;
-        self.simulation.replace_controller(controller)
+        self.simulation
+            .replace_controller(controller)
             .map_err(|message| JsValue::from_str(&message))?;
         self.metrics.reset();
         Ok(())
     }
 
-    pub fn set_metrics(&mut self, metrics_ir_json: &str, parameters_json: &str) -> Result<(), JsValue> {
+    pub fn set_metrics(
+        &mut self,
+        metrics_ir_json: &str,
+        parameters_json: &str,
+    ) -> Result<(), JsValue> {
         let metrics = IrMetricsRuntime::from_json(
             metrics_ir_json,
             parameters_json,
             self.simulation.config.physics_dt,
-        ).map_err(|message| JsValue::from_str(&message))?;
+        )
+        .map_err(|message| JsValue::from_str(&message))?;
         self.metrics = metrics;
         self.simulation.reset();
         Ok(())
@@ -839,7 +1048,8 @@ impl MetricProbeSimulation {
             self.simulation.advance_physics_ticks(step_target - current);
             if due == Some(step_target) {
                 let snapshot = self.simulation.scientific_snapshot();
-                self.metrics.observe_due(&snapshot)
+                self.metrics
+                    .observe_due(&snapshot)
                     .map_err(|message| JsValue::from_str(&message))?;
             }
         }
@@ -848,27 +1058,48 @@ impl MetricProbeSimulation {
 
     pub fn finalize_metrics(&mut self) -> Result<(), JsValue> {
         let snapshot = self.simulation.scientific_snapshot();
-        self.metrics.finalize(&snapshot)
+        self.metrics
+            .finalize(&snapshot)
             .map_err(|message| JsValue::from_str(&message))
     }
 
     pub fn drain_metric_samples_json(&mut self, max_samples: u32) -> Result<String, JsValue> {
-        self.metrics.drain_json(max_samples as usize)
+        self.metrics
+            .drain_json(max_samples as usize)
             .map_err(|message| JsValue::from_str(&message))
     }
 
     pub fn metric_buffer_status_json(&self) -> Result<String, JsValue> {
-        self.metrics.status_json().map_err(|message| JsValue::from_str(&message))
+        self.metrics
+            .status_json()
+            .map_err(|message| JsValue::from_str(&message))
     }
 
-    pub fn metric_count(&self) -> u32 { self.metrics.metric_count() as u32 }
-    pub fn reset(&mut self) { self.simulation.reset(); self.metrics.reset(); }
-    pub fn scientific_time(&self) -> f64 { self.simulation.scientific_time() }
-    pub fn physics_ticks(&self) -> u32 { self.simulation.physics_ticks() }
-    pub fn control_updates(&self) -> u32 { self.simulation.control_updates() }
-    pub fn neighbour_strategy(&self) -> String { self.simulation.neighbour_strategy().to_owned() }
-    pub fn has_environmental_scalar(&self) -> bool { self.simulation.has_environmental_scalar() }
-    pub fn sample_environment_grid(&self, resolution: u32) -> Vec<f64> { self.simulation.sample_environment_grid(resolution) }
+    pub fn metric_count(&self) -> u32 {
+        self.metrics.metric_count() as u32
+    }
+    pub fn reset(&mut self) {
+        self.simulation.reset();
+        self.metrics.reset();
+    }
+    pub fn scientific_time(&self) -> f64 {
+        self.simulation.scientific_time()
+    }
+    pub fn physics_ticks(&self) -> u32 {
+        self.simulation.physics_ticks()
+    }
+    pub fn control_updates(&self) -> u32 {
+        self.simulation.control_updates()
+    }
+    pub fn neighbour_strategy(&self) -> String {
+        self.simulation.neighbour_strategy().to_owned()
+    }
+    pub fn has_environmental_scalar(&self) -> bool {
+        self.simulation.has_environmental_scalar()
+    }
+    pub fn sample_environment_grid(&self, resolution: u32) -> Vec<f64> {
+        self.simulation.sample_environment_grid(resolution)
+    }
     pub fn snapshot_state(&self) -> Vec<f64> {
         let mut values = Vec::with_capacity(self.simulation.state.len() * 3);
         for agent in &self.simulation.state {
@@ -883,6 +1114,7 @@ impl MetricProbeSimulation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Action, ControllerRuntime};
 
     fn metrics_json() -> &'static str {
         r#"{
@@ -899,8 +1131,14 @@ mod tests {
 
     fn state() -> Vec<crate::AgentPhysicalState> {
         vec![
-            crate::AgentPhysicalState { position: Vec2::new(0.0, 0.0), heading_angle: 0.0 },
-            crate::AgentPhysicalState { position: Vec2::new(1.0, 0.0), heading_angle: 0.5 },
+            crate::AgentPhysicalState {
+                position: Vec2::new(0.0, 0.0),
+                heading_angle: 0.0,
+            },
+            crate::AgentPhysicalState {
+                position: Vec2::new(1.0, 0.0),
+                heading_angle: 0.5,
+            },
         ]
     }
 
@@ -940,9 +1178,13 @@ mod tests {
         physics_ticks: u32,
         scientific_time: f64,
     ) {
-        with_snapshot(state, references, physics_ticks, scientific_time, |snapshot| {
-            metrics.observe_due(snapshot).unwrap()
-        });
+        with_snapshot(
+            state,
+            references,
+            physics_ticks,
+            scientific_time,
+            |snapshot| metrics.observe_due(snapshot).unwrap(),
+        );
     }
 
     fn finalize(
@@ -961,9 +1203,16 @@ mod tests {
         let mut metrics = IrMetricsRuntime::from_json(metrics_json(), "{}", 0.01).unwrap();
         let state = state();
         for tick in 1..=20 {
-            observe_due(&mut metrics, &state, &BTreeMap::new(), tick, tick as f64 * 0.01);
+            observe_due(
+                &mut metrics,
+                &state,
+                &BTreeMap::new(),
+                tick,
+                tick as f64 * 0.01,
+            );
         }
-        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
+        let batch: serde_json::Value =
+            serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
         let samples = batch["samples"].as_array().unwrap();
         assert_eq!(samples.len(), 3);
         assert_eq!(samples[0]["metric_id"], "probe.count");
@@ -980,7 +1229,8 @@ mod tests {
         let state = state();
         finalize(&mut metrics, &state, &BTreeMap::new(), 1.25);
         finalize(&mut metrics, &state, &BTreeMap::new(), 1.25);
-        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
+        let batch: serde_json::Value =
+            serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
         let samples = batch["samples"].as_array().unwrap();
         assert_eq!(samples.len(), 1);
         assert_eq!(samples[0]["metric_id"], "probe.final");
@@ -995,17 +1245,18 @@ mod tests {
 
     #[test]
     fn overflow_is_explicit_and_never_silent() {
-        let mut metrics = IrMetricsRuntime::from_json_with_capacity(metrics_json(), "{}", 0.01, 1).unwrap();
+        let mut metrics =
+            IrMetricsRuntime::from_json_with_capacity(metrics_json(), "{}", 0.01, 1).unwrap();
         let state = state();
         observe_due(&mut metrics, &state, &BTreeMap::new(), 10, 0.1);
         observe_due(&mut metrics, &state, &BTreeMap::new(), 20, 0.2);
-        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
+        let batch: serde_json::Value =
+            serde_json::from_str(&metrics.drain_json(100).unwrap()).unwrap();
         assert_eq!(batch["samples"].as_array().unwrap().len(), 1);
         assert_eq!(batch["buffer"]["complete"], false);
         assert_eq!(batch["buffer"]["dropped_samples"], 2);
         assert_eq!(batch["buffer"]["first_dropped_scientific_time"], 0.2);
     }
-
 
     #[test]
     fn cross2_metric_primitive_evaluates_signed_planar_cross_product() {
@@ -1025,14 +1276,17 @@ mod tests {
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
         observe_due(&mut metrics, &state(), &BTreeMap::new(), 10, 0.1);
-        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        let batch: serde_json::Value =
+            serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 1.0);
     }
 
     struct NoopController;
     impl ControllerRuntime for NoopController {
         fn reset(&mut self, _agent_count: usize) {}
-        fn step(&mut self, _agent_index: usize, _observation: &crate::Observation) -> Action { Action::default() }
+        fn step(&mut self, _agent_index: usize, _observation: &crate::Observation) -> Action {
+            Action::default()
+        }
     }
 
     #[test]
@@ -1049,7 +1303,8 @@ mod tests {
             max_forward_speed: 1.0,
             max_angular_speed: 1.0,
         };
-        let mut baseline = Simulation::new(initialization.clone(), config.clone(), NoopController).unwrap();
+        let mut baseline =
+            Simulation::new(initialization.clone(), config.clone(), NoopController).unwrap();
         let mut measured = Simulation::new(initialization, config, NoopController).unwrap();
         let mut metrics = IrMetricsRuntime::from_json(metrics_json(), "{}", 0.01).unwrap();
         for _ in 0..20 {
@@ -1058,7 +1313,9 @@ mod tests {
             let tick = measured.physics_ticks();
             let snapshot = measured.scientific_snapshot();
             metrics.observe_due(&snapshot).unwrap();
-            if tick % 7 == 0 { let _ = metrics.drain_json(2).unwrap(); }
+            if tick.is_multiple_of(7) {
+                let _ = metrics.drain_json(2).unwrap();
+            }
         }
         assert_eq!(baseline.snapshot(), measured.snapshot());
     }
@@ -1067,12 +1324,21 @@ mod tests {
         fn scalar_call(name: &str, args: &[f64]) -> f64 {
             let expression = Expression::Call {
                 name: name.to_owned(),
-                args: args.iter().map(|value| Expression::Const { value: *value, line: None }).collect(),
+                args: args
+                    .iter()
+                    .map(|value| Expression::Const {
+                        value: *value,
+                        line: None,
+                    })
+                    .collect(),
                 line: None,
             };
             let parameters = BTreeMap::new();
             with_snapshot(&[], &BTreeMap::new(), 0, 0.0, |snapshot| {
-                let context = EvaluationContext { snapshot, parameters: &parameters };
+                let context = EvaluationContext {
+                    snapshot,
+                    parameters: &parameters,
+                };
                 eval_expression(&expression, &context, &HashMap::new(), &HashMap::new())
                     .unwrap()
                     .scalar("test")
@@ -1123,13 +1389,23 @@ mod tests {
           }]
         }"#;
         let state = vec![
-            crate::AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.0 },
-            crate::AgentPhysicalState { position: Vec2::ZERO, heading_angle: -0.5 },
-            crate::AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.5 },
+            crate::AgentPhysicalState {
+                position: Vec2::ZERO,
+                heading_angle: 0.0,
+            },
+            crate::AgentPhysicalState {
+                position: Vec2::ZERO,
+                heading_angle: -0.5,
+            },
+            crate::AgentPhysicalState {
+                position: Vec2::ZERO,
+                heading_angle: 0.5,
+            },
         ];
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
         finalize(&mut metrics, &state, &BTreeMap::new(), 1.0);
-        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        let batch: serde_json::Value =
+            serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 2.0);
     }
 
@@ -1155,10 +1431,10 @@ mod tests {
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(ir, "{}", 0.01).unwrap();
         finalize(&mut metrics, &state(), &BTreeMap::new(), 1.0);
-        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        let batch: serde_json::Value =
+            serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 1.0);
     }
-
 
     #[test]
     fn metrics_reads_named_reference_position_from_read_only_snapshot() {
@@ -1180,7 +1456,8 @@ mod tests {
         let mut references = BTreeMap::new();
         references.insert("goal".to_owned(), Vec2::new(3.0, 4.0));
         finalize(&mut metrics, &state(), &references, 1.0);
-        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        let batch: serde_json::Value =
+            serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         assert_eq!(batch["samples"][0]["value"], 5.0);
     }
 
@@ -1265,7 +1542,6 @@ mod tests {
         assert_eq!(batch["samples"][0]["value"], 2.0);
     }
 
-
     #[test]
     fn complete_scientific_snapshot_reports_measured_state_without_reconstruction() {
         let controller_ir = r#"{
@@ -1285,7 +1561,10 @@ mod tests {
         }"#;
         let controller = IrControllerRuntime::from_json(controller_ir, "{}").unwrap();
         let initialization = crate::SwarmInitialization {
-            state: vec![crate::AgentPhysicalState { position: Vec2::ZERO, heading_angle: 0.0 }],
+            state: vec![crate::AgentPhysicalState {
+                position: Vec2::ZERO,
+                heading_angle: 0.0,
+            }],
         };
         let config = crate::SimulationConfig {
             seed: 1,
@@ -1298,20 +1577,27 @@ mod tests {
             max_forward_speed: 10.0,
             max_angular_speed: 10.0,
         };
-        let environment = EnvironmentRuntime::from_json(r#"{
+        let environment = EnvironmentRuntime::from_json(
+            r#"{
           "schema":"vlab.environment-scalar-ir/0.1",
           "language":"python-vlab/0.1",
           "entry":"environmental_scalar(x, y, config)",
           "expression":{"kind":"binary","op":"+","left":{"kind":"x"},"right":{"kind":"y"}}
-        }"#).unwrap();
-        let mut simulation = Simulation::new_with_environment(initialization, config, controller, environment).unwrap();
+        }"#,
+        )
+        .unwrap();
+        let mut simulation =
+            Simulation::new_with_environment(initialization, config, controller, environment)
+                .unwrap();
         simulation.advance_physics_ticks(1);
 
         let snapshot = simulation.scientific_snapshot();
         assert!((snapshot.agents[0].heading_angle - std::f64::consts::FRAC_PI_2).abs() < 1e-12);
         assert!((snapshot.kinematics[0].velocity.x - 2.0).abs() < 1e-12);
         assert!(snapshot.kinematics[0].velocity.y.abs() < 1e-12);
-        assert!((snapshot.kinematics[0].angular_velocity - std::f64::consts::FRAC_PI_2).abs() < 1e-12);
+        assert!(
+            (snapshot.kinematics[0].angular_velocity - std::f64::consts::FRAC_PI_2).abs() < 1e-12
+        );
         assert_eq!(snapshot.agent_private_scalar(0, "energy"), Some(2.0));
         assert_eq!(snapshot.sample_environment(Vec2::new(3.0, 4.0)), Some(7.0));
 
@@ -1347,11 +1633,18 @@ mod tests {
         }"#;
         let mut metrics = IrMetricsRuntime::from_json(metrics_ir, r#"{"N":1.0}"#, 1.0).unwrap();
         metrics.finalize(&snapshot).unwrap();
-        let batch: serde_json::Value = serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
+        let batch: serde_json::Value =
+            serde_json::from_str(&metrics.drain_json(10).unwrap()).unwrap();
         let value = batch["samples"][0]["value"].as_f64().unwrap();
-        let expected = 1.0 + 1.0 + 1.0 + 2.0 + std::f64::consts::FRAC_PI_2
-            + 2.0 + std::f64::consts::FRAC_PI_2 + 2.0 + 7.0;
+        let expected = 1.0
+            + 1.0
+            + 1.0
+            + 2.0
+            + std::f64::consts::FRAC_PI_2
+            + 2.0
+            + std::f64::consts::FRAC_PI_2
+            + 2.0
+            + 7.0;
         assert!((value - expected).abs() < 1e-12);
     }
-
 }
