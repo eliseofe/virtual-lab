@@ -17,6 +17,23 @@ import {
   isCatalogSelectValue,
 } from "./experiment-catalog.js";
 import { loadCatalogExperiment } from "./catalog-workspace.js";
+import {
+  afterDiscard,
+  discardWorkingCopyQuestion,
+  editingBaseline,
+  historyEntries,
+  isViewedRevision,
+  latestSnapshot,
+  openedMessage,
+  ownsExperiment,
+  reentryView,
+  replaceWorkingCopyQuestion,
+  revisionIsMine,
+  revisionKindLabel as revisionKindLabelFor,
+  selectedRevisionMessage,
+  viewedRevisionSnapshot,
+  workingCopyBaseRevision,
+} from "./registry/revisions.js";
 
 
 const experimentSelect = document.querySelector("#experiment-select");
@@ -517,15 +534,16 @@ function artifactsEqual(left, right) {
 }
 
 function currentRevisionSnapshot() {
-  if (currentRevisionView.kind !== "revision") return null;
-  return currentRevisions.find((revision) => revision.revision === currentRevisionView.revision)
-    ?? (currentRemote?.revision === currentRevisionView.revision ? currentRemote : null);
+  return viewedRevisionSnapshot(currentRevisionView, currentRevisions, currentRemote);
 }
 
 function currentEditingBaseline() {
-  if (currentRevisionView.kind === "working") return currentWorkingCopy;
-  if (currentRevisionView.kind === "revision") return currentRevisionSnapshot();
-  return currentRemote;
+  return editingBaseline({
+    view: currentRevisionView,
+    workingCopy: currentWorkingCopy,
+    revisions: currentRevisions,
+    remote: currentRemote,
+  });
 }
 
 function artifactEditors() {
@@ -560,14 +578,17 @@ function hasUnsavedRemoteEdits() {
 }
 
 async function persistWorkingCopy() {
-  const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
+  const owned = ownsExperiment(user?.id, currentRemote);
   if (!owned || !hasUnpersistedRemoteEdits()) return currentWorkingCopy;
 
   // Working copy persistence is deliberately tolerant of temporarily invalid
   // scientific code. It must preserve text while the human is still editing.
   const artifacts = captureExperimentArtifacts();
-  const selectedRevision = currentRevisionView.kind === "revision" ? currentRevisionView.revision : null;
-  const baseRevision = currentWorkingCopy?.base_revision ?? selectedRevision ?? currentRemote.revision;
+  const baseRevision = workingCopyBaseRevision({
+    workingCopy: currentWorkingCopy,
+    view: currentRevisionView,
+    remote: currentRemote,
+  });
   const baseline = currentEditingBaseline();
   setMessage("Autosaving Working copy…");
   const { data, error } = await supabase
@@ -617,16 +638,15 @@ async function loadRevisionHistory() {
 }
 
 function revisionBelongsToMine(revision) {
-  return Boolean(user && revision.created_by_actor === "human" && revision.created_by_user === user.id);
+  return revisionIsMine(revision, user?.id);
 }
 
 function revisionKindLabel(revision) {
-  if (revision.created_by_actor === "ai") return "AI";
-  return revisionBelongsToMine(revision) ? "Mine" : "Human";
+  return revisionKindLabelFor(revision, user?.id);
 }
 
 function isCurrentRevisionEntry(revision) {
-  return currentRevisionView.kind === "revision" && currentRevisionView.revision === revision.revision;
+  return isViewedRevision(currentRevisionView, revision);
 }
 
 function revisionHistoryItem(revision) {
@@ -684,33 +704,21 @@ function renderRevisionHistory() {
   revisionHistory.ai.setAttribute("aria-pressed", String(revisionFilter === "ai"));
   revisionHistory.list.replaceChildren();
 
-  if (!currentRemote) {
-    const empty = document.createElement("p");
-    empty.className = "experiment-history-empty";
-    empty.textContent = "Showcase Experiments do not have private revision history here.";
-    revisionHistory.list.append(empty);
-    return;
-  }
-
-  if (currentWorkingCopy && revisionFilter !== "ai") {
-    revisionHistory.list.append(workingCopyHistoryItem());
-  }
-
-  const revisions = currentRevisions.filter((revision) => {
-    if (revisionFilter === "mine") return revisionBelongsToMine(revision);
-    if (revisionFilter === "ai") return revision.created_by_actor === "ai";
-    return true;
+  const history = historyEntries({
+    remote: currentRemote,
+    workingCopy: currentWorkingCopy,
+    revisions: currentRevisions,
+    filter: revisionFilter,
+    userId: user?.id,
+    view: currentRevisionView,
   });
-  for (const revision of revisions) revisionHistory.list.append(revisionHistoryItem(revision));
-
-  if (!revisionHistory.list.children.length) {
+  for (const entry of history.entries) {
+    revisionHistory.list.append(entry.type === "working" ? workingCopyHistoryItem() : revisionHistoryItem(entry.revision));
+  }
+  if (history.empty) {
     const empty = document.createElement("p");
     empty.className = "experiment-history-empty";
-    empty.textContent = revisionFilter === "mine"
-      ? "No numbered revisions from this account yet."
-      : revisionFilter === "ai"
-        ? "No AI revisions yet."
-        : "No retained revisions are available.";
+    empty.textContent = history.empty;
     revisionHistory.list.append(empty);
   }
 }
@@ -735,10 +743,7 @@ async function selectNumberedRevision(revision) {
   renderRevisionHistory();
   await applyLoadedSources();
   revisionHistory.dialog.close();
-  const preserved = currentWorkingCopy
-    ? " Working copy based on R" + currentWorkingCopy.base_revision + " remains preserved."
-    : "";
-  setMessage("Revision " + revision.revision + " loaded." + preserved, "success");
+  setMessage(selectedRevisionMessage(revision, currentWorkingCopy), "success");
 }
 
 async function editFromViewedRevision() {
@@ -747,10 +752,7 @@ async function editFromViewedRevision() {
   if (!revision) return;
 
   if (currentWorkingCopy) {
-    const ok = window.confirm(
-      "Replace the existing Working copy based on R" + currentWorkingCopy.base_revision
-      + " with a new Working copy from R" + revision.revision + "?",
-    );
+    const ok = window.confirm(replaceWorkingCopyQuestion(currentWorkingCopy, revision));
     if (!ok) return;
     const { error } = await supabase
       .from("experiment_working_copies")
@@ -771,11 +773,7 @@ async function editFromViewedRevision() {
 async function discardCurrentWorkingCopy() {
   if (!user || !currentRemote || currentRemote.owner_id !== user.id || !currentWorkingCopy) return;
 
-  const baseRevision = currentWorkingCopy.base_revision;
-  const ok = window.confirm(
-    "Discard the Working copy based on R" + baseRevision
-    + "? Numbered revisions will remain unchanged.",
-  );
+  const ok = window.confirm(discardWorkingCopyQuestion(currentWorkingCopy));
   if (!ok) return;
 
   // A pointer-down outside the editor is an autosave boundary. If that boundary
@@ -797,13 +795,13 @@ async function discardCurrentWorkingCopy() {
 
   currentWorkingCopy = null;
   await loadRevisionHistory();
-  currentRevisionView = { kind: "revision", revision: currentRemote.revision };
-  const latest = currentRevisions.find((revision) => revision.revision === currentRemote.revision) ?? currentRemote;
-  applyExperimentArtifacts(latest);
+  const discarded = afterDiscard(currentRevisions, currentRemote);
+  currentRevisionView = discarded.view;
+  applyExperimentArtifacts(discarded.snapshot);
   updateCurrentUi();
   renderRevisionHistory();
   await applyLoadedSources();
-  setMessage("Working copy discarded. Latest revision R" + currentRemote.revision + " loaded.", "success");
+  setMessage(discarded.message, "success");
 }
 
 async function openRevisionHistory() {
@@ -1550,23 +1548,16 @@ async function loadRemoteExperiment(id, { access = "owned" } = {}) {
   currentRemoteAccess = access;
   currentWorkingCopy = workingCopy;
   await loadRevisionHistory();
-  currentRevisionView = { kind: "revision", revision: experiment.revision };
+  currentRevisionView = reentryView(experiment);
 
-  const initial = currentRevisions.find((revision) => revision.revision === experiment.revision)
-    ?? experiment;
+  const initial = latestSnapshot(currentRevisions, experiment);
   applyExperimentArtifacts(initial);
   ui.newForm.hidden = true;
   subscribeCurrentExperiment(id);
   updateCurrentUi();
   rememberCurrentWorkspace();
   await applyLoadedSources();
-  setMessage(
-    workingCopy
-      ? experiment.title + " · latest revision " + experiment.revision
-        + " loaded. Working copy based on revision " + workingCopy.base_revision + " remains preserved."
-      : experiment.title + " · revision " + experiment.revision + " loaded.",
-    "success",
-  );
+  setMessage(openedMessage(experiment, workingCopy), "success");
 }
 
 async function loadShowcaseExperiment(entry) {
