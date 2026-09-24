@@ -4,10 +4,14 @@ The production site is deployed to GitHub Pages by `.github/workflows/ci-pages.y
 
 ## Automatic validation and deployment
 
-- Pull requests targeting `main` run the full build/validation workflow when they change non-documentation inputs, including the pre-publish browser smoke.
+- Every pull request targeting `main` runs the `build` job (tests, build and pre-publish browser smoke), including documentation-only pull requests, so the required check is always reported.
 - Pushes to `main` that change simulator, web, test, configuration, workflow or other non-documentation files run the full build, the pre-publish browser smoke, Pages deployment, exact-candidate propagation check, and deployed-browser smoke suite.
 - Pushes to `main` whose changes are entirely limited to Markdown files (`*.md`, `**/*.md`) and/or `docs/**` do not run the Pages workflow. Workflow-file changes are validated and deployed like any other change, so they need an updated `.github/terminal-report.json`.
 - A running release on `main` is never cancelled; a newer push waits for it. Pull-request runs cancel superseded runs.
+
+## Branch ruleset on `main`
+
+`main` is protected by a GitHub ruleset (repository Settings → Rules → Rulesets): changes arrive only through pull requests, the `build` status check must pass before merging, force pushes and deletion are blocked, and no human approval is required (agents merge their own green pull requests). Verify the active rules with `GET /repos/eliseofe/virtual-lab/rules/branches/main`.
 
 ## Pre-publish browser smoke
 

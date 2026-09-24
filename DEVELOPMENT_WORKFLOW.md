@@ -6,6 +6,8 @@ This is the sole repository authority for development execution procedure; no ot
 
 When the owner approves a sequence with language such as `go ahead`, `proceed`, `continue`, or equivalent, treat that as permission only for the explicitly named current lane/epic and its already-bounded tasks. Never infer permission to enter the next epic, roadmap phase or major feature lane.
 
+Approval to work on a ticket covers that whole ticket until it is production-green, including changes to repository authority documents (such as this file) that fall within the ticket's stated scope; do not ask for approval again at each step. Anything outside the ticket's stated scope needs new owner approval. The completion report must quote every changed authority-document sentence exactly, so the owner always knows what changed.
+
 ## Default unit of execution
 
 All development work is governed by the execution-granularity rules in this section. No interpretation of scope, intent, urgency, discovered work, or continuation may bypass those rules.
@@ -34,7 +36,7 @@ Keep that relationship current if the plan changes. It is project-state metadata
 For each substantial user-facing/deployable ticket:
 
 1. implement and test. CI then checks the exact built version in a real browser before publishing it (pre-publish smoke). If that check fails, the version is not published (the live Lab stays on the last green version), the run counts as **red**, and step 6 applies. A pre-publish failure never completes the ticket;
-2. deploy the exact candidate;
+2. merge the green pull request, which deploys the exact candidate (see *Pull requests only*);
 3. follow only that exact candidate using bounded exact-run status checks. An agent that can run commands uses `node web/scripts/wait-for-run.mjs <sha>`; an agent without a shell follows the same run through its GitHub connector. Either way the result is one of the *Exact-run outcomes* below;
 4. while it is pending, keep the chat visibly alive; pending checks must not inspect jobs/logs repeatedly;
 5. if the exact candidate is green, stop immediately; one green is terminal and no further Actions query is made;
@@ -42,6 +44,15 @@ For each substantial user-facing/deployable ticket:
 7. continue until green unless there is a real blocker or the owner tells you to stop.
 
 Local/static success is necessary but never sufficient for deployed-product completion.
+
+## Pull requests only
+
+Every change reaches `main` through a pull request. Never push directly to `main`; a GitHub ruleset on `main` rejects direct pushes and merges whose `build` check is not green.
+
+1. Push the change to a branch and open a pull request into `main`.
+2. Wait for the pull request's `build` check (tests, build and pre-publish browser check). Merge only when it is green. A red pull-request check is repaired on the same branch; it is not a blocker.
+3. Merging publishes. The resulting commit on `main` is the exact candidate followed through the loop above. A green pull-request check is never completion; only the green production run of the merged commit is.
+4. Documentation-only pull requests also run the `build` check so they can be merged; after merging they publish nothing (outcome **not-a-candidate**).
 
 ## Chunk stopping rule
 

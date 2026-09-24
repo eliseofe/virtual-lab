@@ -34,3 +34,11 @@ test("a release on main is never cancelled halfway, and workflow changes are not
   assert.match(workflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
   assert.doesNotMatch(workflow, /\.github\/workflows\/\*\*/);
 });
+
+test("every pull request reports the required build check, including documentation-only ones", () => {
+  const pullRequest = workflow.slice(workflow.indexOf("\n  pull_request:"), workflow.indexOf("\n  workflow_dispatch:"));
+  assert.ok(pullRequest.includes("branches: [main]"));
+  assert.doesNotMatch(pullRequest, /^\s+paths(-ignore)?:/m);
+  const push = workflow.slice(workflow.indexOf("\n  push:"), workflow.indexOf("\n  pull_request:"));
+  assert.match(push, /paths-ignore:/, "documentation-only pushes to main still publish nothing");
+});

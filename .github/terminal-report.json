@@ -1,18 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "New Lab versions are now checked in a real browser before they are published",
-  "owner_impact": "Nothing changes in how the Lab looks or behaves. Behind the scenes, every new version is first opened privately in a real browser on GitHub's machine and must pass the same 8 product checks as the live Lab before it is published, so a broken version no longer reaches students first. A release that is being published is no longer cancelled halfway by a newer change, changes to the release machinery itself are now tested, and agents have one tool that follows their exact version and always ends with one clear answer (green, red with the failing step, replaced by a newer version, documentation only, no run started, or timed out). 'Done means verified live' is unchanged.",
+  "outcome": "Changes now reach the live Lab only through green pull requests",
+  "owner_impact": "Nothing changes in how the Lab looks or behaves. From now on no agent can push a change straight to the live Lab: every change must go through a pull request whose checks (tests, build and the browser check before publishing) are green, and GitHub itself refuses anything else. Documentation-only pull requests also run the checks so they can always be merged. 'Done means verified live' is unchanged: a green pull request is never the finish line, only the green live run of the merged version is.",
   "next": {
     "kind": "epic_continues",
-    "issue": 535,
-    "text": "Next is #535, proposal-first merging: every change will reach the live Lab only through a proposal (pull request) whose checks are green. It needs one GitHub setting from you, and I will prepare exact click-by-click steps. #535 has not started."
+    "issue": 537,
+    "text": "Next is #537 — simulator core tidy-up: standard formatting, removal of harmless warnings and of an unusual file-inclusion trick in the Rust simulator, with the recorded reference runs proving that not a single number changes. #537 has not started."
   },
   "technical_evidence": [
-    "New: web/scripts/serve-dist.mjs, web/scripts/pre-publish-smoke.mjs, web/scripts/wait-for-run.mjs, web/tests/release-loop.test.mjs.",
-    "CI build job runs the active product smoke against the exact web/dist package served under /virtual-lab/ before Pages upload, on pushes and pull requests; build timeout raised from 15 to 25 minutes.",
-    "Concurrency: cancel-in-progress only for pull requests; '.github/workflows/**' removed from paths-ignore.",
-    "wait-for-run.mjs verified against real history: green (run 35982384767), red at live smoke (35746207804), red in tests (35802036102), superseded (35801989197), documentation-only (0cae716), no push run (e0ec612), and a pull-request run (--pull-request).",
-    "DEVELOPMENT_WORKFLOW.md: owner-approved ownership rule (the planning agent owns by default), exact-run outcomes, pre-publish smoke; docs/DEPLOYMENT.md updated."
+    "GitHub ruleset on main: pull request required (0 approvals), required status check 'build', force pushes and deletion blocked, empty bypass list; verified via GET /repos/eliseofe/virtual-lab/rules/branches/main.",
+    "Ruleset 23935542 (created by Work under #539) verified independently; a deliberately failing test commit on #538 turned build red and GitHub reported the pull request as blocked (mergeable_state=blocked); the probe was then reverted.",
+    "pull_request trigger no longer has paths-ignore, so documentation-only pull requests report the required check; push paths-ignore unchanged.",
+    "DEVELOPMENT_WORKFLOW.md (within the owner-approved #535 scope): 'Pull requests only' section, loop step 2, and the owner-requested rule that approving a ticket covers it until production-green; docs/DEPLOYMENT.md documents the ruleset."
   ],
-  "close_issue": 533
+  "close_issue": 535
 }
