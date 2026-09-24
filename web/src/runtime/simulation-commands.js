@@ -20,4 +20,8 @@ export const simulationCommands = Object.freeze({
   fitArena: () => provided?.fitArena(),
   setSpeed: (value) => provided?.setSpeed(value),
   setGlyph: (value) => provided?.setGlyph(value),
+  // Apply the edited configuration/initializer, or the edited controller, to
+  // the running simulator (#567).
+  applySetup: () => provided?.applySetup(),
+  applyController: () => provided?.applyController(),
 });

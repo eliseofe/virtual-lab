@@ -1,29 +1,21 @@
-import { authoringModel, setArtifactDirty } from "./authoring-panel/authoring-model.js";
+import { authoringModel } from "./authoring-panel/authoring-model.js";
 import { provideAuthoringCommands } from "./authoring-panel/authoring-commands.js";
+// The apply state and status are owned by the authoring controller (#567).
+import "./authoring-panel/authoring-controller.js";
 
 const workbench = document.querySelector("#authoring-workbench");
 const tablist = document.querySelector("#authoring-tabs");
-const applyWorkspace = document.querySelector("#apply-workspace");
-const runtimeState = document.querySelector("#authoring-runtime-state");
-const applySetup = document.querySelector("#apply-setup");
-const compileController = document.querySelector("#compile");
-const setupFeedback = document.querySelector("#setup-feedback");
-const controllerFeedback = document.querySelector("#compile-feedback");
 const additionalArtifacts = document.querySelector("#additional-experiment-artifacts");
 const persistence = document.querySelector("#authoring-persistence");
 const persistenceSlot = document.querySelector("#authoring-persistence-slot");
 const persistenceMessage = document.querySelector("#authoring-persistence-message");
 
-if (!workbench || !tablist || !applyWorkspace || !runtimeState || !applySetup || !compileController
-  || !setupFeedback || !controllerFeedback || !additionalArtifacts || !persistence
+if (!workbench || !tablist || !additionalArtifacts || !persistence
   || !persistenceSlot || !persistenceMessage) {
   throw new Error("Authoring workspace UI mismatch.");
 }
 
 let activeArtifact = "configuration";
-let setupDirty = false;
-let controllerDirty = false;
-let pendingApply = null;
 
 function paneFor(id) {
   return workbench.querySelector(`[data-authoring-artifact-pane="${CSS.escape(id)}"]`);
@@ -49,108 +41,6 @@ function activateArtifact(id, { focus = false } = {}) {
   }
   if (focus) nextTab.focus();
 }
-
-function updateRuntimeUi() {
-  const dirty = setupDirty || controllerDirty;
-  for (const [id, value] of [["configuration", setupDirty], ["initialization", setupDirty], ["controller", controllerDirty]]) {
-    setArtifactDirty(id, value);
-    tabFor(id)?.toggleAttribute("data-dirty", authoringModel.get().dirty[id]);
-  }
-
-  if (pendingApply) {
-    showRuntimeStatus({ text: "Applying runtime changes…", state: "working" }, true);
-    return;
-  }
-  if (dirty) {
-    const legacyButton = setupDirty ? applySetup : compileController;
-    showRuntimeStatus({ text: "Runtime changes pending", state: "dirty" }, legacyButton.disabled);
-    return;
-  }
-  const hasError = setupFeedback.dataset.state === "error" || controllerFeedback.dataset.state === "error";
-  showRuntimeStatus(hasError
-    ? { text: "Runtime source has an error", state: "error" }
-    : { text: "Runtime sources applied", state: "clean" }, true);
-}
-
-// The runtime-apply status lives in the authoring model; the page shows it.
-function showRuntimeStatus(status, applyDisabled) {
-  authoringModel.set({ status: Object.freeze(status), applyDisabled });
-  runtimeState.textContent = authoringModel.get().status.text;
-  runtimeState.dataset.state = authoringModel.get().status.state;
-  applyWorkspace.disabled = authoringModel.get().applyDisabled;
-}
-
-function markSetupDirty() {
-  setupDirty = true;
-  updateRuntimeUi();
-}
-
-function markControllerDirty() {
-  controllerDirty = true;
-  updateRuntimeUi();
-}
-
-document.querySelector("#experiment-config")?.addEventListener("input", markSetupDirty);
-document.querySelector("#initializer-source")?.addEventListener("input", markSetupDirty);
-document.querySelector("#controller-source")?.addEventListener("input", markControllerDirty);
-
-applyWorkspace.addEventListener("click", () => {
-  if (pendingApply) return;
-  if (setupDirty) {
-    pendingApply = "setup";
-    updateRuntimeUi();
-    applySetup.click();
-    return;
-  }
-  if (controllerDirty) {
-    pendingApply = "controller";
-    updateRuntimeUi();
-    compileController.click();
-  }
-});
-
-function handleLegacyApplyClick(kind) {
-  if (pendingApply) return;
-  pendingApply = kind === "setup" ? "external-setup" : "external-controller";
-  updateRuntimeUi();
-}
-
-applySetup.addEventListener("click", () => handleLegacyApplyClick("setup"));
-compileController.addEventListener("click", () => handleLegacyApplyClick("controller"));
-
-function settleFromFeedback() {
-  if (!pendingApply) {
-    updateRuntimeUi();
-    return;
-  }
-  const setupState = setupFeedback.dataset.state;
-  const controllerState = controllerFeedback.dataset.state;
-  if (pendingApply.includes("setup")) {
-    if (setupState === "success") {
-      setupDirty = false;
-      controllerDirty = false;
-      pendingApply = null;
-    } else if (setupState === "error") {
-      pendingApply = null;
-    }
-  } else if (pendingApply.includes("controller")) {
-    if (controllerState === "success") {
-      controllerDirty = false;
-      pendingApply = null;
-    } else if (controllerState === "error") {
-      pendingApply = null;
-    }
-  }
-  updateRuntimeUi();
-}
-
-const feedbackObserver = new MutationObserver(settleFromFeedback);
-for (const feedback of [setupFeedback, controllerFeedback]) {
-  feedbackObserver.observe(feedback, { attributes: true, attributeFilter: ["data-state"], childList: true, characterData: true, subtree: true });
-}
-const enabledObserver = new MutationObserver(updateRuntimeUi);
-enabledObserver.observe(applySetup, { attributes: true, attributeFilter: ["disabled"] });
-enabledObserver.observe(compileController, { attributes: true, attributeFilter: ["disabled"] });
 
 function makeTab(id, label, controls) {
   const button = document.createElement("button");
@@ -256,13 +146,9 @@ if (!attachPersistenceUi()) {
   });
   discoveryObserver.observe(document.body, { childList: true, subtree: true });
 }
-// The authoring controller (#564). Apply still runs through the Apply button,
-// which the metrics runtime intercepts for Metrics-only edits.
 provideAuthoringCommands({
   selectArtifact: (id) => activateArtifact(id, { focus: true }),
-  apply: () => applyWorkspace.click(),
 });
 
 syncAdditionalArtifacts();
 activateArtifact(activeArtifact);
-updateRuntimeUi();

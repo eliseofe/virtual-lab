@@ -3,5 +3,5 @@ export type AuthoringCommands = {
   apply(): void;
 };
 
-export function provideAuthoringCommands(commands: AuthoringCommands): void;
+export function provideAuthoringCommands(commands: Partial<AuthoringCommands>): void;
 export const authoringCommands: Readonly<AuthoringCommands>;

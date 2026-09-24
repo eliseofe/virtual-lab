@@ -1,4 +1,4 @@
-import { authoringModel, setArtifactDirty } from "./authoring-panel/authoring-model.js";
+import { metricsApplied, metricsApplyPending, metricsEdited, metricsFailed, registerMetricsParticipant } from "./authoring-panel/authoring-controller.js";
 import { compileMetrics } from "./metrics/compiler.js";
 import "./catalog-workspace.js";
 import "./results-ui.js";
@@ -16,9 +16,6 @@ let lastRuntimeContext = {};
 let pendingMetricResetReason = null;
 let pendingControllerApply = false;
 let pendingSetupApply = false;
-let metricsDirty = false;
-let metricsApplyPending = false;
-let metricsPiggybackPending = false;
 
 function metricEditor() {
   return document.querySelector(
@@ -78,51 +75,11 @@ function rememberRuntimeMessage(message) {
   }
 }
 
-// Unapplied core edits, from the authoring model (#564).
-function coreRuntimeDirty() {
-  const dirty = authoringModel.get().dirty;
-  return ["configuration", "initialization", "controller"].some((id) => dirty[id]);
-}
-
-function syncMetricsAuthoringUi({ error = null } = {}) {
-  setArtifactDirty("metrics", metricsDirty);
-  document.querySelector('[data-artifact-id="metrics"]')?.toggleAttribute("data-dirty", authoringModel.get().dirty.metrics);
-  const apply = document.querySelector("#apply-workspace");
-  const state = document.querySelector("#authoring-runtime-state");
-  if (!apply || !state) return;
-
-  if (metricsApplyPending) showAuthoringStatus(apply, state, { text: "Applying runtime changes…", state: "working" }, true);
-  else if (error) showAuthoringStatus(apply, state, { text: "Metrics source has an error", state: "error" }, false);
-  else if (metricsDirty) showAuthoringStatus(apply, state, { text: "Runtime changes pending", state: "dirty" }, false);
-  else if (!coreRuntimeDirty()) showAuthoringStatus(apply, state, { text: "Runtime sources applied", state: "clean" }, true);
-}
-
-// The shared runtime-apply status lives in the authoring model; the page shows it.
-function showAuthoringStatus(apply, state, status, applyDisabled) {
-  authoringModel.set({ status: Object.freeze(status), applyDisabled });
-  apply.disabled = authoringModel.get().applyDisabled;
-  state.textContent = authoringModel.get().status.text;
-  state.dataset.state = authoringModel.get().status.state;
-}
-
+// Metrics apply outcomes are reported to the authoring controller (#567),
+// which owns the apply status.
 function failMetrics(message) {
-  metricsApplyPending = false;
-  syncMetricsAuthoringUi({ error: message || "Metrics runtime error" });
+  metricsFailed(message || "Metrics runtime error");
   dispatch("vlab:metrics-error", { message: message || "Metrics runtime error" });
-}
-
-function settlePiggybackFromFeedback() {
-  if (!metricsPiggybackPending) return;
-  const setupState = document.querySelector("#setup-feedback")?.dataset.state;
-  const controllerState = document.querySelector("#compile-feedback")?.dataset.state;
-  if (setupState === "success" || controllerState === "success") {
-    metricsDirty = false;
-    metricsPiggybackPending = false;
-    syncMetricsAuthoringUi();
-  } else if (setupState === "error" || controllerState === "error") {
-    metricsPiggybackPending = false;
-    syncMetricsAuthoringUi();
-  }
 }
 
 class MetricsAwareWorker extends NativeWorker {
@@ -143,15 +100,12 @@ class MetricsAwareWorker extends NativeWorker {
         dispatch("vlab:metric-reset", { ...message, reason: pendingMetricResetReason });
         pendingMetricResetReason = null;
       } else if (message.type === "metrics-applied") {
-        metricsApplyPending = false;
-        metricsDirty = false;
-        syncMetricsAuthoringUi();
+        metricsApplied();
         dispatch("vlab:metrics-applied", message);
       } else if (message.type === "metrics-error" || message.type === "metrics-runtime-error") {
-        const wasApply = metricsApplyPending;
-        metricsApplyPending = false;
+        const wasApply = metricsApplyPending();
         pendingMetricResetReason = null;
-        syncMetricsAuthoringUi({ error: message.message || "Metrics runtime error" });
+        metricsFailed(message.message || "Metrics runtime error");
         dispatch("vlab:metrics-error", message);
         if (!wasApply && message.type === "metrics-runtime-error") dispatch("vlab:run-error", message);
       } else if (message.type === "ready") {
@@ -223,34 +177,11 @@ globalThis.Worker = MetricsAwareWorker;
 
 document.addEventListener("input", (event) => {
   if (event.target !== metricEditor()) return;
-  metricsDirty = true;
-  syncMetricsAuthoringUi();
+  metricsEdited();
 });
 
-document.addEventListener("click", (event) => {
-  const apply = event.target?.closest?.("#apply-workspace");
-  if (!apply || !metricsDirty || metricsApplyPending) return;
-  if (coreRuntimeDirty()) {
-    metricsPiggybackPending = true;
-    return;
-  }
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  metricsApplyPending = true;
-  syncMetricsAuthoringUi();
-  dispatch("vlab:apply-metrics");
-}, true);
-
-for (const feedback of [document.querySelector("#setup-feedback"), document.querySelector("#compile-feedback")]) {
-  if (!feedback) continue;
-  new MutationObserver(settlePiggybackFromFeedback).observe(feedback, {
-    attributes: true,
-    attributeFilter: ["data-state"],
-    childList: true,
-    characterData: true,
-    subtree: true,
-  });
-}
+// The authoring controller asks for Metrics-only applies.
+registerMetricsParticipant({ applyMetrics: () => dispatch("vlab:apply-metrics") });
 
 document.addEventListener("vlab:apply-metrics", () => {
   if (!activeSimulationWorker) {

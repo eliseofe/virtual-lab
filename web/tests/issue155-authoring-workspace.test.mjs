@@ -36,8 +36,13 @@ test("issue #155 exposes one visible apply action while preserving legacy runtim
   assert.match(html, /id="apply-setup"[^>]*hidden[^>]*>Apply &amp; restart<\/button>/);
   assert.match(html, /id="compile"[^>]*hidden[^>]*>Apply &amp; restart<\/button>/);
 
-  assert.match(workbench, /if \(setupDirty\)[\s\S]*applySetup\.click\(\)/);
-  assert.match(workbench, /if \(controllerDirty\)[\s\S]*compileController\.click\(\)/);
+  // #567: covered by authoring-machine.test.mjs; this checks the wiring.
+  const machine = await readFile(new URL("../src/authoring-panel/authoring-machine.js", import.meta.url), "utf8");
+  const controller = await readFile(new URL("../src/authoring-panel/authoring-controller.js", import.meta.url), "utf8");
+  assert.match(machine, /else if \(state\.setupDirty\) \{[\s\S]*?applySetup\(\);/);
+  assert.match(machine, /else if \(state\.controllerDirty\) \{[\s\S]*?applyController\(\);/);
+  assert.match(controller, /applySetup: \(\) => simulationCommands\.applySetup\(\)/);
+  assert.match(controller, /document\.querySelector\("#apply-workspace"\)\?\.addEventListener\("click", apply\)/);
   assert.doesNotMatch(workbench, /new Worker|postMessage\(|supabase|fetch\(/, "presentation adapter must not acquire runtime/backend behavior");
 });
 

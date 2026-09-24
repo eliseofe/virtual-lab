@@ -18,7 +18,17 @@ export const RUNTIME_INITIAL_STATE = Object.freeze({
   glyph: "directional", // how agents are drawn: "directional" | "arrow" | "dot"
   camera: Object.freeze({ label: "Fit", fit: true }),
   // Which simulation commands are available right now (#562).
-  controls: Object.freeze({ run: false, pause: false, restart: false, newSeed: false, speed: true, fit: false }),
+  controls: Object.freeze({ run: false, pause: false, restart: false, newSeed: false, speed: true, fit: false, applySources: false }),
+  // Outcome of applying the configuration/initializer ("setup") and the
+  // controller to the running simulator (#567): state is "idle" | "dirty" |
+  // "working" | "success" | "error", with the message shown for it.
+  sourceStatus: Object.freeze({
+    setup: Object.freeze({ state: "idle", text: "No pending changes." }),
+    controller: Object.freeze({ state: "idle", text: "No pending changes." }),
+  }),
+  // Written each time an apply of the setup or the controller is requested,
+  // whoever requested it: { kind: "setup" | "controller" }.
+  sourceApplyRequest: null,
 });
 
 export function createRuntimeModel(initialState = RUNTIME_INITIAL_STATE) {
