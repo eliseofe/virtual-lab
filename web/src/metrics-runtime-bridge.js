@@ -1,3 +1,4 @@
+import { authoringModel, setArtifactDirty } from "./authoring-panel/authoring-model.js";
 import { compileMetrics } from "./metrics/compiler.js";
 import "./catalog-workspace.js";
 import "./results-ui.js";
@@ -77,41 +78,31 @@ function rememberRuntimeMessage(message) {
   }
 }
 
+// Unapplied core edits, from the authoring model (#564).
 function coreRuntimeDirty() {
-  return ["configuration", "initialization", "controller"].some((id) =>
-    document.querySelector(`[data-artifact-id="${id}"]`)?.hasAttribute("data-dirty"));
+  const dirty = authoringModel.get().dirty;
+  return ["configuration", "initialization", "controller"].some((id) => dirty[id]);
 }
 
 function syncMetricsAuthoringUi({ error = null } = {}) {
-  const tab = document.querySelector('[data-artifact-id="metrics"]');
-  tab?.toggleAttribute("data-dirty", metricsDirty);
+  setArtifactDirty("metrics", metricsDirty);
+  document.querySelector('[data-artifact-id="metrics"]')?.toggleAttribute("data-dirty", authoringModel.get().dirty.metrics);
   const apply = document.querySelector("#apply-workspace");
   const state = document.querySelector("#authoring-runtime-state");
   if (!apply || !state) return;
 
-  if (metricsApplyPending) {
-    apply.disabled = true;
-    state.textContent = "Applying runtime changes…";
-    state.dataset.state = "working";
-    return;
-  }
-  if (error) {
-    apply.disabled = false;
-    state.textContent = "Metrics source has an error";
-    state.dataset.state = "error";
-    return;
-  }
-  if (metricsDirty) {
-    apply.disabled = false;
-    state.textContent = "Runtime changes pending";
-    state.dataset.state = "dirty";
-    return;
-  }
-  if (!coreRuntimeDirty()) {
-    apply.disabled = true;
-    state.textContent = "Runtime sources applied";
-    state.dataset.state = "clean";
-  }
+  if (metricsApplyPending) showAuthoringStatus(apply, state, { text: "Applying runtime changes…", state: "working" }, true);
+  else if (error) showAuthoringStatus(apply, state, { text: "Metrics source has an error", state: "error" }, false);
+  else if (metricsDirty) showAuthoringStatus(apply, state, { text: "Runtime changes pending", state: "dirty" }, false);
+  else if (!coreRuntimeDirty()) showAuthoringStatus(apply, state, { text: "Runtime sources applied", state: "clean" }, true);
+}
+
+// The shared runtime-apply status lives in the authoring model; the page shows it.
+function showAuthoringStatus(apply, state, status, applyDisabled) {
+  authoringModel.set({ status: Object.freeze(status), applyDisabled });
+  apply.disabled = authoringModel.get().applyDisabled;
+  state.textContent = authoringModel.get().status.text;
+  state.dataset.state = authoringModel.get().status.state;
 }
 
 function failMetrics(message) {
