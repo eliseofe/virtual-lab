@@ -23,7 +23,8 @@ test("#287 grants Professor read access without broadening write policies", () =
 test("#287 keeps supervised student Experiments outside My Experiments and read-only", () => {
   assert.match(registry, /select\("id,display_name,role"\)/);
   assert.match(registry, /Supervised research · Read-only/);
-  assert.match(registry, /Supervised · Read-only/);
+  // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
+  assert.doesNotMatch(registry, /function renderBrowser|const browser = null/);
   assert.match(registry, /ui\.save\.hidden = !owned/);
   assert.match(registry, /vlab:open-supervised-experiment/);
   assert.match(registry, /Experiment not found in your library or not available to this account/);

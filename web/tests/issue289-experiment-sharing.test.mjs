@@ -46,8 +46,8 @@ test("#289 explicitly shared Experiments can use the existing independent-copy p
 
 test("#289 UI separates shared sources from My Experiments and keeps them read-only", () => {
   assert.match(registry, /let sharedExperiments = \[\]/);
-  assert.match(registry, /filterButton\(\`Shared with me · \$\{sharedExperiments\.length\}\`, "shared"\)/);
-  assert.match(registry, /experimentGroup\("Shared with me", filteredShared, \{ access: "shared" \}\)/);
+  // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
+  assert.doesNotMatch(registry, /function renderBrowser|const browser = null/);
   assert.match(registry, /Shared with me · Read-only/);
   assert.match(registry, /currentRemoteAccess === "shared"/);
   assert.match(registry, /ui\.save\.hidden = !owned/);

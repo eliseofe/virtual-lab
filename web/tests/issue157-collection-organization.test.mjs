@@ -17,7 +17,8 @@ async function sources() {
 test("issue #157 keeps collections out of primary experiment navigation", async () => {
   const [shell, organization] = await sources();
   assert.match(shell, /import "\.\/collection-organization\.js";/);
-  assert.match(organization, /#480 owns discovery/);
+  // #554: the retired flat browser and the no-op hook that mentioned it were removed.
+  assert.doesNotMatch(organization, /simplifyExperimentBrowser|experiment-result-meta/);
   assert.match(organization, /vlab-refresh-experiment-library/);
   assert.doesNotMatch(organization, /experiment-browser-body|experiment-browser-filters/);
   assert.doesNotMatch(organization, /filterButton\(|browserCollection/);
@@ -47,7 +48,6 @@ test("issue #157 confines no-collection language to organization contexts", asyn
   assert.match(organization, /replaceAll\("Unfiled", "No collection"\)/);
   assert.match(organization, /location\.textContent\?\.trim\(\) === "No collection"/);
   assert.match(organization, /label\.endsWith\(" · No collection"\)/);
-  assert.match(organization, /Your experiment · No collection ·/);
 });
 
 test("issue #157 collection management is bounded to the existing collection table", async () => {

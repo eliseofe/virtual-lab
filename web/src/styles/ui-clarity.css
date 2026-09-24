@@ -5,7 +5,6 @@ html[data-vlab-ui-clarity="true"] .stage-note,
 html[data-vlab-ui-clarity="true"] .authoring-workbench-head .muted,
 html[data-vlab-ui-clarity="true"] .authoring-pane-head .muted,
 html[data-vlab-ui-clarity="true"] .experiment-quick-hint,
-html[data-vlab-ui-clarity="true"] .experiment-browser-context > span,
 html[data-vlab-ui-clarity="true"] .registry-message[data-state="idle"],
 html[data-vlab-ui-clarity="true"] .registry-note,
 html[data-vlab-ui-clarity="true"] .feedback[data-state="idle"] {
@@ -227,17 +226,8 @@ html[data-vlab-ui-clarity="true"] .results-storage button {
   font-size: 11.5px !important;
 }
 
-html[data-vlab-ui-clarity="true"] .registry-heading .field-label,
-html[data-vlab-ui-clarity="true"] .experiment-browser-context strong,
-html[data-vlab-ui-clarity="true"] .experiment-group-head strong,
-html[data-vlab-ui-clarity="true"] .experiment-result strong {
+html[data-vlab-ui-clarity="true"] .registry-heading .field-label {
   font-size: 13px;
-}
-
-html[data-vlab-ui-clarity="true"] .experiment-result-meta,
-html[data-vlab-ui-clarity="true"] .experiment-browser-count,
-html[data-vlab-ui-clarity="true"] .experiment-group-head span {
-  font-size: 11.5px;
 }
 
 @media (max-width: 720px) {
