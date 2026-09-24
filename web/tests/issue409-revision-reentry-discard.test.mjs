@@ -45,10 +45,8 @@ test("#409 discard is explicit, owner-scoped and returns to the latest numbered 
   assert.match(discard, /window\.confirm\(/);
   assert.match(discard, /window\.confirm\(discardWorkingCopyQuestion\(currentWorkingCopy\)\)/);
   assert.match(discard, /await workingCopyAutosave/);
-  assert.match(discard, /\.from\("experiment_working_copies"\)/);
-  assert.match(discard, /\.delete\(\{ count: "exact" \}\)/);
-  assert.match(discard, /\.eq\("experiment_id", currentRemote\.id\)/);
-  assert.match(discard, /\.eq\("owner_id", user\.id\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(discard, /await registryData\.discardWorkingCopy\(supabase, currentRemote\.id, user\.id\)/);
   assert.match(discard, /currentWorkingCopy = null/);
   // #545: behaviour covered by registry-revisions.test.mjs; this checks the registry uses the rule.
   assert.match(discard, /const discarded = afterDiscard\(currentRevisions, currentRemote\)/);

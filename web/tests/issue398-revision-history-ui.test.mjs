@@ -22,8 +22,8 @@ test("#398 makes revision history part of the Experiment header rather than Acco
 });
 
 test("#398 loads exact retained snapshots and exposes Working copy as a special entry", () => {
-  assert.match(registry, /\.from\("experiment_revisions"\)/);
-  assert.match(registry, /\.order\("revision", \{ ascending: false \}\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /currentRevisions = await registryData\.listRevisions\(supabase, currentRemote\.id\)/);
   assert.match(registry, /number\.textContent = "Working"/);
   assert.match(registry, /number\.textContent = "R" \+ revision\.revision/);
   assert.match(registry, /applyExperimentArtifacts\(revision\)/);
@@ -46,7 +46,8 @@ test("#398 preserves an existing Working copy while inspecting numbered history"
   assert.match(registry, /Edit from this revision/);
   // #545: behaviour covered by registry-revisions.test.mjs; this checks the registry uses the rule.
   assert.match(registry, /window\.confirm\(replaceWorkingCopyQuestion\(currentWorkingCopy, revision\)\)/);
-  assert.match(registry, /\.from\("experiment_working_copies"\)[\s\S]*\.delete\(\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /registryData\.deleteWorkingCopy\(supabase, currentRemote\.id, user\.id\)/);
 });
 
 test("#398 editing an old revision creates the Working copy from that selected base", () => {

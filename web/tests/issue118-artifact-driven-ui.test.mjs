@@ -80,7 +80,8 @@ test("#118 production page provides an explicit host for dynamically rendered ad
 test("#118 registry UI loads/saves artifacts generically", async () => {
   const registry = await text("registry-ui-v3.js");
   assert.match(registry, /experimentArtifactsEqual/);
-  assert.match(registry, /artifacts,config_source,initializer_source,controller_source/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /registryData\.listOwnExperiments\(supabase, user\.id\)/);
   assert.match(registry, /experimentArtifactEditor/);
   assert.match(registry, /captureExperimentArtifacts\(\)/);
 });

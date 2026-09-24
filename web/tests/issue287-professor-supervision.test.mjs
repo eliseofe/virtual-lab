@@ -21,7 +21,8 @@ test("#287 grants Professor read access without broadening write policies", () =
 });
 
 test("#287 keeps supervised student Experiments outside My Experiments and read-only", () => {
-  assert.match(registry, /select\("id,display_name,role"\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /supervisedProfiles = await registryData\.listStudents\(supabase\)/);
   // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
   assert.match(registry, /const switcher = quickSwitchOptions\(\{/);
   // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
@@ -35,7 +36,8 @@ test("#287 keeps supervised student Experiments outside My Experiments and read-
 
 test("#287 Professor supervision remains read-only and is now integrated into Experiment discovery", () => {
   assert.match(registry, /async function loadSupervisedExperimentList\(\)/);
-  assert.match(registry, /\.eq\("role", "student"\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /registryData\.listExperimentsOwnedBy\(supabase, ids\)/);
   // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
   assert.match(registry, /const switcher = quickSwitchOptions\(\{/);
   assert.match(registry, /access: "supervised"/);

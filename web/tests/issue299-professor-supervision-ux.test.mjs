@@ -57,8 +57,9 @@ test("#299 leaves authorization semantics outside the UI restructuring", () => {
   const end = registry.indexOf("async function loadExperimentList()", start);
   assert.ok(start >= 0 && end > start);
   const supervisedLoader = registry.slice(start, end);
-  assert.match(supervisedLoader, /\.from\("experiments"\)/);
-  assert.match(supervisedLoader, /\.select\(/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(supervisedLoader, /registryData\.listStudents\(supabase\)/);
+  assert.match(supervisedLoader, /registryData\.listExperimentsOwnedBy\(supabase, ids\)/);
   assert.doesNotMatch(supervisedLoader, /\.(insert|update|delete)\(/);
 });
 

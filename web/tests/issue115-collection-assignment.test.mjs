@@ -23,9 +23,8 @@ test("save-as-new exposes owned collection choice and defaults owned copies to t
 test("owned experiments can move collections without manufacturing a scientific revision", async () => {
   const source = await registryUiSource();
   assert.match(source, /async function moveCurrentExperiment\(\)/);
-  assert.match(source, /\.update\(\{ collection_id: targetCollectionId \}\)/);
-  assert.match(source, /\.eq\("id", currentRemote\.id\)/);
-  assert.match(source, /\.eq\("owner_id", user\.id\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(source, /registryData\.moveExperiment\(supabase, \{\s*experimentId: currentRemote\.id,\s*ownerId: user\.id,\s*collectionId: targetCollectionId,/);
   assert.doesNotMatch(source, /Move conflict: a newer revision exists/);
   assert.match(source, /currentRemote = data/);
   assert.match(source, /Revision remains r\$\{data\.revision\}/);
@@ -38,7 +37,8 @@ test("moving first preserves dirty source edits in the Working copy, not the num
   assert.ok(start >= 0 && end > start);
   const moveSource = source.slice(start, end);
   assert.match(moveSource, /await queueWorkingCopyAutosave\(\)/);
-  assert.match(moveSource, /\.update\(\{ collection_id: targetCollectionId \}\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(moveSource, /registryData\.moveExperiment\(/);
   assert.match(source, /ui\.move\.disabled = !owned \|\| target === current/);
   assert.doesNotMatch(moveSource, /registryArtifactsForSave/);
   assert.doesNotMatch(moveSource, /\.update\(\{[^}]*updated_by_actor/);
@@ -46,7 +46,8 @@ test("moving first preserves dirty source edits in the Working copy, not the num
 
 test("collection selectors only use collections loaded through the signed-in account RLS path", async () => {
   const source = await registryUiSource();
-  assert.match(source, /from\("experiment_collections"\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(source, /collections = await registryData\.listCollections\(supabase\)/);
   assert.match(source, /for \(const collection of collections\)/);
   assert.match(source, /option\.value = collection\.id/);
   assert.match(source, /unfiled\.value = ""/);

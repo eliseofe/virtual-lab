@@ -43,6 +43,7 @@ import {
   shareRecipientOptionLabel,
   sharedWithLabel,
 } from "./registry/labels.js";
+import * as registryData from "./registry/data.js";
 import { workspaceStatus } from "./registry/workspace-status.js";
 import {
   libraryLoadedState,
@@ -510,19 +511,14 @@ async function persistWorkingCopy() {
   });
   const baseline = currentEditingBaseline();
   setMessage("Autosaving Working copy…");
-  const { data, error } = await supabase
-    .from("experiment_working_copies")
-    .upsert({
-      experiment_id: currentRemote.id,
-      owner_id: user.id,
-      base_revision: baseRevision,
-      title: baseline?.title ?? currentRemote.title,
-      description: baseline?.description ?? currentRemote.description ?? "",
-      ...artifacts,
-    }, { onConflict: "experiment_id" })
-    .select("*")
-    .single();
-  if (error) throw error;
+  const data = await registryData.upsertWorkingCopy(supabase, {
+    experiment_id: currentRemote.id,
+    owner_id: user.id,
+    base_revision: baseRevision,
+    title: baseline?.title ?? currentRemote.title,
+    description: baseline?.description ?? currentRemote.description ?? "",
+    ...artifacts,
+  });
 
   currentWorkingCopy = data;
   currentRevisionView = { kind: "working", revision: null };
@@ -546,13 +542,7 @@ async function loadRevisionHistory() {
     renderRevisionHistory();
     return;
   }
-  const { data, error } = await supabase
-    .from("experiment_revisions")
-    .select("experiment_id,revision,base_revision,owner_id,title,description,artifacts,config_source,initializer_source,controller_source,created_at,created_by_actor,created_by_user,created_by_ai_client")
-    .eq("experiment_id", currentRemote.id)
-    .order("revision", { ascending: false });
-  if (error) throw error;
-  currentRevisions = data ?? [];
+  currentRevisions = await registryData.listRevisions(supabase, currentRemote.id);
   renderRevisionHistory();
 }
 
@@ -669,12 +659,7 @@ async function editFromViewedRevision() {
   if (currentWorkingCopy) {
     const ok = window.confirm(replaceWorkingCopyQuestion(currentWorkingCopy, revision));
     if (!ok) return;
-    const { error } = await supabase
-      .from("experiment_working_copies")
-      .delete()
-      .eq("experiment_id", currentRemote.id)
-      .eq("owner_id", user.id);
-    if (error) throw error;
+    await registryData.deleteWorkingCopy(supabase, currentRemote.id, user.id);
     currentWorkingCopy = null;
   }
 
@@ -700,13 +685,7 @@ async function discardCurrentWorkingCopy() {
     console.error("Working-copy autosave failed before discard; discarding the durable copy anyway.", error);
   }
 
-  const { error, count } = await supabase
-    .from("experiment_working_copies")
-    .delete({ count: "exact" })
-    .eq("experiment_id", currentRemote.id)
-    .eq("owner_id", user.id);
-  if (error) throw error;
-  if (count !== 1) throw new Error("The Working copy was not found or could not be discarded.");
+  await registryData.discardWorkingCopy(supabase, currentRemote.id, user.id);
 
   currentWorkingCopy = null;
   await loadRevisionHistory();
@@ -900,9 +879,7 @@ function revisionActor(revision) {
 }
 
 async function loadProfile() {
-  const { data, error } = await supabase.from("profiles").select("id, first_name, last_name, display_name, role").eq("id", user.id).maybeSingle();
-  if (error) throw error;
-  profile = data;
+  profile = await registryData.readProfile(supabase, user.id);
 }
 
 async function loadCollections() {
@@ -910,12 +887,7 @@ async function loadCollections() {
     collections = [];
     return;
   }
-  const { data, error } = await supabase
-    .from("experiment_collections")
-    .select("id,name,updated_at")
-    .order("name", { ascending: true });
-  if (error) throw error;
-  collections = data ?? [];
+  collections = await registryData.listCollections(supabase);
 }
 
 async function loadShareRecipients() {
@@ -924,9 +896,7 @@ async function loadShareRecipients() {
     populateShareRecipientSelect();
     return;
   }
-  const { data, error } = await supabase.rpc("list_experiment_share_recipients");
-  if (error) throw error;
-  shareRecipients = data ?? [];
+  shareRecipients = await registryData.listShareRecipients(supabase);
   populateShareRecipientSelect();
 }
 
@@ -936,13 +906,7 @@ async function loadOutgoingShares() {
     renderOutgoingShares();
     return;
   }
-  const { data, error } = await supabase
-    .from("experiment_shares")
-    .select("experiment_id,recipient_id,created_at")
-    .eq("shared_by", user.id)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  outgoingShares = data ?? [];
+  outgoingShares = await registryData.listOutgoingShares(supabase, user.id);
   renderOutgoingShares();
 }
 
@@ -953,31 +917,8 @@ async function loadSharedExperimentList() {
     return;
   }
 
-  const { data: shares, error: sharesError } = await supabase
-    .from("experiment_shares")
-    .select("experiment_id,created_at")
-    .eq("recipient_id", user.id)
-    .order("created_at", { ascending: false });
-  if (sharesError) throw sharesError;
-
-  const ids = (shares ?? []).map((share) => share.experiment_id);
-  if (!ids.length) {
-    sharedExperiments = [];
-    setQuickSwitchOptions();
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("experiments")
-    .select("id,owner_id,collection_id,title,revision,updated_at,updated_by_actor,updated_by_ai_client,artifacts,config_source,initializer_source,controller_source")
-    .in("id", ids)
-    .eq("lifecycle", "active");
-  if (error) throw error;
-
-  const byId = new Map((data ?? []).map((experiment) => [experiment.id, experiment]));
-  sharedExperiments = ids
-    .map((id) => byId.get(id))
-    .filter((experiment) => experiment && productionExperimentRunnability(experiment).runnable);
+  sharedExperiments = (await registryData.listSharedExperiments(supabase, user.id))
+    .filter((experiment) => productionExperimentRunnability(experiment).runnable);
   setQuickSwitchOptions();
 }
 
@@ -989,13 +930,7 @@ async function loadSupervisedExperimentList() {
     return;
   }
 
-  const { data: students, error: studentsError } = await supabase
-    .from("profiles")
-    .select("id,display_name,role")
-    .eq("role", "student")
-    .order("display_name", { ascending: true });
-  if (studentsError) throw studentsError;
-  supervisedProfiles = students ?? [];
+  supervisedProfiles = await registryData.listStudents(supabase);
 
   const ids = supervisedProfiles.map((student) => student.id);
   if (!ids.length) {
@@ -1004,15 +939,7 @@ async function loadSupervisedExperimentList() {
     return;
   }
 
-  const { data, error } = await supabase
-    .from("experiments")
-    .select("id,owner_id,collection_id,title,revision,updated_at,updated_by_actor,updated_by_ai_client,artifacts,config_source,initializer_source,controller_source")
-    .in("owner_id", ids)
-    .eq("lifecycle", "active")
-    .order("updated_at", { ascending: false });
-  if (error) throw error;
-
-  supervisedExperiments = (data ?? [])
+  supervisedExperiments = (await registryData.listExperimentsOwnedBy(supabase, ids))
     .filter((experiment) => productionExperimentRunnability(experiment).runnable);
   setQuickSwitchOptions();
 }
@@ -1024,17 +951,11 @@ async function loadExperimentList() {
     setQuickSwitchOptions();
     return;
   }
-  const { data, error } = await supabase
-    .from("experiments")
-    .select("id,owner_id,collection_id,title,revision,updated_at,updated_by_actor,updated_by_ai_client,artifacts,config_source,initializer_source,controller_source")
-    .eq("owner_id", user.id)
-    .eq("lifecycle", "active")
-    .order("updated_at", { ascending: false });
-  if (error) throw error;
+  const data = await registryData.listOwnExperiments(supabase, user.id);
 
   remoteExperiments = [];
   hiddenNonRunnableCount = 0;
-  for (const experiment of data ?? []) {
+  for (const experiment of data) {
     if (productionExperimentRunnability(experiment).runnable) remoteExperiments.push(experiment);
     else hiddenNonRunnableCount += 1;
   }
@@ -1042,26 +963,14 @@ async function loadExperimentList() {
 }
 
 async function readExperiment(id) {
-  const { data, error } = await supabase
-    .from("experiments")
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
+  const data = await registryData.readExperiment(supabase, id);
   if (!data) throw new Error("Experiment not found in your library or not available to this account.");
   if (!productionExperimentRunnability(data).runnable) throw new Error("This experiment cannot run in the current simulator version.");
   return data;
 }
 
 async function readWorkingCopy(id) {
-  const { data, error } = await supabase
-    .from("experiment_working_copies")
-    .select("*")
-    .eq("experiment_id", id)
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  return registryData.readWorkingCopy(supabase, id, user.id);
 }
 async function waitForSimulatorReady() {
   const deadline = performance.now() + 15000;
@@ -1167,24 +1076,19 @@ async function copyShowcaseToWorkspace(entry, title, collectionId) {
   const validation = registryExperimentRunnability(entry);
   if (!validation.runnable) throw new Error(validation.error || "Showcase Experiment cannot be copied.");
 
-  const { data, error } = await supabase
-    .from("experiments")
-    .insert({
-      owner_id: user.id,
-      collection_id: collectionId,
-      title,
-      description: entry.description || "",
-      lifecycle: "active",
-      visibility: "private",
-      artifacts: entry.artifacts,
-      created_by_actor: "human",
-      created_by_ai_client: null,
-      updated_by_actor: "human",
-      updated_by_ai_client: null,
-    })
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
-    .single();
-  if (error) throw error;
+  const data = await registryData.insertExperiment(supabase, {
+    owner_id: user.id,
+    collection_id: collectionId,
+    title,
+    description: entry.description || "",
+    lifecycle: "active",
+    visibility: "private",
+    artifacts: entry.artifacts,
+    created_by_actor: "human",
+    created_by_ai_client: null,
+    updated_by_actor: "human",
+    updated_by_ai_client: null,
+  });
   await loadExperimentList();
   await loadRemoteExperiment(data.id, { access: "owned" });
   return data;
@@ -1192,14 +1096,12 @@ async function copyShowcaseToWorkspace(entry, title, collectionId) {
 
 async function copyRegistryRevisionToWorkspace(experimentId, revision, title, collectionId) {
   if (!user) throw new Error("Sign in before copying.");
-  const { data: copyId, error } = await supabase.rpc("copy_experiment_to_workspace", {
-    p_source_experiment_id: experimentId,
-    p_expected_revision: revision,
-    p_title: title,
-    p_collection_id: collectionId,
+  const copyId = await registryData.copyExperimentToWorkspace(supabase, {
+    sourceId: experimentId,
+    revision,
+    title,
+    collectionId,
   });
-  if (error) throw error;
-  if (typeof copyId !== "string" || !copyId) throw new Error("The copied Experiment identifier is missing.");
   await loadExperimentList();
   await loadRemoteExperiment(copyId, { access: "owned" });
   return copyId;
@@ -1240,10 +1142,7 @@ async function saveCurrentExperiment() {
   registryArtifactsForSave();
 
   setMessage(`Saving ${currentRemote.title} as a new revision…`);
-  const { data, error } = await supabase
-    .rpc("crystallize_experiment_working_copy", { p_experiment_id: currentRemote.id })
-    .single();
-  if (error) throw error;
+  const data = await registryData.crystallizeWorkingCopy(supabase, currentRemote.id);
 
   currentRemote = data;
   currentWorkingCopy = null;
@@ -1271,16 +1170,11 @@ async function moveCurrentExperiment() {
 
   const targetName = collectionName(targetCollectionId);
   setMessage(`Moving ${currentRemote.title} to ${targetName}…`);
-  const { data, error } = await supabase
-    .from("experiments")
-    .update({ collection_id: targetCollectionId })
-    .eq("id", currentRemote.id)
-    .eq("owner_id", user.id)
-    .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!data) throw new Error("The Experiment is missing or is no longer owned by this account.");
+  const data = await registryData.moveExperiment(supabase, {
+    experimentId: currentRemote.id,
+    ownerId: user.id,
+    collectionId: targetCollectionId,
+  });
 
   currentRemote = data;
   await loadExperimentList();
@@ -1311,15 +1205,11 @@ async function shareCurrentExperiment() {
   if (!recipient) throw new Error("Choose a researcher to share with.");
 
   setMessage(`Sharing ${currentRemote.title} read-only with ${recipient.display_name || recipient.role}…`);
-  const { error } = await supabase
-    .from("experiment_shares")
-    .insert({
-      experiment_id: currentRemote.id,
-      recipient_id: recipient.id,
-      shared_by: user.id,
-    });
-  if (error?.code === "23505") throw new Error("This Experiment is already shared with that researcher.");
-  if (error) throw error;
+  await registryData.shareExperiment(supabase, {
+    experimentId: currentRemote.id,
+    recipientId: recipient.id,
+    sharedBy: user.id,
+  });
 
   await loadOutgoingShares();
   closeShareForm();
@@ -1336,13 +1226,7 @@ async function revokeCurrentExperimentShare(recipientId) {
   }
   const label = shareRecipientLabel(recipientId);
   setMessage(`Revoking read-only access for ${label}…`);
-  const { error, count } = await supabase
-    .from("experiment_shares")
-    .delete({ count: "exact" })
-    .eq("experiment_id", currentRemote.id)
-    .eq("recipient_id", recipientId);
-  if (error) throw error;
-  if (count !== 1) throw new Error("The share was not found or could not be revoked.");
+  await registryData.revokeShare(supabase, { experimentId: currentRemote.id, recipientId });
 
   await loadOutgoingShares();
   updateCurrentUi();
@@ -1382,14 +1266,12 @@ async function copyCurrentReadableExperiment(title, collectionId) {
   const sourceRevision = sourceSnapshot?.revision ?? currentRemote.revision;
   const sourceTitle = sourceSnapshot?.title ?? currentRemote.title;
   setMessage(`Copying ${sourceTitle} revision ${sourceRevision}…`);
-  const { data: copyId, error } = await supabase.rpc("copy_experiment_to_workspace", {
-    p_source_experiment_id: sourceId,
-    p_expected_revision: sourceRevision,
-    p_title: title,
-    p_collection_id: collectionId,
+  const copyId = await registryData.copyExperimentToWorkspace(supabase, {
+    sourceId,
+    revision: sourceRevision,
+    title,
+    collectionId,
   });
-  if (error) throw error;
-  if (typeof copyId !== "string" || !copyId) throw new Error("The copied Experiment identifier is missing.");
   return readExperiment(copyId);
 }
 
@@ -1406,25 +1288,19 @@ async function createNewExperiment() {
   } else {
     const artifacts = registryArtifactsForSave();
     setMessage(`Creating ${title}…`);
-    const { data: created, error } = await supabase
-      .from("experiments")
-      .insert({
-        owner_id: user.id,
-        collection_id: collectionId,
-        title,
-        description: currentRemote?.description ?? currentShowcase?.description ?? currentCatalog?.description ?? "",
-        lifecycle: "active",
-        visibility: "private",
-        ...artifacts,
-        created_by_actor: "human",
-        created_by_ai_client: null,
-        updated_by_actor: "human",
-        updated_by_ai_client: null,
-      })
-      .select("id,owner_id,collection_id,title,description,lifecycle,visibility,revision,artifacts,config_source,initializer_source,controller_source,created_at,updated_at,created_by_actor,created_by_ai_client,updated_by_actor,updated_by_ai_client")
-      .single();
-    if (error) throw error;
-    data = created;
+    data = await registryData.insertExperiment(supabase, {
+      owner_id: user.id,
+      collection_id: collectionId,
+      title,
+      description: currentRemote?.description ?? currentShowcase?.description ?? currentCatalog?.description ?? "",
+      lifecycle: "active",
+      visibility: "private",
+      ...artifacts,
+      created_by_actor: "human",
+      created_by_ai_client: null,
+      updated_by_actor: "human",
+      updated_by_ai_client: null,
+    });
   }
 
   applyExperimentArtifacts(data);
@@ -1487,9 +1363,7 @@ async function restoreRememberedWorkspace() {
     return false;
   }
   if (target.kind === "showcase") {
-    const { data, error } = await supabase.rpc("list_showcase_experiments");
-    if (error) throw error;
-    const entry = (data ?? []).find((candidate) => candidate.showcase_id === target.id);
+    const entry = (await registryData.listShowcaseEntries(supabase)).find((candidate) => candidate.showcase_id === target.id);
     if (entry) {
       await loadShowcaseExperiment(entry);
       return true;

@@ -72,7 +72,8 @@ test("#399 visible revision labels are human-facing rather than registry jargon"
 });
 
 test("#399 keeps chronological crystallization and no automatic merge/rebase model", () => {
-  assert.match(registry, /crystallize_experiment_working_copy/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /registryData\.crystallizeWorkingCopy\(/);
   // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
   assert.match(registry, /setMessage\(newRevisionMessage\(fresh\.revision, actor\), "success"\)/);
   assert.doesNotMatch(registry, /automatic merge|merge conflict|rebase/i);

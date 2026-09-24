@@ -58,8 +58,8 @@ test("#289 UI separates shared sources from My Experiments and keeps them read-o
 
 test("#289 owner share-grant behavior remains present after successor work", () => {
   assert.match(registry, /Share read-only…/);
-  assert.match(registry, /\.from\("experiment_shares"\)[\s\S]*\.insert\(/);
-  assert.match(registry, /shared_by: user\.id/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /registryData\.shareExperiment\(supabase, \{[\s\S]*?sharedBy: user\.id,/);
   assert.doesNotMatch(migration, /grant (update|delete)[^\n]*experiment_shares/i);
 });
 

@@ -47,7 +47,8 @@ test("#397 human crystallization records the Working-copy base while allocating 
 
 test("#397 browser autosaves at interaction boundaries rather than on every keystroke", () => {
   assert.match(registry, /async function persistWorkingCopy\(\)/);
-  assert.match(registry, /\.from\("experiment_working_copies"\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /registryData\.upsertWorkingCopy\(supabase, \{/);
   assert.match(registry, /base_revision: baseRevision/);
   assert.match(registry, /addEventListener\("blur", autosaveAtInteractionBoundary\)/);
   assert.match(registry, /document\.addEventListener\("pointerdown"/);
@@ -59,7 +60,8 @@ test("#397 Save Revision crystallizes only after Working-copy autosave", () => {
   assert.match(registry, /save\.textContent = "Save Revision"/);
   assert.match(registry, /async function saveCurrentExperiment\(\)/);
   assert.match(registry, /await queueWorkingCopyAutosave\(\)/);
-  assert.match(registry, /\.rpc\("crystallize_experiment_working_copy"/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /registryData\.crystallizeWorkingCopy\(supabase, currentRemote\.id\)/);
   assert.match(registry, /currentWorkingCopy = null/);
   assert.doesNotMatch(registry, /conflictRevision/);
 });

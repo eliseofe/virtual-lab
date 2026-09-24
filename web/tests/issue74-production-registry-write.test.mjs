@@ -19,10 +19,11 @@ test("private human edits autosave to a Working copy and only Save Revision crys
   assert.match(registryUi, /function registryArtifactsForSave/);
   assert.match(registryUi, /registryExperimentRunnability\(artifacts\)/);
   assert.match(registryUi, /async function persistWorkingCopy\(\)/);
-  assert.match(registryUi, /\.from\("experiment_working_copies"\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registryUi, /registryData\.upsertWorkingCopy\(supabase, \{/);
   assert.match(registryUi, /base_revision: baseRevision/);
   assert.match(registryUi, /async function saveCurrentExperiment\(\)/);
-  assert.match(registryUi, /crystallize_experiment_working_copy/);
+  assert.match(registryUi, /registryData\.crystallizeWorkingCopy\(supabase, currentRemote\.id\)/);
   assert.match(registryUi, /Save Revision/);
   assert.doesNotMatch(registryUi, /Save conflict: a newer revision exists/);
   assert.doesNotMatch(registryUi, /conflictRevision/);
@@ -38,7 +39,8 @@ test("save-as-new creates a distinct private human-owned registry experiment", a
   assert.match(registryUi, /async function createNewExperiment\(\)/);
   assert.match(registryUi, /const artifacts = registryArtifactsForSave\(\);/);
   assert.doesNotMatch(registryUi, /allowBuiltInCompatibility|registryArtifactsFromProductionExperiment/);
-  assert.match(registryUi, /\.insert\(\{[\s\S]*owner_id: user\.id[\s\S]*collection_id: collectionId[\s\S]*visibility: "private"[\s\S]*created_by_actor: "human"[\s\S]*\}\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registryUi, /registryData\.insertExperiment\(supabase, \{[\s\S]*owner_id: user\.id[\s\S]*collection_id: collectionId[\s\S]*visibility: "private"[\s\S]*created_by_actor: "human"[\s\S]*\}\)/);
   assert.match(registryUi, /currentRemote = data/);
   assert.match(registryUi, /data\.collection_id \? ` in \$\{collectionName\(data\.collection_id\)\}` : " without a collection"/);
 });
