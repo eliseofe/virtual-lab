@@ -70,7 +70,8 @@ test("#397 durable Working copy coexists with a newly arrived AI head", () => {
   assert.match(registry, /await loadRevisionHistory\(\)/);
   assert.match(registry, /const protectedWorkingCopy = Boolean\(owned && currentWorkingCopy && viewingNumbered\)/);
   assert.match(registry, /currentRemote\.revision > referenceRevision/);
-  assert.match(registry, /Your current view was not changed/);
+  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
+  assert.match(registry, /setMessage\(newRevisionMessage\(fresh\.revision, actor\), "success"\)/);
 });
 
 test("#397 warns on navigation loss only for edits not yet durably autosaved", () => {

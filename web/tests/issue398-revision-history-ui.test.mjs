@@ -36,7 +36,7 @@ test("#398 filters revision history by All, Mine and AI only", () => {
   assert.match(registry, /ai\.textContent = "AI"/);
   // #545: behaviour covered by registry-revisions.test.mjs; this checks the registry uses the rule.
   assert.match(registry, /const history = historyEntries\(\{/);
-  assert.match(registry, /revisionIsMine\(revision, user\?\.id\)/);
+  // #554: the unused revisionBelongsToMine wrapper was removed; historyEntries applies the Mine filter.
   assert.doesNotMatch(registry, /People…|People\.\.\.|Collaborators/);
 });
 
@@ -61,15 +61,16 @@ test("#398 surfaces a new AI head without changing the current view", () => {
   assert.match(registry, /"postgres_changes"/);
   assert.match(registry, /refreshCurrentExperimentHead\(id\)/);
   assert.match(registry, /await Promise\.all\(\[loadExperimentList\(\), loadRevisionHistory\(\)\]\)/);
-  assert.match(registry, /Your current view was not changed/);
+  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
+  assert.match(registry, /setMessage\(newRevisionMessage\(fresh\.revision, actor\), "success"\)/);
   assert.doesNotMatch(registry, /setInterval\(/);
 });
 
 test("#398 shows exact provenance and base lineage in revision history", () => {
   assert.match(registry, /formatRevisionTime\(revision\.created_at\)/);
-  assert.match(registry, /revision\.created_by_actor/);
-  assert.match(registry, /revision\.created_by_user/);
-  assert.match(registry, /revision\.created_by_ai_client/);
+  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
+  assert.match(registry, /actor\.textContent = revisionActor\(revision\)/);
+  assert.match(registry, /return revisionActorFor\(revision, user\?\.id\)/);
   assert.match(registry, /Based on R/);
 });
 

@@ -1,18 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Removed the old Experiment browser that nothing used any more",
-  "owner_impact": "Nothing changes on screen. When the unified Experiment Library replaced the old flat browser (#480), the old one was switched off but its code stayed in the workspace module. That code (about 300 lines, plus its styles) is now gone. This is slice 1 of 5 in splitting the Experiment workspace module into smaller tested parts (#554). Test now: optional quick look. Sign in, click Browse experiments, open one of your Experiments and save a revision. Everything should look and behave as before.",
+  "outcome": "The Experiment workspace's labels and sharing rules now have real behaviour tests",
+  "owner_impact": "Nothing changes on screen. The rules behind these workspace labels now live in one small module with 8 tests. They cover: who made a revision (Mine, Human, or the AI's name), where an Experiment lives (your collection, Shared with me, or a supervised student), who you can still share with, the 'library is ready' summary, and the 'new revision is available' notice. This is slice 2 of 5 of #554 (splitting the Experiment workspace module). Test now: optional quick look. Sign in, open one of your Experiments and check the revision history and the Share control. They should look and behave as before.",
   "next": {
     "kind": "epic_continues",
     "issue": 554,
-    "text": "#554 continues with slice 2 of 5: moving the workspace's labels and sharing rules (who made a revision, location labels, who you can share with) into a small tested module. Nothing changes on screen."
+    "text": "#554 continues with slice 3 of 5: the workspace status rules (the save-state text, the explanatory note, and which of Save / Save as new / Move / Share / Edit from revision / Discard appear). They move into a tested module. Nothing changes on screen."
   },
   "technical_evidence": [
-    "registry-ui-v3.js: 2,248 → 1,944 lines. Removed buildBrowser, renderBrowser, filterButton, experimentResult, experimentGroup, catalogResult, openBrowser, the browser wiring and state, and the unused experimentsInCollection.",
-    "collection-organization.js: removed the no-op simplifyExperimentBrowser hook and a loop over the retired browser's rows.",
-    "Removed stylesheet selectors naming only the retired browser's classes (registry-ui-v3.css, ui-clarity.css, ux-hardening.css). No live element uses those classes.",
-    "verify-dist now checks that the retired browser is absent, instead of pinning `const browser = null;`.",
-    "Retired 10 source-text assertions about the removed browser (6 test files). Its behaviour lives in the unified Library, covered by library-browse.test.mjs. 619 tests pass.",
-    "Style comparison of the built Lab identical to the previous production build at all four viewports."
+    "New web/src/registry/labels.js (pure): revision actor and AI client names, revision time, collection and location labels, share visibility and recipients, library summary, new-revision notice.",
+    "registry-ui-v3.js delegates to it via thin wrappers (call sites unchanged), 1,944 → 1,889 lines. Removed three unused helpers (roleLabel, profileForHumanOwner, revisionBelongsToMine).",
+    "New web/tests/registry-labels.test.mjs: 8 behaviour tests. Three planted rule changes (every person shown as Mine, non-owners seeing shares, supervised counts for non-Professors) are each caught.",
+    "Retired only the 15 source-text assertions (7 test files) whose behaviour the new tests cover, replaced by checks that the workspace uses the rules. 627 tests pass.",
+    "Style comparison of the built Lab identical to the slice 1 build at all four viewports."
   ]
 }

@@ -37,7 +37,8 @@ test("#290 browser manages outgoing grants and uses only the eligible recipient 
   assert.match(registry, /let outgoingShares = \[\]/);
   assert.match(registry, /supabase\.rpc\("list_experiment_share_recipients"\)/);
   assert.doesNotMatch(registry, /\.from\("profiles"\)[\s\S]{0,180}\.neq\("id", user\.id\)/);
-  assert.match(registry, /Shared read-only with/);
+  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
+  assert.match(registry, /label\.textContent = sharedWithLabel\(shareRecipientLabel\(share\.recipient_id\)\)/);
   assert.match(registry, /revoke\.textContent = "Revoke"/);
   assert.match(registry, /async function revokeCurrentExperimentShare\(recipientId\)/);
   assert.match(registry, /\.from\("experiment_shares"\)[\s\S]*\.delete\(\{ count: "exact" \}\)/);
