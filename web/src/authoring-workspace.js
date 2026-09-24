@@ -1,3 +1,6 @@
+import { authoringModel, setArtifactDirty } from "./authoring-panel/authoring-model.js";
+import { provideAuthoringCommands } from "./authoring-panel/authoring-commands.js";
+
 const workbench = document.querySelector("#authoring-workbench");
 const tablist = document.querySelector("#authoring-tabs");
 const applyWorkspace = document.querySelector("#apply-workspace");
@@ -35,11 +38,12 @@ function activateArtifact(id, { focus = false } = {}) {
   const nextTab = tabFor(id);
   if (!nextPane || !nextTab) return;
   activeArtifact = id;
+  authoringModel.set({ active: id });
   for (const pane of workbench.querySelectorAll("[data-authoring-artifact-pane]")) {
     pane.hidden = pane !== nextPane;
   }
   for (const tab of tablist.querySelectorAll(".authoring-tab")) {
-    const selected = tab === nextTab;
+    const selected = tab.dataset.artifactId === authoringModel.get().active;
     tab.setAttribute("aria-selected", String(selected));
     tab.tabIndex = selected ? 0 : -1;
   }
@@ -48,27 +52,32 @@ function activateArtifact(id, { focus = false } = {}) {
 
 function updateRuntimeUi() {
   const dirty = setupDirty || controllerDirty;
-  tabFor("configuration")?.toggleAttribute("data-dirty", setupDirty);
-  tabFor("initialization")?.toggleAttribute("data-dirty", setupDirty);
-  tabFor("controller")?.toggleAttribute("data-dirty", controllerDirty);
+  for (const [id, value] of [["configuration", setupDirty], ["initialization", setupDirty], ["controller", controllerDirty]]) {
+    setArtifactDirty(id, value);
+    tabFor(id)?.toggleAttribute("data-dirty", authoringModel.get().dirty[id]);
+  }
 
   if (pendingApply) {
-    runtimeState.textContent = "Applying runtime changes…";
-    runtimeState.dataset.state = "working";
-    applyWorkspace.disabled = true;
+    showRuntimeStatus({ text: "Applying runtime changes…", state: "working" }, true);
     return;
   }
   if (dirty) {
-    runtimeState.textContent = "Runtime changes pending";
-    runtimeState.dataset.state = "dirty";
     const legacyButton = setupDirty ? applySetup : compileController;
-    applyWorkspace.disabled = legacyButton.disabled;
+    showRuntimeStatus({ text: "Runtime changes pending", state: "dirty" }, legacyButton.disabled);
     return;
   }
   const hasError = setupFeedback.dataset.state === "error" || controllerFeedback.dataset.state === "error";
-  runtimeState.textContent = hasError ? "Runtime source has an error" : "Runtime sources applied";
-  runtimeState.dataset.state = hasError ? "error" : "clean";
-  applyWorkspace.disabled = true;
+  showRuntimeStatus(hasError
+    ? { text: "Runtime source has an error", state: "error" }
+    : { text: "Runtime sources applied", state: "clean" }, true);
+}
+
+// The runtime-apply status lives in the authoring model; the page shows it.
+function showRuntimeStatus(status, applyDisabled) {
+  authoringModel.set({ status: Object.freeze(status), applyDisabled });
+  runtimeState.textContent = authoringModel.get().status.text;
+  runtimeState.dataset.state = authoringModel.get().status.state;
+  applyWorkspace.disabled = authoringModel.get().applyDisabled;
 }
 
 function markSetupDirty() {
@@ -185,6 +194,13 @@ function syncAdditionalArtifacts() {
     }
   }
   if (!paneFor(activeArtifact)) activeArtifact = "configuration";
+  authoringModel.set({
+    artifacts: Object.freeze([...tablist.querySelectorAll(".authoring-tab")].map((tab) => Object.freeze({
+      id: tab.dataset.artifactId,
+      label: tab.textContent?.trim() || tab.dataset.artifactId,
+      controls: tab.getAttribute("aria-controls"),
+    }))),
+  });
   activateArtifact(activeArtifact);
 }
 
@@ -240,6 +256,13 @@ if (!attachPersistenceUi()) {
   });
   discoveryObserver.observe(document.body, { childList: true, subtree: true });
 }
+// The authoring controller (#564). Apply still runs through the Apply button,
+// which the metrics runtime intercepts for Metrics-only edits.
+provideAuthoringCommands({
+  selectArtifact: (id) => activateArtifact(id, { focus: true }),
+  apply: () => applyWorkspace.click(),
+});
+
 syncAdditionalArtifacts();
 activateArtifact(activeArtifact);
 updateRuntimeUi();

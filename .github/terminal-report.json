@@ -1,17 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The results panel now has its own model and commands (MVC stage 3, part 1 of 2)",
-  "owner_impact": "Nothing changes on screen. The results panel (plots of the live metrics) now works like the simulation panel. Its state (status line, whether a plot can be added, the metrics and the plots with their selected metrics) lives in one results model, written by the code that receives the metric samples. Its actions (add plot, remove plot, show or hide a metric, follow live data) are commands. The React panel reads only the model and calls only the commands; the old plot buttons, and the module that clears plots when an Experiment changes, call the same commands. Proof: identical real actions on the production version and on this one gave identical results at all 11 steps: run, add plot, toggle a metric, zoom then Follow live (the plot image returns exactly to its live view), remove through the panel, remove the way another module does, restart. A deliberately broken copy was caught at the right step. Test now: optional quick look. Run an Experiment, add a plot, change its metrics, zoom into a plot and press Follow live, remove a plot.",
+  "outcome": "The code-editor panel now reads its own model; selecting a tab and Apply are commands (MVC stage 3, part 2)",
+  "owner_impact": "Nothing changes on screen. The code-editor panel's state (the tabs, which one is open, which have edits not yet applied, the status line and whether Apply is available) now lives in one authoring model, which the React panel reads instead of the old page. Choosing a tab and Apply are commands. Apply still goes through the old Apply button inside the command, because the metrics code applies Metrics-only edits by intercepting that button; turning that into a proper command is the next ticket (#567). Proof: the same real actions on production and on this version, on the complete page, gave identical results at all 16 steps (edit and apply the controller, the configuration, Metrics alone, Metrics plus controller, a syntax error, keyboard tab navigation), including the exact messages sent to the simulator. The simulation and results panels were re-checked the same way on the complete page (18 and 11 steps identical). Test now: yes, a short check. Edit the controller and Apply; edit only the Metrics and Apply; edit Metrics and the controller together and Apply; switch tabs with the arrow keys.",
   "next": {
     "kind": "epic_continues",
-    "issue": 564,
-    "text": "#564 continues with part 2: the authoring (code editor) panel gets its own model and commands in the same way. Nothing changes on screen."
+    "issue": 567,
+    "text": "Next is #567: one authoring controller owns the apply status (today the editor code and the metrics code both write it), and Apply becomes a direct command with Metrics taking part in it rather than intercepting a click. Nothing changes on screen."
   },
   "technical_evidence": [
-    "New web/src/results/results-model.js and results-commands.js, each one shared instance: external to the React bundle (vite SHARED_MODULE) and guarded by verify-dist.",
-    "results-ui.js publishes status, canAdd, metrics (configured ones labelled; sample-only ones by id, as before) and panel bindings to the model, and provides addPanel, removePanel, toggleMetric (configured metrics only, as the checkboxes allowed) and followLive. The legacy buttons and checkboxes call the same commands.",
-    "results-react-adapter.ts reads only the results model and calls only the commands: no page watchers, no clicks, no __vlabResultsUI.",
-    "A/B in a real browser, production build versus this build, same scripted real input: 11/11 steps identical, including plot-image fingerprints before zoom and after Follow live. A planted copy where Follow live does nothing is caught at that step.",
-    "Tests: 670 pass (new results-commands.test.mjs; #198/#261 source checks now assert the model/controller wiring). Style comparison identical at all four viewports."
-  ]
+    "New web/src/authoring-panel/authoring-model.js and authoring-commands.js (shared instances, external to the React bundle, guarded by verify-dist). The model starts with the page's four built-in tabs, so the panel never depends on the editor module having loaded (a test checks this list against index.html).",
+    "authoring-workspace.js and metrics-runtime-bridge.js write tabs, active tab, dirty flags, status and Apply availability into the model at exactly the moments they wrote the page, preserving the existing last-writer behaviour; the metrics runtime reads core dirtiness from the model. authoring-workspace.js provides selectArtifact and apply (Apply still clicks the workspace button so the metrics interception is unchanged).",
+    "authoring-react-adapter.ts reads only the model and calls only the commands: no page watchers, no clicks.",
+    "A/B in a real browser on the complete page (external libraries served from a local mirror), production versus this build: editor panel 16/16, simulation 18/18, results 11/11 steps identical. A planted copy that ignores core edits during a Metrics apply is caught at exactly the combined-apply step. The first A/B, run without the mirror, found the panel losing its tabs when the editor module could not load; fixed by seeding the model with the built-in tabs.",
+    "Tests: 673 pass (new authoring-commands.test.mjs; #262's hidden-click assertions replaced by controller wiring). Style comparison identical at all four viewports."
+  ],
+  "close_issue": 564
 }

@@ -108,6 +108,15 @@ for (const shared of ["results-panel/results-model.js", "results-panel/results-c
   if (!reactRoot.includes(`from "./${shared}"`)) throw new Error(`React bundle does not import the shared ${shared}`);
 }
 if (reactRoot.includes("RESULTS_INITIAL_STATE") || reactRoot.includes("provideResultsCommands")) throw new Error("React bundle inlines its own copy of the results model or commands");
+// #564: and the authoring model and commands, shared with authoring-workspace.js
+// and metrics-runtime-bridge.js.
+for (const shared of ["authoring-panel/authoring-model.js", "authoring-panel/authoring-commands.js"]) {
+  if (!reactRoot.includes(`from "./${shared}"`)) throw new Error(`React bundle does not import the shared ${shared}`);
+}
+if (reactRoot.includes("AUTHORING_INITIAL_STATE") || reactRoot.includes("provideAuthoringCommands")) throw new Error("React bundle inlines its own copy of the authoring model or commands");
+for (const [file, shared] of [["authoring-workspace.js", "authoring-model.js"], ["authoring-workspace.js", "authoring-commands.js"], ["metrics-runtime-bridge.js", "authoring-model.js"]]) {
+  if (!(await readFile(path.join(assetDir, file), "utf8")).includes(`from "./authoring-panel/${shared}"`)) throw new Error(`${file} does not use the shared authoring-panel/${shared}`);
+}
 {
   const resultsUi = await readFile(path.join(assetDir, "results-ui.js"), "utf8");
   if (!resultsUi.includes('from "./results-panel/results-model.js"') || !resultsUi.includes('from "./results-panel/results-commands.js"')) throw new Error("results-ui.js does not use the shared results model and commands");

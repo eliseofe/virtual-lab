@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const webRoot = fileURLToPath(new URL('.', import.meta.url));
-const SHARED_MODULE = /\/(runtime|results-panel)\/(runtime-model|simulation-commands|results-model|results-commands)\.js$/;
+const SHARED_MODULE = /\/(runtime|results-panel|authoring-panel)\/(runtime-model|simulation-commands|results-model|results-commands|authoring-model|authoring-commands)\.js$/;
 
 export default defineConfig({
   plugins: [react()],
@@ -24,7 +24,7 @@ export default defineConfig({
     },
     rollupOptions: {
       // #560/#562/#564: models and command modules must be one instance shared
-      // with the page's own modules (main.js, results-ui.js), so the bundle
+      // with the page's own modules (main.js, results-ui.js, authoring-workspace.js, metrics-runtime-bridge.js), so the bundle
       // imports them at runtime from the asset directory instead of inlining
       // its own copies.
       external: [SHARED_MODULE],
