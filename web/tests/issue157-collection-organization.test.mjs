@@ -19,7 +19,7 @@ test("issue #157 keeps collections out of primary experiment navigation", async 
   assert.match(shell, /import "\.\/collection-organization\.js";/);
   // #554: the retired flat browser and the no-op hook that mentioned it were removed.
   assert.doesNotMatch(organization, /simplifyExperimentBrowser|experiment-result-meta/);
-  assert.match(organization, /vlab-refresh-experiment-library/);
+  assert.match(organization, /vlab:refresh-experiment-library/);
   assert.doesNotMatch(organization, /experiment-browser-body|experiment-browser-filters/);
   assert.doesNotMatch(organization, /filterButton\(|browserCollection/);
 });

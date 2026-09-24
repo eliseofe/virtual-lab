@@ -10,6 +10,7 @@ export function provideResultsCommands(commands) {
 
 export const resultsCommands = Object.freeze({
   addPanel: () => provided?.addPanel(),
+  addPanelWithMetrics: (metricIds) => provided?.addPanelWithMetrics(metricIds),
   removePanel: (panelId) => provided?.removePanel(panelId),
   toggleMetric: (panelId, metricId) => provided?.toggleMetric(panelId, metricId),
   followLive: (panelId) => provided?.followLive(panelId),

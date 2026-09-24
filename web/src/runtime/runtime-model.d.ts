@@ -1,6 +1,7 @@
 export type RuntimeRunState = 'initializing' | 'running' | 'paused';
 
 export type RuntimeState = Readonly<{
+  simulatorStatus: Readonly<{ state: string; text: string }>;
   runState: RuntimeRunState;
   seed: number;
   scientificTime: number;

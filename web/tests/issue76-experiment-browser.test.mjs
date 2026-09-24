@@ -24,7 +24,7 @@ test("main Lab exposes one direct switcher and one unified Experiment Library", 
   // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
   assert.match(registry, /const switcher = quickSwitchOptions\(\{/);
   assert.match(registry, /browse\.textContent = "Browse experiments"/);
-  assert.match(registry, /vlab-open-experiment-library/);
+  assert.match(registry, /vlab:open-experiment-library/);
   assert.match(library, /dialog\.className = "vlab-library"/);
   assert.match(library, /title\.textContent = "Experiment library"/);
   assert.doesNotMatch(library, /Built-in|All experiments/);
@@ -74,7 +74,7 @@ test("switching away from dirty owned work autosaves before navigation", async (
 test("Open is load-only while Open & run is explicit in Details", async () => {
   const source = await librarySource();
   assert.match(source, /async function openRow\(source, row, runAfter = false\)/);
-  assert.match(source, /if \(runAfter\) document\.querySelector\("#run"\)\?\.click\(\)/);
+  assert.match(source, /if \(runAfter\) simulationCommands\.run\(\)/);
   assert.match(source, /button\("Open & run"\)/);
   assert.match(source, /openRow\(source, row, true\)/);
 });

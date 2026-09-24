@@ -61,7 +61,7 @@ test("#429 keeps existing Experiment semantics and collection organization reach
 test("#429 simulator readiness is contextual inside Simulation", () => {
   assert.match(simulation, /data-vlab-simulator-readiness/);
   assert.match(simulation, /Simulator ready/);
-  assert.match(simulation, /#worker-status/);
+  assert.match(simulation, /snapshot\.readiness/);
   assert.doesNotMatch(react, /data-vlab-worker-status/);
 });
 

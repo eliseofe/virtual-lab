@@ -1,4 +1,5 @@
 import { onlyLiveRuntimeUpdates } from "./live-region.js";
+import { runtimeModel } from "./runtime/runtime-model.js";
 const root = document.documentElement;
 root.dataset.vlabUxHardened = "true";
 
@@ -100,20 +101,24 @@ function enhanceStatusSemantics() {
     runtimeState.setAttribute("aria-atomic", "true");
   }
 
-  const stage = document.querySelector(".stage-panel");
-  const workerStatus = document.querySelector("#worker-status");
-  const syncBusy = () => {
-    if (!stage || !workerStatus) return;
-    const busy = workerStatus.dataset.state === "loading";
-    if (stage.getAttribute("aria-busy") !== String(busy)) stage.setAttribute("aria-busy", String(busy));
-  };
   syncBusy();
-  if (workerStatus && !workerStatus.dataset.uxBusyObserved) {
-    workerStatus.dataset.uxBusyObserved = "true";
-    const observer = new MutationObserver(syncBusy);
-    observer.observe(workerStatus, { attributes: true, attributeFilter: ["data-state"] });
-  }
 }
+
+// The arena is busy while the simulator is loading; read from the runtime
+// model (#569), after the step that wrote it, as the attribute observer did.
+function syncBusy() {
+  const stage = document.querySelector(".stage-panel");
+  if (!stage || !document.querySelector("#worker-status")) return;
+  const busy = runtimeModel.get().simulatorStatus.state === "loading";
+  if (stage.getAttribute("aria-busy") !== String(busy)) stage.setAttribute("aria-busy", String(busy));
+}
+
+let busyQueued = false;
+runtimeModel.subscribe((_state, written) => {
+  if (!written.includes("simulatorStatus") || busyQueued) return;
+  busyQueued = true;
+  queueMicrotask(() => { busyQueued = false; syncBusy(); });
+});
 
 function enhanceArenaSemantics() {
   const canvas = document.querySelector("#simulation-canvas");

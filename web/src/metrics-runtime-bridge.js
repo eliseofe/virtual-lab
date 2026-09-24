@@ -1,3 +1,5 @@
+import { runtimeModel } from "./runtime/runtime-model.js";
+import { simulationCommands } from "./runtime/simulation-commands.js";
 import { metricsApplied, metricsApplyPending, metricsEdited, metricsFailed, registerMetricsParticipant } from "./authoring-panel/authoring-controller.js";
 import { compileMetrics } from "./metrics/compiler.js";
 import "./catalog-workspace.js";
@@ -79,7 +81,6 @@ function rememberRuntimeMessage(message) {
 // which owns the apply status.
 function failMetrics(message) {
   metricsFailed(message || "Metrics runtime error");
-  dispatch("vlab:metrics-error", { message: message || "Metrics runtime error" });
 }
 
 class MetricsAwareWorker extends NativeWorker {
@@ -101,12 +102,10 @@ class MetricsAwareWorker extends NativeWorker {
         pendingMetricResetReason = null;
       } else if (message.type === "metrics-applied") {
         metricsApplied();
-        dispatch("vlab:metrics-applied", message);
       } else if (message.type === "metrics-error" || message.type === "metrics-runtime-error") {
         const wasApply = metricsApplyPending();
         pendingMetricResetReason = null;
         metricsFailed(message.message || "Metrics runtime error");
-        dispatch("vlab:metrics-error", message);
         if (!wasApply && message.type === "metrics-runtime-error") dispatch("vlab:run-error", message);
       } else if (message.type === "ready") {
         lastRuntimeContext = {
@@ -115,7 +114,6 @@ class MetricsAwareWorker extends NativeWorker {
           neighbourStrategy: message.neighbourStrategy ?? lastRuntimeContext.neighbourStrategy ?? null,
         };
         pendingSetupApply = false;
-        dispatch("vlab:runtime-ready", lastRuntimeContext);
       } else if (message.type === "paused") {
         dispatch("vlab:run-paused", message);
       } else if (message.type === "completed") {
@@ -189,8 +187,7 @@ document.addEventListener("vlab:apply-metrics", () => {
     return;
   }
   try {
-    const pause = document.querySelector("#pause");
-    if (pause && !pause.disabled) pause.click();
+    if (runtimeModel.get().controls.pause) simulationCommands.pause();
     else activeSimulationWorker.postMessage({ type: "pause" });
     activeSimulationWorker.postMessage({
       type: "apply-metrics",

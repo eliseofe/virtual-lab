@@ -1,3 +1,5 @@
+import { resultsCommands } from "./results-panel/results-commands.js";
+import { resultsModel } from "./results-panel/results-model.js";
 import { supabase } from "./supabase-client.js";
 
 const RESULTS_SCHEMA = "vlab.results-presentation/1";
@@ -11,19 +13,19 @@ function currentExperimentId() {
   return value.startsWith("registry:") ? value.slice("registry:".length) : null;
 }
 
+// Plots are replaced through the results controller (#569), as the plot
+// buttons do.
 function clearPanels() {
-  for (const button of [...document.querySelectorAll('.results-plot-action[data-action="remove"]')]) button.click();
+  for (const { id } of resultsModel.get().panels) resultsCommands.removePanel(id);
 }
 
 function applyPanels(presentation, availableMetricIds) {
-  const api = globalThis.__vlabResultsUI;
-  if (!api) return;
   const available = new Set(availableMetricIds);
   clearPanels();
   for (const panel of presentation?.panels ?? []) {
     if (panel?.type !== "time-series") continue;
     const ids = [...new Set((panel.metric_ids ?? []).filter((id) => available.has(id)))];
-    if (ids.length) api.addPanel(ids);
+    if (ids.length) resultsCommands.addPanelWithMetrics(ids);
   }
 }
 

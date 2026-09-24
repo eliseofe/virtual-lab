@@ -23,7 +23,7 @@ test("issue #153 makes experiment switching global while #480 gives browsing sou
   // #554: behaviour covered by registry-workspace-location.test.mjs; this checks the workspace uses the rule.
   assert.match(source, /const switcher = quickSwitchOptions\(\{/);
   assert.match(source, /browse\.textContent = "Browse experiments"/);
-  assert.match(source, /vlab-open-experiment-library/);
+  assert.match(source, /vlab:open-experiment-library/);
   assert.match(library, /"All Showcase"/);
   assert.match(library, /"All in Mine"/);
   assert.match(library, /"All shared"/);

@@ -8,6 +8,9 @@
 // verify-dist checks that it is not inlined.
 
 export const RUNTIME_INITIAL_STATE = Object.freeze({
+  // The simulator's own status line (#569): state is "loading" | "ready" |
+  // "error"; a message written without a state keeps the previous state.
+  simulatorStatus: Object.freeze({ state: "loading", text: "Starting simulator…" }),
   runState: "initializing", // "initializing" | "running" | "paused"
   seed: 2026,
   scientificTime: 0,

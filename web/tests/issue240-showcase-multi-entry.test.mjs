@@ -43,7 +43,8 @@ test("#240 opening a Showcase URL loads the selected snapshot through the unifie
   assert.match(showcase, /await library\.openShowcase\(entry\)/);
   assert.match(showcase, /await waitForSetupApplied\(\)/);
   assert.match(showcase, /await startShowcaseRun\(\)/);
-  assert.match(showcase, /runButton\.click\(\)/);
+  // #569: the run is started through the simulation controller.
+  assert.match(showcase, /if \(runtimeModel\.get\(\)\.runState !== "running"\) simulationCommands\.run\(\)/);
 });
 
 test("#240 mobile entry actions retain explicit touch targets", () => {

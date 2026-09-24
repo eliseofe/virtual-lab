@@ -20,7 +20,9 @@ test('Simulation presentation is mounted inside the established React/Mantine ro
   assert.match(presentation, /data-vlab-simulation-fit/);
   assert.match(presentation, /data-vlab-simulator-readiness/);
   assert.match(presentation, /Simulator ready/);
-  assert.match(presentation, /#worker-status/);
+  // #569: readiness comes from the runtime model, not the page's status line.
+  assert.doesNotMatch(presentation, /#worker-status|MutationObserver/);
+  assert.match(presentation, /snapshot\.readiness/);
 });
 
 test('Simulation adapter drives the authoritative simulator through its controller instead of owning simulator state', () => {

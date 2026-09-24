@@ -26,6 +26,8 @@ test("the initial model shows exactly what the page shows before the simulator r
   assert.equal(formatCount(RUNTIME_INITIAL_STATE.physicsTicks), initialText("physics-ticks"));
   assert.equal(formatCount(RUNTIME_INITIAL_STATE.controlUpdates), initialText("control-updates"));
   assert.equal(formatActualSpeed(RUNTIME_INITIAL_STATE.actualSpeed), initialText("actual-simulation-speed"));
+  const status = index.match(/id="worker-status" data-state="([^"]*)">([^<]*)</);
+  assert.deepEqual(RUNTIME_INITIAL_STATE.simulatorStatus, { state: status[1], text: status[2] });
   assert.deepEqual(runtimeModel.get(), RUNTIME_INITIAL_STATE);
 });
 

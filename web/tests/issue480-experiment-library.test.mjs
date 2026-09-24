@@ -66,7 +66,7 @@ test("#480 ordinary Showcase browsing is unified; old Showcase surface is curati
   const showcase = await source("../src/showcase.js");
 
   assert.match(registry, /browse\.textContent = "Browse experiments"/);
-  assert.match(registry, /vlab-open-experiment-library/);
+  assert.match(registry, /vlab:open-experiment-library/);
   assert.match(registry, /vlabExperimentLibraryBridge/);
   assert.match(shell, /import "\.\/experiment-library\.js"/);
 
