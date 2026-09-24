@@ -46,7 +46,8 @@ test("#290 browser manages outgoing grants and uses only the eligible recipient 
 });
 
 test("#290 preserves copy and supervision as independent mechanisms", () => {
-  assert.match(registry, /Copy to my Experiments/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /ui\.createNew\.textContent = status\.createNewText/);
   assert.match(registry, /vlab:open-supervised-experiment/);
   assert.match(registry, /access: "supervised"/);
   assert.match(migration, /experiments_select_explicit_share|experiment_shares/);

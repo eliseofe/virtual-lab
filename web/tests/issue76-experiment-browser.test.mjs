@@ -31,13 +31,12 @@ test("main Lab exposes one direct switcher and one unified Experiment Library", 
 
 test("loaded experiment exposes ownership, revision and location context", async () => {
   const source = await registrySource();
-  assert.match(source, /Your experiment · Editable/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(source, /currentUi\.origin\.textContent = status\.origin\.text/);
   assert.match(source, /Showcase · Read-only/);
-  assert.match(source, /function currentLocationLabel\(\)/);
+  assert.match(source, /currentUi\.location\.textContent = status\.location/);
   // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
-  assert.match(source, /currentUi\.location\.textContent = currentLocationLabel\(\)/);
   assert.match(source, /No collection/);
-  assert.match(source, /Showcase \/ \$\{currentShowcase\.showcase_collection_name \|\| "Uncategorized"\}/);
   assert.match(source, /experiment-location/);
 });
 

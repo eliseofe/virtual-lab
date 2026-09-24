@@ -25,7 +25,8 @@ test("#287 keeps supervised student Experiments outside My Experiments and read-
   assert.match(registry, /Supervised research · Read-only/);
   // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
   assert.doesNotMatch(registry, /function renderBrowser|const browser = null/);
-  assert.match(registry, /ui\.save\.hidden = !owned/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /ui\.save\.hidden = status\.saveHidden/);
   assert.match(registry, /vlab:open-supervised-experiment/);
   assert.match(registry, /Experiment not found in your library or not available to this account/);
   assert.doesNotMatch(registry, /\.eq\("id", id\)\s*\.eq\("owner_id", user\.id\)/);
@@ -36,7 +37,8 @@ test("#287 Professor supervision remains read-only and is now integrated into Ex
   assert.match(registry, /\.eq\("role", "student"\)/);
   assert.match(registry, /Supervised research/);
   assert.match(registry, /access: "supervised"/);
-  assert.match(registry, /ui\.save\.hidden = !owned/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /ui\.save\.hidden = status\.saveHidden/);
   assert.doesNotMatch(registry, /\.from\("experiments"\)[\s\S]{0,400}\.(insert|update|delete)\([^\n]*supervised/i);
 });
 

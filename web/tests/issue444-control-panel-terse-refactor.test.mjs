@@ -21,10 +21,8 @@ test("#444 removes prose from the four primary Control Panel areas", () => {
 });
 
 test("#444 shows only compact revision data in the Revisions trigger", () => {
-  assert.match(registry, /currentUi\.revisionPrimary\.textContent = String\(revisionNumber\)/);
-  assert.match(registry, /currentUi\.revisionPrimary\.textContent = "W"/);
-  assert.match(registry, /"Open revision history\. Revision " \+ revisionNumber/);
-  assert.match(registry, /"Open revision history\. Working copy based on revision " \+ currentWorkingCopy\.base_revision/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /currentUi\.revisionPrimary\.textContent = status\.revisionBadge\.primary/);
   assert.match(management, /\.experiment-revision-trigger > span,[\s\S]*\.experiment-revision-trigger > b[\s\S]*display: none !important/);
   assert.match(management, /min-width: 3ch !important/);
   assert.doesNotMatch(management, /max-width: 72px !important/);
@@ -32,11 +30,9 @@ test("#444 shows only compact revision data in the Revisions trigger", () => {
 });
 
 test("#444 keeps visible revision/save state as terse status data", () => {
-  assert.match(registry, /ui\.saveState\.textContent = "Working · pending · " \+ baseRevision/);
-  assert.match(registry, /ui\.saveState\.textContent = "Working · " \+ currentWorkingCopy\.base_revision/);
-  assert.match(registry, /ui\.saveState\.textContent = currentRemote\.revision \+ " · Saved"/);
-  assert.match(registry, /ui\.saveState\.textContent = viewedRevision\.revision \+ " · Historical"/);
-  assert.match(registry, /currentUi\.revisionNotice\.textContent =\s*"New · " \+ currentRemote\.revision/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /ui\.saveState\.textContent = status\.saveState\.text/);
+  assert.match(registry, /currentUi\.revisionNotice\.hidden = status\.notice\.hidden/);
 });
 
 test("#444 removes stale Control Panel placement glue", () => {

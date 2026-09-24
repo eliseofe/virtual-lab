@@ -31,7 +31,8 @@ test("#409 keeps the preserved Working copy explicitly navigable", () => {
 
 test("#409 exposes an owner-only Discard Working copy action", () => {
   assert.match(registry, /discardWorkingCopy\.textContent = "Discard Working copy"/);
-  assert.match(registry, /currentUi\.discardWorkingCopy\.hidden = !owned \|\| !currentWorkingCopy/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /currentUi\.discardWorkingCopy\.hidden = status\.discardHidden/);
   assert.match(registry, /currentUi\.discardWorkingCopy\.addEventListener\("click", \(\) => run\(discardCurrentWorkingCopy\)\)/);
 });
 

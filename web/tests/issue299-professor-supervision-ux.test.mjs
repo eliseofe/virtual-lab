@@ -15,7 +15,8 @@ test("#299 makes the Experiment library the Professor supervision discovery surf
   assert.match(registry, /let supervisedExperiments = \[\]/);
   assert.match(registry, /async function loadSupervisedExperimentList\(\)/);
   // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
-  assert.match(registry, /currentLocationLabelFor\(\{ remote: currentRemote, access: currentRemoteAccess, collections, supervisedProfiles \}\)/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /currentUi\.location\.textContent = status\.location/);
   // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
   assert.doesNotMatch(registry, /function renderBrowser|const browser = null/);
 });
@@ -23,8 +24,9 @@ test("#299 makes the Experiment library the Professor supervision discovery surf
 test("#299 supervised cards show researcher identity and remain read-only", () => {
   // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
   assert.match(registry, /supervisedResearcherName\(currentRemote\.owner_id\)/);
-  assert.match(registry, /ui\.save\.hidden = !owned/);
-  assert.match(registry, /Copy to my Experiments/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /ui\.save\.hidden = status\.saveHidden/);
+  assert.match(registry, /ui\.createNew\.textContent = status\.createNewText/);
   assert.match(registry, /openRegistry: async \(experimentId, access\) => \{[\s\S]*?loadRemoteExperiment\(experimentId, \{ access \}\)/);
 });
 

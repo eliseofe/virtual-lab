@@ -1,17 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Experiment workspace's labels and sharing rules now have real behaviour tests",
-  "owner_impact": "Nothing changes on screen. The rules behind these workspace labels now live in one small module with 8 tests. They cover: who made a revision (Mine, Human, or the AI's name), where an Experiment lives (your collection, Shared with me, or a supervised student), who you can still share with, the 'library is ready' summary, and the 'new revision is available' notice. This is slice 2 of 5 of #554 (splitting the Experiment workspace module). Test now: optional quick look. Sign in, open one of your Experiments and check the revision history and the Share control. They should look and behave as before.",
+  "outcome": "The Experiment workspace's status rules now have real behaviour tests",
+  "owner_impact": "Nothing changes on screen. This slice covers the core of the Experiment workspace: what the save-state line says (Saved, Working, pending, Historical, Read-only), the explanatory note under it, the revision badge and the 'New · R3' notice, and which of Save Revision, Save as new, Move, Share, Edit from this revision and Discard Working copy appear. These rules now live in one small module with 10 tests. A side-by-side comparison of the old and new code over 29,160 workspace situations found no difference. This is slice 3 of 5 of #554 (splitting the Experiment workspace module). Test now: yes, a quick check. Sign in, open one of your Experiments, edit a line (the state should say 'Working · pending'), click outside the editor (it should autosave to 'Working'), then Save Revision (it should say 'Saved'). Open an older revision from the history: it should say 'Historical'.",
   "next": {
     "kind": "epic_continues",
     "issue": 554,
-    "text": "#554 continues with slice 3 of 5: the workspace status rules (the save-state text, the explanatory note, and which of Save / Save as new / Move / Share / Edit from revision / Discard appear). They move into a tested module. Nothing changes on screen."
+    "text": "#554 continues with slice 4 of 5: remembering the last open Experiment and switching between Experiments. It moves into a tested module. Nothing changes on screen."
   },
   "technical_evidence": [
-    "New web/src/registry/labels.js (pure): revision actor and AI client names, revision time, collection and location labels, share visibility and recipients, library summary, new-revision notice.",
-    "registry-ui-v3.js delegates to it via thin wrappers (call sites unchanged), 1,944 → 1,889 lines. Removed three unused helpers (roleLabel, profileForHumanOwner, revisionBelongsToMine).",
-    "New web/tests/registry-labels.test.mjs: 8 behaviour tests. Three planted rule changes (every person shown as Mine, non-owners seeing shares, supervised counts for non-Professors) are each caught.",
-    "Retired only the 15 source-text assertions (7 test files) whose behaviour the new tests cover, replaced by checks that the workspace uses the rules. 627 tests pass.",
-    "Style comparison of the built Lab identical to the slice 1 build at all four viewports."
+    "New web/src/registry/workspace-status.js (pure): one workspaceStatus() decision for title, origin, location, revision badge, notice, save/share/move/discard visibility and enabled state, editor locking, save-state text and note.",
+    "registry-ui-v3.js updateCurrentUi now applies that result in the same order (1,889 → 1,819 lines).",
+    "New web/tests/registry-workspace-status.test.mjs: 10 behaviour tests. Three planted rule changes (Working copy never protected, non-owners able to save, anyone treated as owner) are each caught.",
+    "Differential check: the old updateCurrentUi (from git) and the new one produced identical control states across 29,160 combinations of account, Experiment, access, Working copy, viewed revision, Showcase, unsaved edits and sharing. The same harness reported 3,240 differences for a planted change.",
+    "Retired only the 38 source-text assertions (12 test files) whose behaviour the new tests cover, replaced by checks that the workspace applies each rule. 637 tests pass.",
+    "Style comparison of the built Lab identical to the slice 2 build at all four viewports."
   ]
 }

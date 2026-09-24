@@ -66,8 +66,8 @@ test("#399 mobile revision controls use deliberate touch targets", () => {
 });
 
 test("#399 visible revision labels are human-facing rather than registry jargon", () => {
-  assert.match(registry, /metadataRevision\.textContent = "Working copy · based on R"/);
-  assert.match(registry, /metadataRevision\.textContent = "Revision R"/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /metadataRevision\.textContent = status\.metadataRevision/);
   assert.doesNotMatch(registry, /metadataRevision\.textContent = "registry/);
 });
 
