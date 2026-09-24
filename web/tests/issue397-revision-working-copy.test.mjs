@@ -68,8 +68,9 @@ test("#397 durable Working copy coexists with a newly arrived AI head", () => {
   assert.match(registry, /if \(fresh\.revision > previousRemote\.revision\)/);
   assert.match(registry, /currentRemote = fresh/);
   assert.match(registry, /await loadRevisionHistory\(\)/);
-  assert.match(registry, /const protectedWorkingCopy = Boolean\(owned && currentWorkingCopy && viewingNumbered\)/);
-  assert.match(registry, /currentRemote\.revision > referenceRevision/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /setArtifactEditorsLocked\(status\.lockEditors\)/);
+  assert.match(registry, /currentUi\.revisionNotice\.hidden = status\.notice\.hidden/);
   // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
   assert.match(registry, /setMessage\(newRevisionMessage\(fresh\.revision, actor\), "success"\)/);
 });

@@ -46,19 +46,19 @@ test("save-as-new creates a distinct private human-owned registry experiment", a
 test("editability feedback distinguishes numbered state from Working-copy persistence", async () => {
   const registryUi = await registryUiSource();
   assert.match(registryUi, /Showcase · Read-only/);
-  assert.match(registryUi, /Your experiment · Editable/);
-  assert.match(registryUi, /currentRemote\.revision \+ " · Saved"/);
-  assert.match(registryUi, /"Working · pending · " \+ baseRevision/);
-  assert.match(registryUi, /"Working · " \+ currentWorkingCopy\.base_revision/);
-  assert.match(registryUi, /ui\.save\.hidden = !owned \|\| protectedWorkingCopy/);
-  assert.match(registryUi, /ui\.save\.disabled = !owned \|\| protectedWorkingCopy \|\| \(!dirty && !currentWorkingCopy\)/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registryUi, /currentUi\.origin\.textContent = status\.origin\.text/);
+  assert.match(registryUi, /ui\.saveState\.textContent = status\.saveState\.text/);
+  assert.match(registryUi, /ui\.save\.hidden = status\.saveHidden/);
+  assert.match(registryUi, /ui\.save\.disabled = status\.saveDisabled/);
 });
 
 test("anonymous state exposes no persistence controls and Showcase sources can only be copied after sign-in", async () => {
   const registryUi = await registryUiSource();
-  assert.match(registryUi, /ui\.saveRow\.hidden = !user/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registryUi, /ui\.saveRow\.hidden = status\.saveRowHidden/);
   assert.match(registryUi, /Sign in before saving/);
-  assert.match(registryUi, /The Showcase source cannot be overwritten/);
+  assert.match(registryUi, /ui\.note\.textContent = status\.note/);
 });
 
 test("refresh exposes newer numbered revisions without changing the current revision view", async () => {

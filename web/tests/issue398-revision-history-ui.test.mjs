@@ -41,8 +41,8 @@ test("#398 filters revision history by All, Mine and AI only", () => {
 });
 
 test("#398 preserves an existing Working copy while inspecting numbered history", () => {
-  assert.match(registry, /const protectedWorkingCopy = Boolean\(owned && currentWorkingCopy && viewingNumbered\)/);
-  assert.match(registry, /setArtifactEditorsLocked\(protectedWorkingCopy\)/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /setArtifactEditorsLocked\(status\.lockEditors\)/);
   assert.match(registry, /Edit from this revision/);
   // #545: behaviour covered by registry-revisions.test.mjs; this checks the registry uses the rule.
   assert.match(registry, /window\.confirm\(replaceWorkingCopyQuestion\(currentWorkingCopy, revision\)\)/);

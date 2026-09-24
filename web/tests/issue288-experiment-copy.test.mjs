@@ -48,8 +48,9 @@ test("#288 copy RPC authorizes readable non-owned sources and freezes the exact 
 });
 
 test("#288 supervised copy uses the saved remote revision rather than local unsaved edits", () => {
-  assert.match(registry, /ui\.saveAsNew\.hidden = !user/);
-  assert.match(registry, /copy one to create an independent editable Experiment|Copy to my Experiments creates an independent private Experiment/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /ui\.saveAsNew\.hidden = status\.saveAsNewHidden/);
+  assert.match(registry, /ui\.createNew\.textContent = status\.createNewText/);
   assert.match(registry, /async function copyCurrentReadableExperiment\(title, collectionId\)/);
   assert.match(registry, /const sourceId = currentRemote\.id/);
   assert.match(registry, /const sourceSnapshot = currentRevisionSnapshot\(\)/);
@@ -76,7 +77,8 @@ test("#288 presents copying as a distinct action while preserving ordinary Save 
   assert.match(management, /locationText === "Student experiment" \|\| locationText === "Shared with me"/);
   assert.match(management, /setText\(management\.saveAsNew, "Copy to my Experiments…"\)/);
   assert.match(management, /setText\(management\.saveAsNew, "Save as new…"\)/);
-  assert.match(registry, /ui\.createNew\.textContent = copyingReadable \? "Copy to my Experiments" : "Create private copy"/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /ui\.createNew\.textContent = status\.createNewText/);
 });
 
 

@@ -37,7 +37,6 @@ import {
   availableShareRecipients as availableShareRecipientsFor,
   collectionName as collectionNameFor,
   connectedMessage as connectedMessageFor,
-  currentLocationLabel as currentLocationLabelFor,
   currentOutgoingShares as currentOutgoingSharesFor,
   formatRevisionTime,
   newRevisionMessage,
@@ -47,6 +46,7 @@ import {
   sharedWithLabel,
   supervisedResearcherName as supervisedResearcherNameFor,
 } from "./registry/labels.js";
+import { workspaceStatus } from "./registry/workspace-status.js";
 
 
 const experimentSelect = document.querySelector("#experiment-select");
@@ -107,10 +107,6 @@ function selectedCollectionId(select) {
 
 function supervisedResearcherName(ownerId) {
   return supervisedResearcherNameFor(supervisedProfiles, ownerId);
-}
-
-function currentLocationLabel() {
-  return currentLocationLabelFor({ remote: currentRemote, access: currentRemoteAccess, collections, supervisedProfiles });
 }
 
 function currentOutgoingShares() {
@@ -877,130 +873,60 @@ function updateMoveButton() {
 }
 
 function updateCurrentUi() {
-  const dirty = hasUnsavedRemoteEdits();
-  const owned = Boolean(user && currentRemote && currentRemote.owner_id === user.id);
-  const copyingReadable = Boolean(user && currentRemote && !owned);
-  const viewedRevision = currentRevisionSnapshot();
-  const viewingWorking = currentRevisionView.kind === "working" && Boolean(currentWorkingCopy);
-  const viewingNumbered = currentRevisionView.kind === "revision" && Boolean(viewedRevision);
-  const protectedWorkingCopy = Boolean(owned && currentWorkingCopy && viewingNumbered);
+  const status = workspaceStatus({
+    userId: user?.id,
+    remote: currentRemote,
+    access: currentRemoteAccess,
+    workingCopy: currentWorkingCopy,
+    revisions: currentRevisions,
+    view: currentRevisionView,
+    showcase: currentShowcase,
+    catalog: currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT,
+    dirty: hasUnsavedRemoteEdits(),
+    collections,
+    supervisedProfiles,
+    availableRecipientCount: availableShareRecipients().length,
+    hasOutgoingShares: currentOutgoingShares().length > 0,
+  });
 
-  if (currentRemote) {
-    currentUi.title.textContent = currentRemote.title;
-    currentUi.origin.dataset.kind = owned ? "owned" : "readonly";
-    currentUi.origin.textContent = owned ? "Your experiment · Editable" : "Read-only";
-    currentUi.location.textContent = currentLocationLabel();
-    currentUi.revisionWorkflow.hidden = false;
-
-    if (viewingWorking) {
-      currentUi.revisionPrimary.textContent = "W";
-      currentUi.revisionSecondary.textContent = "";
-      currentUi.revisionTrigger.setAttribute(
-        "aria-label",
-        "Open revision history. Working copy based on revision " + currentWorkingCopy.base_revision,
-      );
-      metadataRevision.textContent = "Working copy · based on R" + currentWorkingCopy.base_revision;
-    } else {
-      const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
-      currentUi.revisionPrimary.textContent = String(revisionNumber);
-      currentUi.revisionSecondary.textContent = "";
-      currentUi.revisionTrigger.setAttribute(
-        "aria-label",
-        "Open revision history. Revision " + revisionNumber,
-      );
-      metadataRevision.textContent = "Revision R" + revisionNumber;
-    }
-
-    const referenceRevision = viewingWorking
-      ? currentWorkingCopy.base_revision
-      : (viewedRevision?.revision ?? currentRemote.revision);
-    if (currentRemote.revision > referenceRevision) {
-      const newest = currentRevisions.find((revision) => revision.revision === currentRemote.revision) ?? currentRemote;
-      const actor = revisionActor(newest);
-      currentUi.revisionNotice.hidden = false;
-      currentUi.revisionNotice.textContent =
-        "New · " + currentRemote.revision + (actor ? " · " + actor : "");
-    } else {
-      currentUi.revisionNotice.hidden = true;
-      currentUi.revisionNotice.textContent = "";
-    }
-  } else {
-    const showcaseSource = currentShowcase ?? currentCatalog ?? DEFAULT_CATALOG_EXPERIMENT;
-    currentUi.title.textContent = showcaseSource.title;
-    currentUi.origin.dataset.kind = "readonly";
-    currentUi.origin.textContent = "Showcase · Read-only";
-    currentUi.location.textContent = currentShowcase
-      ? `Showcase / ${currentShowcase.showcase_collection_name || "Uncategorized"}`
-      : "Showcase";
-    currentUi.revisionWorkflow.hidden = true;
-    currentUi.revisionNotice.hidden = true;
-    metadataRevision.textContent = currentShowcase?.source_revision == null
-      ? "Showcase · Catalog"
-      : `Showcase · R${currentShowcase.source_revision}`;
+  currentUi.title.textContent = status.title;
+  currentUi.origin.dataset.kind = status.origin.kind;
+  currentUi.origin.textContent = status.origin.text;
+  currentUi.location.textContent = status.location;
+  currentUi.revisionWorkflow.hidden = status.revisionWorkflowHidden;
+  if (status.revisionBadge) {
+    currentUi.revisionPrimary.textContent = status.revisionBadge.primary;
+    currentUi.revisionSecondary.textContent = "";
+    currentUi.revisionTrigger.setAttribute("aria-label", status.revisionBadge.ariaLabel);
   }
+  metadataRevision.textContent = status.metadataRevision;
+  currentUi.revisionNotice.hidden = status.notice.hidden;
+  if (status.notice.text !== null) currentUi.revisionNotice.textContent = status.notice.text;
 
-  currentUi.editFromRevision.hidden = !protectedWorkingCopy;
-  if (protectedWorkingCopy) {
-    currentUi.editFromRevision.textContent = "Edit from R" + viewedRevision.revision;
-  }
-  currentUi.discardWorkingCopy.hidden = !owned || !currentWorkingCopy;
-  setArtifactEditorsLocked(protectedWorkingCopy);
+  currentUi.editFromRevision.hidden = status.editFromRevision.hidden;
+  if (status.editFromRevision.text !== null) currentUi.editFromRevision.textContent = status.editFromRevision.text;
+  currentUi.discardWorkingCopy.hidden = status.discardHidden;
+  setArtifactEditorsLocked(status.lockEditors);
 
-  ui.saveRow.hidden = !user;
-  ui.saveAsNew.hidden = !user;
-  ui.save.hidden = !owned || protectedWorkingCopy;
-  ui.createNew.textContent = copyingReadable ? "Copy to my Experiments" : "Create private copy";
-  const availableRecipients = availableShareRecipients();
-  const hasOutgoingShares = currentOutgoingShares().length > 0;
-  const canManageShares = Boolean(owned && (availableRecipients.length > 0 || hasOutgoingShares));
-  ui.shareRow.hidden = !canManageShares;
-  ui.shareOpen.hidden = !owned || availableRecipients.length === 0;
-  if (!owned || availableRecipients.length === 0) ui.shareForm.hidden = true;
+  ui.saveRow.hidden = status.saveRowHidden;
+  ui.saveAsNew.hidden = status.saveAsNewHidden;
+  ui.save.hidden = status.saveHidden;
+  ui.createNew.textContent = status.createNewText;
+  ui.shareRow.hidden = status.shareRowHidden;
+  ui.shareOpen.hidden = status.shareOpenHidden;
+  if (status.closeShareForm) ui.shareForm.hidden = true;
   populateShareRecipientSelect();
   renderOutgoingShares();
-  ui.save.disabled = !owned || protectedWorkingCopy || (!dirty && !currentWorkingCopy);
-  ui.moveRow.hidden = !owned;
-  if (owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
+  ui.save.disabled = status.saveDisabled;
+  ui.moveRow.hidden = status.moveRowHidden;
+  if (status.owned) populateCollectionSelect(ui.moveCollection, currentRemote.collection_id);
   updateMoveButton();
 
-  if (!user) {
-    ui.note.textContent = "You can edit and run this Showcase Experiment locally. Sign in to save a private copy or open your own library.";
-  } else if (!currentRemote) {
-    ui.saveState.dataset.state = "readonly";
-    ui.saveState.textContent = "Read-only";
-    ui.note.textContent = "The Showcase source cannot be overwritten. Save as new creates an independent private copy.";
-  } else if (!owned) {
-    ui.saveState.dataset.state = "readonly";
-    const revisionNumber = viewedRevision?.revision ?? currentRemote.revision;
-    ui.saveState.textContent = revisionNumber + " · Read-only";
-    ui.note.textContent = currentRemoteAccess === "shared"
-      ? "This shared revision stays read-only. Copy to my Experiments creates an independent private Experiment from the exact state you are viewing."
-      : "This supervised revision stays read-only. Copy to my Experiments creates an independent private Experiment from the exact state you are viewing.";
-  } else if (protectedWorkingCopy) {
-    ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent =
-      viewedRevision.revision + " · Working " + currentWorkingCopy.base_revision;
-    ui.note.textContent = "Select Working copy to resume it, or choose Edit from this revision to replace it explicitly.";
-  } else if (dirty) {
-    const baseRevision = currentWorkingCopy?.base_revision ?? viewedRevision?.revision ?? currentRemote.revision;
-    ui.saveState.dataset.state = "dirty";
-    ui.saveState.textContent = "Working · pending · " + baseRevision;
-    ui.note.textContent = "Leaving the editor or taking another action autosaves the Working copy. Save Revision creates a numbered revision.";
-  } else if (viewingWorking) {
-    ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = "Working · " + currentWorkingCopy.base_revision;
-    ui.note.textContent = currentRemote.revision > currentWorkingCopy.base_revision
-      ? "A newer numbered revision is available. Your Working copy remains preserved; Save Revision will create the next chronological revision."
-      : "Working copy is durable. Save Revision crystallizes it as the next numbered revision.";
-  } else if (viewingNumbered && viewedRevision.revision < currentRemote.revision) {
-    ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = viewedRevision.revision + " · Historical";
-    ui.note.textContent = "Edit normally to start a Working copy from this revision. Numbered history remains unchanged.";
-  } else {
-    ui.saveState.dataset.state = "saved";
-    ui.saveState.textContent = currentRemote.revision + " · Saved";
-    ui.note.textContent = "Edit normally to create a Working copy; Save Revision crystallizes it as the next numbered revision.";
+  if (status.saveState) {
+    ui.saveState.dataset.state = status.saveState.state;
+    ui.saveState.textContent = status.saveState.text;
   }
+  ui.note.textContent = status.note;
 
   setQuickSwitchOptions();
   renderRevisionHistory();

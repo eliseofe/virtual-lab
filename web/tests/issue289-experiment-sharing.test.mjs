@@ -50,7 +50,8 @@ test("#289 UI separates shared sources from My Experiments and keeps them read-o
   assert.doesNotMatch(registry, /function renderBrowser|const browser = null/);
   assert.match(registry, /Shared with me · Read-only/);
   assert.match(registry, /currentRemoteAccess === "shared"/);
-  assert.match(registry, /ui\.save\.hidden = !owned/);
+  // #554: behaviour covered by registry-workspace-status.test.mjs; this checks the workspace applies the rule.
+  assert.match(registry, /ui\.save\.hidden = status\.saveHidden/);
   assert.match(management, /locationText === "Shared with me"/);
 });
 
