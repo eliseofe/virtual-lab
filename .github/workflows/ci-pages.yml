@@ -7,14 +7,12 @@ on:
       - '*.md'
       - '**/*.md'
       - 'docs/**'
-      - '.github/workflows/**'
   pull_request:
     branches: [main]
     paths-ignore:
       - '*.md'
       - '**/*.md'
       - 'docs/**'
-      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
@@ -22,12 +20,14 @@ permissions:
 
 concurrency:
   group: virtual-lab-ci-pages-v3-${{ github.ref }}
-  cancel-in-progress: true
+  # A release on main is never cancelled halfway; a newer push waits for it.
+  # Pull-request checks still cancel superseded runs.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -82,6 +82,9 @@ jobs:
 
       - name: Verify browser artifact
         run: node web/scripts/verify-dist.mjs
+
+      - name: Verify exact build in a browser before publishing
+        run: node web/scripts/pre-publish-smoke.mjs
 
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
