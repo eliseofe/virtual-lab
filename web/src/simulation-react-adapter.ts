@@ -1,3 +1,12 @@
+import { runtimeModel } from './runtime/runtime-model.js';
+import {
+  formatActualSpeed,
+  formatCount,
+  formatRunState,
+  formatScientificTime,
+  formatSeed,
+} from './runtime/runtime-format.js';
+
 export type SimulationPresentationSnapshot = {
   stage: HTMLElement;
   mount: HTMLElement;
@@ -60,22 +69,25 @@ export function readSimulationPresentation(): SimulationPresentationSnapshot | n
     || !scientificTime || !physicsTicks || !controlUpdates || !cameraStatus || !glyph
     || !run || !pause || !restart || !newSeed || !fit) return null;
 
+  // Runtime values come from the runtime model (#560); the legacy elements are
+  // still required above so the panel appears only on the complete page.
+  const runtime = runtimeModel.get();
   const numericSpeed = Number(speed.value);
   return {
     stage,
     mount: ensureMount(stage, legacyHeading),
     boundaryLabel: legacyHeading.querySelector<HTMLElement>('.badge')?.textContent?.trim() || 'Arena',
-    runState: runState.textContent?.trim() || 'Paused',
-    seed: seed.textContent?.trim() || '—',
+    runState: formatRunState(runtime.runState),
+    seed: formatSeed(runtime.seed),
     speed: Number.isFinite(numericSpeed) ? numericSpeed : 1,
     speedMin: numberAttribute(speed, 'min', 1),
     speedMax: numberAttribute(speed, 'max', 100),
     speedStep: numberAttribute(speed, 'step', 1),
     targetSpeed: targetSpeed.textContent?.trim() || '—',
-    actualSpeed: actualSpeed.textContent?.trim() || '—',
-    scientificTime: scientificTime.textContent?.trim() || '0.000',
-    physicsTicks: physicsTicks.textContent?.trim() || '0',
-    controlUpdates: controlUpdates.textContent?.trim() || '0',
+    actualSpeed: formatActualSpeed(runtime.actualSpeed),
+    scientificTime: formatScientificTime(runtime.scientificTime),
+    physicsTicks: formatCount(runtime.physicsTicks),
+    controlUpdates: formatCount(runtime.controlUpdates),
     cameraStatus: cameraStatus.textContent?.trim() || 'Fit',
     glyph: glyph.value || 'directional',
     runDisabled: run.disabled,
@@ -114,9 +126,11 @@ export function setSimulationGlyph(value: string): void {
 }
 
 export function subscribeSimulationPresentation(callback: () => void): () => void {
+  // Runtime values notify through the runtime model; the remaining controls are
+  // still legacy elements until their own stage of #560's plan.
+  const unsubscribeRuntime = runtimeModel.subscribe(() => callback());
   const observed = [
-    '#run-state', '#run-seed', '#simulation-speed-value', '#actual-simulation-speed',
-    '#scientific-time', '#physics-ticks', '#control-updates', '#camera-status',
+    '#simulation-speed-value', '#camera-status',
     '#run', '#pause', '#restart', '#restart-new-seed', '#simulation-speed', '#fit-arena',
   ].map((selector) => document.querySelector(selector)).filter(Boolean) as Element[];
 
@@ -138,6 +152,7 @@ export function subscribeSimulationPresentation(callback: () => void): () => voi
   glyph?.addEventListener('change', callback);
 
   return () => {
+    unsubscribeRuntime();
     observers.forEach((observer) => observer.disconnect());
     speed?.removeEventListener('input', callback);
     glyph?.removeEventListener('change', callback);

@@ -10,6 +10,8 @@ import {
   validateRuntimeValues,
 } from "./runtime/contract.js";
 import { ArenaCamera } from "./visualization/camera.js";
+import { runtimeModel } from "./runtime/runtime-model.js";
+import { formatCount, formatRunState, formatScientificTime, formatSeed } from "./runtime/runtime-format.js";
 
 const INTERNAL_SEED = 2026;
 
@@ -189,7 +191,14 @@ function updateSpeedLabel() {
 }
 
 function updateSeedLabel() {
-  ui.runSeed.textContent = String(activeSeed >>> 0);
+  runtimeModel.set({ seed: activeSeed });
+  ui.runSeed.textContent = formatSeed(runtimeModel.get().seed);
+}
+
+// The run state lives in the runtime model; the page label is drawn from it.
+function showRunState(runState) {
+  runtimeModel.set({ runState });
+  ui.runState.textContent = formatRunState(runtimeModel.get().runState);
 }
 
 function randomSeedDifferentFromCurrent() {
@@ -202,7 +211,7 @@ function randomSeedDifferentFromCurrent() {
 
 function setRunning(next, { notifyWorker = true } = {}) {
   running = Boolean(next);
-  ui.runState.textContent = running ? "Running" : "Paused";
+  showRunState(running ? "running" : "paused");
   setControlsEnabled(initialized);
   if (!initialized || !notifyWorker) return;
 
@@ -256,10 +265,12 @@ function updateSnapshot(message) {
     activeSeed = Number(message.seed) >>> 0;
     updateSeedLabel();
   }
-  const scientificTime = Number(message.scientificTime ?? 0);
-  ui.time.textContent = scientificTime.toFixed(3);
-  ui.physicsTicks.textContent = String(message.physicsTicks ?? 0);
-  ui.controlUpdates.textContent = String(message.controlUpdates ?? 0);
+  runtimeModel.set({ scientificTime: Number(message.scientificTime ?? 0) });
+  ui.time.textContent = formatScientificTime(runtimeModel.get().scientificTime);
+  runtimeModel.set({ physicsTicks: message.physicsTicks ?? 0 });
+  ui.physicsTicks.textContent = formatCount(runtimeModel.get().physicsTicks);
+  runtimeModel.set({ controlUpdates: message.controlUpdates ?? 0 });
+  ui.controlUpdates.textContent = formatCount(runtimeModel.get().controlUpdates);
 }
 
 function rebuildEnvironmentGridImage() {
@@ -439,7 +450,7 @@ worker.addEventListener("message", (event) => {
     ui.status.textContent = "Simulator ready";
     ui.status.dataset.state = "ready";
     running = false;
-    ui.runState.textContent = "Paused";
+    showRunState("paused");
     setControlsEnabled(true);
     return;
   }
@@ -502,7 +513,7 @@ worker.addEventListener("message", (event) => {
 worker.addEventListener("error", (event) => {
   running = false;
   setControlsEnabled(false);
-  ui.runState.textContent = "Paused";
+  showRunState("paused");
   ui.status.textContent = `Simulator error: ${event.message || "failed to start"}`;
   ui.status.dataset.state = "error";
   ui.setupError.textContent = event.message || "Simulator failed to start.";

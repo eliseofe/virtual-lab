@@ -95,6 +95,16 @@ for (const required of [
 // simulation canvas. Those selector strings are not runtime ownership. Keep this
 // distribution check focused on actual scientific/runtime implementation ownership;
 // source-contract tests separately enforce the adapter boundary.
+// #560: the runtime model is one instance shared by main.js, the speed meter and
+// the React panel. The bundle must import it from the asset directory, never
+// carry its own copy (a copy would be a second model that nobody writes).
+if (!reactRoot.includes('from "./runtime/runtime-model.js"')) throw new Error("React bundle does not import the shared runtime model");
+if (reactRoot.includes("createRuntimeModel") || reactRoot.includes("RUNTIME_INITIAL_STATE")) throw new Error("React bundle inlines its own copy of the runtime model");
+for (const file of ["main.js", "runtime-speed.js"]) {
+  const source = await readFile(path.join(assetDir, file), "utf8");
+  if (!source.includes('from "./runtime/runtime-model.js"')) throw new Error(`${file} does not use the shared runtime model`);
+}
+await readFile(path.join(assetDir, "runtime/runtime-model.js"), "utf8");
 for (const forbidden of ["vlab_kernel_bg.wasm", "vlab_kernel.js", "new Worker("]) {
   if (reactRoot.includes(forbidden)) {
     throw new Error(`React presentation bundle contains scientific/runtime implementation marker: ${forbidden}`);
