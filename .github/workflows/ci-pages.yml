@@ -8,11 +8,9 @@ on:
       - '**/*.md'
       - 'docs/**'
   pull_request:
+    # No paths-ignore: every pull request must report the required `build`
+    # check, including documentation-only ones, or it could never be merged.
     branches: [main]
-    paths-ignore:
-      - '*.md'
-      - '**/*.md'
-      - 'docs/**'
   workflow_dispatch:
 
 permissions:
