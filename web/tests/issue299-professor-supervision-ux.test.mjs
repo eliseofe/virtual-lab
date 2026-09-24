@@ -14,7 +14,8 @@ test("#299 makes the Experiment library the Professor supervision discovery surf
   assert.match(registry, /let supervisedProfiles = \[\]/);
   assert.match(registry, /let supervisedExperiments = \[\]/);
   assert.match(registry, /async function loadSupervisedExperimentList\(\)/);
-  assert.match(registry, /Supervised ·/);
+  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
+  assert.match(registry, /currentLocationLabelFor\(\{ remote: currentRemote, access: currentRemoteAccess, collections, supervisedProfiles \}\)/);
   // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
   assert.doesNotMatch(registry, /function renderBrowser|const browser = null/);
 });

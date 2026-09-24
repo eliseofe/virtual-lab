@@ -28,12 +28,25 @@ import {
   ownsExperiment,
   reentryView,
   replaceWorkingCopyQuestion,
-  revisionIsMine,
   revisionKindLabel as revisionKindLabelFor,
   selectedRevisionMessage,
   viewedRevisionSnapshot,
   workingCopyBaseRevision,
 } from "./registry/revisions.js";
+import {
+  availableShareRecipients as availableShareRecipientsFor,
+  collectionName as collectionNameFor,
+  connectedMessage as connectedMessageFor,
+  currentLocationLabel as currentLocationLabelFor,
+  currentOutgoingShares as currentOutgoingSharesFor,
+  formatRevisionTime,
+  newRevisionMessage,
+  revisionActor as revisionActorFor,
+  shareRecipientLabel as shareRecipientLabelFor,
+  shareRecipientOptionLabel,
+  sharedWithLabel,
+  supervisedResearcherName as supervisedResearcherNameFor,
+} from "./registry/labels.js";
 
 
 const experimentSelect = document.querySelector("#experiment-select");
@@ -47,16 +60,6 @@ if (!experimentSelect || !experimentPanel || !experimentLabel || !metadataRevisi
 }
 
 const WORKSPACE_KEY_PREFIX = "vlab-last-experiment-v1:";
-
-const AI_CLIENT_LABELS = Object.freeze({
-  "f9ea9bbe-2e3f-497d-92b3-5f108b64593c": "Claude",
-  "7f8986f1-11c3-4be5-8cc7-3887dfb038d9": "Claude",
-  "12e106dc-4da6-49cd-9062-d0a4bb5c34c6": "Grok",
-  "13c111c5-64f6-4be5-9e02-7188dd104cce": "Grok",
-  "d3ab452e-1e41-4ceb-a694-645e2f03872a": "Grok",
-  "ChatGPT-owner-authorized-AEM-metric": "ChatGPT",
-  "mcp-client": "AI · legacy MCP client",
-});
 
 let user = null;
 let profile = null;
@@ -80,8 +83,7 @@ let workingCopyAutosave = Promise.resolve();
 let hiddenNonRunnableCount = 0;
 
 function collectionName(id) {
-  if (!id) return "Unfiled";
-  return collections.find((collection) => collection.id === id)?.name || "Unfiled";
+  return collectionNameFor(collections, id);
 }
 
 function populateCollectionSelect(select, selectedId = null) {
@@ -104,30 +106,23 @@ function selectedCollectionId(select) {
 }
 
 function supervisedResearcherName(ownerId) {
-  return supervisedProfiles.find((candidate) => candidate.id === ownerId)?.display_name?.trim() || "Student researcher";
+  return supervisedResearcherNameFor(supervisedProfiles, ownerId);
 }
 
 function currentLocationLabel() {
-  if (!currentRemote) return "Showcase";
-  if (currentRemoteAccess === "shared") return "Shared with me";
-  if (currentRemoteAccess === "supervised") return `Supervised · ${supervisedResearcherName(currentRemote.owner_id)}`;
-  return currentRemote.collection_id ? `Collection · ${collectionName(currentRemote.collection_id)}` : "No collection";
+  return currentLocationLabelFor({ remote: currentRemote, access: currentRemoteAccess, collections, supervisedProfiles });
 }
 
 function currentOutgoingShares() {
-  if (!currentRemote || !user || currentRemote.owner_id !== user.id) return [];
-  return outgoingShares.filter((share) => share.experiment_id === currentRemote.id);
+  return currentOutgoingSharesFor({ remote: currentRemote, userId: user?.id, outgoingShares });
 }
 
 function availableShareRecipients() {
-  const sharedIds = new Set(currentOutgoingShares().map((share) => share.recipient_id));
-  return shareRecipients.filter((recipient) => !sharedIds.has(recipient.id));
+  return availableShareRecipientsFor(shareRecipients, currentOutgoingShares());
 }
 
 function shareRecipientLabel(recipientId) {
-  const recipient = shareRecipients.find((candidate) => candidate.id === recipientId);
-  if (!recipient) return "Researcher";
-  return recipient.display_name?.trim() || recipient.role;
+  return shareRecipientLabelFor(shareRecipients, recipientId);
 }
 
 function populateShareRecipientSelect() {
@@ -136,9 +131,7 @@ function populateShareRecipientSelect() {
   for (const recipient of availableShareRecipients()) {
     const option = document.createElement("option");
     option.value = recipient.id;
-    option.textContent = recipient.display_name?.trim()
-      ? `${recipient.display_name.trim()} · ${recipient.role}`
-      : recipient.role;
+    option.textContent = shareRecipientOptionLabel(recipient);
     ui.shareRecipient.append(option);
   }
 }
@@ -150,7 +143,7 @@ function renderOutgoingShares() {
     const item = document.createElement("div");
     item.className = "registry-share-item";
     const label = document.createElement("span");
-    label.textContent = `Shared read-only with ${shareRecipientLabel(share.recipient_id)}`;
+    label.textContent = sharedWithLabel(shareRecipientLabel(share.recipient_id));
     const revoke = document.createElement("button");
     revoke.textContent = "Revoke";
     revoke.addEventListener("click", () => run(() => revokeCurrentExperimentShare(share.recipient_id)));
@@ -566,10 +559,6 @@ async function loadRevisionHistory() {
   renderRevisionHistory();
 }
 
-function revisionBelongsToMine(revision) {
-  return revisionIsMine(revision, user?.id);
-}
-
 function revisionKindLabel(revision) {
   return revisionKindLabelFor(revision, user?.id);
 }
@@ -776,11 +765,7 @@ async function refreshCurrentExperimentHead(id) {
 
   const newest = currentRevisions.find((revision) => revision.revision === fresh.revision);
   const actor = newest ? revisionActor(newest) : revisionActor(fresh);
-  setMessage(
-    "New revision R" + fresh.revision + (actor ? " from " + actor : "")
-    + " is available. Your current view was not changed.",
-    "success",
-  );
+  setMessage(newRevisionMessage(fresh.revision, actor), "success");
 }
 
 function workspaceStorageKey() {
@@ -1021,44 +1006,8 @@ function updateCurrentUi() {
   renderRevisionHistory();
 }
 
-function formatRevisionTime(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZoneName: "short",
-  }).format(date);
-}
-
-function roleLabel(role) {
-  if (!role) return "";
-  return role.charAt(0).toUpperCase() + role.slice(1);
-}
-
-function profileForHumanOwner(ownerId) {
-  if (!ownerId) return null;
-  if (profile?.id === ownerId) return profile;
-  return supervisedProfiles.find((candidate) => candidate.id === ownerId)
-    ?? shareRecipients.find((candidate) => candidate.id === ownerId)
-    ?? null;
-}
-
 function revisionActor(revision) {
-  const actor = revision.created_by_actor ?? revision.updated_by_actor;
-  if (actor === "human") {
-    const humanId = revision.created_by_user ?? revision.owner_id;
-    return humanId === user?.id ? "Mine" : "Human";
-  }
-  if (actor !== "ai") return actor || "";
-  const client = revision.created_by_ai_client ?? revision.updated_by_ai_client;
-  if (!client) return "AI";
-  return AI_CLIENT_LABELS[client] ?? "AI · " + client;
+  return revisionActorFor(revision, user?.id);
 }
 
 async function loadProfile() {
@@ -1382,15 +1331,14 @@ async function copyRegistryRevisionToWorkspace(experimentId, revision, title, co
 }
 
 function connectedMessage() {
-  const count = remoteExperiments.length;
-  const collectionCount = collections.length;
-  const hidden = hiddenNonRunnableCount > 0
-    ? ` ${hiddenNonRunnableCount} older or incompatible experiment${hiddenNonRunnableCount === 1 ? " is" : "s are"} hidden.`
-    : "";
-  const shared = sharedExperiments.length;
-  const supervised = profile?.role === "professor" ? supervisedExperiments.length : 0;
-  const supervision = profile?.role === "professor" ? ` and ${supervised} supervised` : "";
-  return `Your library is ready: ${count} experiment${count === 1 ? "" : "s"} in ${collectionCount} collection${collectionCount === 1 ? "" : "s"} plus Unfiled, with ${shared} shared with you${supervision}.${hidden}`;
+  return connectedMessageFor({
+    count: remoteExperiments.length,
+    collectionCount: collections.length,
+    hiddenCount: hiddenNonRunnableCount,
+    sharedCount: sharedExperiments.length,
+    supervisedCount: supervisedExperiments.length,
+    professor: profile?.role === "professor",
+  });
 }
 
 function registryArtifactsForSave() {
@@ -1778,11 +1726,7 @@ async function refreshRegistry() {
     if (fresh.revision > previousRemote.revision) {
       const newest = currentRevisions.find((revision) => revision.revision === fresh.revision);
       const actor = newest ? revisionActor(newest) : revisionActor(fresh);
-      setMessage(
-        "New revision R" + fresh.revision + (actor ? " from " + actor : "")
-        + " is available. Your current view was not changed.",
-        "success",
-      );
+      setMessage(newRevisionMessage(fresh.revision, actor), "success");
       return;
     }
   }

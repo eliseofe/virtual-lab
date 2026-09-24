@@ -21,8 +21,8 @@ test("#399 old-revision editing preserves exact base metadata in the Working cop
 });
 
 test("#399 human provenance is deliberately Mine or Human while AI provenance remains specific", () => {
-  assert.match(registry, /return humanId === user\?\.id \? "Mine" : "Human"/);
-  assert.match(registry, /AI_CLIENT_LABELS\[client\] \?\? "AI · " \+ client/);
+  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
+  assert.match(registry, /return revisionActorFor\(revision, user\?\.id\)/);
   assert.match(registry, /actor\.textContent = "Mine"/);
   assert.doesNotMatch(registry, /owner\.display_name \+ " \(" \+ role \+ "\)"/);
 });
@@ -73,7 +73,7 @@ test("#399 visible revision labels are human-facing rather than registry jargon"
 
 test("#399 keeps chronological crystallization and no automatic merge/rebase model", () => {
   assert.match(registry, /crystallize_experiment_working_copy/);
-  assert.match(registry, /New revision R/);
-  assert.match(registry, /Your current view was not changed/);
+  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
+  assert.match(registry, /setMessage\(newRevisionMessage\(fresh\.revision, actor\), "success"\)/);
   assert.doesNotMatch(registry, /automatic merge|merge conflict|rebase/i);
 });

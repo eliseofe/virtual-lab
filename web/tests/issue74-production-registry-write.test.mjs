@@ -65,7 +65,8 @@ test("refresh exposes newer numbered revisions without changing the current revi
   const registryUi = await registryUiSource();
   assert.match(registryUi, /fresh\.revision > previousRemote\.revision/);
   assert.match(registryUi, /await loadRevisionHistory\(\)/);
-  assert.match(registryUi, /Your current view was not changed/);
+  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
+  assert.match(registryUi, /setMessage\(newRevisionMessage\(fresh\.revision, actor\), "success"\)/);
   assert.doesNotMatch(registryUi, /Reload the experiment before saving/);
 });
 

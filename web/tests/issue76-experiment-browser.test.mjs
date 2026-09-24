@@ -34,7 +34,8 @@ test("loaded experiment exposes ownership, revision and location context", async
   assert.match(source, /Your experiment · Editable/);
   assert.match(source, /Showcase · Read-only/);
   assert.match(source, /function currentLocationLabel\(\)/);
-  assert.match(source, /Collection · \$\{collectionName\(currentRemote\.collection_id\)\}/);
+  // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
+  assert.match(source, /currentUi\.location\.textContent = currentLocationLabel\(\)/);
   assert.match(source, /No collection/);
   assert.match(source, /Showcase \/ \$\{currentShowcase\.showcase_collection_name \|\| "Uncategorized"\}/);
   assert.match(source, /experiment-location/);
