@@ -78,6 +78,9 @@ function flush() {
 }
 
 runtimeModel.subscribe((_state, written) => {
+  // A new requested speed restarts the measurement at once, as the speed
+  // input's own event listener used to.
+  if (written.includes("requestedSpeed")) restartOrReset();
   if (written.includes("scientificTime")) timeWritten = true;
   if (written.includes("runState")) runStateWritten = true;
   if ((timeWritten || runStateWritten) && !flushQueued) {
@@ -85,7 +88,6 @@ runtimeModel.subscribe((_state, written) => {
     queueMicrotask(flush);
   }
 });
-requestedSpeed.addEventListener("input", restartOrReset);
 
 resetMeasurement();
 

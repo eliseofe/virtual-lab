@@ -78,7 +78,7 @@ test("one model: the simulator, the speed meter and the React panel share the sa
   assert.match(main, /import \{ runtimeModel \} from "\.\/runtime\/runtime-model\.js"/);
   assert.match(meter, /import \{ runtimeModel \} from "\.\/runtime\/runtime-model\.js"/);
   assert.match(adapter, /import \{ runtimeModel \} from '\.\/runtime\/runtime-model\.js'/);
-  assert.match(vite, /external: \[\/\\\/runtime\\\/runtime-model\\\.js\$\/\]/, "the React bundle must not inline its own copy");
+  assert.match(vite, /external: \[\/\\\/runtime\\\/\(runtime-model\|simulation-commands\)\\\.js\$\/\]/, "the React bundle must not inline its own copies");
 });
 
 test("views no longer read runtime values back from page text", async () => {
@@ -86,8 +86,6 @@ test("views no longer read runtime values back from page text", async () => {
   const adapter = await source("simulation-react-adapter.ts");
   assert.doesNotMatch(meter, /scientificTime\.textContent|runState\.textContent/);
   assert.doesNotMatch(adapter, /(runState|seed|actualSpeed|scientificTime|physicsTicks|controlUpdates)\.textContent/);
-  const watched = adapter.slice(adapter.indexOf("const observed = ["), adapter.indexOf("].map((selector)"));
-  assert.ok(watched.length > 0);
-  assert.doesNotMatch(watched, /#run-state|#scientific-time|#physics-ticks|#control-updates|#run-seed|#actual-simulation-speed/, "runtime values are no longer watched on the page");
+  assert.doesNotMatch(adapter, /MutationObserver|addEventListener/, "the panel watches the model, not the page");
   assert.match(adapter, /runtimeModel\.subscribe\(/);
 });

@@ -11,7 +11,8 @@ import {
 } from "./runtime/contract.js";
 import { ArenaCamera } from "./visualization/camera.js";
 import { runtimeModel } from "./runtime/runtime-model.js";
-import { formatCount, formatRunState, formatScientificTime, formatSeed } from "./runtime/runtime-format.js";
+import { provideSimulationCommands } from "./runtime/simulation-commands.js";
+import { formatCount, formatRunState, formatScientificTime, formatSeed, formatTargetSpeed } from "./runtime/runtime-format.js";
 
 const INTERNAL_SEED = 2026;
 
@@ -82,9 +83,13 @@ function setFeedback(element, message, state = "idle") {
 
 function updateCameraUi() {
   const fit = camera.isFit();
-  ui.cameraStatus.textContent = camera.label();
-  ui.cameraStatus.dataset.fit = String(fit);
-  ui.fitArena.disabled = fit;
+  runtimeModel.set({
+    camera: Object.freeze({ label: camera.label(), fit }),
+    controls: Object.freeze({ ...runtimeModel.get().controls, fit: !fit }),
+  });
+  ui.cameraStatus.textContent = runtimeModel.get().camera.label;
+  ui.cameraStatus.dataset.fit = String(runtimeModel.get().camera.fit);
+  ui.fitArena.disabled = !runtimeModel.get().controls.fit;
 }
 
 function resetCamera() {
@@ -172,22 +177,33 @@ function compileControllerFor(config, environment = appliedEnvironment, referenc
 }
 
 function setControlsEnabled(enabled) {
-  ui.run.disabled = !enabled || running;
-  ui.pause.disabled = !enabled || !running;
-  ui.restart.disabled = !enabled;
-  ui.restartNewSeed.disabled = !enabled;
+  runtimeModel.set({
+    controls: Object.freeze({
+      ...runtimeModel.get().controls,
+      run: enabled && !running,
+      pause: enabled && running,
+      restart: enabled,
+      newSeed: enabled,
+      speed: enabled,
+    }),
+  });
+  const controls = runtimeModel.get().controls;
+  ui.run.disabled = !controls.run;
+  ui.pause.disabled = !controls.pause;
+  ui.restart.disabled = !controls.restart;
+  ui.restartNewSeed.disabled = !controls.newSeed;
   ui.compile.disabled = !enabled;
   ui.applySetup.disabled = !enabled;
-  ui.speed.disabled = !enabled;
+  ui.speed.disabled = !controls.speed;
 }
 
 function runtimeSpeed() {
-  const speed = Number(ui.speed.value);
+  const speed = Number(runtimeModel.get().requestedSpeed);
   return Number.isFinite(speed) && speed > 0 ? speed : 1;
 }
 
 function updateSpeedLabel() {
-  ui.speedValue.textContent = `${runtimeSpeed()}×`;
+  ui.speedValue.textContent = formatTargetSpeed(runtimeModel.get().requestedSpeed);
 }
 
 function updateSeedLabel() {
@@ -401,7 +417,7 @@ function drawSnapshot() {
   context.strokeStyle = "#1c4e63";
   context.fillStyle = "#1c4e63";
   context.lineWidth = 1.6 * ratio;
-  const glyph = ui.agentGlyph.value;
+  const glyph = runtimeModel.get().glyph;
   const margin = 16 * ratio;
   for (let i = 0; i + 2 < latestState.length; i += 3) {
     const x = frame.toCanvasX(latestState[i]);
@@ -568,12 +584,28 @@ ui.source.addEventListener("input", () => {
   setFeedback(ui.feedback, "Changes pending. Apply & restart to use them.", "dirty");
 });
 
-ui.speed.addEventListener("input", () => {
+// The legacy range input is kept as the value's sanitiser (min, max, step), as
+// it always has been: the requested speed is whatever it accepts.
+function setSpeed(value) {
+  ui.speed.value = String(value);
+  runtimeModel.set({ requestedSpeed: Number(ui.speed.value) });
   updateSpeedLabel();
   if (initialized) worker.postMessage({ type: "set-speed", speed: runtimeSpeed() });
-});
+}
 
-ui.fitArena.addEventListener("click", resetCamera);
+function setGlyph(value) {
+  ui.agentGlyph.value = value;
+  runtimeModel.set({ glyph: ui.agentGlyph.value });
+}
+
+function fitArena() {
+  if (!runtimeModel.get().controls.fit) return;
+  resetCamera();
+}
+
+ui.speed.addEventListener("input", () => setSpeed(ui.speed.value));
+ui.agentGlyph.addEventListener("change", () => setGlyph(ui.agentGlyph.value));
+ui.fitArena.addEventListener("click", fitArena);
 
 ui.canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
@@ -630,16 +662,31 @@ ui.canvas.addEventListener("pointerup", releasePointer);
 ui.canvas.addEventListener("pointercancel", releasePointer);
 ui.canvas.addEventListener("lostpointercapture", releasePointer);
 
+// Start from the form's values, which the browser may have restored on reload.
+runtimeModel.set({ requestedSpeed: Number(ui.speed.value), glyph: ui.agentGlyph.value });
 updateSpeedLabel();
 updateSeedLabel();
 updateCameraUi();
-ui.run.addEventListener("click", () => setRunning(true));
-ui.pause.addEventListener("click", () => setRunning(false));
-ui.restart.addEventListener("click", () => {
+// The simulation controller (#562): each command does what its button always
+// did, and only when that command is available (a disabled button does nothing).
+function run() {
+  if (!runtimeModel.get().controls.run) return;
+  setRunning(true);
+}
+
+function pause() {
+  if (!runtimeModel.get().controls.pause) return;
+  setRunning(false);
+}
+
+function restart() {
+  if (!runtimeModel.get().controls.restart) return;
   setRunning(false);
   worker.postMessage({ type: "reset" });
-});
-ui.restartNewSeed.addEventListener("click", () => {
+}
+
+function restartWithNewSeed() {
+  if (!runtimeModel.get().controls.newSeed) return;
   try {
     if (!appliedConfig || !appliedController) throw new Error("No valid experiment is active.");
     const seed = randomSeedDifferentFromCurrent();
@@ -662,6 +709,15 @@ ui.restartNewSeed.addEventListener("click", () => {
     ui.setupError.textContent = error instanceof Error ? error.message : String(error);
     setFeedback(ui.setupFeedback, "Could not restart with a new seed.", "error");
   }
-});
+}
+
+provideSimulationCommands({ run, pause, restart, restartWithNewSeed, fitArena, setSpeed, setGlyph });
+
+// The legacy buttons are one more view of the same controller, and other
+// modules that press them (library, results, metrics) reach it the same way.
+ui.run.addEventListener("click", run);
+ui.pause.addEventListener("click", pause);
+ui.restart.addEventListener("click", restart);
+ui.restartNewSeed.addEventListener("click", restartWithNewSeed);
 
 requestAnimationFrame(drawSnapshot);
