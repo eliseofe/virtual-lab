@@ -1,3 +1,4 @@
+import { onlyLiveRuntimeUpdates } from "./live-region.js";
 import { supabase } from "./supabase-client.js";
 
 
@@ -339,7 +340,9 @@ function attachRegistryMessageObserver() {
   });
 }
 
-const observer = new MutationObserver(() => {
+// Skips pure live-runtime updates (#569).
+const observer = new MutationObserver((records) => {
+  if (onlyLiveRuntimeUpdates(records)) return;
   syncPresentation();
   attachRegistryMessageObserver();
 });
