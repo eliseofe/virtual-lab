@@ -32,10 +32,9 @@ test("#522 preserves accepted provenance without recording lifecycle clearing as
 });
 
 test("#522 owner-facing UI renders one current state", () => {
-  assert.match(inbox, /function requestCurrentState\(request\)/);
-  assert.match(inbox, /request\.status === "implemented" \|\| request\.status === "in_progress"/);
-  assert.match(inbox, /request\.status === "approved"\) return "accepted"/);
-  assert.match(inbox, /status\.textContent = currentState\.replaceAll/);
+  // #551: behaviour covered by professor-requests.test.mjs; this checks the inbox uses the rule.
+  assert.match(inbox, /const currentState = requestCurrentState\(request\)/);
+  assert.match(inbox, /status\.textContent = stateLabel\(currentState\)/);
   assert.doesNotMatch(inbox, /status\.textContent = request\.professor_disposition\.replaceAll/);
 });
 

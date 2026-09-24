@@ -28,11 +28,12 @@ test("#523 stores machine-readable existing support", () => {
 });
 
 test("#523 exposes the sixth Professor action", () => {
-  assert.match(inbox, /vlab\.professor-review\/3/);
-  assert.ok(inbox.includes('["Already supported", "already_supported", false]'));
+  // #551: behaviour covered by professor-requests.test.mjs; this checks the inbox uses the rule.
+  assert.match(inbox, /panel\.dataset\.vlabProfessorReviewContract = PROFESSOR_REVIEW_CONTRACT/);
+  assert.match(inbox, /for \(const \[label, decision, primary\] of PROFESSOR_REVIEW_DECISIONS\)/);
   assert.match(inbox, /professor-support-capabilities/);
   assert.match(inbox, /resolve_extension_request_already_supported/);
-  assert.match(inbox, /request\.status === "resolved"\) return "already_supported"/);
+  assert.match(inbox, /const currentState = requestCurrentState\(request\)/);
 });
 
 test("#523 MCP roundtrips resolved support without treating it as missing", () => {

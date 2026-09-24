@@ -37,11 +37,8 @@ test("#139 Lab inbox remains Professor-only while later triage moves behind the 
   assert.match(inbox, /triage_extension_request/);
   assert.match(inbox, /p_decision: decision/);
   assert.match(inbox, /p_professor_notes: guidance \|\| null/);
-  assert.match(inbox, /\["Accept", "accepted", true\]/);
-  assert.match(inbox, /\["Reject", "rejected", false\]/);
-  assert.match(inbox, /\["Revise", "revise", false\]/);
-  assert.match(inbox, /\["Defer", "deferred", false\]/);
-  assert.match(inbox, /\["Future", "future", false\]/);
+  // #551: behaviour covered by professor-requests.test.mjs; this checks the inbox uses the rule.
+  assert.match(inbox, /for \(const \[label, decision, primary\] of PROFESSOR_REVIEW_DECISIONS\)/);
   assert.doesNotMatch(inbox, /github\.com|github_issue_url|github_pr_url|service_role|deploy/i);
 });
 
