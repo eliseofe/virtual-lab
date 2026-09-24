@@ -186,17 +186,6 @@ function suppressNoCollectionOutsideOrganization() {
     const label = option.textContent ?? "";
     if (label.endsWith(" · No collection")) setText(option, label.slice(0, -" · No collection".length));
   }
-
-  for (const meta of document.querySelectorAll(".experiment-result-meta")) {
-    const label = meta.textContent ?? "";
-    if (label.includes("Your experiment · No collection ·")) {
-      setText(meta, label.replace("Your experiment · No collection ·", "Your experiment ·"));
-    }
-  }
-}
-
-function simplifyExperimentBrowser() {
-  // #480 owns discovery. Collection organization no longer mutates a second browser.
 }
 
 function relocateMoveControl() {
@@ -215,7 +204,6 @@ function syncPresentation() {
   ensureOrganizeButton();
   normalizeCollectionLanguage();
   suppressNoCollectionOutsideOrganization();
-  simplifyExperimentBrowser();
   relocateMoveControl();
 }
 

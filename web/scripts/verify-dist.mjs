@@ -109,8 +109,9 @@ if (!workspaceShell.includes('import "./experiment-library.js"')) {
   throw new Error("production workspace does not load the unified Experiment Library");
 }
 const registryUi = await readFile(path.join(assetDir, "registry-ui-v3.js"), "utf8");
-if (!registryUi.includes("const browser = null;")) {
-  throw new Error("retired flat Experiment browser is still constructed");
+// #554: the retired flat Experiment browser was removed; the unified Library replaces it.
+if (registryUi.includes("function buildBrowser") || registryUi.includes("function renderBrowser")) {
+  throw new Error("retired flat Experiment browser is still present");
 }
 const hardeningUi = await readFile(path.join(assetDir, "ux-hardening.js"), "utf8");
 if (!hardeningUi.includes('{ selector: ".vlab-library", triggers: [".experiment-browse"]')) {

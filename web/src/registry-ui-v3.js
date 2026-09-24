@@ -78,8 +78,6 @@ let revisionFilter = "all";
 let currentExperimentChannel = null;
 let workingCopyAutosave = Promise.resolve();
 let hiddenNonRunnableCount = 0;
-let browserCollection = "all";
-let browserSearch = "";
 
 function collectionName(id) {
   if (!id) return "Unfiled";
@@ -447,78 +445,9 @@ function buildRevisionHistory() {
   return { dialog, close, filters, all, mine, ai, help, list };
 }
 
-function buildBrowser() {
-  const dialog = document.createElement("dialog");
-  dialog.className = "experiment-browser";
-  dialog.setAttribute("aria-label", "Experiment library");
-
-  const shell = document.createElement("div");
-  shell.className = "experiment-browser-shell";
-  const head = document.createElement("div");
-  head.className = "experiment-browser-head";
-  const heading = document.createElement("h2");
-  heading.textContent = "Experiment library";
-  const headActions = document.createElement("div");
-  headActions.className = "experiment-browser-head-actions";
-  const refresh = document.createElement("button");
-  refresh.textContent = "Refresh library";
-  const close = document.createElement("button");
-  close.textContent = "Close";
-  headActions.append(refresh, close);
-  head.append(heading, headActions);
-
-  const body = document.createElement("div");
-  body.className = "experiment-browser-body";
-  const filters = document.createElement("nav");
-  filters.className = "experiment-browser-filters";
-  filters.setAttribute("aria-label", "Experiment collections");
-  filters.hidden = true;
-  const content = document.createElement("div");
-  content.className = "experiment-browser-content";
-
-  const context = document.createElement("div");
-  context.className = "experiment-browser-context";
-  const contextTitle = document.createElement("strong");
-  const contextHelp = document.createElement("span");
-  context.append(contextTitle, contextHelp);
-
-  const searchRow = document.createElement("div");
-  searchRow.className = "experiment-browser-search-row";
-  const search = document.createElement("input");
-  search.className = "experiment-browser-search";
-  search.type = "search";
-  search.placeholder = "Search experiments";
-  search.setAttribute("aria-label", "Search experiments");
-  searchRow.append(search);
-
-  const count = document.createElement("p");
-  count.className = "experiment-browser-count";
-  const results = document.createElement("div");
-  results.className = "experiment-results";
-  content.append(context, searchRow, count, results);
-  body.append(filters, content);
-
-  shell.append(head, body);
-  dialog.append(shell);
-  document.body.append(dialog);
-
-  return {
-    dialog,
-    refresh,
-    close,
-    filters,
-    contextTitle,
-    contextHelp,
-    searchRow,
-    search,
-    count,
-    results,
-  };
-}
 const currentUi = buildCurrentExperimentUi();
 const ui = buildAccountPanel();
 const revisionHistory = buildRevisionHistory();
-const browser = null;
 
 // Revision state belongs to the Experiment itself, not to Account settings.
 currentUi.revisionActions.append(ui.save);
@@ -843,7 +772,6 @@ async function refreshCurrentExperimentHead(id) {
   currentRemote = fresh;
   await Promise.all([loadExperimentList(), loadRevisionHistory()]);
   updateCurrentUi();
-  renderBrowser();
   renderRevisionHistory();
 
   const newest = currentRevisions.find((revision) => revision.revision === fresh.revision);
@@ -853,13 +781,6 @@ async function refreshCurrentExperimentHead(id) {
     + " is available. Your current view was not changed.",
     "success",
   );
-}
-
-function experimentsInCollection(collectionId) {
-  return remoteExperiments.filter((experiment) => {
-    if (!collectionId) return !experiment.collection_id;
-    return experiment.collection_id === collectionId;
-  });
 }
 
 function workspaceStorageKey() {
@@ -1138,195 +1059,6 @@ function revisionActor(revision) {
   const client = revision.created_by_ai_client ?? revision.updated_by_ai_client;
   if (!client) return "AI";
   return AI_CLIENT_LABELS[client] ?? "AI · " + client;
-}
-
-function filterButton(label, value) {
-  const button = document.createElement("button");
-  button.className = "experiment-filter";
-  button.textContent = label;
-  button.dataset.collection = value;
-  button.setAttribute("aria-selected", String(browserCollection === value));
-  button.addEventListener("click", () => {
-    browserCollection = value;
-    browserSearch = "";
-    browser.search.value = "";
-    renderBrowser();
-  });
-  return button;
-}
-
-function filteredExperimentsForCollection(collectionId, search) {
-  return remoteExperiments.filter((experiment) => {
-    const inCollection = collectionId === "unfiled"
-      ? !experiment.collection_id
-      : experiment.collection_id === collectionId;
-    const matchesSearch = !search || experiment.title.toLocaleLowerCase().includes(search);
-    return inCollection && matchesSearch;
-  });
-}
-
-function experimentResult(experiment, { access = "owned" } = {}) {
-  const result = document.createElement("button");
-  result.className = "experiment-result";
-  const title = document.createElement("strong");
-  title.textContent = experiment.title;
-  const meta = document.createElement("span");
-  meta.className = "experiment-result-meta";
-  const revisionTime = formatRevisionTime(experiment.updated_at);
-  const actor = revisionActor(experiment);
-  const revisionMeta = `Revision ${experiment.revision}${revisionTime ? ` · ${revisionTime}` : ""}${actor ? ` · ${actor}` : ""}`;
-  const location = experiment.collection_id ? collectionName(experiment.collection_id) : "No collection";
-  meta.textContent = access === "shared"
-    ? `Shared with me · Read-only · ${revisionMeta}`
-    : access === "supervised"
-      ? `${supervisedResearcherName(experiment.owner_id)} · Supervised · Read-only · ${revisionMeta}`
-      : `Your experiment · ${location} · ${revisionMeta}`;
-  result.append(title, meta);
-  result.addEventListener("click", () => run(async () => {
-    if (currentRemote?.id !== experiment.id && !(await confirmDiscardIfNeeded())) return;
-    await loadRemoteExperiment(experiment.id, { access });
-    browser.dialog.close();
-  }));
-  return result;
-}
-
-function experimentGroup(label, experiments, { showEmpty = false, access = "owned" } = {}) {
-  if (!experiments.length && !showEmpty) return null;
-  const section = document.createElement("section");
-  section.className = "experiment-group";
-  const head = document.createElement("div");
-  head.className = "experiment-group-head";
-  const name = document.createElement("strong");
-  name.textContent = label;
-  const count = document.createElement("span");
-  count.textContent = `${experiments.length} experiment${experiments.length === 1 ? "" : "s"}`;
-  head.append(name, count);
-  const items = document.createElement("div");
-  items.className = "experiment-group-items";
-  if (!experiments.length) {
-    const empty = document.createElement("p");
-    empty.className = "experiment-browser-empty";
-    empty.textContent = "No experiments here yet.";
-    items.append(empty);
-  } else {
-    for (const experiment of experiments) items.append(experimentResult(experiment, { access }));
-  }
-  section.append(head, items);
-  return section;
-}
-
-function catalogResult(experiment) {
-  const button = document.createElement("button");
-  button.className = "experiment-result";
-  const title = document.createElement("strong");
-  title.textContent = experiment.title;
-  const meta = document.createElement("span");
-  meta.className = "experiment-result-meta";
-  meta.textContent = "Showcase · Read-only";
-  button.append(title, meta);
-  button.addEventListener("click", () => run(async () => {
-    if (!(await confirmDiscardIfNeeded())) return;
-    await restoreCatalog(experiment);
-    browser.dialog.close();
-  }));
-  return button;
-}
-
-function renderBrowser() {
-  if (!browser) return;
-  browser.searchRow.hidden = false;
-  browser.filters.replaceChildren();
-  browser.results.replaceChildren();
-
-  browser.filters.append(filterButton("All experiments", "all"));
-  if (user) {
-    browser.filters.append(filterButton(`My experiments · ${remoteExperiments.length}`, "mine"));
-    browser.filters.append(filterButton(`Shared with me · ${sharedExperiments.length}`, "shared"));
-    if (profile?.role === "professor") {
-      browser.filters.append(filterButton(`Supervised · ${supervisedExperiments.length}`, "supervised"));
-    }
-    browser.filters.append(filterButton("No collection", "unfiled"));
-    for (const collection of collections) browser.filters.append(filterButton(collection.name, collection.id));
-  }
-
-  const search = browserSearch.trim().toLocaleLowerCase();
-  const filteredCatalog = browserCollection === "all"
-    ? EXPERIMENT_CATALOG.filter((experiment) => !search || experiment.title.toLocaleLowerCase().includes(search))
-    : [];
-  const filtered = remoteExperiments.filter((experiment) => {
-    const matchesSearch = !search || experiment.title.toLocaleLowerCase().includes(search);
-    if (!matchesSearch || browserCollection === "shared" || browserCollection === "supervised") return false;
-    if (browserCollection === "all" || browserCollection === "mine") return true;
-    if (browserCollection === "unfiled") return !experiment.collection_id;
-    return experiment.collection_id === browserCollection;
-  });
-  const filteredShared = sharedExperiments.filter((experiment) => {
-    if (browserCollection !== "all" && browserCollection !== "shared") return false;
-    return !search || experiment.title.toLocaleLowerCase().includes(search);
-  });
-  const filteredSupervised = supervisedExperiments.filter((experiment) => {
-    if (browserCollection !== "all" && browserCollection !== "supervised") return false;
-    const owner = supervisedResearcherName(experiment.owner_id).toLocaleLowerCase();
-    return !search || experiment.title.toLocaleLowerCase().includes(search) || owner.includes(search);
-  });
-
-  if (!user) {
-    browser.contextTitle.textContent = "Showcase";
-    browser.contextHelp.textContent = "Browse public read-only Experiments.";
-  } else if (browserCollection === "shared") {
-    browser.contextTitle.textContent = "Shared with me";
-    browser.contextHelp.textContent = "Experiments another researcher shared with you. They remain read-only; copy one to create an independent editable Experiment.";
-  } else if (browserCollection === "supervised") {
-    browser.contextTitle.textContent = "Supervised research";
-    browser.contextHelp.textContent = "Student and researcher Experiments available through Professor supervision. Inspect and run them read-only, or copy one into your workspace when you need an independent editable version.";
-  } else if (browserCollection === "mine" || browserCollection === "unfiled" || collections.some((collection) => collection.id === browserCollection)) {
-    browser.contextTitle.textContent = "My experiments";
-    browser.contextHelp.textContent = "Experiments you own and can edit. Collections organize only your own workspace.";
-  } else {
-    browser.contextTitle.textContent = "All available experiments";
-    browser.contextHelp.textContent = profile?.role === "professor"
-      ? "Browse Showcase, owned, explicitly shared, and supervised research in one place."
-      : "Browse Showcase, owned, and explicitly shared Experiments in one place.";
-  }
-
-  const total = filteredCatalog.length + filtered.length + filteredShared.length + filteredSupervised.length;
-  browser.count.textContent = `${total} experiment${total === 1 ? "" : "s"}`;
-
-  if (filteredCatalog.length) {
-    const section = document.createElement("section");
-    section.className = "experiment-group";
-    const head = document.createElement("div");
-    head.className = "experiment-group-head";
-    const name = document.createElement("strong");
-    name.textContent = "Showcase";
-    const count = document.createElement("span");
-    count.textContent = `${filteredCatalog.length} experiment${filteredCatalog.length === 1 ? "" : "s"}`;
-    head.append(name, count);
-    const items = document.createElement("div");
-    items.className = "experiment-group-items";
-    for (const experiment of filteredCatalog) items.append(catalogResult(experiment));
-    section.append(head, items);
-    browser.results.append(section);
-  }
-
-  if (filtered.length) {
-    const label = browserCollection === "all" || browserCollection === "mine"
-      ? "Your experiments"
-      : browserCollection === "unfiled"
-        ? "No collection"
-        : collectionName(browserCollection);
-    browser.results.append(experimentGroup(label, filtered));
-  }
-
-  if (filteredShared.length) browser.results.append(experimentGroup("Shared with me", filteredShared, { access: "shared" }));
-  if (filteredSupervised.length) browser.results.append(experimentGroup("Supervised research", filteredSupervised, { access: "supervised" }));
-
-  if (!total) {
-    const empty = document.createElement("p");
-    empty.className = "experiment-browser-empty";
-    empty.textContent = search ? "No experiments match this search." : "No experiments are available here.";
-    browser.results.append(empty);
-  }
 }
 
 async function loadProfile() {
@@ -1697,7 +1429,6 @@ async function saveCurrentExperiment() {
   const savedRevision = currentRevisions.find((revision) => revision.revision === data.revision) ?? data;
   applyExperimentArtifacts(savedRevision);
   updateCurrentUi();
-  renderBrowser();
   renderRevisionHistory();
   setMessage(`${data.title} saved as revision ${data.revision}.`, "success");
 }
@@ -1731,7 +1462,6 @@ async function moveCurrentExperiment() {
   currentRemote = data;
   await loadExperimentList();
   updateCurrentUi();
-  renderBrowser();
   setMessage(`${data.title} moved to My experiments / ${collectionName(data.collection_id)}. Revision remains r${data.revision}.`, "success");
 }
 
@@ -1884,7 +1614,6 @@ async function createNewExperiment() {
   closeSaveAsNew();
   updateCurrentUi();
   rememberCurrentWorkspace();
-  renderBrowser();
   await applyLoadedSources();
   setMessage(
     copyingReadable
@@ -1910,9 +1639,7 @@ function setSignedOutUi() {
   outgoingShares = [];
   collections = [];
   hiddenNonRunnableCount = 0;
-  browserCollection = "all";
   updateCurrentUi();
-  renderBrowser();
 }
 
 function setSignedInUi() {
@@ -1983,7 +1710,6 @@ async function initializeSession() {
   await Promise.all([loadCollections(), loadExperimentList(), loadSharedExperimentList(), loadSupervisedExperimentList(), loadShareRecipients(), loadOutgoingShares()]);
   await restoreRememberedWorkspace();
   setSignedInUi();
-  renderBrowser();
   setMessage(connectedMessage(), "success");
 }
 
@@ -2042,7 +1768,6 @@ async function refreshRegistry() {
         await restoreCatalog();
         setMessage("The previously loaded experiment is no longer available in this simulator version.");
       }
-      renderBrowser();
       return;
     }
 
@@ -2058,24 +1783,12 @@ async function refreshRegistry() {
         + " is available. Your current view was not changed.",
         "success",
       );
-      renderBrowser();
       return;
     }
   }
 
   updateCurrentUi();
-  renderBrowser();
   setMessage(connectedMessage(), "success");
-}
-
-function openBrowser() {
-  browserCollection = "all";
-  browserSearch = "";
-  browser.search.value = "";
-  browser.filters.hidden = false;
-  renderBrowser();
-  browser.dialog.showModal();
-  browser.search.focus({ preventScroll: true });
 }
 
 async function run(action) {
@@ -2162,22 +1875,6 @@ experimentSelect.addEventListener("change", () => run(async () => {
   await loadRemoteExperiment(id, { access });
 }));
 
-if (browser) {
-  browser.close.addEventListener("click", () => browser.dialog.close());
-  browser.dialog.addEventListener("close", () => {
-    browser.filters.hidden = true;
-  });
-  browser.refresh.addEventListener("click", () => run(refreshRegistry));
-  browser.search.addEventListener("input", () => {
-    browserSearch = browser.search.value;
-    if (browserSearch.trim()) browserCollection = "all";
-    renderBrowser();
-  });
-  browser.dialog.addEventListener("click", (event) => {
-    if (event.target === browser.dialog) browser.dialog.close();
-  });
-}
-
 ui.signIn.addEventListener("click", () => run(signIn));
 ui.password.addEventListener("keydown", (event) => {
   if (event.key === "Enter") run(signIn);
@@ -2244,5 +1941,4 @@ supabase.auth.onAuthStateChange((_event, session) => {
 });
 
 updateCurrentUi();
-renderBrowser();
 run(initializeSession);

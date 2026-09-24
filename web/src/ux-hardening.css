@@ -33,13 +33,11 @@ html[data-vlab-ux-hardened="true"] .experiment-organize {
 }
 
 html[data-vlab-ux-hardened="true"] .utility-dialog-shell,
-html[data-vlab-ux-hardened="true"] .experiment-browser-shell,
 html[data-vlab-ux-hardened="true"] .collection-organizer-shell {
   overscroll-behavior: contain;
 }
 
 html[data-vlab-ux-hardened="true"] .utility-dialog-head,
-html[data-vlab-ux-hardened="true"] .experiment-browser-head,
 html[data-vlab-ux-hardened="true"] .collection-organizer-head {
   position: sticky;
   top: 0;
@@ -96,7 +94,6 @@ body:has(dialog[open]) {
   }
 
   html[data-vlab-ux-hardened="true"] .utility-dialog,
-  html[data-vlab-ux-hardened="true"] .experiment-browser,
   html[data-vlab-ux-hardened="true"] .collection-organizer {
     width: calc(100vw - 12px) !important;
     max-width: none !important;
@@ -106,14 +103,12 @@ body:has(dialog[open]) {
   }
 
   html[data-vlab-ux-hardened="true"] .utility-dialog-shell,
-  html[data-vlab-ux-hardened="true"] .experiment-browser-shell,
   html[data-vlab-ux-hardened="true"] .collection-organizer-shell {
     max-height: calc(100dvh - 12px) !important;
     min-height: 0 !important;
   }
 
   html[data-vlab-ux-hardened="true"] .utility-dialog-head,
-  html[data-vlab-ux-hardened="true"] .experiment-browser-head,
   html[data-vlab-ux-hardened="true"] .collection-organizer-head {
     padding: 12px;
   }
@@ -137,32 +132,6 @@ body:has(dialog[open]) {
     -webkit-overflow-scrolling: touch;
   }
 
-  html[data-vlab-ux-hardened="true"] .experiment-browser-head {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  html[data-vlab-ux-hardened="true"] .experiment-browser-head-actions {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  html[data-vlab-ux-hardened="true"] .experiment-browser-head-actions button {
-    min-height: 44px;
-  }
-
-  html[data-vlab-ux-hardened="true"] .experiment-browser-body,
-  html[data-vlab-ux-hardened="true"] .experiment-browser-content,
-  html[data-vlab-ux-hardened="true"] .experiment-results {
-    min-width: 0;
-  }
-
-  html[data-vlab-ux-hardened="true"] .experiment-browser-body {
-    padding: 10px 12px 12px !important;
-  }
-
-  html[data-vlab-ux-hardened="true"] .experiment-browser-search,
   html[data-vlab-ux-hardened="true"] .registry-auth input,
   html[data-vlab-ux-hardened="true"] .registry-new-form input,
   html[data-vlab-ux-hardened="true"] .registry-new-form select,

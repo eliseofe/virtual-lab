@@ -29,7 +29,7 @@ test("#210 removes repetitive helper prose while preserving actionable dirty/con
     ".stage-note",
     ".authoring-workbench-head .muted",
     ".authoring-pane-head .muted",
-    ".experiment-browser-context > span",
+    // #554: ".experiment-browser-context > span" belonged to the retired flat browser, now removed.
     '.registry-message[data-state="idle"]',
     ".registry-note",
     '.feedback[data-state="idle"]',

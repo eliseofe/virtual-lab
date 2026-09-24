@@ -1,18 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Showcase curation rules now have real behaviour tests",
-  "owner_impact": "Nothing changes in the Showcase: same buttons, same labels, same messages. Its curation rules now live in one small module with 10 tests that check what happens instead of searching the code for exact lines. The rules covered: only a Professor may curate; when the promote button shows 'Promote to Showcase', 'Publish current revision', 'In Showcase' or a save conflict; saving before publishing; placing entries in collections with Uncategorized first; and how an open Showcase entry labels itself read-only. Test now: optional quick look. Sign in as Professor, open one of your Experiments and check the promote button, then open Manage Showcase. Everything should look and behave as before.",
+  "outcome": "Removed the old Experiment browser that nothing used any more",
+  "owner_impact": "Nothing changes on screen. When the unified Experiment Library replaced the old flat browser (#480), the old one was switched off but its code stayed in the workspace module. That code (about 300 lines, plus its styles) is now gone. This is slice 1 of 5 in splitting the Experiment workspace module into smaller tested parts (#554). Test now: optional quick look. Sign in, click Browse experiments, open one of your Experiments and save a revision. Everything should look and behave as before.",
   "next": {
     "kind": "epic_continues",
     "issue": 554,
-    "text": "Next is #554: splitting the Experiment registry module (the largest file, the signed-in workspace) into smaller tested parts, starting with a written plan. #554 has not started and waits for the owner's go-ahead."
+    "text": "#554 continues with slice 2 of 5: moving the workspace's labels and sharing rules (who made a revision, location labels, who you can share with) into a small tested module. Nothing changes on screen."
   },
   "technical_evidence": [
-    "New web/src/showcase/curation.js (pure): Professor check, promote-button state, promotion readiness, entry matching, collection choices and labels, confirmations and messages, open-entry labels.",
-    "showcase.js delegates those decisions (-99/+76 lines), texts unchanged; an unused helper (hasUnsavedPrivateEdits) removed.",
-    "New web/tests/showcase-curation.test.mjs: 10 behaviour tests; three planted rule changes (anyone may curate, 'In Showcase' ignoring unsaved edits, a catalog entry promotable twice) are each caught.",
-    "Retired only the 11 source-text assertions (7 test files) whose behaviour the new tests cover, replaced by checks that showcase.js uses the rules; 619 tests pass.",
-    "Style comparison of the built Lab identical to the current production build at all four viewports."
-  ],
-  "close_issue": 552
+    "registry-ui-v3.js: 2,248 → 1,944 lines. Removed buildBrowser, renderBrowser, filterButton, experimentResult, experimentGroup, catalogResult, openBrowser, the browser wiring and state, and the unused experimentsInCollection.",
+    "collection-organization.js: removed the no-op simplifyExperimentBrowser hook and a loop over the retired browser's rows.",
+    "Removed stylesheet selectors naming only the retired browser's classes (registry-ui-v3.css, ui-clarity.css, ux-hardening.css). No live element uses those classes.",
+    "verify-dist now checks that the retired browser is absent, instead of pinning `const browser = null;`.",
+    "Retired 10 source-text assertions about the removed browser (6 test files). Its behaviour lives in the unified Library, covered by library-browse.test.mjs. 619 tests pass.",
+    "Style comparison of the built Lab identical to the previous production build at all four viewports."
+  ]
 }

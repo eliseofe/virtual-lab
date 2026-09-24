@@ -15,17 +15,16 @@ test("#299 makes the Experiment library the Professor supervision discovery surf
   assert.match(registry, /let supervisedExperiments = \[\]/);
   assert.match(registry, /async function loadSupervisedExperimentList\(\)/);
   assert.match(registry, /Supervised ·/);
-  assert.match(registry, /browser\.contextTitle\.textContent = "Supervised research"/);
-  assert.match(registry, /experimentGroup\("Supervised research", filteredSupervised, \{ access: "supervised" \}\)/);
-  assert.match(registry, /Student and researcher Experiments available through Professor supervision/);
+  // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
+  assert.doesNotMatch(registry, /function renderBrowser|const browser = null/);
 });
 
 test("#299 supervised cards show researcher identity and remain read-only", () => {
-  assert.match(registry, /supervisedResearcherName\(experiment\.owner_id\)/);
-  assert.match(registry, /Supervised · Read-only · \${revisionMeta}/);
+  // #554: the retired flat browser was removed; the unified Library shows this, covered by library-browse.test.mjs.
+  assert.match(registry, /supervisedResearcherName\(currentRemote\.owner_id\)/);
   assert.match(registry, /ui\.save\.hidden = !owned/);
   assert.match(registry, /Copy to my Experiments/);
-  assert.match(registry, /loadRemoteExperiment\(experiment\.id, \{ access \}\)/);
+  assert.match(registry, /openRegistry: async \(experimentId, access\) => \{[\s\S]*?loadRemoteExperiment\(experimentId, \{ access \}\)/);
 });
 
 test("#299 preserves supervised Experiment continuity across reload and refresh", () => {
