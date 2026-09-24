@@ -117,11 +117,18 @@ if (!hardeningUi.includes('{ selector: ".vlab-library", triggers: [".experiment-
   throw new Error("Browse experiments accessibility binding does not target the unified library");
 }
 const experimentLibrary = await readFile(path.join(assetDir, "experiment-library.js"), "utf8");
+// #547: the source labels live in the Library's browsing-rules module.
+const libraryRules = await readFile(path.join(assetDir, "library/browse.js"), "utf8");
 for (const required of [
   'showcase: "Showcase"',
   'mine: "Mine"',
   'shared: "Shared"',
   'supervised: "Supervised"',
+]) if (!libraryRules.includes(required)) {
+  throw new Error(`built Experiment Library rules are incomplete: ${required}`);
+}
+if (!experimentLibrary.includes('from "./library/browse.js"')) throw new Error("built Experiment Library does not use its browsing rules");
+for (const required of [
   '"All Showcase"',
   '"All in Mine"',
   '"All shared"',

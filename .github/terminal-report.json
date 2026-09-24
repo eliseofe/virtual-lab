@@ -1,17 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Experiment revision rules now have real behaviour tests",
-  "owner_impact": "Nothing changes in how revisions, the Working copy, Save Revision or Discard behave or what they say. The rules behind them (which revision you see when you reopen an Experiment, what the history list shows under All, Mine and AI, which revision a new Working copy is based on, what Discard does) now live in one small module with 9 tests that check what happens, instead of tests that only searched the code for exact lines. This makes the later split of the Lab's largest file safe.",
+  "outcome": "The Experiment Library's browsing rules now have real behaviour tests",
+  "owner_impact": "Nothing changes in what the Experiment Library shows or how it behaves. Its rules (which tabs you see as a guest, student or Professor, how collections, owners and researchers filter the list, how search works here or across all sources, the sort orders, the labels on each entry and every empty-state message) now live in one small module with 9 tests that check what happens, instead of tests that searched the code for exact lines. Test now: not needed — the Library's automatic checks at phone, foldable, desktop and ultra-wide sizes passed before and after publishing.",
   "next": {
     "kind": "epic_continues",
-    "issue": 547,
-    "text": "Next is #547 — the same treatment for the Experiment Library's browsing rules (Showcase, Mine, Shared, Supervised, collections and search): behaviour tests instead of code-text checks, with nothing changing on screen. #547 has not started."
+    "issue": 549,
+    "text": "Next is #549 — a small ticket: every report will say clearly whether you should test and what, written into the workflow so GPT does it too, and the release wait tool will check every ~10 seconds instead of once a minute. #549 has not started."
   },
   "technical_evidence": [
-    "New web/src/registry/revisions.js (pure: no DOM, no Supabase); registry-ui-v3.js delegates re-entry, baselines, Working-copy base revision, ownership labels, history entries, confirmation texts and post-discard state to it with identical texts.",
-    "New web/tests/registry-revisions.test.mjs: 9 behaviour tests for #397/#398/#399/#409; planted rule changes (re-entry to the Working copy, inverted AI filter) are caught.",
-    "Retired only the #398/#409 source-text assertions whose behaviour the new tests cover, replaced by checks that the registry calls the rule; 590 tests pass.",
+    "New web/src/library/browse.js (pure): source availability by role, per-source hierarchy filtering, context labels and search placeholders, search here/all, sort choices and ordering, row labels, revision badges, loaded-entry matching, results groups with empty and count texts.",
+    "experiment-library.js delegates those decisions (-211/+57 lines), texts unchanged; verify-dist checks the source labels in the built rules module.",
+    "New web/tests/library-browse.test.mjs: 9 behaviour tests; planted rule changes (Supervised for students, ignored 'All sources') are caught.",
+    "Retired only the 7 #480/#76 source-text assertions whose behaviour the new tests cover, replaced by checks that the Library uses the rules; 599 tests pass.",
     "Style comparison of the built Lab identical to the current production build at all four viewports."
   ],
-  "close_issue": 545
+  "close_issue": 547
 }
