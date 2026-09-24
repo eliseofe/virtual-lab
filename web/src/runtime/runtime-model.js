@@ -45,4 +45,7 @@ export function createRuntimeModel(initialState = RUNTIME_INITIAL_STATE) {
   };
 }
 
+// The same observable model, for other parts of the page (e.g. results, #564).
+export const createModel = createRuntimeModel;
+
 export const runtimeModel = createRuntimeModel();

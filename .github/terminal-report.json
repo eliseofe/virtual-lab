@@ -1,19 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The simulation has one controller: views call commands instead of pressing each other's buttons (MVC stage 2)",
-  "owner_impact": "Nothing changes on screen. Before, pressing Run in the simulation panel actually pressed a hidden button on the old page, and the panel then read the old page to learn what happened. Now there is one set of simulation commands (run, pause, restart, new seed, fit arena, speed, agent glyph). The panel, the old buttons and the modules that start or pause runs (library, results, metrics) all call them, and every command refuses when its control is unavailable, as a disabled button does. The model now also holds speed, glyph, camera and which controls are available, so the panel no longer watches the old page at all. Proof: the same real clicks and key presses on the current production version and on this one gave identical results at all 18 steps (33 simulator messages, button states, refusals, speed, glyph, camera, page state). The only difference was the elapsed simulated time, which depends on wall-clock timing. Test now: optional quick look. Run, pause, restart, new seed, change the speed and the agent style, zoom and Fit arena; everything should behave as before.",
+  "outcome": "The results panel now has its own model and commands (MVC stage 3, part 1 of 2)",
+  "owner_impact": "Nothing changes on screen. The results panel (plots of the live metrics) now works like the simulation panel. Its state (status line, whether a plot can be added, the metrics and the plots with their selected metrics) lives in one results model, written by the code that receives the metric samples. Its actions (add plot, remove plot, show or hide a metric, follow live data) are commands. The React panel reads only the model and calls only the commands; the old plot buttons, and the module that clears plots when an Experiment changes, call the same commands. Proof: identical real actions on the production version and on this one gave identical results at all 11 steps: run, add plot, toggle a metric, zoom then Follow live (the plot image returns exactly to its live view), remove through the panel, remove the way another module does, restart. A deliberately broken copy was caught at the right step. Test now: optional quick look. Run an Experiment, add a plot, change its metrics, zoom into a plot and press Follow live, remove a plot.",
   "next": {
     "kind": "epic_continues",
     "issue": 564,
-    "text": "Next is #564, stage 3 of the approved plan: the results and authoring panels get the same treatment (their own models and commands, no reading of the old page). Nothing changes on screen."
+    "text": "#564 continues with part 2: the authoring (code editor) panel gets its own model and commands in the same way. Nothing changes on screen."
   },
   "technical_evidence": [
-    "runtime-model.js now also holds requestedSpeed, glyph, camera {label, fit} and controls {run, pause, restart, newSeed, speed, fit}. main.js writes them where it used to set page text and disabled flags, and draws the page from them.",
-    "New web/src/runtime/simulation-commands.js (shared instance, external to the React bundle, guarded by verify-dist): main.js provides run, pause, restart, restartWithNewSeed, fitArena, setSpeed and setGlyph. Each refuses when unavailable. The legacy buttons, slider and select call the same commands.",
-    "simulation-react-adapter.ts reads only the model and calls only the commands: no page watchers, no hidden clicks, no synthetic events. runtime-speed.js restarts on requested-speed writes from the model.",
-    "A/B in a real browser, old (production) build versus new, same scripted real input (mouse, keyboard, wheel, select, and a legacy button pressed by another module): 18/18 steps identical apart from elapsed simulated time; 33 worker messages identical; no page exceptions.",
-    "Command refusal checked in the browser (pause while paused, run while running, fit when fitted send nothing); removing the pause refusal in a planted copy of the build is detected.",
-    "Tests: 668 pass (new simulation-commands.test.mjs; #263's hidden-click assertions replaced by 'panel calls the controller'). Style comparison identical at all four viewports."
-  ],
-  "close_issue": 562
+    "New web/src/results/results-model.js and results-commands.js, each one shared instance: external to the React bundle (vite SHARED_MODULE) and guarded by verify-dist.",
+    "results-ui.js publishes status, canAdd, metrics (configured ones labelled; sample-only ones by id, as before) and panel bindings to the model, and provides addPanel, removePanel, toggleMetric (configured metrics only, as the checkboxes allowed) and followLive. The legacy buttons and checkboxes call the same commands.",
+    "results-react-adapter.ts reads only the results model and calls only the commands: no page watchers, no clicks, no __vlabResultsUI.",
+    "A/B in a real browser, production build versus this build, same scripted real input: 11/11 steps identical, including plot-image fingerprints before zoom and after Follow live. A planted copy where Follow live does nothing is caught at that step.",
+    "Tests: 670 pass (new results-commands.test.mjs; #198/#261 source checks now assert the model/controller wiring). Style comparison identical at all four viewports."
+  ]
 }

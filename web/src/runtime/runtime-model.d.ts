@@ -22,3 +22,10 @@ export type RuntimeModel = {
 export const RUNTIME_INITIAL_STATE: RuntimeState;
 export function createRuntimeModel(initialState?: RuntimeState): RuntimeModel;
 export const runtimeModel: RuntimeModel;
+
+export type Model<State> = {
+  get(): State;
+  set(patch: Partial<State>): void;
+  subscribe(listener: (state: State, written: string[]) => void): () => void;
+};
+export function createModel<State extends object>(initialState: State): Model<State>;
