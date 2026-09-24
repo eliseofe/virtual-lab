@@ -10,12 +10,14 @@ When the owner approves a sequence with language such as `go ahead`, `proceed`, 
 
 All development work is governed by the execution-granularity rules in this section. No interpretation of scope, intent, urgency, discovered work, or continuation may bypass those rules.
 
-Every issue must state exactly one `Execution owner`: **ChatGPT**, **Claude**, **Eliseo Ferrante**, or **Work**. No issue may be left without an owner.
+Every issue must state exactly one `Execution owner`: a development agent (currently **ChatGPT** or **Claude**), **Eliseo Ferrante**, or **Work**. No issue may be left without an owner.
 
 Ownership is assigned in this order:
-1. **ChatGPT by default.** The owner may instead assign **Claude**; an agent assigned as execution owner carries every duty this document gives ChatGPT.
-2. **Eliseo Ferrante** only when strictly necessary owner testing is a blocker to completing the ticket. Before handing over, ChatGPT must prepare everything and tell Eliseo exactly what to do, including any exact prompts, copy-paste text, URLs, or steps required.
+1. **The development agent that planned the ticket** (ChatGPT or Claude) by default.
+2. **Eliseo Ferrante** only when strictly necessary owner testing is a blocker to completing the ticket. Before handing over, the owning agent must prepare everything and tell Eliseo exactly what to do, including any exact prompts, copy-paste text, URLs, or steps required.
 3. **Work** only when neither of the above applies and the required work can only be performed in Work.
+
+Do not hand work to the owner or to Work while a development agent can do it.
 
 Default to **one substantial, independently testable ticket at a time**.
 
@@ -31,9 +33,9 @@ Keep that relationship current if the plan changes. It is project-state metadata
 
 For each substantial user-facing/deployable ticket:
 
-1. implement and test;
+1. implement and test. CI then checks the exact built version in a real browser before publishing it (pre-publish smoke). If that check fails, the version is not published (the live Lab stays on the last green version), the run counts as **red**, and step 6 applies. A pre-publish failure never completes the ticket;
 2. deploy the exact candidate;
-3. follow only that exact candidate using bounded exact-run status checks;
+3. follow only that exact candidate using bounded exact-run status checks. An agent that can run commands uses `node web/scripts/wait-for-run.mjs <sha>`; an agent without a shell follows the same run through its GitHub connector. Either way the result is one of the *Exact-run outcomes* below;
 4. while it is pending, keep the chat visibly alive; pending checks must not inspect jobs/logs repeatedly;
 5. if the exact candidate is green, stop immediately; one green is terminal and no further Actions query is made;
 6. if it is red, diagnose, repair, and repeat with the repaired candidate;
@@ -62,6 +64,17 @@ While external work is pending and control is available, provide meaningful owne
 
 Do not run a second green candidate merely for reassurance. The first verified green candidate completes the loop.
 
+### Exact-run outcomes
+
+Following an exact candidate ends in exactly one of these outcomes (the exit codes of `web/scripts/wait-for-run.mjs`). **Only green completes a ticket.** Every other outcome requires the stated action and never counts as completion:
+
+- **green** — the candidate is built, pre-publish verified, deployed and live-verified. This completes the loop.
+- **red** — diagnose the named failing job/step, repair, and follow the repaired candidate.
+- **superseded** — a newer push replaced this run. Follow the newer candidate; the ticket completes only when a green candidate contains its change. A running release on `main` is never cancelled halfway; when several pushes queue, GitHub keeps only the newest pending one.
+- **not-a-candidate** — every changed file is documentation excluded from CI; nothing was deployed. This is not completion of a deployable ticket.
+- **no-run** — a run was expected but did not start; start it with `workflow_dispatch`. This is not a blocker.
+- **timeout** — the run is still going after the time limit. Report it as still pending with its link, never assume a result, and keep following the same run; a pending run is not a blocker.
+
 Work/browser/computer verification is valid completion evidence when appropriate to the affected deployed behavior. Long-running scientific benchmarks that are not product-completion gates may remain autonomous outside the completion loop.
 
 Never create a scheduled task, reminder, watchdog or automation unless the owner explicitly requests one.
@@ -73,6 +86,8 @@ Manifest-driven production browser smoke uses one shared Chrome host from `web/s
 New product surfaces and regression checks must reuse this shared harness. Do not add a production smoke script that imports `node:child_process`, launches `google-chrome`, or configures its own remote-debugging port. Add assertions to an existing smoke scope when they naturally belong there, or add a new manifest smoke script that obtains its isolated session from `createSmokeSession`.
 
 The browser/compiler contract test enforces this structure for every active smoke entry in `web/product-surface.json`.
+
+The same active smoke checks also run before publishing, against the exact built package served locally by `web/scripts/pre-publish-smoke.mjs` (also on pull requests). They must therefore stay read-only and must not require signing in.
 
 ## When batching is acceptable
 

@@ -1,19 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The Lab now has a recorded 'before' photograph that later refactoring must reproduce exactly",
-  "owner_impact": "Nothing changes in how the Lab looks or behaves. Behind the scenes, five reference Experiments (the catalog Active Elastic Experiment, its random-start variant, and small examples covering controller randomness, per-agent state, the scalar Environment and named references) are now compiled and run on every change. Their compiled form, every agent's final position and every metric value must match the recorded reference to the last bit, both in the browser's simulator and in the native one, and in both the Lab and the AI connection. Any future refactor that changes a result, even in the 15th digit, is stopped before it is published.",
+  "outcome": "New Lab versions are now checked in a real browser before they are published",
+  "owner_impact": "Nothing changes in how the Lab looks or behaves. Behind the scenes, every new version is first opened privately in a real browser on GitHub's machine and must pass the same 8 product checks as the live Lab before it is published, so a broken version no longer reaches students first. A release that is being published is no longer cancelled halfway by a newer change, changes to the release machinery itself are now tested, and agents have one tool that follows their exact version and always ends with one clear answer (green, red with the failing step, replaced by a newer version, documentation only, no run started, or timed out). 'Done means verified live' is unchanged.",
   "next": {
     "kind": "epic_continues",
-    "issue": 533,
-    "text": "Next is #533 — reliable release loop. It will check each new version in a real browser before it is published, stop releases from being cancelled halfway, and give every agent one reliable way to wait for its exact version, while keeping 'done means verified live'. #533 has not started."
+    "issue": 535,
+    "text": "Next is #535, proposal-first merging: every change will reach the live Lab only through a proposal (pull request) whose checks are green. It needs one GitHub setting from you, and I will prepare exact click-by-click steps. #535 has not started."
   },
   "technical_evidence": [
-    "New: web/tests/fixtures/reference-experiments.mjs, web/scripts/reference-runs.mjs, web/scripts/reference-runs-wasm.mjs, crates/kernel/tests/reference_runs.rs, web/scripts/sync-edge-vendor.mjs, web/tests/behaviour-reference.test.mjs.",
-    "Browser and MCP edge compilers reproduce the recorded compiled artifacts and exact simulator input for all 5 reference Experiments.",
-    "Native (cargo test) and production WebAssembly (new CI step after wasm-pack) replay 803 metric samples and final agent state bit-identically, with 100-tick and 7-tick batching giving identical results.",
-    "Mutation checks: a 1e-15 change in periodic distance, swapped pow arguments in the Controller and Metrics compilers, and a changed RNG uniform mapping are each caught.",
-    "Native and WebAssembly trajectories differ by up to ~1e-13 because of platform math libraries; recorded separately and documented as audit finding F17.",
-    "The 8 edge-function compiler copies are checked by one list/test; the Docker database tests skip locally and are required in CI via VLAB_REQUIRE_DOCKER=1."
+    "New: web/scripts/serve-dist.mjs, web/scripts/pre-publish-smoke.mjs, web/scripts/wait-for-run.mjs, web/tests/release-loop.test.mjs.",
+    "CI build job runs the active product smoke against the exact web/dist package served under /virtual-lab/ before Pages upload, on pushes and pull requests; build timeout raised from 15 to 25 minutes.",
+    "Concurrency: cancel-in-progress only for pull requests; '.github/workflows/**' removed from paths-ignore.",
+    "wait-for-run.mjs verified against real history: green (run 35982384767), red at live smoke (35746207804), red in tests (35802036102), superseded (35801989197), documentation-only (0cae716), no push run (e0ec612), and a pull-request run (--pull-request).",
+    "DEVELOPMENT_WORKFLOW.md: owner-approved ownership rule (the planning agent owns by default), exact-run outcomes, pre-publish smoke; docs/DEPLOYMENT.md updated."
   ],
-  "close_issue": 532
+  "close_issue": 533
 }
