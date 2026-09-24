@@ -129,10 +129,8 @@ test("production registry read path remains ownership-scoped, session-isolated, 
   assert.match(registryUi, /import \{ supabase \} from "\.\/supabase-client\.js"/);
   const { AUTH_STORAGE_KEY } = await import("../src/supabase-config.js");
   assert.equal(AUTH_STORAGE_KEY, "vlab-production-registry-auth-v1");
-  assert.match(registryUi, /\.from\("experiments"\)/);
-  assert.match(registryUi, /\.eq\("owner_id", user\.id\)/);
-  assert.match(registryUi, /\.eq\("lifecycle", "active"\)/);
-  assert.match(registryUi, /artifacts,config_source,initializer_source,controller_source/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registryUi, /registryData\.listOwnExperiments\(supabase, user\.id\)/);
   assert.match(registryUi, /productionExperimentRunnability\(experiment\)\.runnable/);
   assert.match(registryUi, /async function readExperiment/);
   assert.match(registryUi, /Experiment not found in your library/);

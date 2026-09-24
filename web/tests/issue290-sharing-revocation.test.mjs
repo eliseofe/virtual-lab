@@ -35,13 +35,15 @@ test("#290 recipient directory supports student collaboration without redundant 
 
 test("#290 browser manages outgoing grants and uses only the eligible recipient RPC", () => {
   assert.match(registry, /let outgoingShares = \[\]/);
-  assert.match(registry, /supabase\.rpc\("list_experiment_share_recipients"\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /shareRecipients = await registryData\.listShareRecipients\(supabase\)/);
   assert.doesNotMatch(registry, /\.from\("profiles"\)[\s\S]{0,180}\.neq\("id", user\.id\)/);
   // #554: behaviour covered by registry-labels.test.mjs; this checks the registry uses the rule.
   assert.match(registry, /label\.textContent = sharedWithLabel\(shareRecipientLabel\(share\.recipient_id\)\)/);
   assert.match(registry, /revoke\.textContent = "Revoke"/);
   assert.match(registry, /async function revokeCurrentExperimentShare\(recipientId\)/);
-  assert.match(registry, /\.from\("experiment_shares"\)[\s\S]*\.delete\(\{ count: "exact" \}\)/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /registryData\.revokeShare\(supabase, \{ experimentId: currentRemote\.id, recipientId \}\)/);
   assert.match(registry, /await loadOutgoingShares\(\)/);
 });
 

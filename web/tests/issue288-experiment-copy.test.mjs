@@ -55,10 +55,8 @@ test("#288 supervised copy uses the saved remote revision rather than local unsa
   assert.match(registry, /const sourceId = currentRemote\.id/);
   assert.match(registry, /const sourceSnapshot = currentRevisionSnapshot\(\)/);
   assert.match(registry, /const sourceRevision = sourceSnapshot\?\.revision \?\? currentRemote\.revision/);
-  assert.match(registry, /supabase\.rpc\("copy_experiment_to_workspace"/);
-  assert.match(registry, /p_source_experiment_id: sourceId/);
-  assert.match(registry, /p_expected_revision: sourceRevision/);
-  assert.match(registry, /p_collection_id: collectionId/);
+  // #554: queries moved to registry/data.js, covered by registry-data.test.mjs; this checks the workspace uses them.
+  assert.match(registry, /registryData\.copyExperimentToWorkspace\(supabase, \{\s*sourceId,\s*revision: sourceRevision,\s*title,\s*collectionId,/);
   assert.match(registry, /data = await copyCurrentReadableExperiment\(title, collectionId\)/);
   assert.match(registry, /const artifacts = registryArtifactsForSave\(\);/);
   assert.doesNotMatch(registry, /allowBuiltInCompatibility/);
