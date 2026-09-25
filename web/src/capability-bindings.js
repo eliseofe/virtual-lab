@@ -55,8 +55,8 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
         artifact: "initialization",
         kind: "intrinsic",
         symbol: "place",
-        syntax: "place(i, x, y, heading)",
-        signature: { args: ["integer", "scalar", "scalar", "scalar"], result: "void" },
+        syntax: "place(i, x, y, heading) or place(i, x, y, heading, role=\"name\") for a role declared placement=\"explicit\"",
+        signature: { args: ["integer", "scalar", "scalar", "scalar"], keywords: { role: "string" }, result: "void" },
       },
     ],
   }),
@@ -130,12 +130,25 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
     canonical_capability_id: "25ee37e5-ba59-4e8a-9768-a5604e2501b5",
     capability_key: "initialization.per_agent_private_state_assignment",
     surfaces: [
+      // #577 (D-022): heterogeneity is an exact composition of roles declared
+      // by the experimenter; no one sets state on an individual robot.
       {
         artifact: "initialization",
         kind: "intrinsic",
-        symbol: "set_agent_state",
-        syntax: "set_agent_state(i, \"state_name\", value)",
-        signature: { args: ["integer", "string", "scalar"], result: "void" },
+        symbol: "role",
+        syntax: "role(\"name\", fraction=f | count=k | rest=True, placement=\"random\" | \"explicit\", <state_name>=value, ...)",
+        signature: {
+          args: ["string"],
+          keywords: { fraction: "scalar", count: "integer", rest: "bool", placement: "string", "<state_name>": "scalar" },
+          result: "void",
+        },
+      },
+      {
+        artifact: "initialization",
+        kind: "intrinsic",
+        symbol: "role_count",
+        syntax: "role_count(\"name\")",
+        signature: { args: ["string"], result: "integer" },
       },
     ],
     requires: ["624eb86c-65ee-4a15-abd4-9fd331c55956"],

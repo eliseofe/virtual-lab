@@ -219,6 +219,33 @@ export class ExpressionParser {
     return parts;
   }
 
+  // At "(": arguments that may end with keyword arguments NAME=EXPR (#577;
+  // only where the language's tokenizer produces "="). Returns { args,
+  // keywords }, keywords as [{ name, value }] in written order.
+  callArgumentsWithKeywords() {
+    this.take("(");
+    const args = [];
+    const keywords = [];
+    if (!this.peek(")")) {
+      do {
+        const next = this.tokens[this.index + 1];
+        if (this.peek("ident") && next?.type === "=") {
+          const name = this.take("ident");
+          this.take("=");
+          if (keywords.some((keyword) => keyword.name === name.value)) throw this.grammar.error(`keyword argument '${name.value}' repeated`, name);
+          keywords.push({ name: name.value, value: this.expression() });
+        } else {
+          if (keywords.length) throw this.grammar.error("positional argument follows keyword argument", this.current());
+          args.push(this.expression());
+        }
+        if (!this.peek(",")) break;
+        this.take(",");
+      } while (!this.peek(")"));
+    }
+    this.take(")");
+    return { args, keywords };
+  }
+
   // At "(": a parenthesised, comma-separated argument list.
   callArguments() {
     this.take("(");

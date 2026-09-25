@@ -146,12 +146,21 @@ function currentPinch() {
   };
 }
 
+// The resolved role composition of the latest compiled setup (#577), shown in
+// the setup feedback so authors see the exact counts.
+let latestRoles = [];
+function withRoles(text) {
+  if (!latestRoles.length) return text;
+  return `${text} Roles: ${latestRoles.map(({ name, count }) => `${name} ${count}`).join(", ")}.`;
+}
+
 function compileSetup({ seed = activeSeed, configSource = ui.config.value, initializerSource = ui.initializerSource.value } = {}) {
   const config = compileConfig(configSource);
   const runtime = validateRuntimeValues(config.values);
 
   const initializerConfig = { ...config, values: { ...config.values, SEED: seed } };
   const initializer = compileInitializer(initializerSource, initializerConfig);
+  latestRoles = initializer.roles ?? [];
   validateInitialStateForRuntime(initializer.state, runtime);
   const environment = compileEnvironmentScalar(initializerSource, initializerConfig);
   const references = initializer.world_references?.references?.map(({ name }) => name) ?? [];
@@ -295,7 +304,7 @@ function initializeIfReady() {
     ui.setupError.textContent = "";
     ui.error.textContent = "";
     updateSeedLabel();
-    setFeedback(ui.setupFeedback, "Configuration and initializer valid.", "success");
+    setFeedback(ui.setupFeedback, withRoles("Configuration and initializer valid."), "success");
     setFeedback(ui.feedback, "Controller valid.", "success");
     showSimulatorStatus("Starting simulation…");
     worker.postMessage({ type: "initialize", setup, ir: controller.compiled, parameters: controller.parameters });
@@ -527,7 +536,7 @@ worker.addEventListener("message", (event) => {
         appliedController = pendingSetup.controller;
       }
       pendingSetup = null;
-      setFeedback(ui.setupFeedback, "Configuration applied. Run restarted.", "success");
+      setFeedback(ui.setupFeedback, withRoles("Configuration applied. Run restarted."), "success");
       showSimulatorStatus("Configuration applied");
       setRunning(false, { notifyWorker: false });
     } else if (message.type === "reset") {

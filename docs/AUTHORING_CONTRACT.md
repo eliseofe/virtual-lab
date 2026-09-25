@@ -2,7 +2,7 @@
 
 Status: **current contract candidate, 20 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.12`, exposed by production `experiment-mcp` server `3.21.0`, interface `17`. Since #577 all code artifacts share one grammar (`code_grammar`): `//` (floor division) and `%` (remainder with the sign of the divisor) on scalars, and `and`/`or`/`not` on booleans with both sides of `and`/`or` always evaluated; `for NAME in range(...)` loops over run constants (numbers and parameters) in the Controller and Metrics; every code artifact, Initialization included, is type-checked before it runs (`code_grammar.static_checking`).
+Current machine-readable contract: `vlab.authoring/0.13`, exposed by production `experiment-mcp` server `3.22.0`, interface `17`. Since #577 all code artifacts share one grammar (`code_grammar`): `//` (floor division) and `%` (remainder with the sign of the divisor) on scalars, and `and`/`or`/`not` on booleans with both sides of `and`/`or` always evaluated; `for NAME in range(...)` loops over run constants (numbers and parameters) in the Controller and Metrics; every code artifact, Initialization included, is type-checked before it runs (`code_grammar.static_checking`). Robots are anonymous (D-022): heterogeneity is declared as roles in Initialization (`role(...)`, `role_count(...)`, `place(..., role=...)`), and the Controller cannot read `N`, `ARENA_SIZE` or `EXPERIMENT_DURATION`.
 
 ## Canonical Experiment artifacts
 
@@ -72,17 +72,27 @@ Standard scalar mathematics is language substrate rather than a scientific capab
 
 This vocabulary is intentionally independent of any specific paper. Scientific capabilities continue to describe observations, actions, environment semantics, heterogeneous state, stochastic services, or other model-domain abilities—not generic algebra or trigonometry.
 
-## Generic heterogeneous controller-private initialization
+## Heterogeneity as roles (#577, D-022)
 
-Implemented capability `initialization.per_agent_private_state_assignment` extends Initialization with one bounded intrinsic:
+Implemented capability `initialization.per_agent_private_state_assignment` is authored as **roles**. Robots are anonymous: no one sets state on an individual robot, and a robot receives only its role's starting private-state values.
 
-`set_agent_state(i, "state_name", value)`
+```python
+role("informed", fraction=config.RHO, informed=1.0)
+role("leader", count=1, placement="explicit", leader=1.0)
+role("uninformed", rest=True, informed=0.0)
+place(0, 0.0, 0.0, 0.0, role="leader")          # explicit members, looping over role_count("leader")
+for i in range(1, config.N):
+    place(i, x, y, heading)                       # random roles are dealt to these bodies
+```
 
-The target field must be a scalar private state declared by the Controller class. The assigned value must be finite, the agent index must be valid, and one agent/field pair may be assigned at most once. Agents without an override retain the Controller class declaration's default initial value.
-
-Validation is cross-artifact: an Initialization profile is accepted only when every assigned state name exists in the compiled Controller schema. The Rust runtime independently validates and applies the same per-agent profiles on construction, setup/controller replacement and reset.
-
-This is a generic heterogeneous-state seam, not a paper-specific role mechanism. Initialization does not expose a global role table, multiple controller programs, heterogeneous sensors or unrestricted per-agent dictionaries.
+- **Sizes.** `fraction=f` gives `round(f × N)` members, with halves rounding up; `count=k` gives exactly `k`; exactly one role may be `rest=True` and receives the remaining robots. Without a `rest` role the sizes must add up to `N`. Counts are exact in every run, and the Lab's setup message and the MCP (`compiled.roles`) report them.
+- **Binding.**
+  - `placement="random"`, the default, deals the role's members to the bodies placed without `role=`. The deal is a uniform random permutation drawn from initialization stream 1, so declaring roles never changes placement draws, which use stream 0.
+  - `placement="explicit"` requires placing each member with `place(i, x, y, heading, role="name")`.
+  - The compiler checks the executed composition exactly and reports a mismatch with the numbers.
+- **State.** `fraction`, `count`, `rest` and `placement` are reserved. Every other keyword is a starting private-state value, which must be finite and declared by the Controller (cross-artifact validation). The Rust runtime receives the same per-agent profile as before, so it is unchanged.
+- Declare every role before the first `place(...)` or `role_count(...)`.
+- `set_agent_state(i, name, value)` was retired in #577. Stored revisions that use it no longer compile.
 
 ## Generic Controller control-flow substrate
 
@@ -225,4 +235,4 @@ Experiment-domain AI clients have no GitHub/repository, shell, deployment, arbit
 
 ## Accepted scientific fixture
 
-The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.12`.
+The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.13`.

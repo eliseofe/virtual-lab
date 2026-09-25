@@ -18,7 +18,7 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.12",
+  contract_version: "vlab.authoring/0.13",
   experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
@@ -59,7 +59,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
     },
     initialization: {
       compiled_version: "vlab.initializer-state/0.4",
-      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Implemented capability surfaces may additionally assign deterministic per-agent initial controller-private scalar state. Additional callable/member surfaces and optional entries are capability-owned.",
+      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Heterogeneity is declared as roles (see roles below); no one sets state on an individual robot. Additional callable/member surfaces and optional entries are capability-owned.",
       entry: "initialize(config, rng, place)",
       simulator_owned_inputs: ["config", "rng", "place"],
       language_intrinsics: ["abs", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "floor", "ceil", "pow", "min", "max", "range"],
@@ -69,6 +69,14 @@ export const AUTHORING_CONTRACT = Object.freeze({
       exponentiation_operator: "**",
       optional_environment_scalar_math: "The same standard scalar math intrinsics and arithmetic operators (including // and %) apply inside environmental_scalar(x, y, config), which is a single return expression.",
       constants: ["TAU", "SQRT3_OVER_2"],
+      keyword_arguments: "Calls may end with keyword arguments NAME=value; only role(...) and place(..., role=...) accept them.",
+      roles: {
+        principle: "Robots are anonymous (D-022). Heterogeneity is an exact composition declared by the experimenter; a robot receives only its role's starting private-state values.",
+        declare: "role(\"name\", fraction=f | count=k | rest=True, placement=\"random\" | \"explicit\", <state_name>=value, ...) before any place(...) or role_count(...). fraction, count, rest and placement are reserved; every other keyword is a starting private-state value, which the Controller must declare.",
+        sizes: "fraction gives round(fraction * N) members (halves round up); count gives exactly k; exactly one role may be rest=True and receives the remaining robots. Without a rest role the sizes must add up to N. Counts are exact in every run and are reported back as compiled.roles.",
+        placement: "random (default): members are dealt to the bodies placed without role= by a uniform random permutation from initialization stream 1, so placement draws are unaffected. explicit: place each member with place(i, x, y, heading, role=\"name\"), looping over role_count(\"name\"); each explicit role must receive exactly its count.",
+        example: "role(\"informed\", fraction=config.RHO, informed=1.0)\nrole(\"uninformed\", rest=True, informed=0.0)\nfor i in range(config.N):\n    place(i, x, y, heading)",
+      },
       capability_resolution: "Capability-backed initializer calls, member access and optional entries are authorable only when an implemented capability advertises the corresponding Initialization surface."
     },
     controller: {
@@ -76,6 +84,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
       ir_schema: "vlab.controller-ir/0.1",
       syntax: "Restricted Python-compatible class syntax: class Name(Agent), optional capability-backed class state declarations, and def step(self, obs). Supports typed scalar/vector/boolean expressions, assignments, +=, arithmetic, scalar comparisons, boolean composition, if/elif/else, bounded iteration over capability-backed iterables, and return of capability-backed actions.",
       entry: "step(self, obs)",
+      anonymity: "A robot knows only its own sensors, private state, parameters and random stream. N, ARENA_SIZE and EXPERIMENT_DURATION are not available to the Controller (D-022); other Configuration values are robot parameters.",
       control_flow: {
         boolean_literals: ["True", "False"],
         comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
@@ -384,6 +393,8 @@ export function validateExperimentSources({ config_source, initializer_source, c
     compiled: {
       configuration: config.version,
       initializer: initializer.version,
+      // #577: the exact composition, e.g. [{ name: "informed", count: 10, placement: "random" }]
+      roles: initializer.roles ?? [],
       environment: environment?.schema ?? null,
       controller_language: controller.language,
       controller_ir_schema: controller.schema,
