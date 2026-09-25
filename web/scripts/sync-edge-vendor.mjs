@@ -20,6 +20,7 @@ export const EDGE_VENDOR_PAIRS = Object.freeze([
   ["web/src/capability-bindings.js", `${edge}/capability-bindings.js`],
   ["web/src/authoring-core/expression.js", `${edge}/authoring-core/expression.js`],
   ["web/src/authoring-core/lines.js", `${edge}/authoring-core/lines.js`],
+  ["web/src/authoring-core/ranges.js", `${edge}/authoring-core/ranges.js`],
   ["web/src/authoring-core/statements.js", `${edge}/authoring-core/statements.js`],
   ["web/src/config/compiler.js", `${edge}/vendor/config-compiler.js`],
   ["web/src/controller/compiler.js", `${edge}/vendor/controller-compiler.js`],

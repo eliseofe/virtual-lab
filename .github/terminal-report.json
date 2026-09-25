@@ -1,16 +1,15 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "One operator set in every authoring language: // and % everywhere, and and/or/not in Initialization",
-  "owner_impact": "First release of #577 (one code grammar). Every code artifact now has the same operators. Controller, Metrics and the environment field gain // (floor division) and % (remainder, whose sign follows the divisor as in Python), computed identically in the simulator and in Initialization. Initialization gains and/or/not. As in the Controller and Metrics, both sides of and/or are always evaluated, so random draws never depend on the other side's value. Nothing that worked before changes: the 28,059-case check shows that the only programs whose result changed are ones that were rejected before because they used one of these operators, and the simulator's reference runs are bit-identical. The grammar contract GPT reads is now vlab.authoring/0.10, stating these operators and rules, and the MCP is redeployed with it. Test now: optional. In a Controller, try something like `phase = (step_count // 10) % 2` with a scalar, or `if a and not b:` in Initialization.",
+  "outcome": "Controllers and Metrics can loop a fixed number of times: for k in range(K)",
+  "owner_impact": "Second release of #577 (one code grammar). The Controller and Metrics accept `for k in range(K)`, and also range(start, stop) and range(start, stop, step), as in Python. The bounds must be run constants: numbers or parameters, combined with arithmetic. So a robot's work per step is fixed for the whole run and never depends on what it senses, and the simulator checks at run start that the bounds are integers. The loop variable is a number visible only inside the loop, and range(...) can only be used as a loop's range. Loops over sensed neighbours are unchanged. Nothing that worked before changes: one of the 28,059 fingerprinted cases changed, a program that is invalid either way now reports a different first error, and the simulator's reference runs are bit-identical. GPT's contract is now vlab.authoring/0.11. Test now: optional. In a Controller, try `for k in range(3):` accumulating a value, or in a Metric sum over range(1, 7, 2), which should give 9.",
   "next": {
     "kind": "epic_continues",
     "issue": 577,
-    "text": "#577 release 2: loops over a fixed number range, `for k in range(K)` with a constant K, in the Controller and Metrics. It has not started yet."
+    "text": "#577 release 3: Initialization moves onto the shared statement parser and gets static type checking, like the Controller and Metrics. It has not started yet."
   },
   "technical_evidence": [
-    "Rust: crates/kernel/src/scalar_ops.rs (floor_divide, modulo); controller, metrics and environment IR accept // and %; new Rust tests; the 5 reference runs are bit-identical natively and on WebAssembly.",
-    "JS: the typed grammar (Controller, Metrics) and the environment field gain // and %, scalar-only in the type rules; Initialization gains and/or/not with boolean operands and eager evaluation. New authoring-operators.test.mjs (6 tests).",
-    "Equivalence: 54 of 28,059 cases changed, every one containing one of the new operators or keywords; each was classified old versus new before the golden file was regenerated.",
-    "Contract vlab.authoring/0.10 adds code_grammar and per-artifact arithmetic operators; MCP server 3.19.0. The database stores the version as text with no value check. 699 tests pass; full browser smoke passes."
+    "Rust controller: ForRange prepared statement (loop variable as a local slot, arguments as prepared run-constant expressions, integer and step checks when the runtime is built); Rust metrics interpreter: range branch with the same checks. New Rust test; 69 kernel tests pass; 5 reference runs bit-identical natively and on WebAssembly.",
+    "JS: web/src/authoring-core/ranges.js (run-constant check shared by Controller and Metrics, vendored to the MCP); range is only a loop iterable. New authoring-range.test.mjs (4 tests). A JS-compiled controller and metric using range run in the WebAssembly kernel (the metric gives 1 + 3 + 5 = 9).",
+    "Equivalence: 1 of 28,059 cases changed (an invalid program whose first reported error moved); golden regenerated. Contract vlab.authoring/0.11, MCP 3.20.0. 703 tests pass; full browser smoke passes."
   ]
 }
