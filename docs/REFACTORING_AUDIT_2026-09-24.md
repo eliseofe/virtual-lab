@@ -294,3 +294,39 @@ No current product behaviour is affected, because all execution is in the browse
 ### F18 — Release-loop evidence
 
 Of the last 20 pushes to `main` before this audit, 9 were green, 10 red and 1 cancelled. Most red runs failed before publishing. For #504, however, four consecutive versions **were published and then failed the live smoke** (about 30 minutes of unverified production). No CI run hung: every run finished within 1–5 minutes, so reported "stuck" monitoring comes from how agents wait (no run triggered for docs/workflow-only pushes, runs cancelled by a newer push, polling from a chat). Remedies L1–L4 are in #533; L5 (branch protection) needs an owner setting; L6 (one-command restore) is to be discussed.
+
+---
+
+## 9. Authoring-language design discussion (25 September 2026) — open, awaiting owner agreement
+
+Status: **under discussion with the owner; no ticket opened, no code changed.** The model-view-controller plan (#560–#569) is complete; this is the next candidate work under #425.
+
+### Findings
+
+- There are **five** hand-written parsers, not three or four: Configuration (named values), Initialization (interpreted once in JavaScript at setup; its output is the initial state), the environment field function `environmental_scalar(x, y, config)` (written inside the Initialization source but compiled separately to Rust IR), Controller and Metrics (compiled to typed IR executed by the Rust kernel every step).
+- Legitimate differences between the code artifacts are **what each may read and do** (scientific contract) and **where it runs** (JavaScript once vs. Rust IR every step). Neither needs a different syntax. The syntax gaps in F16 are history: #383/#385 control flow was never mirrored into Initialization, and `%`, `//`, `range` were never added to the Controller/Metrics IR.
+- Type checking differs: Controller and Metrics are statically typed; Initialization is checked only while it executes.
+
+### MCP alignment (verified 25 September 2026)
+
+- The MCP Edge Function runs byte-identical vendored copies of all five compilers (`supabase/functions/experiment-mcp/vendor/`, enforced by the vendor-parity test and `web/scripts/sync-edge-vendor.mjs`).
+- The deployed `experiment-mcp` (version 53) is a one-line stub importing `supabase/functions/experiment-mcp/index.ts` from GitHub at a pinned commit (`baf9406`, #525). `git diff baf9406 main` over the MCP code and the five compilers is empty. The live `read_workspace` contract equals the repository's `MCP_AUTHORING_CONTRACT` exactly.
+- No commit of the refactoring work (#532–#573) touched the MCP, the compilers or the contract.
+- **Deployment path:** the owner connected the Supabase connector (available to sessions started after 25 September). Deploying an MCP change means redeploying the stub with a new pinned commit through the connector's `deploy_edge_function`, then re-running the live-contract comparison. No GitHub secret is needed. Any grammar change must update the web compilers, the vendored copies and the published contract, and redeploy the MCP, in the same ticket.
+
+### Owner direction (25 September)
+
+Two grammars only: Configuration (data) and one code grammar. Initialization is the most powerful artifact. The Controller must be restricted so that robots act only on local knowledge and never on constructs that belong to the world. The earlier rule (Controller loops only over neighbour collections) may be too strict.
+
+### Claude's proposal (for discussion)
+
+1. **One grammar, and per-artifact views.** Syntax (statements, expressions, operators, types, `if/elif/else`, `for`, `%`, `//`, `and/or/not`, `**`) is identical for Initialization, the environment field, Controller and Metrics. What differs is enforced by name scope, so a forbidden construct cannot even be named:
+   - **Initialization:** the experimenter building the world. It sees and writes everything: all agents by index, `N`, world geometry, references, placement and private-state assignment, and the initialization random stream.
+   - **Environment field:** a pure law of the world, a function of position and configuration only.
+   - **Metrics:** the observer. It has global read-only access to the scientific snapshot and no effects.
+   - **Controller:** the robot. Its output may depend only on its own observation (sensors granted by capabilities), its own private state, its program's constants and parameters, and its own random stream. It affects only itself (motion and its own state). Other agents are reachable only through what its sensors report (the neighbour collections), never by index, and not `N`.
+2. **Separate information from control flow.** The locality rule restricts *information*, not *computation*. `for k in range(K)` with `K` a compile-time constant (literal or parameter) carries no world knowledge and keeps per-step cost bounded, so it is allowed in the Controller. Collection loops are allowed only over collections in the artifact's view (neighbours for the Controller; agents for Initialization and Metrics). `while` stays forbidden everywhere.
+3. **Uniform static typing**, Initialization included.
+4. **Sequence:** (a) shared translator core with no language change, proven by a golden corpus of accepted and rejected sources with exact diagnostics, in the web and MCP copies; (b) unification as a contract change: every currently valid program keeps its meaning, the Rust IR gains `%`, `//` and bounded `range`, the contract version is bumped, and the MCP is redeployed and verified.
+
+Open point to settle with the owner: whether a robot may read its **own** identity (local hardware identity, useful for symmetry breaking) while still not reading `N` or other agents' indices.
