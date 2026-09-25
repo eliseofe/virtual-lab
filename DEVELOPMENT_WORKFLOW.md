@@ -100,6 +100,10 @@ The browser/compiler contract test enforces this structure for every active smok
 
 The same active smoke checks also run before publishing, against the exact built package served locally by `web/scripts/pre-publish-smoke.mjs` (also on pull requests). They must therefore stay read-only and must not require signing in.
 
+## Experiment MCP deployment
+
+The Lab deploys on merge; the Experiment MCP (the AI authoring server) does not. A ticket that changes anything under `supabase/functions/experiment-mcp/**`, the compilers included through their vendored copies, is not complete until the MCP has been redeployed pinned to the merge commit and verified, as described in `docs/EXPERIMENT_MCP.md` (Deployment). The session doing it needs the Supabase connector. Without the connector, the ticket reports the pending MCP deployment explicitly instead of claiming completion.
+
 ## When batching is acceptable
 
 Batch related implementation steps inside the **one active ticket** when that preserves one coherent independently verifiable unit. Once work has been split into separate tickets, do not execute a second ticket in the same owner turn, even when the owner authorized or created the whole sequence.

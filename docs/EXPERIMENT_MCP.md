@@ -184,9 +184,15 @@ No provider-specific Experiment operation exists in the server. Any compatible M
 
 The deployed Supabase function `experiment-mcp` is a stub of two files. `index.ts` imports `supabase/functions/experiment-mcp/index.ts` from GitHub at one pinned commit (`https://raw.githubusercontent.com/eliseofe/virtual-lab/<commit>/…`), and `deno.json` holds the compiler options. Supabase bundles that commit's code at deploy time, so a deployment is identified by exactly one commit. `/health` reports it as `source_commit` (#575).
 
-- **Automatic (#575):** `.github/workflows/mcp-deploy.yml` runs on every push to `main` that changes `supabase/functions/experiment-mcp/**`. That path includes the vendored compilers, which `web/scripts/sync-edge-vendor.mjs` keeps byte-identical to the Lab's. The workflow checks the vendored copies, writes the stub for that commit (`node web/scripts/mcp-deploy.mjs stub <commit> <dir>`), deploys it with the Supabase CLI (`--no-verify-jwt`), and waits until `/health` reports the commit. It needs the repository secret `SUPABASE_ACCESS_TOKEN`, a Supabase personal access token. Without it the run fails and says that the MCP was not updated.
-- **Manual:** an agent with the Supabase connector deploys the same two files (`mcp-deploy.mjs stub` prints their content), with `verify_jwt: false` and `deno.json` as the import map. It then runs the workflow manually with **check only**.
-- **Alignment check:** running the workflow manually with **check only** (`node web/scripts/mcp-deploy.mjs status`) reports the live commit and whether the repository's MCP code has changed since. It needs no credentials.
+Deployment is **manual** (the owner chose not to add an automatic GitHub Action, 25 September 2026):
+
+1. After merging any change under `supabase/functions/experiment-mcp/**`, including the vendored compilers that `web/scripts/sync-edge-vendor.mjs` keeps byte-identical to the Lab's, generate the stub for the merge commit: `node web/scripts/mcp-deploy.mjs stub <commit> <dir>`.
+2. Deploy the two files through the Supabase connector's `deploy_edge_function` (project `izdmmudfrmqhvlgepwes`, function `experiment-mcp`, entrypoint `index.ts`, import map `deno.json`, `verify_jwt: false`, because the function authenticates callers itself).
+3. Verify one of two ways:
+   - `node web/scripts/mcp-deploy.mjs verify <commit>` (or `status`) from a machine that can reach `supabase.co`;
+   - `get_edge_function` through the connector, checking the pinned commit, then comparing the live `read_workspace` contract with the repository's `MCP_AUTHORING_CONTRACT`.
+
+`node web/scripts/mcp-deploy.mjs status` reports the live commit and whether the repository's MCP code has changed since.
 
 ## Deployment evidence
 

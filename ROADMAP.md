@@ -113,4 +113,5 @@ Obsolete handoffs, superseded implementation residue and historical verification
 - keep simulation compute and raw scientific data local-first by default;
 - keep research-AI Experiment access separate from trusted simulator/repository development;
 - preserve provider independence and replaceable infrastructure adapters;
-- preserve stable versioned scientific/domain contracts as implementation technology evolves.
+- preserve stable versioned scientific/domain contracts as implementation technology evolves;
+- future (noted by the owner, 25 September 2026): human authors have no coding guidelines for the authoring languages yet and mostly adapt AI-written examples. Human-facing guidance may be added later, so keep the syntax simple enough to write by hand.

@@ -1,5 +1,5 @@
-// #575: the Experiment MCP is deployed as a stub pinned to one commit, reports
-// that commit in /health, and is redeployed automatically when its code changes.
+// #575: the Experiment MCP is deployed as a stub pinned to one commit and
+// reports that commit in /health (deployment is manual; see docs/EXPERIMENT_MCP.md).
 
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -30,14 +30,4 @@ test("/health reports the commit read from the stub's import URL", async () => {
   assert.equal("file:///tmp/source/index.ts".match(regex), null, "a local run reports no commit");
   assert.match(index, /source_commit: SOURCE_COMMIT,/);
   assert.equal(MCP_HEALTH_URL, "https://izdmmudfrmqhvlgepwes.supabase.co/functions/v1/experiment-mcp/health");
-});
-
-test("the MCP is redeployed on every change to its code on main, and verified", async () => {
-  const workflow = await repo(".github/workflows/mcp-deploy.yml");
-  assert.match(workflow, /branches: \[main\]\n    paths:\n      - 'supabase\/functions\/experiment-mcp\/\*\*'/);
-  assert.match(workflow, /sync-edge-vendor\.mjs --check/);
-  assert.match(workflow, /SUPABASE_ACCESS_TOKEN is not set, so the MCP was NOT updated/);
-  assert.match(workflow, /mcp-deploy\.mjs stub "\$GITHUB_SHA"/);
-  assert.match(workflow, /supabase functions deploy experiment-mcp --project-ref "\$SUPABASE_PROJECT_REF" --no-verify-jwt/);
-  assert.match(workflow, /mcp-deploy\.mjs verify "\$GITHUB_SHA"/);
 });
