@@ -195,7 +195,10 @@ function compileControllerFor(config, environment = appliedEnvironment, referenc
   return { compiled, parameters };
 }
 
-function setControlsEnabled(enabled) {
+// `sources` alone keeps source applying open while the run controls stay off:
+// the state after startup sources failed to compile, so the user (or opening
+// an Experiment) can still supply valid ones.
+function setControlsEnabled(enabled, { sources = enabled } = {}) {
   runtimeModel.set({
     controls: Object.freeze({
       ...runtimeModel.get().controls,
@@ -204,7 +207,7 @@ function setControlsEnabled(enabled) {
       restart: enabled,
       newSeed: enabled,
       speed: enabled,
-      applySources: enabled,
+      applySources: sources,
     }),
   });
   const controls = runtimeModel.get().controls;
@@ -314,6 +317,7 @@ function initializeIfReady() {
     ui.setupError.textContent = error instanceof Error ? error.message : String(error);
     setFeedback(ui.setupFeedback, "Configuration or initializer is invalid.", "error");
     showSimulatorStatus("Experiment setup error", "error");
+    setControlsEnabled(false, { sources: true });
   }
 }
 
@@ -587,6 +591,13 @@ ui.initializerSource.addEventListener("input", markSetupDirty);
 // nothing while the simulator cannot take sources; each reports the request.
 function applySetup() {
   if (!runtimeModel.get().controls.applySources) return;
+  if (!initialized) {
+    // Nothing is running yet (the startup sources were invalid): start with
+    // the sources now in the editors.
+    initializeIfReady();
+    runtimeModel.set({ sourceApplyRequest: Object.freeze({ kind: "setup" }) });
+    return;
+  }
   try {
     const configSource = ui.config.value;
     const initializerSource = ui.initializerSource.value;
@@ -609,6 +620,11 @@ function applySetup() {
 
 function applyController() {
   if (!runtimeModel.get().controls.applySources) return;
+  if (!initialized) {
+    initializeIfReady();
+    runtimeModel.set({ sourceApplyRequest: Object.freeze({ kind: "controller" }) });
+    return;
+  }
   try {
     if (!appliedConfig) throw new Error("No valid experiment configuration is active.");
     const controller = compileControllerFor(appliedConfig, appliedEnvironment, appliedReferences);

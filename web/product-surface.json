@@ -19,6 +19,10 @@
           "attempts": 6,
           "delay_seconds": 5,
           "timeout_seconds": 45
+        },
+        {
+          "script": "web/scripts/startup-recovery-smoke.mjs",
+          "timeout_seconds": 60
         }
       ]
     },
