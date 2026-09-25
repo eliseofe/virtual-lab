@@ -90,6 +90,6 @@ test("Initialization evaluates both sides of and/or, like the Controller and Met
 });
 
 test("Initialization's and/or/not require boolean operands", () => {
-  assert.throws(() => initialize("    b = 1.0 and True\n    for i in range(config.N):\n        place(i, 0.0, 0.0, 0.0)"), /'and' requires boolean operands/);
-  assert.throws(() => initialize("    b = not 0.0\n    for i in range(config.N):\n        place(i, 0.0, 0.0, 0.0)"), /'not' requires boolean operands/);
+  assert.throws(() => initialize("    b = 1.0 and True\n    for i in range(config.N):\n        place(i, 0.0, 0.0, 0.0)"), /'and' requires bool/);
+  assert.throws(() => initialize("    b = not 0.0\n    for i in range(config.N):\n        place(i, 0.0, 0.0, 0.0)"), /'not' requires bool/);
 });
