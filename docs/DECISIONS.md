@@ -125,8 +125,20 @@ Decided by the owner on 25 September 2026 (details and rationale: `docs/REFACTOR
 - Loop restrictions protect information, not computation: `for k in range(K)` with a compile-time constant `K` is allowed in every code artifact; collection loops range only over collections in the artifact's view.
 - Every code artifact is statically typed.
 
-## D-022 — Robots are anonymous
+## D-022 — Robots are anonymous; heterogeneity is an exact composition declared by the experimenter
 
-Decided by the owner on 25 September 2026, following swarm-robotics practice. A robot has no built-in identity: it cannot read its index, a unique identifier or the swarm size. A robot may draw a random number over a large domain with its own random stream and keep it as a self-generated tag. That is scalable, and it is local knowledge. Internal state may be anything, as long as it is not set globally for a particular robot.
+Decided by the owner on 25 September 2026, following swarm-robotics practice.
 
-Open, to be settled with the owner: the implemented capability `initialization.per_agent_private_state_assignment` (`set_agent_state(i, name, value)`) lets Initialization set private state on individual robots by index (informed agents and leaders, e.g. Constant Bearing Flocking). It can also be used to hand out unique identities, which D-022 forbids.
+- **No identity.** A robot cannot read its index, a unique identifier, the swarm size or other robots' state. It may sample random values with its own random stream and adopt them, for example a random tag or its own random decisions. That is ordinary Controller behaviour, not a way to assign roles.
+- **No one sets state on an individual robot.** `set_agent_state(i, name, value)` is retired by #577.
+- **Roles.** Heterogeneity is declared by the experimenter (Initialization) as roles:
+  - Each role has a name, a size and the private-state values its members start with.
+  - A size is either a `fraction` of N or a `count`. Exactly one role takes `rest`, so authors never have to balance sums.
+  - A fraction resolves to `round(fraction × N)` under one documented rounding rule.
+  - Resolved counts are exact in every run (no fluctuation) and are reported back by the compiler and the MCP.
+- **Binding roles to bodies.**
+  - **Random** (the default): a random permutation from the initialization stream decides which placed bodies take the role. The count is exact; only which bodies get the role varies with the seed.
+  - **Explicit:** the experimenter places the role's members, looping over the role's resolved count, which only Initialization can read.
+  - The compiler checks the executed Initialization exactly: each explicit role received exactly its count, and the bodies placed without a role equal the sum of the random roles' counts. A mismatch is a compile error stating the numbers.
+- **What a robot sees:** only its role's starting values. Role counts, fractions and `N` stay with the experimenter.
+- **Syntax:** as simple as possible, suitable for humans writing by hand as well as for AI agents. Every role case must compile on the first attempt from the contract text alone, for AI and human authors.

@@ -1,17 +1,14 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The AI authoring server (MCP) now reports which code it runs and can be kept on the Lab's code automatically",
-  "owner_impact": "Nothing changes in the Lab. The MCP that GPT uses to author Experiments validates them with copies of the Lab's compilers, but until now it was deployed by hand, so after a grammar change it could silently lag behind the Lab. Its health endpoint now reports the exact code version it runs, and a new automatic job redeploys it whenever its code changes, then checks the live server. The automatic job needs one Supabase access token saved in GitHub; until then an agent deploys it through the Supabase connector. A manual 'check only' run tells anyone whether the live MCP matches the repository. The grammar design you approved is recorded as decisions D-021 and D-022, with tickets #576 (shared translator core) and #577 (one grammar). Test now: not needed; the MCP's tools behave exactly as before.",
+  "outcome": "Experiment MCP deployment stays manual (no GitHub Action); the roles design replacing set_agent_state is recorded",
+  "owner_impact": "Nothing changes in the Lab or the MCP. As you asked, the automatic MCP deployment job is removed, so there is nothing new to monitor. Any ticket that changes the MCP must now redeploy it through the Supabase connector and verify it before it counts as done. The MCP keeps reporting which code it runs. Your decision on roles is recorded in D-022: exact compositions declared by the experimenter as fractions, counts and one 'rest' role, bound to robots at random or by explicit placement, and checked by the compiler. Your note that humans have no coding guidelines yet is in the roadmap. Test now: not needed.",
   "next": {
     "kind": "epic_continues",
     "issue": 576,
-    "text": "#576 shared translator core: one parser for the authoring languages, moved over one language at a time with no change to what authors can write, proven on a corpus of accepted and rejected programs in both the Lab and the MCP. It has not started yet."
+    "text": "#576 shared translator core: one parser for the authoring languages, with no change to what authors can write. It has not started yet."
   },
-  "close_issue": 575,
   "technical_evidence": [
-    "experiment-mcp /health gains source_commit, derived from import.meta.url of the stub's pinned raw.githubusercontent.com import.",
-    "web/scripts/mcp-deploy.mjs: stub <commit> <dir>, verify <commit>, status; .github/workflows/mcp-deploy.yml: on main pushes touching supabase/functions/experiment-mcp/** (vendor parity check, CLI deploy pinned to the commit, /health verification; visible failure without SUPABASE_ACCESS_TOKEN) plus a credential-free check-only dispatch.",
-    "Before this change the live MCP (version 53) was pinned to baf9406; git diff baf9406..main over the MCP code and the five compilers was empty, and the live read_workspace contract equalled MCP_AUTHORING_CONTRACT exactly.",
-    "New mcp-deploy.test.mjs (3 tests); 693 tests pass."
+    "Removed .github/workflows/mcp-deploy.yml and its test; docs/EXPERIMENT_MCP.md Deployment and a DEVELOPMENT_WORKFLOW.md rule describe the manual connector deployment and verification.",
+    "docs/DECISIONS.md D-022 rewritten with the roles design; ROADMAP.md notes future human authoring guidance."
   ]
 }

@@ -312,7 +312,7 @@ Status: **design agreed by the owner on 25 September (recorded as `docs/DECISION
 - The MCP Edge Function runs byte-identical vendored copies of all five compilers (`supabase/functions/experiment-mcp/vendor/`, enforced by the vendor-parity test and `web/scripts/sync-edge-vendor.mjs`).
 - The deployed `experiment-mcp` (version 53) is a one-line stub importing `supabase/functions/experiment-mcp/index.ts` from GitHub at a pinned commit (`baf9406`, #525). `git diff baf9406 main` over the MCP code and the five compilers is empty. The live `read_workspace` contract equals the repository's `MCP_AUTHORING_CONTRACT` exactly.
 - No commit of the refactoring work (#532–#573) touched the MCP, the compilers or the contract.
-- **Deployment path:** see `docs/EXPERIMENT_MCP.md`, Deployment (#575). CI redeploys automatically when the repository secret `SUPABASE_ACCESS_TOKEN` is set. Without it, an agent with the Supabase connector redeploys the stub by hand. Any grammar change must update the web compilers, the vendored copies and the published contract, and redeploy the MCP, in the same ticket.
+- **Deployment path:** manual through the Supabase connector (`docs/EXPERIMENT_MCP.md`, Deployment; `DEVELOPMENT_WORKFLOW.md`, Experiment MCP deployment). The owner chose not to add an automatic GitHub Action. Any grammar change must update the web compilers, the vendored copies and the published contract, and redeploy the MCP, in the same ticket.
 
 ### Owner direction (25 September)
 

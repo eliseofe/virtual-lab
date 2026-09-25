@@ -6,6 +6,7 @@
 //       write <workdir>/supabase/functions/experiment-mcp/{index.ts,deno.json}
 //   node web/scripts/mcp-deploy.mjs verify <commit>
 //       wait until the live /health reports <commit>
+//   (run verify/status from a machine that can reach supabase.co)
 //   node web/scripts/mcp-deploy.mjs status
 //       print the live commit and whether the repository's MCP code differs from it
 
