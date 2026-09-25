@@ -22,11 +22,13 @@ SENSOR_NOISE = 0.0
 `;
 
 const initialization = `def initialize(config, rng, place):
-    place(0, -4.9, 0.0, 0.0)
-    place(1, 0.0, 0.0, 0.0)
+    group("far", count=1, placement="explicit")
+    group("near", count=1, placement="explicit")
+    place(0, -4.9, 0.0, 0.0, group="far")
+    place(1, 0.0, 0.0, 0.0, group="near")
     define_reference("goal", 4.9, 0.0)
-    set_agent_reference_sensor(0, "goal", None)
-    set_agent_reference_sensor(1, "goal", 1.0)
+    equip("far", "goal")
+    equip("near", "goal", range=1.0)
 `;
 
 const controller = `class ReferenceAgent(Agent):
@@ -108,7 +110,7 @@ test("#504 capability binding advertises generic static reference authoring with
     binding.surfaces.map(({ symbol }) => symbol),
     [
       "define_reference",
-      "set_agent_reference_sensor",
+      "equip",
       "obs.references.<name>.available",
       "obs.references.<name>.relative_position",
       "snapshot.references.<name>.position",

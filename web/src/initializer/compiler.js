@@ -173,7 +173,8 @@ function evaluate(expr, scope) {
   if (expr.kind === "call") {
     const args = expr.args.map((arg) => evaluate(arg, scope));
     const keywords = Object.fromEntries((expr.keywords ?? []).map((keyword) => [keyword.name, evaluate(keyword.value, scope)]));
-    if (expr.keywords?.length && expr.path !== "role" && expr.path !== "place") {
+    if (Object.prototype.hasOwnProperty.call(RETIRED, expr.path)) throw new InitializerCompileError(RETIRED[expr.path], expr.line);
+    if (expr.keywords?.length && !KEYWORD_CALLS.has(expr.path)) {
       throw new InitializerCompileError(`${expr.path} does not take keyword arguments`, expr.line);
     }
     if (expr.path === "sqrt") return Math.sqrt(args[0]);
@@ -212,12 +213,12 @@ function evaluate(expr, scope) {
         throw new InitializerCompileError(error instanceof Error ? error.message : String(error), expr.line);
       }
     }
-    if (expr.path === "place") { scope.place(...args, keywords.role ?? null, expr.line); return null; }
-    if (expr.path === "role") { scope.declareRole(args, keywords, expr.line); return null; }
-    if (expr.path === "role_count") return scope.roleCount(args, expr.line);
-    if (expr.path === "set_agent_state") throw new InitializerCompileError(SET_AGENT_STATE_RETIRED, expr.line);
+    if (expr.path === "place") { scope.place(...args, keywords.group ?? null, expr.line); return null; }
+    if (expr.path === "group") { scope.groups.declare(args, keywords, expr.line); return null; }
+    if (expr.path === "group_count") return scope.groups.count(args, expr.line);
+    if (expr.path === "set_state") { scope.groups.setState(args, keywords, expr.line); return null; }
+    if (expr.path === "equip") { scope.groups.equip(args, keywords, expr.line); return null; }
     if (expr.path === "define_reference") { scope.defineReference(...args); return null; }
-    if (expr.path === "set_agent_reference_sensor") { scope.setAgentReferenceSensor(...args); return null; }
     if (scope.functions.has(expr.path)) return executeFunction(expr.path, args, scope);
     throw new InitializerCompileError(`unsupported call '${expr.path}'`, expr.line);
   }
@@ -270,8 +271,9 @@ const SCALAR_INTRINSICS = new Map([
 const EFFECT_SIGNATURES = new Map([
   ["place", ["scalar", "scalar", "scalar", "scalar"]],
   ["define_reference", ["string", "scalar", "scalar"]],
-  ["set_agent_reference_sensor", ["scalar", "string", "scalar|none"]],
 ]);
+// Calls that take keyword arguments (#577).
+const KEYWORD_CALLS = new Set(["place", "group", "set_state", "equip"]);
 
 function valueType(value) {
   if (typeof value === "number") return "scalar";
@@ -414,23 +416,31 @@ function checkInitializerTypes(functions, config) {
         for (const [name, type] of keywords) {
           const expected = allowed(name);
           if (!expected) throw typeError(`${expr.path} does not take keyword argument '${name}'`, expr.line);
-          if (type !== expected) throw typeError(`${expr.path} keyword '${name}' must be ${expected}, got ${type}`, expr.line);
+          if (!expected.split("|").includes(type)) throw typeError(`${expr.path} keyword '${name}' must be ${expected.replace("|", " or ")}, got ${type}`, expr.line);
         }
       };
-      if (expr.path === "set_agent_state") throw typeError(SET_AGENT_STATE_RETIRED, expr.line);
-      if (expr.path === "role") {
-        keywordTypes((name) => ({ fraction: "scalar", count: "scalar", rest: "bool", placement: "string" })[name] ?? "scalar");
+      if (Object.prototype.hasOwnProperty.call(RETIRED, expr.path)) throw typeError(RETIRED[expr.path], expr.line);
+      if (expr.path === "group") {
+        keywordTypes((name) => ({ fraction: "scalar", count: "scalar", rest: "bool", placement: "string", partition: "string" })[name] ?? null);
+      } else if (expr.path === "set_state") {
+        keywordTypes(() => "scalar");
+      } else if (expr.path === "equip") {
+        keywordTypes((name) => (name === "range" ? "scalar|none" : null));
       } else if (expr.path === "place") {
-        keywordTypes((name) => (name === "role" ? "string" : null));
+        keywordTypes((name) => (name === "group" ? "string" : null));
       } else if (keywords.size) {
         throw typeError(`${expr.path} does not take keyword arguments`, expr.line);
       }
-      if (expr.path === "role") {
-        if (args.length !== 1 || args[0] !== "string") throw typeError("role expects one name string, e.g. role(\"informed\", fraction=0.1)", expr.line);
+      if (expr.path === "group" || expr.path === "set_state") {
+        if (args.length !== 1 || args[0] !== "string") throw typeError(`${expr.path} expects one group name string, e.g. ${expr.path === "group" ? "group(\"informed\", fraction=0.1)" : "set_state(\"informed\", informed=1.0)"}`, expr.line);
         return "none";
       }
-      if (expr.path === "role_count") {
-        if (args.length !== 1 || args[0] !== "string") throw typeError("role_count expects one role name string", expr.line);
+      if (expr.path === "equip") {
+        if (args.length !== 2 || args[0] !== "string" || args[1] !== "string") throw typeError("equip expects a group name and a reference name, e.g. equip(\"scouts\", \"nest\", range=5.0)", expr.line);
+        return "none";
+      }
+      if (expr.path === "group_count") {
+        if (args.length !== 1 || args[0] !== "string") throw typeError("group_count expects one group name string", expr.line);
         return "scalar";
       }
       const expect = (types) => {
@@ -462,22 +472,35 @@ function checkInitializerTypes(functions, config) {
 }
 
 
-// Roles (#577, D-022): heterogeneity is an exact composition declared by the
-// experimenter. No one sets state on an individual robot; a robot receives
-// only its role's starting values.
+// Groups (#577, D-022, D-023): heterogeneity is an exact composition declared
+// by the experimenter, in two independent parts. WHO differs is a partition of
+// the swarm into groups of exact size; WHAT differs is attached to a group by
+// one statement per kind of robot property. No one addresses an individual
+// robot.
 //
-//   role("informed", fraction=config.RHO, informed=1.0)     round(fraction * N) members
-//   role("leader", count=1, placement="explicit", leader=1.0)
-//   role("uninformed", rest=True, informed=0.0)              whatever remains
+//   group("informed", fraction=config.RHO)             round(fraction * N) members
+//   group("uninformed", rest=True)                     whatever remains
+//   group("leader", count=1, placement="explicit")     placed with place(..., group="leader")
+//   group("equipped", fraction=0.5, partition="hardware")   an independent partition
 //
-// fraction, count, rest and placement are reserved; every other keyword is a
-// starting private-state value. Random roles are dealt to the bodies placed
-// without role= by a uniform random permutation from initialization stream 1,
-// so declaring roles never shifts placement draws (stream 0). Explicit roles
-// are placed with place(i, x, y, heading, role="leader"); each must receive
-// exactly its count. Roles are declared before any place() or role_count().
-const SET_AGENT_STATE_RETIRED = "set_agent_state was retired (#577): declare roles with role(name, fraction=... | count=... | rest=True, <state>=value)";
-const ROLE_RESERVED = new Set(["fraction", "count", "rest", "placement"]);
+//   set_state("informed", informed=1.0)                starting Controller state
+//   equip("equipped", "nest", range=5.0)               a reference sensor (range=None: unlimited)
+//
+// Groups in one partition are exclusive and account for all N robots (one may
+// be rest=True). Each partition is dealt independently: random groups go to
+// the robots not explicitly placed in that partition, by a uniform random
+// permutation from initialization stream 1 + (partition order), so groups
+// never shift placement draws (stream 0). "all" names every robot. A robot
+// must not receive the same state or sensor from two groups. Groups are
+// declared before any place() or group_count().
+const RETIRED = {
+  set_agent_state: "set_agent_state was retired (#577): declare a group with group(name, fraction=... | count=... | rest=True) and give it starting state with set_state(name, <state>=value)",
+  set_agent_reference_sensor: "set_agent_reference_sensor was retired (#577, D-023): give a group the sensor with equip(group, reference, range=...), or equip(\"all\", reference) for every robot",
+  role: "role(...) was replaced (#577, D-023): declare group(name, fraction=... | count=... | rest=True) and give it starting state with set_state(name, <state>=value)",
+  role_count: "role_count was replaced by group_count (#577, D-023)",
+};
+const DEFAULT_PARTITION = "default";
+const ALL = "all";
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function randomIndex(rng, bound) {
@@ -490,30 +513,42 @@ function randomIndex(rng, bound) {
   }
 }
 
-function createRoles(n, seed) {
+function createGroups(n, seed) {
   const declared = new Map();
+  const partitions = new Map();
+  const explicitGroup = new Array(n).fill(null);
   const explicitPlacements = new Map();
-  const unassigned = [];
-  const bodyRole = new Array(n).fill(null);
+  const states = new Map();
+  const sensors = new Map();
   let closed = false;
   let counts = null;
+
+  const where = (partition) => (partition === DEFAULT_PARTITION ? "" : ` in partition "${partition}"`);
+  const known = (name, what, line) => {
+    if (name === ALL) return;
+    if (typeof name !== "string" || !declared.has(name)) throw new InitializerCompileError(`${what} names undeclared group ${JSON.stringify(name)}`, line);
+  };
+  // Two groups overlap unless they are distinct groups of one partition.
+  const overlap = (a, b) => a === b || a === ALL || b === ALL || declared.get(a).partition !== declared.get(b).partition;
 
   function resolve(line) {
     if (counts) return counts;
     counts = new Map();
-    let used = 0;
-    let rest = null;
-    for (const role of declared.values()) {
-      if (role.rest) { rest = role; continue; }
-      const count = role.fraction !== undefined ? Math.round(role.fraction * n) : role.count;
-      counts.set(role.name, count);
-      used += count;
-    }
-    if (rest) {
-      if (used > n) throw new InitializerCompileError(`roles ask for ${used} robots but N is ${n}`, line);
-      counts.set(rest.name, n - used);
-    } else if (declared.size && used !== n) {
-      throw new InitializerCompileError(`roles account for ${used} robots but N is ${n}; mark one role rest=True`, line);
+    for (const [partition, groups] of partitions) {
+      let used = 0;
+      let rest = null;
+      for (const group of groups) {
+        if (group.rest) { rest = group; continue; }
+        const count = group.fraction !== undefined ? Math.round(group.fraction * n) : group.count;
+        counts.set(group.name, count);
+        used += count;
+      }
+      if (rest) {
+        if (used > n) throw new InitializerCompileError(`groups${where(partition)} ask for ${used} robots but N is ${n}`, line);
+        counts.set(rest.name, n - used);
+      } else if (used !== n) {
+        throw new InitializerCompileError(`groups${where(partition)} account for ${used} robots but N is ${n}; mark one group rest=True`, line);
+      }
     }
     return counts;
   }
@@ -521,77 +556,124 @@ function createRoles(n, seed) {
   return {
     close() { closed = true; },
     declare(args, keywords, line) {
-      if (closed) throw new InitializerCompileError("declare every role before the first place(...) or role_count(...)", line);
+      if (closed) throw new InitializerCompileError("declare every group before the first place(...) or group_count(...)", line);
       const [name] = args;
-      if (args.length !== 1 || typeof name !== "string" || !IDENTIFIER.test(name)) throw new InitializerCompileError("role expects one name string, e.g. role(\"informed\", fraction=0.1)", line);
-      if (declared.has(name)) throw new InitializerCompileError(`role '${name}' was declared more than once`, line);
+      if (args.length !== 1 || typeof name !== "string" || !IDENTIFIER.test(name)) throw new InitializerCompileError("group expects one name string, e.g. group(\"informed\", fraction=0.1)", line);
+      if (name === ALL) throw new InitializerCompileError("'all' already names every robot; choose another group name", line);
+      if (declared.has(name)) throw new InitializerCompileError(`group '${name}' was declared more than once`, line);
+      for (const key of Object.keys(keywords)) {
+        if (!["fraction", "count", "rest", "placement", "partition"].includes(key)) throw new InitializerCompileError(`group does not take keyword argument '${key}'; set starting state with set_state("${name}", ${key}=...)`, line);
+      }
       const sizes = ["fraction", "count", "rest"].filter((key) => keywords[key] !== undefined);
-      if (sizes.length !== 1) throw new InitializerCompileError(`role '${name}' needs exactly one of fraction=, count= or rest=True`, line);
-      const role = { name, placement: keywords.placement ?? "random", state: {} };
+      if (sizes.length !== 1) throw new InitializerCompileError(`group '${name}' needs exactly one of fraction=, count= or rest=True`, line);
+      const partition = keywords.partition ?? DEFAULT_PARTITION;
+      if (typeof partition !== "string" || !IDENTIFIER.test(partition)) throw new InitializerCompileError(`group '${name}' partition must be an identifier string`, line);
+      const group = { name, partition, placement: keywords.placement ?? "random" };
       if (keywords.fraction !== undefined) {
-        if (typeof keywords.fraction !== "number" || !(keywords.fraction >= 0 && keywords.fraction <= 1)) throw new InitializerCompileError(`role '${name}' fraction must be between 0 and 1`, line);
-        role.fraction = keywords.fraction;
+        if (typeof keywords.fraction !== "number" || !(keywords.fraction >= 0 && keywords.fraction <= 1)) throw new InitializerCompileError(`group '${name}' fraction must be between 0 and 1`, line);
+        group.fraction = keywords.fraction;
       }
       if (keywords.count !== undefined) {
-        if (!Number.isInteger(keywords.count) || keywords.count < 0) throw new InitializerCompileError(`role '${name}' count must be a non-negative integer`, line);
-        role.count = keywords.count;
+        if (!Number.isInteger(keywords.count) || keywords.count < 0) throw new InitializerCompileError(`group '${name}' count must be a non-negative integer`, line);
+        group.count = keywords.count;
       }
+      if (!partitions.has(partition)) partitions.set(partition, []);
       if (keywords.rest !== undefined) {
-        if (keywords.rest !== true) throw new InitializerCompileError(`role '${name}' rest must be True`, line);
-        if ([...declared.values()].some((other) => other.rest)) throw new InitializerCompileError("only one role may be rest=True", line);
-        role.rest = true;
+        if (keywords.rest !== true) throw new InitializerCompileError(`group '${name}' rest must be True`, line);
+        if (partitions.get(partition).some((other) => other.rest)) throw new InitializerCompileError(`only one group${where(partition)} may be rest=True`, line);
+        group.rest = true;
       }
-      if (role.placement !== "random" && role.placement !== "explicit") throw new InitializerCompileError(`role '${name}' placement must be "random" or "explicit"`, line);
-      for (const [key, value] of Object.entries(keywords)) {
-        if (ROLE_RESERVED.has(key)) continue;
-        if (typeof value !== "number" || !Number.isFinite(value)) throw new InitializerCompileError(`role '${name}' state '${key}' must be a finite number`, line);
-        role.state[key] = value;
-      }
-      declared.set(name, role);
+      if (group.placement !== "random" && group.placement !== "explicit") throw new InitializerCompileError(`group '${name}' placement must be "random" or "explicit"`, line);
+      declared.set(name, group);
+      partitions.get(partition).push(group);
     },
     count(args, line) {
       closed = true;
       const [name] = args;
-      if (args.length !== 1 || !declared.has(name)) throw new InitializerCompileError(`role_count expects the name of a declared role, got ${JSON.stringify(name)}`, line);
+      if (args.length !== 1 || name === ALL || !declared.has(name)) throw new InitializerCompileError(`group_count expects the name of a declared group, got ${JSON.stringify(name)}`, line);
       return resolve(line).get(name);
     },
-    placed(index, name, line) {
-      if (name === null) { unassigned.push(index); return; }
-      const role = declared.get(name);
-      if (!role) throw new InitializerCompileError(`place names undeclared role '${name}'`, line);
-      if (role.placement !== "explicit") throw new InitializerCompileError(`role '${name}' is dealt at random; place its members without role=, or declare it placement="explicit"`, line);
-      explicitPlacements.set(name, (explicitPlacements.get(name) ?? 0) + 1);
-      bodyRole[index] = name;
+    setState(args, keywords, line) {
+      const [name] = args;
+      if (args.length !== 1) throw new InitializerCompileError("set_state expects one group name, e.g. set_state(\"informed\", informed=1.0)", line);
+      known(name, "set_state", line);
+      if (!Object.keys(keywords).length) throw new InitializerCompileError("set_state expects at least one <state>=value", line);
+      for (const [key, value] of Object.entries(keywords)) {
+        if (typeof value !== "number" || !Number.isFinite(value)) throw new InitializerCompileError(`set_state '${key}' must be a finite number`, line);
+        const setters = states.get(key) ?? [];
+        const clash = setters.find((other) => overlap(other.group, name));
+        if (clash) throw new InitializerCompileError(clash.group === name ? `state '${key}' is set twice for group '${name}'` : `state '${key}' is set by groups '${clash.group}' and '${name}', and a robot can belong to both`, line);
+        setters.push({ group: name, value });
+        states.set(key, setters);
+      }
     },
-    // After initialize(): check the composition, deal random roles and apply
-    // each role's starting state. Returns [{ name, count, placement }].
+    equip(args, keywords, line) {
+      const [name, reference] = args;
+      if (args.length !== 2 || typeof reference !== "string" || !IDENTIFIER.test(reference)) throw new InitializerCompileError("equip expects a group name and a reference name, e.g. equip(\"scouts\", \"nest\", range=5.0)", line);
+      known(name, "equip", line);
+      for (const key of Object.keys(keywords)) {
+        if (key !== "range") throw new InitializerCompileError(`equip does not take keyword argument '${key}'`, line);
+      }
+      const range = keywords.range ?? null;
+      if (range !== null && (typeof range !== "number" || !Number.isFinite(range) || range <= 0)) throw new InitializerCompileError("equip range must be None or a finite positive number", line);
+      const holders = sensors.get(reference) ?? [];
+      const clash = holders.find((other) => overlap(other.group, name));
+      if (clash) throw new InitializerCompileError(clash.group === name ? `group '${name}' is equipped with '${reference}' twice` : `sensor '${reference}' is given by groups '${clash.group}' and '${name}', and a robot can belong to both`, line);
+      holders.push({ group: name, range });
+      sensors.set(reference, holders);
+    },
+    placed(index, name, line) {
+      if (name === null) return;
+      const group = declared.get(name);
+      if (!group) throw new InitializerCompileError(`place names undeclared group ${JSON.stringify(name)}`, line);
+      if (group.placement !== "explicit") throw new InitializerCompileError(`group '${name}' is dealt at random; place its members without group=, or declare it placement="explicit"`, line);
+      explicitPlacements.set(name, (explicitPlacements.get(name) ?? 0) + 1);
+      explicitGroup[index] = name;
+    },
+    references() { return [...sensors.keys()]; },
+    // After initialize(): check the composition, deal each partition and
+    // apply every group's state and sensors. Returns the composition
+    // [{ name, partition, count, placement }] and the per-robot sensors.
     deal(privateState) {
-      if (!declared.size) return [];
+      const agentSensors = Array.from({ length: n }, () => new Map());
       const resolved = resolve(null);
-      for (const role of declared.values()) {
-        if (role.placement !== "explicit") continue;
-        const placed = explicitPlacements.get(role.name) ?? 0;
-        if (placed !== resolved.get(role.name)) {
-          throw new InitializerCompileError(`role '${role.name}' has ${resolved.get(role.name)} members but ${placed} were placed with role="${role.name}"`);
+      const members = new Map([[ALL, Array.from({ length: n }, (_, index) => index)]]);
+      [...partitions.entries()].forEach(([partition, groups], order) => {
+        for (const group of groups) {
+          if (group.placement !== "explicit") continue;
+          const placed = explicitPlacements.get(group.name) ?? 0;
+          if (placed !== resolved.get(group.name)) {
+            throw new InitializerCompileError(`group '${group.name}' has ${resolved.get(group.name)} members but ${placed} were placed with group="${group.name}"`);
+          }
         }
-      }
-      const pool = [];
-      for (const role of declared.values()) {
-        if (role.placement === "random") for (let k = 0; k < resolved.get(role.name); k += 1) pool.push(role.name);
-      }
-      if (pool.length !== unassigned.length) {
-        throw new InitializerCompileError(`${unassigned.length} robots were placed without a role, but the random roles have ${pool.length} members`);
-      }
-      const dealer = ScientificRng.forDomain(seed, RNG_DOMAINS.initialization, 1);
-      for (let k = pool.length - 1; k > 0; k -= 1) {
-        const j = randomIndex(dealer, k + 1);
-        [pool[k], pool[j]] = [pool[j], pool[k]];
-      }
-      unassigned.forEach((index, k) => { bodyRole[index] = pool[k]; });
-      bodyRole.forEach((name, index) => {
-        for (const [key, value] of Object.entries(declared.get(name).state)) privateState[index].set(key, value);
+        const unassigned = [];
+        for (let index = 0; index < n; index += 1) {
+          const explicit = explicitGroup[index];
+          if (explicit !== null && declared.get(explicit).partition === partition) members.set(explicit, [...(members.get(explicit) ?? []), index]);
+          else unassigned.push(index);
+        }
+        const pool = [];
+        for (const group of groups) {
+          if (group.placement === "random") for (let k = 0; k < resolved.get(group.name); k += 1) pool.push(group.name);
+        }
+        if (pool.length !== unassigned.length) {
+          throw new InitializerCompileError(`${unassigned.length} robots were placed without a group${where(partition)}, but the random groups have ${pool.length} members`);
+        }
+        const dealer = ScientificRng.forDomain(seed, RNG_DOMAINS.initialization, 1 + order);
+        for (let k = pool.length - 1; k > 0; k -= 1) {
+          const j = randomIndex(dealer, k + 1);
+          [pool[k], pool[j]] = [pool[j], pool[k]];
+        }
+        unassigned.forEach((index, k) => members.set(pool[k], [...(members.get(pool[k]) ?? []), index]));
       });
-      return [...declared.values()].map((role) => ({ name: role.name, count: resolved.get(role.name), placement: role.placement }));
+      for (const [key, setters] of states) {
+        for (const { group, value } of setters) for (const index of members.get(group) ?? []) privateState[index].set(key, value);
+      }
+      for (const [reference, holders] of sensors) {
+        for (const { group, range } of holders) for (const index of members.get(group) ?? []) agentSensors[index].set(reference, range);
+      }
+      const composition = [...declared.values()].map((group) => ({ name: group.name, partition: group.partition, count: resolved.get(group.name), placement: group.placement }));
+      return { composition, agentSensors };
     },
   };
 }
@@ -611,15 +693,14 @@ export function compileInitializer(source, config) {
   const state = new Array(n);
   const privateState = Array.from({ length: n }, () => new Map());
   const references = new Map();
-  const referenceSensors = Array.from({ length: n }, () => new Map());
-  const roles = createRoles(n, seed);
-  const place = (index, x, y, heading, role = null, line = null) => {
-    roles.close();
+  const groups = createGroups(n, seed);
+  const place = (index, x, y, heading, group = null, line = null) => {
+    groups.close();
     if (!Number.isInteger(index) || index < 0 || index >= n) throw new InitializerCompileError(`place index ${index} is outside [0, N)`);
     if ([x, y, heading].some((value) => typeof value !== "number" || !Number.isFinite(value))) throw new InitializerCompileError("place coordinates and heading must be finite numbers");
     if (state[index] !== undefined) throw new InitializerCompileError(`agent ${index} was placed more than once`);
     state[index] = { x, y, heading };
-    roles.placed(index, role, line);
+    groups.placed(index, group, line);
   };
   const defineReference = (name, x, y) => {
     if (typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
@@ -635,43 +716,22 @@ export function compileInitializer(source, config) {
     if (references.has(name)) throw new InitializerCompileError(`reference '${name}' was defined more than once`);
     references.set(name, { x, y });
   };
-  const setAgentReferenceSensor = (index, name, maxRange) => {
-    if (!Number.isInteger(index) || index < 0 || index >= n) {
-      throw new InitializerCompileError(`set_agent_reference_sensor index ${index} is outside [0, N)`);
-    }
-    if (typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-      throw new InitializerCompileError("set_agent_reference_sensor reference name must be an identifier string");
-    }
-    if (maxRange !== null && (typeof maxRange !== "number" || !Number.isFinite(maxRange) || maxRange <= 0)) {
-      throw new InitializerCompileError("set_agent_reference_sensor max_range must be None or a finite positive scalar");
-    }
-    if (referenceSensors[index].has(name)) {
-      throw new InitializerCompileError(`agent ${index} reference sensor '${name}' was assigned more than once`);
-    }
-    referenceSensors[index].set(name, maxRange);
-  };
   const root = {
     functions,
     config,
     rng,
     place,
-    declareRole: roles.declare,
-    roleCount: roles.count,
+    groups,
     defineReference,
-    setAgentReferenceSensor,
     locals: new Map(),
   };
   executeFunction("initialize", [config, rng, place], root);
   const missing = state.findIndex((entry) => entry === undefined);
   if (missing !== -1) throw new InitializerCompileError(`initializer did not place agent ${missing}; all N agents must be placed`);
-  for (let agentIndex = 0; agentIndex < referenceSensors.length; agentIndex += 1) {
-    for (const name of referenceSensors[agentIndex].keys()) {
-      if (!references.has(name)) {
-        throw new InitializerCompileError(`agent ${agentIndex} reference sensor '${name}' names an undefined reference`);
-      }
-    }
+  for (const name of groups.references()) {
+    if (!references.has(name)) throw new InitializerCompileError(`equip names undefined reference '${name}'; define it with define_reference("${name}", x, y)`);
   }
-  const composition = roles.deal(privateState);
+  const { composition, agentSensors } = groups.deal(privateState);
   const compiledState = state.map((agent, index) => privateState[index].size
     ? { ...agent, private_state: Object.fromEntries(privateState[index]) }
     : agent);
@@ -681,7 +741,7 @@ export function compileInitializer(source, config) {
     references: [...references.entries()]
       .sort(([a], [b]) => compareNames(a, b))
       .map(([name, position]) => ({ name, ...position })),
-    sensors: referenceSensors.flatMap((sensors, agent_index) =>
+    sensors: agentSensors.flatMap((sensors, agent_index) =>
       [...sensors.entries()]
         .sort(([a], [b]) => compareNames(a, b))
         .map(([name, max_range]) => ({ agent_index, name, max_range }))),
@@ -691,7 +751,7 @@ export function compileInitializer(source, config) {
     method: String(config.values.INITIALIZATION_METHOD ?? ""),
     state: compiledState,
     world_references: worldReferences,
-    ...(composition.length ? { roles: composition } : {}),
+    ...(composition.length ? { groups: composition } : {}),
   };
 }
 

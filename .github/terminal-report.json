@@ -1,15 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Opening an Experiment works again when the Lab started with sources that no longer compile",
-  "owner_impact": "Fix for the Library 'Open' hang you hit with Constant Bearing Flocking. The Lab compiles the sources it starts with (your last workspace). Yours still held the old Initialization with set_agent_state, which release 4 retired, so the startup compile failed. That failure path had a latent flaw: the simulator never started, and 'apply sources' stayed disabled forever. Opening an Experiment first waits for the simulator to accept sources, so it waited 15 seconds and silently gave up. Now a startup error keeps Run disabled but leaves applying open: opening an Experiment, or applying corrected sources, starts the simulator. A new automatic browser check reproduces the case and runs on every release and in production. Test now: yes. Reload the Lab and open Constant Bearing Flocking; it should load and the setup message should read 'Roles: informed 80, uninformed 120'.",
+  "outcome": "One way to make robots differ: groups say who, set_state and equip say what",
+  "owner_impact": "Your decision D-023. Initialization now declares who differs with group(...), exact sizes as before (fraction, count or rest), and attaches properties to groups: set_state(\"informed\", informed=1.0) for starting memory, and equip(\"scouts\", \"nest\", range=5.0) for a reference sensor, whose range the simulator enforces. \"all\" means every robot. Groups can form independent partitions, like crossed factors: e.g. 20% informed and, independently, 50% equipped, each with exact counts. A robot receiving the same state or sensor from two groups is a compile error. role(...) and the per-robot set_agent_reference_sensor(...) are retired; no Experiment used the latter. Constant Bearing Flocking, its showcase candidate and Firat's aggregation are migrated to groups with the same robots in the same groups as before. Test now: yes. After I tell you the migration is done, republish Constant Bearing Flocking and Firat to the Showcase ('Publish current revision'), then open Constant Bearing Flocking; the setup message should read 'Groups: informed 80, uninformed 120'.",
   "next": {
     "kind": "epic_continues",
     "issue": 577,
     "text": "#577 release 5: statements (local names, if/elif/else) in the environment field function, the last part of the one-grammar work. It has not started yet."
   },
   "technical_evidence": [
-    "web/src/main.js: a failed initializeIfReady now enables source applying only (setControlsEnabled(false, { sources: true })); applySetup/applyController initialize from the editor sources while nothing is initialized.",
-    "web/scripts/startup-recovery-smoke.mjs (registered in web/product-surface.json): holds the WASM download, injects a retired call into the startup Initialization, expects a setup error with Apply enabled, then applies the valid source and expects 'Simulator ready'. It fails on the previous build and passes on this one.",
-    "712 tests (710 pass, 2 Docker-skipped); tsc; verify-dist; mirrored browser smoke identical to the previous build."
+    "Initializer: createGroups with partitions; each partition dealt from initialization stream 1 + order, so the first partition reproduces the D-022 deal exactly; set_state/equip conflicts rejected statically; retired calls raise errors naming the replacement.",
+    "Kernel input unchanged: the reference Experiments migrated to explicit groups compile to byte-identical simulator inputs and sensor lists; only the composition summary moved from roles to groups.",
+    "Equivalence harness: 381 of 28,059 fingerprints changed, all Initialization sources using the retired or new calls; 4 group-syntax seeds added (28,679 cases).",
+    "Capability initialization.swarm_groups (provenance inherited from the two capabilities it generalizes); contract vlab.authoring/0.14, MCP 3.23.0. 712 tests pass; tsc; verify-dist; mirrored browser smoke and startup-recovery smoke pass."
   ]
 }

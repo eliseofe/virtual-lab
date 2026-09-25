@@ -142,3 +142,14 @@ Decided by the owner on 25 September 2026, following swarm-robotics practice.
   - The compiler checks the executed Initialization exactly: each explicit role received exactly its count, and the bodies placed without a role equal the sum of the random roles' counts. A mismatch is a compile error stating the numbers.
 - **What a robot sees:** only its role's starting values. Role counts, fractions and `N` stay with the experimenter.
 - **Syntax:** as simple as possible, suitable for humans writing by hand as well as for AI agents. Every role case must compile on the first attempt from the contract text alone, for AI and human authors.
+
+## D-023 — One heterogeneity mechanism: groups say who, properties say what
+
+Decided by the owner on 26 September 2026, refining D-022. The per-robot sensor assignment (`set_agent_reference_sensor(i, …)`) was a second, index-based way to make robots differ: it addressed individual robots, its proportions were implicit and unchecked, and it had its own data path. Putting sensors inside roles was rejected, because it couples unrelated robot properties into one declaration.
+
+- **Who differs** is one mechanism: the experimenter partitions the swarm into **groups** of exact size, with the D-022 sizes (`fraction`, `count`, `rest`) and bindings (random deal or explicit placement). A group carries no values.
+- **What differs** is attached to a group, one statement per kind of robot property: `set_state(group, name=value)` for starting memory, and `equip(group, reference, range=…)` for reference sensors. Future per-robot properties (for example motion limits, or a different Controller) follow the same pattern instead of adding a new heterogeneity mechanism. `"all"` names every robot.
+- **Partitions.** Groups of one partition are exclusive and account for all N robots. Separate partitions are independent, like crossed factors in an experimental design (e.g. 20 % informed and, independently, 50 % equipped), each dealt from its own initialization stream.
+- **No conflicts.** A robot receiving the same state or the same sensor from two groups is a compile error.
+- **Hardware limits stay physical.** A sensor's range is enforced by the simulator, not by the Controller restricting itself. That is the reason sensors are per-group equipment and not only a memory flag.
+- `role(...)`, `role_count(...)` and `set_agent_reference_sensor(...)` are retired, with errors naming the replacement. No current Experiment used per-robot sensors.

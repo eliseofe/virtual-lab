@@ -17,14 +17,20 @@ const config = {
   },
 };
 
+// #577 (D-023): sensors are equipment attached to groups; explicit groups
+// reproduce the former per-index assignment exactly.
 const source = `def initialize(config, rng, place):
-    for i in range(config.N):
-        place(i, i * 1.0, 0.0, 0.0)
+    group("a", count=1, placement="explicit")
+    group("b", count=1, placement="explicit")
+    group("c", count=1, placement="explicit")
+    place(0, 0.0, 0.0, 0.0, group="a")
+    place(1, 1.0, 0.0, 0.0, group="b")
+    place(2, 2.0, 0.0, 0.0, group="c")
     define_reference("goal", 4.5, 0.0)
     define_reference("nest", -2.0, 1.0)
-    set_agent_reference_sensor(0, "goal", None)
-    set_agent_reference_sensor(1, "goal", 3.0)
-    set_agent_reference_sensor(2, "nest", 1.5)
+    equip("a", "goal")
+    equip("b", "goal", range=3.0)
+    equip("c", "nest", range=1.5)
 `;
 
 test("#503 Initialization compiles static named references and per-agent sensor assignments deterministically", () => {
@@ -77,20 +83,20 @@ test("#503 Initialization rejects malformed or inconsistent world references", (
     /defined more than once/,
   );
   assert.throws(
-    () => compileBrowserInitializer(prefix + `    set_agent_reference_sensor(0, "missing", None)\n`, config),
+    () => compileBrowserInitializer(prefix + `    equip("all", "missing")\n`, config),
     /undefined reference/,
   );
   assert.throws(
-    () => compileBrowserInitializer(prefix + `    define_reference("goal", 0.0, 0.0)\n    set_agent_reference_sensor(0, "goal", 0.0)\n`, config),
-    /finite positive scalar/,
+    () => compileBrowserInitializer(prefix + `    define_reference("goal", 0.0, 0.0)\n    equip("all", "goal", range=0.0)\n`, config),
+    /finite positive number/,
   );
   assert.throws(
     () => compileBrowserInitializer(prefix + `    define_reference("goal", 6.0, 0.0)\n`, config),
     /fit inside ARENA_SIZE/,
   );
   assert.throws(
-    () => compileBrowserInitializer(prefix + `    define_reference("goal", 0.0, 0.0)\n    set_agent_reference_sensor(3, "goal", None)\n`, config),
-    /outside \[0, N\)/,
+    () => compileBrowserInitializer(prefix + `    define_reference("goal", 0.0, 0.0)\n    set_agent_reference_sensor(0, "goal", None)\n`, config),
+    /set_agent_reference_sensor was retired \(#577, D-023\): give a group the sensor with equip/,
   );
 });
 

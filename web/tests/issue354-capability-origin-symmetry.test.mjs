@@ -93,7 +93,7 @@ test("#354 neutral discovery enforces live canonical/binding consistency", () =>
   assert.match(mcp, /capabilityConsistency\.valid/);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '\d+'/);
-  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.13'/);
+  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.14'/);
 });
 
 test("#467 missing heterogeneous-initialization provenance blocks discovery and the repair restores only trusted source provenance", () => {

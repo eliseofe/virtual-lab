@@ -57,14 +57,16 @@
         "references": [],
         "sensors": []
       },
-      "roles": [
+      "groups": [
         {
           "name": "lead",
+          "partition": "default",
           "count": 2,
           "placement": "explicit"
         },
         {
           "name": "other",
+          "partition": "default",
           "count": 3,
           "placement": "explicit"
         }

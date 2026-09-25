@@ -92,16 +92,17 @@ export const REFERENCE_EXPERIMENTS = Object.freeze([
     ticks: 500,
     artifacts: {
       configuration: `N = 5\n${smallRuntime}SENSOR_NOISE = 0.0\n`,
-      // #577: roles with explicit placement reproduce the former per-index
+      // #577: explicit groups reproduce the former per-index
       // set_agent_state assignment exactly (same compiled kernel input).
       initialization: `def initialize(config, rng, place):
-    role("lead", count=2, placement="explicit", role=1.0)
-    role("other", rest=True, placement="explicit")
+    group("lead", count=2, placement="explicit")
+    group("other", rest=True, placement="explicit")
+    set_state("lead", role=1.0)
     for i in range(config.N):
         if i < 2:
-            place(i, i * 1.0, 0.0, 0.0, role="lead")
+            place(i, i * 1.0, 0.0, 0.0, group="lead")
         else:
-            place(i, i * 1.0, 0.0, 0.0, role="other")
+            place(i, i * 1.0, 0.0, 0.0, group="other")
 `,
       controller: `class Stochastic(Agent):
     role = 0.0
@@ -149,11 +150,13 @@ def initialize(config, rng, place):
     artifacts: {
       configuration: `N = 2\n${smallRuntime}SENSOR_NOISE = 0.0\n`,
       initialization: `def initialize(config, rng, place):
-    place(0, -4.9, 0.0, 0.0)
-    place(1, 0.0, 0.0, 0.0)
+    group("far", count=1, placement="explicit")
+    group("near", count=1, placement="explicit")
+    place(0, -4.9, 0.0, 0.0, group="far")
+    place(1, 0.0, 0.0, 0.0, group="near")
     define_reference("goal", 4.9, 0.0)
-    set_agent_reference_sensor(0, "goal", None)
-    set_agent_reference_sensor(1, "goal", 1.0)
+    equip("far", "goal")
+    equip("near", "goal", range=1.0)
 `,
       controller: `class ReferenceAgent(Agent):
     def step(self, obs):
