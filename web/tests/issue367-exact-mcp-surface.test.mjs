@@ -67,7 +67,7 @@ test("#367 current documents contain one canonical-only surface and exact nine-t
     assert.doesNotMatch(doc, /legacy three-source|bounded compatibility input|compatibility fields for the old three-source/i);
   }
   assert.match(authoringDoc, /vlab\.authoring\/0\.10/);
-  assert.match(mcpDoc, /MCP server: `3\.18\.0`/);
+  assert.match(mcpDoc, /MCP server: `3\.19\.0`/);
   assert.match(mcpDoc, /interface: `17`/);
   assert.match(mcpDoc, /exactly \*\*9\*\* shared tools/i);
   assert.match(protocolDoc, /exact shared experiment-domain tool surface contains 9 tools/i);
