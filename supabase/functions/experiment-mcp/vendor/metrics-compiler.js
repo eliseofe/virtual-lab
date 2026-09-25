@@ -1,3 +1,4 @@
+import { checkRangeCall, isRangeCall } from "../authoring-core/ranges.js";
 import { indentedLines, intersectSets } from "../authoring-core/lines.js";
 import { parseStatementBlock } from "../authoring-core/statements.js";
 import { parseTypedExpression } from "../authoring-core/expression.js";
@@ -232,7 +233,7 @@ function parseExpr(text, line) {
         throw new MetricsCompileError("forbidden-capability", `'${parts[0]}' is outside the metric read-only information boundary`, line);
       }
       if (parser.peek("(")) {
-        if (parts.length !== 1 || !CALL_SIGNATURES[parts[0]]) {
+        if (parts.length !== 1 || (!CALL_SIGNATURES[parts[0]] && parts[0] !== "range")) {
           throw new MetricsCompileError("unsupported-feature", `call '${path}' is not in ${METRICS_LANGUAGE}`, line);
         }
         return { kind: "call", name: parts[0], args: parser.callArguments(), line };
@@ -328,6 +329,7 @@ function expressionType(node, locals, parameters, context) {
   }
   if (node.kind === "binary") return binaryType(node.op, expressionType(node.left, locals, parameters, context), expressionType(node.right, locals, parameters, context), node.line);
   if (node.kind === "call") {
+    if (isRangeCall(node)) throw new MetricsCompileError("type", "range(...) is only available as a for loop iterable", node.line);
     const signature = CALL_SIGNATURES[node.name];
     const surface = SNAPSHOT_INTRINSIC_SURFACES.get(node.name);
     if (surface?.availability && !context.runtimeCapabilities.has(surface.availability)) {
@@ -361,6 +363,18 @@ function checkStatements(body, locals, parameters, context) {
       if (!Object.hasOwn(locals, statement.target)) throw new MetricsCompileError("type", `cannot update unknown local '${statement.target}'`, statement.line);
       const result = binaryType(statement.op, locals[statement.target], expressionType(statement.value, locals, parameters, context), statement.line);
       if (result !== locals[statement.target]) throw new MetricsCompileError("type", `update changes '${statement.target}' type`, statement.line);
+    } else if (statement.kind === "for_each" && isRangeCall(statement.iterable)) {
+      checkRangeCall(statement.iterable, statement.line, {
+        isParameter: (path) => !Object.hasOwn(locals, path)
+          && (Object.hasOwn(parameters, path) || (path.startsWith("snapshot.config.") && Object.hasOwn(parameters, path.slice("snapshot.config.".length)))),
+        argumentType: (node) => expressionType(node, locals, parameters, context),
+        error: (message, line) => new MetricsCompileError("type", message, line),
+      });
+      const nested = { ...locals, [statement.variable]: "scalar" };
+      checkStatements(statement.body, nested, parameters, context);
+      for (const [name, type] of Object.entries(locals)) {
+        if (Object.hasOwn(nested, name) && nested[name] !== type) throw new MetricsCompileError("type", `loop changes '${name}' type`, statement.line);
+      }
     } else if (statement.kind === "for_each") {
       const iterable = expressionType(statement.iterable, locals, parameters, context);
       if (iterable !== "sequence<agent>") throw new MetricsCompileError("type", "metric loops currently require 'snapshot.agents'", statement.line);

@@ -497,10 +497,60 @@ fn execute_statements(
             } => {
                 match iterable {
                     Expression::Load { path, .. } if path == "snapshot.agents" => {}
+                    // #577: range over run constants; the loop variable is a
+                    // scalar local of the loop body.
+                    Expression::Call { name, args, .. } if name == "range" => {
+                        let mut values = Vec::with_capacity(args.len());
+                        for arg in args {
+                            values.push(
+                                eval_expression(arg, context, locals, loop_agents)?
+                                    .scalar("range argument")?,
+                            );
+                        }
+                        let step = if values.len() == 3 { values[2] } else { 1.0 };
+                        if values.is_empty()
+                            || values.len() > 3
+                            || values.iter().any(|v| !v.is_finite() || v.fract() != 0.0)
+                            || step == 0.0
+                        {
+                            return Err(at_line(
+                                *line,
+                                "range arguments must be integers and step must be nonzero",
+                            ));
+                        }
+                        let (start, stop, step) = match values.len() {
+                            1 => (0, values[0] as i64, 1),
+                            2 => (values[0] as i64, values[1] as i64, 1),
+                            _ => (values[0] as i64, values[1] as i64, values[2] as i64),
+                        };
+                        let previous = locals.get(variable).copied();
+                        let mut current = start;
+                        let mut returned = None;
+                        while (step > 0 && current < stop) || (step < 0 && current > stop) {
+                            locals.insert(variable.clone(), Value::Scalar(current as f64));
+                            returned = execute_statements(body, context, locals, loop_agents)?;
+                            if returned.is_some() {
+                                break;
+                            }
+                            current += step;
+                        }
+                        match previous {
+                            Some(previous) => {
+                                locals.insert(variable.clone(), previous);
+                            }
+                            None => {
+                                locals.remove(variable);
+                            }
+                        }
+                        if returned.is_some() {
+                            return Ok(returned);
+                        }
+                        continue;
+                    }
                     _ => {
                         return Err(at_line(
                             *line,
-                            "metric loops must iterate over snapshot.agents",
+                            "metric loops must iterate over snapshot.agents or range(...)",
                         ))
                     }
                 }

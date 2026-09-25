@@ -1,3 +1,4 @@
+import { checkRangeCall, isRangeCall } from "../authoring-core/ranges.js";
 import { indentedLines, intersectSets } from "../authoring-core/lines.js";
 import { parseStatementBlock } from "../authoring-core/statements.js";
 import { parseTypedExpression } from "../authoring-core/expression.js";
@@ -97,7 +98,7 @@ function parseExpr(text, line) {
         throw new ControllerCompileError("forbidden-capability", `'${parts[0]}' is outside the controller security boundary`, line);
       }
       if (parser.peek("(")) {
-        if (!CALL_SIGNATURES[path]) {
+        if (!CALL_SIGNATURES[path] && path !== "range") {
           const category = parts.length > 1 ? "unsupported-capability" : "unsupported-feature";
           throw new ControllerCompileError(category, `call '${path}' is not available in python-vlab/0.1`, line);
         }
@@ -172,6 +173,7 @@ function inferExpression(expr, scope) {
   }
   if (expr.kind === "binary") return binaryType(expr.op, inferExpression(expr.left, scope), inferExpression(expr.right, scope), expr.line);
   if (expr.kind === "call") {
+    if (isRangeCall(expr)) throw new ControllerCompileError("type", "range(...) is only available as a for loop iterable", expr.line);
     const signature = CALL_SIGNATURES[expr.name];
     if (expr.args.length !== signature.args.length) {
       throw new ControllerCompileError("type", `${expr.name} expects ${signature.args.length} arguments, got ${expr.args.length}`, expr.line);
@@ -258,6 +260,23 @@ function checkStatements(body, scope) {
       const valueType = inferExpression(statement.value, scope);
       const result = binaryType(statement.op, current, valueType, statement.line);
       if (result !== current) throw new ControllerCompileError("type", `augmented assignment changes '${statement.target}' type`, statement.line);
+    } else if (statement.kind === "for_each" && isRangeCall(statement.iterable)) {
+      checkRangeCall(statement.iterable, statement.line, {
+        isParameter: (path) => scope.parameters.has(path) && !scope.locals.has(path),
+        argumentType: (node) => inferExpression(node, scope),
+        error: (message, line) => new ControllerCompileError("type", message, line),
+      });
+      const nested = {
+        parameters: scope.parameters,
+        references: scope.references,
+        state: scope.state,
+        locals: new Map([...scope.locals, [statement.variable, "scalar"]]),
+        loopVariables: scope.loopVariables,
+      };
+      checkStatements(statement.body, nested);
+      for (const [name, type] of scope.locals) {
+        if (nested.locals.has(name) && nested.locals.get(name) !== type) throw new ControllerCompileError("type", `loop changes '${name}' type`, statement.line);
+      }
     } else if (statement.kind === "for_each") {
       const iterableType = inferExpression(statement.iterable, scope);
       if (iterableType !== "neighbours") throw new ControllerCompileError("type", `for loop requires neighbours, got ${iterableType}`, statement.line);

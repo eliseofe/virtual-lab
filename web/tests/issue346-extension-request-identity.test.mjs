@@ -113,5 +113,5 @@ test("#346 bumps the request/MCP interface without changing authoring language v
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/\d+'/);
   assert.match(tools, /MCP_SERVER_VERSION = '3\.\d+\.\d+'/);
   assert.match(tools, /MCP_INTERFACE_VERSION = '\d+'/);
-  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.10'/);
+  assert.match(tools, /contract_version: 'vlab\.authoring\/0\.11'/);
 });

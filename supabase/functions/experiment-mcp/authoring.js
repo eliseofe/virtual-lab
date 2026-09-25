@@ -18,7 +18,7 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.10",
+  contract_version: "vlab.authoring/0.11",
   experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
@@ -45,6 +45,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
     comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
     boolean_operators: ["and", "or", "not"],
     boolean_literals: ["True", "False"],
+    range_loops: "for NAME in range(stop), range(start, stop) or range(start, stop, step), as in Python. In the Controller and Metrics every argument is a run constant (numbers and parameters combined with arithmetic) whose value must be an integer, with a nonzero step; the loop variable is a scalar visible only inside the loop. range(...) is only a loop iterable.",
     semantics: "a // b is floor division and a % b takes the sign of the divisor (as in Python); both are scalar-only. and/or/not take boolean operands, and both sides of and/or are always evaluated (random draws on either side are always consumed). while loops are not available in any artifact.",
     artifact_differences: "Artifacts differ only in their inputs, intrinsics and effects, listed per artifact below.",
   },
@@ -79,7 +80,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
         comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
         boolean_operators: ["and", "or", "not"],
         conditionals: ["if", "elif", "else"],
-        iteration: "for ... in capability-backed iterable"
+        iteration: "for ... in capability-backed iterable, or for ... in range(...) over run constants"
       },
       arithmetic_operators: ["+", "-", "*", "/", "//", "%", "**"],
       language_intrinsics: {
@@ -122,7 +123,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
         comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
         boolean_operators: ["and", "or", "not"],
         conditionals: ["if", "elif", "else"],
-        iteration: "for ... in capability-backed snapshot collection"
+        iteration: "for ... in capability-backed snapshot collection, or for ... in range(...) over run constants"
       },
       arithmetic_operators: ["+", "-", "*", "/", "//", "%", "**"],
       measurement_phase: {

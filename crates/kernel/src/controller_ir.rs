@@ -310,6 +310,105 @@ fn intersect_local_sets(sets: &[HashSet<String>]) -> HashSet<String> {
     out
 }
 
+// A range argument: numbers and controller parameters combined with arithmetic,
+// so its value is fixed for the whole run.
+fn validate_run_constant(
+    expression: &Expression,
+    parameters: &HashSet<String>,
+    line: Option<usize>,
+) -> Result<(), String> {
+    match expression {
+        Expression::Const { .. } => Ok(()),
+        Expression::Load { path, .. } if parameters.contains(path) => Ok(()),
+        Expression::Unary { op, value, .. } if op == "-" => {
+            validate_run_constant(value, parameters, line)
+        }
+        Expression::Binary {
+            op, left, right, ..
+        } if matches!(op.as_str(), "+" | "-" | "*" | "/" | "//" | "%") => {
+            validate_run_constant(left, parameters, line)?;
+            validate_run_constant(right, parameters, line)
+        }
+        _ => Err(at_line(
+            line,
+            "range arguments must be numbers or controller parameters",
+        )),
+    }
+}
+
+fn run_constant_value(expression: &Expression, parameters: &BTreeMap<String, f64>) -> f64 {
+    match expression {
+        Expression::Const { value, .. } => *value,
+        Expression::Load { path, .. } => parameters[path],
+        Expression::Unary { value, .. } => -run_constant_value(value, parameters),
+        Expression::Binary {
+            op, left, right, ..
+        } => {
+            let (a, b) = (
+                run_constant_value(left, parameters),
+                run_constant_value(right, parameters),
+            );
+            match op.as_str() {
+                "+" => a + b,
+                "-" => a - b,
+                "*" => a * b,
+                "/" => a / b,
+                "//" => crate::scalar_ops::floor_divide(a, b),
+                _ => crate::scalar_ops::modulo(a, b),
+            }
+        }
+        _ => unreachable!("validated run constant"),
+    }
+}
+
+// With the run's parameter values: every range has integer arguments and a
+// nonzero step (the same rule as Initialization's range).
+fn check_range_bounds(
+    body: &[Statement],
+    parameters: &BTreeMap<String, f64>,
+) -> Result<(), String> {
+    for statement in body {
+        match statement {
+            Statement::ForEach {
+                iterable,
+                body,
+                line,
+                ..
+            } => {
+                if let Expression::Call { name, args, .. } = iterable {
+                    if name == "range" {
+                        let values: Vec<f64> = args
+                            .iter()
+                            .map(|arg| run_constant_value(arg, parameters))
+                            .collect();
+                        let step = if values.len() == 3 { values[2] } else { 1.0 };
+                        if values.iter().any(|v| !v.is_finite() || v.fract() != 0.0) || step == 0.0
+                        {
+                            return Err(at_line(
+                                *line,
+                                "range arguments must be integers and step must be nonzero",
+                            ));
+                        }
+                    }
+                }
+                check_range_bounds(body, parameters)?;
+            }
+            Statement::If {
+                branches,
+                else_body,
+                ..
+            } => {
+                for branch in branches {
+                    check_range_bounds(&branch.body, parameters)?;
+                }
+                check_range_bounds(else_body, parameters)?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 fn validate_statements(
     body: &[Statement],
     parameters: &HashSet<String>,
@@ -380,14 +479,33 @@ fn validate_statements(
                 line,
             } => {
                 match iterable {
-                    Expression::Load { path, .. } if path == "obs.neighbours" => {}
-                    _ => return Err(at_line(*line, "for loop must iterate over obs.neighbours")),
+                    Expression::Load { path, .. } if path == "obs.neighbours" => {
+                        if loop_variable.is_some() {
+                            return Err(at_line(*line, "nested neighbour loops are not supported"));
+                        }
+                        let mut nested = locals.clone();
+                        validate_statements(body, parameters, state, &mut nested, Some(variable))?;
+                    }
+                    // #577: range over run constants; the loop variable is a
+                    // scalar local of the loop body.
+                    Expression::Call { name, args, .. } if name == "range" => {
+                        if args.is_empty() || args.len() > 3 {
+                            return Err(at_line(*line, "range expects 1, 2 or 3 arguments"));
+                        }
+                        for arg in args {
+                            validate_run_constant(arg, parameters, *line)?;
+                        }
+                        let mut nested = locals.clone();
+                        nested.insert(variable.clone());
+                        validate_statements(body, parameters, state, &mut nested, loop_variable)?;
+                    }
+                    _ => {
+                        return Err(at_line(
+                            *line,
+                            "for loop must iterate over obs.neighbours or range(...)",
+                        ))
+                    }
                 }
-                if loop_variable.is_some() {
-                    return Err(at_line(*line, "nested neighbour loops are not supported"));
-                }
-                let mut nested = locals.clone();
-                validate_statements(body, parameters, state, &mut nested, Some(variable))?;
             }
             Statement::If {
                 branches,
@@ -460,7 +578,17 @@ fn collect_local_names(body: &[Statement], out: &mut BTreeSet<String>) {
                     out.insert(target.clone());
                 }
             }
-            Statement::ForEach { body, .. } => collect_local_names(body, out),
+            Statement::ForEach {
+                variable,
+                iterable,
+                body,
+                ..
+            } => {
+                if matches!(iterable, Expression::Call { name, .. } if name == "range") {
+                    out.insert(variable.clone());
+                }
+                collect_local_names(body, out)
+            }
             Statement::If {
                 branches,
                 else_body,
@@ -584,6 +712,11 @@ enum PreparedStatement {
         value: PreparedExpression,
     },
     ForEachNeighbour {
+        body: Vec<PreparedStatement>,
+    },
+    ForRange {
+        slot: usize,
+        args: Vec<PreparedExpression>,
         body: Vec<PreparedStatement>,
     },
     If {
@@ -929,6 +1062,35 @@ fn prepare_statements(
                     target: prepare_target(target, state_slots, local_slots),
                     value: prepare_expression(
                         value,
+                        parameter_slots,
+                        reference_slots,
+                        state_slots,
+                        local_slots,
+                        loop_variable,
+                    )?,
+                },
+                Statement::ForEach {
+                    variable,
+                    iterable: Expression::Call { name, args, .. },
+                    body,
+                    ..
+                } if name == "range" => PreparedStatement::ForRange {
+                    slot: local_slots[variable],
+                    args: args
+                        .iter()
+                        .map(|arg| {
+                            prepare_expression(
+                                arg,
+                                parameter_slots,
+                                reference_slots,
+                                state_slots,
+                                local_slots,
+                                loop_variable,
+                            )
+                        })
+                        .collect::<Result<_, _>>()?,
+                    body: prepare_statements(
+                        body,
                         parameter_slots,
                         reference_slots,
                         state_slots,
@@ -1291,6 +1453,12 @@ fn max_stack_in_statements(body: &[PreparedStatement]) -> usize {
             | PreparedStatement::AugAssign { value, .. }
             | PreparedStatement::Return { value } => value.stack_capacity,
             PreparedStatement::ForEachNeighbour { body } => max_stack_in_statements(body),
+            PreparedStatement::ForRange { args, body, .. } => args
+                .iter()
+                .map(|arg| arg.stack_capacity)
+                .max()
+                .unwrap_or(0)
+                .max(max_stack_in_statements(body)),
             PreparedStatement::If {
                 branches,
                 else_body,
@@ -1363,6 +1531,48 @@ fn execute_statements(
                     PreparedTarget::Local(slot) => {
                         locals[*slot] = binary(BinaryOp::Add, locals[*slot], right)
                     }
+                }
+            }
+            PreparedStatement::ForRange { slot, args, body } => {
+                let mut values = [0.0; 3];
+                for (index, arg) in args.iter().enumerate() {
+                    values[index] = evaluate(
+                        arg,
+                        parameters,
+                        private_state,
+                        locals,
+                        reference_names,
+                        observation,
+                        neighbour,
+                        rng,
+                        eval_stack,
+                    )
+                    .scalar();
+                }
+                // Integer arguments and a nonzero step are checked when the
+                // runtime is built (check_range_bounds).
+                let (start, stop, step) = match args.len() {
+                    1 => (0, values[0] as i64, 1),
+                    2 => (values[0] as i64, values[1] as i64, 1),
+                    _ => (values[0] as i64, values[1] as i64, values[2] as i64),
+                };
+                let mut current = start;
+                while (step > 0 && current < stop) || (step < 0 && current > stop) {
+                    locals[*slot] = Value::Scalar(current as f64);
+                    if let Some(action) = execute_statements(
+                        body,
+                        parameters,
+                        private_state,
+                        locals,
+                        reference_names,
+                        observation,
+                        neighbour,
+                        rng,
+                        eval_stack,
+                    ) {
+                        return Some(action);
+                    }
+                    current += step;
                 }
             }
             PreparedStatement::ForEachNeighbour { body } => {
@@ -1563,6 +1773,7 @@ impl IrControllerRuntime {
         )? {
             return Err("controller IR has no action return".to_owned());
         }
+        check_range_bounds(&ir.body, &supplied)?;
 
         let mut local_names = BTreeSet::new();
         collect_local_names(&ir.body, &mut local_names);
@@ -1892,6 +2103,44 @@ mod tests {
         let motion = runtime.step(0, &observation);
         assert_eq!(motion.forward, 3.0);
         assert_eq!(motion.turning, 2.0);
+    }
+
+    #[test]
+    fn range_loops_over_run_constants_and_checks_their_bounds() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Sum","entry":"step",
+          "parameters":{"K":"scalar"},"state":[],
+          "body":[
+            {"kind":"assign","target":"total","value":{"kind":"const","value":0.0}},
+            {"kind":"for_each","variable":"k","iterable":{"kind":"call","name":"range","args":[{"kind":"load","path":"K"}]},
+             "body":[{"kind":"aug_assign","target":"total","op":"+","value":{"kind":"load","path":"k"}}]},
+            {"kind":"assign","target":"odd","value":{"kind":"const","value":0.0}},
+            {"kind":"for_each","variable":"j","iterable":{"kind":"call","name":"range","args":[
+              {"kind":"const","value":1.0},{"kind":"binary","op":"+","left":{"kind":"load","path":"K"},"right":{"kind":"const","value":3.0}},{"kind":"const","value":2.0}]},
+             "body":[{"kind":"aug_assign","target":"odd","op":"+","value":{"kind":"load","path":"j"}}]},
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"load","path":"total"},{"kind":"load","path":"odd"}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, r#"{"K":4.0}"#);
+        runtime.reset(1);
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+            references: BTreeMap::new(),
+        };
+        let motion = runtime.step(0, &observation);
+        assert_eq!(motion.forward, 6.0, "0 + 1 + 2 + 3");
+        assert_eq!(motion.turning, 9.0, "range(1, 7, 2): 1 + 3 + 5");
+        let error = IrControllerRuntime::from_json(ir, r#"{"K":2.5}"#)
+            .err()
+            .unwrap();
+        assert!(
+            error.contains("range arguments must be integers"),
+            "{error}"
+        );
     }
 
     #[test]
