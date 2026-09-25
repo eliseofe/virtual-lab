@@ -1,3 +1,6 @@
+import { stripComment } from "../authoring-core/lines.js";
+import { ExpressionParser, tokenize } from "../authoring-core/expression.js";
+
 export class EnvironmentCompileError extends Error {
   constructor(message, line = null, category = "initializer") {
     super(line == null ? message : `line ${line}: ${message}`);
@@ -25,20 +28,6 @@ const INTRINSICS = Object.freeze({
   min: 2,
   max: 2,
 });
-
-function stripComment(raw) {
-  let quote = null;
-  for (let i = 0; i < raw.length; i += 1) {
-    const c = raw[i];
-    if (quote) {
-      if (c === quote && raw[i - 1] !== "\\") quote = null;
-      continue;
-    }
-    if (c === '"' || c === "'") quote = c;
-    else if (c === "#") return raw.slice(0, i);
-  }
-  return raw;
-}
 
 function environmentFunction(source) {
   const rawLines = source.split(/\r?\n/);
@@ -94,147 +83,58 @@ function environmentFunction(source) {
   return { expression: match[1], line: body[0].line };
 }
 
-function tokenize(text, line) {
-  const tokens = [];
-  let i = 0;
-  while (i < text.length) {
-    const c = text[i];
-    if (/\s/.test(c)) { i += 1; continue; }
-    const number = text.slice(i).match(/^(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?/);
-    if (number) {
-      tokens.push({ type: "number", value: number[0] });
-      i += number[0].length;
-      continue;
-    }
-    if (text.slice(i, i + 2) === "**") {
-      tokens.push({ type: "**", value: "**" });
-      i += 2;
-      continue;
-    }
-    const ident = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
-    if (ident) {
-      tokens.push({ type: "ident", value: ident[0] });
-      i += ident[0].length;
-      continue;
-    }
-    if ("+-*/(),.".includes(c)) {
-      tokens.push({ type: c, value: c });
-      i += 1;
-      continue;
-    }
-    throw new EnvironmentCompileError(`unsupported token '${c}' in environmental_scalar`, line, "unsupported-feature");
-  }
-  tokens.push({ type: "eof", value: "" });
-  return tokens;
-}
-
-class Parser {
-  constructor(text, line, config) {
-    this.tokens = tokenize(text, line);
-    this.index = 0;
-    this.line = line;
-    this.config = config;
-  }
-  current() { return this.tokens[this.index]; }
-  peek(type) { return this.current().type === type; }
-  take(type) {
-    const token = this.current();
-    if (token.type !== type) {
-      throw new EnvironmentCompileError(`expected '${type}', found '${token.value || "end of expression"}'`, this.line);
-    }
-    this.index += 1;
-    return token;
-  }
-  parse() {
-    const expression = this.additive();
-    this.take("eof");
-    return expression;
-  }
-  additive() {
-    let left = this.multiplicative();
-    while (this.peek("+") || this.peek("-")) {
-      const op = this.current().type;
-      this.index += 1;
-      left = { kind: "binary", op, left, right: this.multiplicative() };
-    }
-    return left;
-  }
-  multiplicative() {
-    let left = this.unary();
-    while (this.peek("*") || this.peek("/")) {
-      const op = this.current().type;
-      this.index += 1;
-      left = { kind: "binary", op, left, right: this.unary() };
-    }
-    return left;
-  }
-  unary() {
-    if (this.peek("+") || this.peek("-")) {
-      const op = this.current().type;
-      this.index += 1;
-      const value = this.unary();
-      return op === "+" ? value : { kind: "unary", op: "-", value };
-    }
-    return this.power();
-  }
-  power() {
-    const left = this.primary();
-    if (!this.peek("**")) return left;
-    this.take("**");
-    return { kind: "call", name: "pow", args: [left, this.unary()] };
-  }
-  primary() {
-    if (this.peek("number")) {
-      const value = Number(this.take("number").value);
-      if (!Number.isFinite(value)) throw new EnvironmentCompileError("environment scalar constants must be finite", this.line);
+// The environment field's expression grammar on the shared core (#576):
+// arithmetic, unary +/- and ** over x, y, constants, config values and
+// scalar intrinsics; no comparisons.
+function parseScalarExpression(text, line, config) {
+  const tokens = tokenize(text, {
+    operators: ["**", "+", "-", "*", "/", "(", ")", ",", "."],
+    fail: (_kind, { character }) => { throw new EnvironmentCompileError(`unsupported token '${character}' in environmental_scalar`, line, "unsupported-feature"); },
+  });
+  return new ExpressionParser(tokens, line, {
+    start: "additive",
+    comparisons: [],
+    multiplicative: ["*", "/"],
+    unary: ["+", "-"],
+    nodes: {
+      binary: (op, left, right) => ({ kind: "binary", op, left, right }),
+      unary: (op, value) => (op === "+" ? value : { kind: "unary", op: "-", value }),
+      power: (left, right) => ({ kind: "call", name: "pow", args: [left, right] }),
+    },
+    error: (message) => new EnvironmentCompileError(message, line),
+    unexpected: (token) => new EnvironmentCompileError(`expected scalar expression, found '${token.value || "end"}'`, line),
+    primary(parser) {
+      if (!parser.peek("number")) return undefined;
+      const value = Number(parser.take("number").value);
+      if (!Number.isFinite(value)) throw new EnvironmentCompileError("environment scalar constants must be finite", line);
       return { kind: "const", value };
-    }
-    if (this.peek("(")) {
-      this.take("(");
-      const value = this.additive();
-      this.take(")");
-      return value;
-    }
-    if (!this.peek("ident")) {
-      throw new EnvironmentCompileError(`expected scalar expression, found '${this.current().value || "end"}'`, this.line);
-    }
-    const parts = [this.take("ident").value];
-    while (this.peek(".")) {
-      this.take(".");
-      parts.push(this.take("ident").value);
-    }
-    const path = parts.join(".");
-    if (this.peek("(")) {
-      if (parts.length !== 1 || INTRINSICS[parts[0]] === undefined) {
-        throw new EnvironmentCompileError(`call '${path}' is not available to environmental_scalar`, this.line, "unsupported-feature");
+    },
+    identifier(parser, first) {
+      const parts = parser.dotted(first);
+      const path = parts.join(".");
+      if (parser.peek("(")) {
+        if (parts.length !== 1 || INTRINSICS[parts[0]] === undefined) {
+          throw new EnvironmentCompileError(`call '${path}' is not available to environmental_scalar`, line, "unsupported-feature");
+        }
+        const args = parser.callArguments();
+        const arity = INTRINSICS[parts[0]];
+        if (args.length !== arity) throw new EnvironmentCompileError(`${parts[0]} expects ${arity} arguments`, line);
+        return { kind: "call", name: parts[0], args };
       }
-      this.take("(");
-      const args = [];
-      if (!this.peek(")")) {
-        do {
-          args.push(this.additive());
-          if (!this.peek(",")) break;
-          this.take(",");
-        } while (!this.peek(")"));
+      if (path === "x" || path === "y") return { kind: path };
+      if (path === "TAU") return { kind: "const", value: Math.PI * 2 };
+      if (path === "SQRT3_OVER_2") return { kind: "const", value: Math.sqrt(3) / 2 };
+      if (path.startsWith("config.")) {
+        const name = path.slice(7);
+        const value = config.values[name];
+        if (typeof value !== "number" || !Number.isFinite(value)) {
+          throw new EnvironmentCompileError(`environmental_scalar config parameter '${name}' must be a finite numeric value`, line);
+        }
+        return { kind: "const", value };
       }
-      this.take(")");
-      const arity = INTRINSICS[parts[0]];
-      if (args.length !== arity) throw new EnvironmentCompileError(`${parts[0]} expects ${arity} arguments`, this.line);
-      return { kind: "call", name: parts[0], args };
-    }
-    if (path === "x" || path === "y") return { kind: path };
-    if (path === "TAU") return { kind: "const", value: Math.PI * 2 };
-    if (path === "SQRT3_OVER_2") return { kind: "const", value: Math.sqrt(3) / 2 };
-    if (path.startsWith("config.")) {
-      const name = path.slice(7);
-      const value = this.config.values[name];
-      if (typeof value !== "number" || !Number.isFinite(value)) {
-        throw new EnvironmentCompileError(`environmental_scalar config parameter '${name}' must be a finite numeric value`, this.line);
-      }
-      return { kind: "const", value };
-    }
-    throw new EnvironmentCompileError(`identifier '${path}' is not available to environmental_scalar`, this.line, "forbidden-capability");
-  }
+      throw new EnvironmentCompileError(`identifier '${path}' is not available to environmental_scalar`, line, "forbidden-capability");
+    },
+  }).parse();
 }
 
 export function compileEnvironmentScalar(initializerSource, config) {
@@ -244,7 +144,7 @@ export function compileEnvironmentScalar(initializerSource, config) {
     schema: "vlab.environment-scalar-ir/0.1",
     language: "python-vlab/0.1",
     entry: "environmental_scalar(x, y, config)",
-    expression: new Parser(definition.expression, definition.line, config).parse(),
+    expression: parseScalarExpression(definition.expression, definition.line, config),
   };
 }
 

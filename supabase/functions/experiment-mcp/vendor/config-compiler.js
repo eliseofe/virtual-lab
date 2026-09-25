@@ -1,23 +1,10 @@
+import { stripComment } from "../authoring-core/lines.js";
 export class ConfigCompileError extends Error {
   constructor(message, line = null) {
     super(line == null ? message : `line ${line}: ${message}`);
     this.name = "ConfigCompileError";
     this.line = line;
   }
-}
-
-function stripComment(raw) {
-  let quote = null;
-  for (let i = 0; i < raw.length; i += 1) {
-    const c = raw[i];
-    if (quote) {
-      if (c === quote && raw[i - 1] !== "\\") quote = null;
-      continue;
-    }
-    if (c === '"' || c === "'") quote = c;
-    else if (c === "#") return raw.slice(0, i);
-  }
-  return raw;
 }
 
 function parseValue(text, line, values) {

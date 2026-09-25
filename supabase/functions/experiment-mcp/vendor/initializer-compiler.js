@@ -1,3 +1,5 @@
+import { stripComment } from "../authoring-core/lines.js";
+import { ExpressionParser, tokenize } from "../authoring-core/expression.js";
 import { RNG_DOMAINS, ScientificRng } from "./rng.js";
 
 export class InitializerCompileError extends Error {
@@ -6,20 +8,6 @@ export class InitializerCompileError extends Error {
     this.name = "InitializerCompileError";
     this.line = line;
   }
-}
-
-function stripComment(raw) {
-  let quote = null;
-  for (let i = 0; i < raw.length; i += 1) {
-    const c = raw[i];
-    if (quote) {
-      if (c === quote && raw[i - 1] !== "\\") quote = null;
-      continue;
-    }
-    if (c === '"' || c === "'") quote = c;
-    else if (c === "#") return raw.slice(0, i);
-  }
-  return raw;
 }
 
 function meaningful(source) {
@@ -31,97 +19,49 @@ function meaningful(source) {
   }).filter((entry) => entry.text);
 }
 
-function tokenize(text, line) {
-  const tokens = [];
-  let i = 0;
-  while (i < text.length) {
-    const c = text[i];
-    if (/\s/.test(c)) { i += 1; continue; }
-    const two = text.slice(i, i + 2);
-    if (["**", "//", "==", "!=", "<=", ">="].includes(two)) {
-      tokens.push({ type: two, value: two, column: i + 1 }); i += 2; continue;
-    }
-    const number = text.slice(i).match(/^(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?/);
-    if (number) { tokens.push({ type: "number", value: number[0], column: i + 1 }); i += number[0].length; continue; }
-    const ident = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
-    if (ident) { tokens.push({ type: "ident", value: ident[0], column: i + 1 }); i += ident[0].length; continue; }
-    if (c === '"' || c === "'") {
-      const quote = c; let j = i + 1; let value = "";
-      while (j < text.length && text[j] !== quote) {
-        if (text[j] === "\\" && j + 1 < text.length) { value += text[j + 1]; j += 2; }
-        else { value += text[j]; j += 1; }
-      }
-      if (j >= text.length) throw new InitializerCompileError("unterminated string literal", line);
-      tokens.push({ type: "string", value, column: i + 1 }); i = j + 1; continue;
-    }
-    if ("+-*/%(),.<>".includes(c)) { tokens.push({ type: c, value: c, column: i + 1 }); i += 1; continue; }
-    throw new InitializerCompileError(`unsupported token '${c}'`, line);
-  }
-  tokens.push({ type: "eof", value: "", column: text.length + 1 });
-  return tokens;
-}
+// Initialization's expression grammar on the shared core (#576): arithmetic
+// including // and %, unary +/-, one comparison, strings; no boolean operators.
+const INITIALIZER_GRAMMAR = {
+  start: "comparison",
+  comparisons: ["==", "!=", "<", "<=", ">", ">="],
+  multiplicative: ["*", "/", "//", "%"],
+  unary: ["+", "-"],
+  nodes: {
+    binary: (op, left, right, line) => ({ kind: "binary", op, left, right, line }),
+    compare: (op, left, right, line) => ({ kind: "binary", op, left, right, line }),
+    unary: (op, value, line) => ({ kind: "unary", op, value, line }),
+    power: (left, right, line) => ({ kind: "binary", op: "**", left, right, line }),
+  },
+};
 
-class ExprParser {
-  constructor(text, line) { this.tokens = tokenize(text, line); this.index = 0; this.line = line; }
-  current() { return this.tokens[this.index]; }
-  peek(type) { return this.current().type === type; }
-  take(type) {
-    const token = this.current();
-    if (token.type !== type) throw new InitializerCompileError(`expected '${type}', found '${token.value || "end of expression"}'`, this.line);
-    this.index += 1; return token;
-  }
-  parse() { const expr = this.comparison(); this.take("eof"); return expr; }
-  comparison() {
-    let left = this.additive();
-    if (["==", "!=", "<", "<=", ">", ">="].includes(this.current().type)) {
-      const op = this.current().type; this.index += 1; return { kind: "binary", op, left, right: this.additive(), line: this.line };
-    }
-    return left;
-  }
-  additive() {
-    let left = this.multiplicative();
-    while (this.peek("+") || this.peek("-")) { const op = this.current().type; this.index += 1; left = { kind: "binary", op, left, right: this.multiplicative(), line: this.line }; }
-    return left;
-  }
-  multiplicative() {
-    let left = this.unary();
-    while (["*", "/", "//", "%"].includes(this.current().type)) { const op = this.current().type; this.index += 1; left = { kind: "binary", op, left, right: this.unary(), line: this.line }; }
-    return left;
-  }
-  unary() {
-    if (this.peek("+") || this.peek("-")) { const op = this.current().type; this.index += 1; return { kind: "unary", op, value: this.unary(), line: this.line }; }
-    return this.power();
-  }
-  power() {
-    const left = this.primary();
-    if (!this.peek("**")) return left;
-    this.take("**");
-    return { kind: "binary", op: "**", left, right: this.unary(), line: this.line };
-  }
-  primary() {
-    if (this.peek("number")) {
-      const token = this.take("number");
-      const value = Number(token.value);
-      if (!Number.isFinite(value)) throw new InitializerCompileError("numeric constants must be finite", this.line);
-      return { kind: "literal", value, line: this.line };
-    }
-    if (this.peek("string")) return { kind: "literal", value: this.take("string").value, line: this.line };
-    if (this.peek("(")) { this.take("("); const expr = this.comparison(); this.take(")"); return expr; }
-    if (!this.peek("ident")) throw new InitializerCompileError(`expected expression, found '${this.current().value || "end"}'`, this.line);
-    const parts = [this.take("ident").value];
-    while (this.peek(".")) { this.take("."); parts.push(this.take("ident").value); }
-    if (this.peek("(")) {
-      this.take("("); const args = [];
-      if (!this.peek(")")) {
-        do { args.push(this.comparison()); if (!this.peek(",")) break; this.take(","); } while (!this.peek(")"));
+function parseExpr(text, line) {
+  const tokens = tokenize(text, {
+    operators: ["**", "//", "==", "!=", "<=", ">=", "+", "-", "*", "/", "%", "(", ")", ",", ".", "<", ">"],
+    strings: true,
+    fail: (kind, detail) => {
+      throw new InitializerCompileError(kind === "unterminated" ? "unterminated string literal" : `unsupported token '${detail.character}'`, line);
+    },
+  });
+  return new ExpressionParser(tokens, line, {
+    ...INITIALIZER_GRAMMAR,
+    error: (message) => new InitializerCompileError(message, line),
+    unexpected: (token) => new InitializerCompileError(`expected expression, found '${token.value || "end"}'`, line),
+    primary(parser) {
+      if (parser.peek("number")) {
+        const value = Number(parser.take("number").value);
+        if (!Number.isFinite(value)) throw new InitializerCompileError("numeric constants must be finite", line);
+        return { kind: "literal", value, line };
       }
-      this.take(")"); return { kind: "call", path: parts.join("."), args, line: this.line };
-    }
-    return { kind: "load", path: parts.join("."), line: this.line };
-  }
+      if (parser.peek("string")) return { kind: "literal", value: parser.take("string").value, line };
+      return undefined;
+    },
+    identifier(parser, first) {
+      const path = parser.dotted(first).join(".");
+      if (parser.peek("(")) return { kind: "call", path, args: parser.callArguments(), line };
+      return { kind: "load", path, line };
+    },
+  }).parse();
 }
-
-function parseExpr(text, line) { return new ExprParser(text, line).parse(); }
 
 function parseBlock(lines, start, indent) {
   const body = [];

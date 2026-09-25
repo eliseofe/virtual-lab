@@ -301,6 +301,10 @@ Of the last 20 pushes to `main` before this audit, 9 were green, 10 red and 1 ca
 
 Status: **design agreed by the owner on 25 September (recorded as `docs/DECISIONS.md` D-021 and D-022); tickets: #575 MCP auto-deployment, then the shared translator core, then grammar unification.** The proposal below is kept as the rationale. The model-view-controller plan (#560–#569) is complete; this is the next candidate work under #425.
 
+### Progress
+
+- #576 (done): `web/src/authoring-core/` holds one tokenizer, one expression parser (per-language grammars, including one typed grammar shared by Controller and Metrics), one statement-block parser (Controller and Metrics) and shared line helpers. All four code languages parse expressions through it. Initialization's statement parser moves onto it in #577, when Initialization becomes statically typed. `web/scripts/authoring-equivalence.mjs` pins every compiler's results and exact diagnostics on 28,059 cases (the test suite's 185 compiler inputs, deterministic mutants and cross-language inputs); its golden file is regenerated only for an intentional language change.
+
 ### Findings
 
 - There are **five** hand-written parsers, not three or four: Configuration (named values), Initialization (interpreted once in JavaScript at setup; its output is the initial state), the environment field function `environmental_scalar(x, y, config)` (written inside the Initialization source but compiled separately to Rust IR), Controller and Metrics (compiled to typed IR executed by the Rust kernel every step).

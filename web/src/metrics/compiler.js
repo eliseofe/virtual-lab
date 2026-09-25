@@ -1,3 +1,6 @@
+import { indentedLines, intersectSets } from "../authoring-core/lines.js";
+import { parseStatementBlock } from "../authoring-core/statements.js";
+import { parseTypedExpression } from "../authoring-core/expression.js";
 import { IMPLEMENTED_CAPABILITY_BINDINGS } from "../capability-bindings.js";
 
 const FORBIDDEN_ROOTS = new Set([
@@ -121,19 +124,8 @@ export class MetricsCompileError extends Error {
   }
 }
 
-function indentation(raw, line) {
-  const leading = raw.match(/^[\t ]*/)?.[0] ?? "";
-  if (leading.includes("\t")) throw new MetricsCompileError("syntax", "tabs are not supported; use spaces", line, 1);
-  return leading.length;
-}
-
 function sourceLines(source) {
-  return source.split(/\r?\n/).map((raw, index) => ({
-    raw,
-    line: index + 1,
-    indent: indentation(raw, index + 1),
-    text: raw.trim(),
-  }));
+  return indentedLines(source, (line) => new MetricsCompileError("syntax", "tabs are not supported; use spaces", line, 1));
 }
 
 function meaningful(lines) {
@@ -229,268 +221,42 @@ function parseDecorator(text, line) {
   return { id, name, unit, sampling: parseSampling(values.sampling, line), line };
 }
 
-class ExprParser {
-  constructor(text, line) {
-    this.text = text;
-    this.line = line;
-    this.tokens = this.tokenize(text);
-    this.index = 0;
-  }
-
-  tokenize(text) {
-    const tokens = [];
-    let i = 0;
-    while (i < text.length) {
-      const c = text[i];
-      if (/\s/.test(c)) { i += 1; continue; }
-      const number = text.slice(i).match(/^(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?/);
-      if (number) {
-        tokens.push({ type: "number", value: number[0], column: i + 1 });
-        i += number[0].length;
-        continue;
+// Metrics expressions on the shared core (#576).
+function parseExpr(text, line) {
+  return parseTypedExpression(text, line, {
+    error: (category, message, column) => new MetricsCompileError(category, message, line, column),
+    finiteMessage: "metric constants must be finite",
+    identifier(parser, parts) {
+      const path = parts.join(".");
+      if (FORBIDDEN_ROOTS.has(parts[0])) {
+        throw new MetricsCompileError("forbidden-capability", `'${parts[0]}' is outside the metric read-only information boundary`, line);
       }
-      if (text.slice(i, i + 2) === "**") {
-        tokens.push({ type: "**", value: "**", column: i + 1 });
-        i += 2;
-        continue;
+      if (parser.peek("(")) {
+        if (parts.length !== 1 || !CALL_SIGNATURES[parts[0]]) {
+          throw new MetricsCompileError("unsupported-feature", `call '${path}' is not in ${METRICS_LANGUAGE}`, line);
+        }
+        return { kind: "call", name: parts[0], args: parser.callArguments(), line };
       }
-      const comparison = text.slice(i).match(/^(?:<=|>=|==|!=|<|>)/);
-      if (comparison) {
-        tokens.push({ type: comparison[0], value: comparison[0], column: i + 1 });
-        i += comparison[0].length;
-        continue;
-      }
-      const ident = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
-      if (ident) {
-        tokens.push({ type: "ident", value: ident[0], column: i + 1 });
-        i += ident[0].length;
-        continue;
-      }
-      if ("+-*/(),.".includes(c)) {
-        tokens.push({ type: c, value: c, column: i + 1 });
-        i += 1;
-        continue;
-      }
-      throw new MetricsCompileError("syntax", `unsupported token '${c}'`, this.line, i + 1);
-    }
-    tokens.push({ type: "eof", value: "", column: text.length + 1 });
-    return tokens;
-  }
-
-  peek(type) { return this.tokens[this.index].type === type; }
-  peekKeyword(value) {
-    const token = this.tokens[this.index];
-    return token.type === "ident" && token.value === value;
-  }
-  takeKeyword(value) {
-    const token = this.tokens[this.index];
-    if (token.type !== "ident" || token.value !== value) {
-      throw new MetricsCompileError("syntax", `expected '${value}', found '${token.value || "end of expression"}'`, this.line, token.column);
-    }
-    this.index += 1;
-    return token;
-  }
-  take(type) {
-    const token = this.tokens[this.index];
-    if (token.type !== type) {
-      throw new MetricsCompileError("syntax", `expected '${type}', found '${token.value || "end of expression"}'`, this.line, token.column);
-    }
-    this.index += 1;
-    return token;
-  }
-  parse() { const node = this.booleanOr(); this.take("eof"); return node; }
-  booleanOr() {
-    let left = this.booleanAnd();
-    while (this.peekKeyword("or")) {
-      this.takeKeyword("or");
-      left = { kind: "bool_op", op: "or", left, right: this.booleanAnd(), line: this.line };
-    }
-    return left;
-  }
-  booleanAnd() {
-    let left = this.booleanNot();
-    while (this.peekKeyword("and")) {
-      this.takeKeyword("and");
-      left = { kind: "bool_op", op: "and", left, right: this.booleanNot(), line: this.line };
-    }
-    return left;
-  }
-  booleanNot() {
-    if (this.peekKeyword("not")) {
-      this.takeKeyword("not");
-      return { kind: "unary", op: "not", value: this.booleanNot(), line: this.line };
-    }
-    return this.comparison();
-  }
-  comparison() {
-    let left = this.additive();
-    const operators = ["<", "<=", ">", ">=", "==", "!="];
-    const token = this.tokens[this.index];
-    if (operators.includes(token.type)) {
-      this.index += 1;
-      left = { kind: "compare", op: token.type, left, right: this.additive(), line: this.line };
-    }
-    return left;
-  }
-  additive() {
-    let left = this.multiplicative();
-    while (this.peek("+") || this.peek("-")) {
-      const op = this.tokens[this.index++].type;
-      left = { kind: "binary", op, left, right: this.multiplicative(), line: this.line };
-    }
-    return left;
-  }
-  multiplicative() {
-    let left = this.unary();
-    while (this.peek("*") || this.peek("/")) {
-      const op = this.tokens[this.index++].type;
-      left = { kind: "binary", op, left, right: this.unary(), line: this.line };
-    }
-    return left;
-  }
-  unary() {
-    if (this.peek("-")) { this.take("-"); return { kind: "unary", op: "-", value: this.unary(), line: this.line }; }
-    return this.power();
-  }
-  power() {
-    const left = this.primary();
-    if (!this.peek("**")) return left;
-    this.take("**");
-    return { kind: "call", name: "pow", args: [left, this.unary()], line: this.line };
-  }
-  primary() {
-    if (this.peek("number")) {
-      const token = this.take("number");
-      const value = Number(token.value);
-      if (!Number.isFinite(value)) throw new MetricsCompileError("syntax", "metric constants must be finite", this.line, token.column);
-      return { kind: "const", value, line: this.line };
-    }
-    if (this.peek("(")) { this.take("("); const node = this.booleanOr(); this.take(")"); return node; }
-    if (!this.peek("ident")) {
-      const token = this.tokens[this.index];
-      throw new MetricsCompileError("syntax", `expected expression, found '${token.value || "end of expression"}'`, this.line, token.column);
-    }
-    const first = this.take("ident").value;
-    if (first === "True" || first === "False") {
-      return { kind: "bool_const", value: first === "True", line: this.line };
-    }
-    const parts = [first];
-    while (this.peek(".")) { this.take("."); parts.push(this.take("ident").value); }
-    const path = parts.join(".");
-    if (FORBIDDEN_ROOTS.has(parts[0])) {
-      throw new MetricsCompileError("forbidden-capability", `'${parts[0]}' is outside the metric read-only information boundary`, this.line);
-    }
-    if (this.peek("(")) {
-      if (parts.length !== 1 || !CALL_SIGNATURES[parts[0]]) {
-        throw new MetricsCompileError("unsupported-feature", `call '${path}' is not in ${METRICS_LANGUAGE}`, this.line);
-      }
-      this.take("(");
-      const args = [];
-      if (!this.peek(")")) {
-        do {
-          args.push(this.booleanOr());
-          if (!this.peek(",")) break;
-          this.take(",");
-        } while (!this.peek(")"));
-      }
-      this.take(")");
-      return { kind: "call", name: parts[0], args, line: this.line };
-    }
-    return { kind: "load", path, line: this.line };
-  }
+      return { kind: "load", path, line };
+    },
+  });
 }
-
-function parseExpr(text, line) { return new ExprParser(text, line).parse(); }
 
 function parseTarget(text, line) {
   if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(text)) return text;
   throw new MetricsCompileError("unsupported-feature", `assignment target '${text}' is not supported`, line);
 }
 
+// Statement blocks on the shared core (#576).
+const STATEMENTS = {
+  error: (category, message, line) => new MetricsCompileError(category, message, line),
+  expression: (text, line) => parseExpr(text, line),
+  target: (text, line) => parseTarget(text, line),
+  unsupported: (text) => `statement '${text}' is not in ${METRICS_LANGUAGE}`,
+};
+
 function parseStatements(lines, start, blockIndent) {
-  const body = [];
-  let i = start;
-  while (i < lines.length) {
-    const entry = lines[i];
-    if (!entry.text || entry.text.startsWith("#")) { i += 1; continue; }
-    if (entry.indent < blockIndent) break;
-    if (entry.indent > blockIndent) throw new MetricsCompileError("syntax", "unexpected indentation", entry.line);
-
-    const ifMatch = entry.text.match(/^if\s+(.+):$/);
-    if (ifMatch) {
-      const branches = [];
-      let elseBody = [];
-      let headerIndex = i;
-      let conditionText = ifMatch[1];
-      const statementLine = entry.line;
-
-      for (;;) {
-        const header = lines[headerIndex];
-        let nextIndex = headerIndex + 1;
-        while (nextIndex < lines.length && (!lines[nextIndex].text || lines[nextIndex].text.startsWith("#"))) nextIndex += 1;
-        const next = lines[nextIndex];
-        if (!next || next.indent <= blockIndent) {
-          throw new MetricsCompileError("syntax", "if/elif requires an indented body", header.line);
-        }
-        const nested = parseStatements(lines, nextIndex, next.indent);
-        branches.push({
-          condition: parseExpr(conditionText, header.line),
-          body: nested.body,
-          line: header.line,
-        });
-
-        let cursor = nested.next;
-        while (cursor < lines.length && (!lines[cursor].text || lines[cursor].text.startsWith("#"))) cursor += 1;
-        const continuation = lines[cursor];
-        const elifMatch = continuation?.indent === blockIndent
-          ? continuation.text.match(/^elif\s+(.+):$/)
-          : null;
-        if (elifMatch) {
-          headerIndex = cursor;
-          conditionText = elifMatch[1];
-          continue;
-        }
-
-        if (continuation?.indent === blockIndent && continuation.text === "else:") {
-          let elseIndex = cursor + 1;
-          while (elseIndex < lines.length && (!lines[elseIndex].text || lines[elseIndex].text.startsWith("#"))) elseIndex += 1;
-          const elseFirst = lines[elseIndex];
-          if (!elseFirst || elseFirst.indent <= blockIndent) {
-            throw new MetricsCompileError("syntax", "else requires an indented body", continuation.line);
-          }
-          const parsedElse = parseStatements(lines, elseIndex, elseFirst.indent);
-          elseBody = parsedElse.body;
-          cursor = parsedElse.next;
-        }
-
-        body.push({ kind: "if", branches, else_body: elseBody, line: statementLine });
-        i = cursor;
-        break;
-      }
-      continue;
-    }
-
-    const forMatch = entry.text.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+):$/);
-    if (forMatch) {
-      let nextIndex = i + 1;
-      while (nextIndex < lines.length && (!lines[nextIndex].text || lines[nextIndex].text.startsWith("#"))) nextIndex += 1;
-      const next = lines[nextIndex];
-      if (!next || next.indent <= blockIndent) throw new MetricsCompileError("syntax", "for loop requires an indented body", entry.line);
-      const nested = parseStatements(lines, nextIndex, next.indent);
-      body.push({ kind: "for_each", variable: forMatch[1], iterable: parseExpr(forMatch[2], entry.line), body: nested.body, line: entry.line });
-      i = nested.next;
-      continue;
-    }
-
-    const returnMatch = entry.text.match(/^return\s+(.+)$/);
-    if (returnMatch) { body.push({ kind: "return", value: parseExpr(returnMatch[1], entry.line), line: entry.line }); i += 1; continue; }
-    const augMatch = entry.text.match(/^(.+?)\s*\+=\s*(.+)$/);
-    if (augMatch) { body.push({ kind: "aug_assign", target: parseTarget(augMatch[1].trim(), entry.line), op: "+", value: parseExpr(augMatch[2], entry.line), line: entry.line }); i += 1; continue; }
-    const assignMatch = entry.text.match(/^(.+?)\s*=\s*(.+)$/);
-    if (assignMatch) { body.push({ kind: "assign", target: parseTarget(assignMatch[1].trim(), entry.line), value: parseExpr(assignMatch[2], entry.line), line: entry.line }); i += 1; continue; }
-    throw new MetricsCompileError("unsupported-feature", `statement '${entry.text}' is not in ${METRICS_LANGUAGE}`, entry.line);
-  }
-  return { body, next: i };
+  return parseStatementBlock(lines, start, blockIndent, STATEMENTS);
 }
 
 function binaryType(op, left, right, line) {
@@ -688,15 +454,6 @@ function statementsGuaranteeMetricReturn(body) {
   return false;
 }
 
-function intersectAliasSets(sets) {
-  if (!sets.length) return new Set();
-  const out = new Set(sets[0]);
-  for (const value of [...out]) {
-    if (!sets.every((set) => set.has(value))) out.delete(value);
-  }
-  return out;
-}
-
 function intersectAliasMaps(maps) {
   if (!maps.length) return new Map();
   const out = new Map(maps[0]);
@@ -803,7 +560,7 @@ function lowerMetricIterableAliasesWithState(body, initialCollections = new Set(
         continuingAgents.push(elseResult.agentAliases);
       }
       if (continuingCollections.length) {
-        collectionAliases = intersectAliasSets(continuingCollections);
+        collectionAliases = intersectSets(continuingCollections);
         agentAliases = intersectAliasMaps(continuingAgents);
       }
 
