@@ -217,6 +217,12 @@ fn binary(op: &str, left: Value, right: Value, line: Option<usize>) -> Result<Va
         ("*", Value::Vec2(a), Value::Scalar(b)) => Ok(Value::Vec2(a * b)),
         ("/", Value::Scalar(a), Value::Scalar(b)) => Ok(Value::Scalar(a / b)),
         ("/", Value::Vec2(a), Value::Scalar(b)) => Ok(Value::Vec2(a * (1.0 / b))),
+        ("//", Value::Scalar(a), Value::Scalar(b)) => {
+            Ok(Value::Scalar(crate::scalar_ops::floor_divide(a, b)))
+        }
+        ("%", Value::Scalar(a), Value::Scalar(b)) => {
+            Ok(Value::Scalar(crate::scalar_ops::modulo(a, b)))
+        }
         _ => Err(at_line(line, format!("invalid metric operands for '{op}'"))),
     }
 }

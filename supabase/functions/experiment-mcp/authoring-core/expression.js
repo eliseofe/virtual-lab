@@ -236,20 +236,20 @@ export class ExpressionParser {
 }
 
 // The typed expression grammar shared by the Controller and Metrics
-// (python-vlab): boolean and/or/not, one comparison, + - * /, unary -, **
-// (as pow), True/False; no strings, // or %. The language supplies:
+// (python-vlab): boolean and/or/not, one comparison, + - * / // %, unary -,
+// ** (as pow), True/False; no strings. The language supplies:
 //   error(category, message, column)   its error for (category, message)
 //   finiteMessage                      the message for a non-finite constant
 //   identifier(parser, parts)          resolves a dotted path or a call
 export function parseTypedExpression(text, line, { error, finiteMessage, identifier }) {
   const tokens = tokenize(text, {
-    operators: ["**", "<=", ">=", "==", "!=", "<", ">", "+", "-", "*", "/", "(", ")", ",", "."],
+    operators: ["**", "//", "<=", ">=", "==", "!=", "<", ">", "+", "-", "*", "/", "%", "(", ")", ",", "."],
     fail: (_kind, { character, column }) => { throw error("syntax", `unsupported token '${character}'`, column); },
   });
   return new ExpressionParser(tokens, line, {
     start: "or",
     comparisons: ["<", "<=", ">", ">=", "==", "!="],
-    multiplicative: ["*", "/"],
+    multiplicative: ["*", "/", "//", "%"],
     unary: ["-"],
     nodes: {
       binary: (op, left, right) => ({ kind: "binary", op, left, right, line }),

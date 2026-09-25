@@ -1,16 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "The authoring languages now share one translator core, with no change to what anyone can write",
-  "owner_impact": "Nothing changes for authors, in the Lab or through GPT. Before, the four code languages (Initialization, the environment field, Controller and Metrics) each had their own hand-copied tokenizer and expression parser, and Controller and Metrics also had copied statement parsers. They now share one core, with each language's differences stated in one place, and the compilers are about 290 lines shorter. The proof is a new test with 28,059 programs: every program the test suite compiles, plus systematic variants with deleted, swapped and broken tokens and lines, plus each language's programs fed to the others. Every compiler must give exactly the same result, or the same error with the same message, line and column, as before. Planted changes as small as a column off by one, or no longer accepting '1.' as a number, are caught. The AI authoring server (MCP) carries the same core and is redeployed after this release. Test now: optional. Edit an Experiment's Controller or Metrics and introduce an error; the message should be exactly as before.",
+  "outcome": "One operator set in every authoring language: // and % everywhere, and and/or/not in Initialization",
+  "owner_impact": "First release of #577 (one code grammar). Every code artifact now has the same operators. Controller, Metrics and the environment field gain // (floor division) and % (remainder, whose sign follows the divisor as in Python), computed identically in the simulator and in Initialization. Initialization gains and/or/not. As in the Controller and Metrics, both sides of and/or are always evaluated, so random draws never depend on the other side's value. Nothing that worked before changes: the 28,059-case check shows that the only programs whose result changed are ones that were rejected before because they used one of these operators, and the simulator's reference runs are bit-identical. The grammar contract GPT reads is now vlab.authoring/0.10, stating these operators and rules, and the MCP is redeployed with it. Test now: optional. In a Controller, try something like `phase = (step_count // 10) % 2` with a scalar, or `if a and not b:` in Initialization.",
   "next": {
     "kind": "epic_continues",
     "issue": 577,
-    "text": "#577 one code grammar: the same syntax in every code artifact, experimenter-declared roles replacing set_agent_state, and the MCP contract updated in the same ticket. It has not started yet."
+    "text": "#577 release 2: loops over a fixed number range, `for k in range(K)` with a constant K, in the Controller and Metrics. It has not started yet."
   },
-  "close_issue": 576,
   "technical_evidence": [
-    "web/src/authoring-core/{expression,lines,statements}.js; environment, initializer, controller and metrics compilers use them; vendored to the MCP (sync-edge-vendor list, 11 copies).",
-    "authoring-equivalence: 28,059 cases, 0 differences against the golden fingerprints recorded from the unmodified compilers (order-sensitive canonical output, exact diagnostics). Planted changes (message wording, column, dropped operator, lost 'or', number literal form, statement indentation) are caught.",
-    "Browser: full smoke passes; editor and extended-apply A/B byte-identical to the production baseline. 693 tests pass; typecheck clean."
+    "Rust: crates/kernel/src/scalar_ops.rs (floor_divide, modulo); controller, metrics and environment IR accept // and %; new Rust tests; the 5 reference runs are bit-identical natively and on WebAssembly.",
+    "JS: the typed grammar (Controller, Metrics) and the environment field gain // and %, scalar-only in the type rules; Initialization gains and/or/not with boolean operands and eager evaluation. New authoring-operators.test.mjs (6 tests).",
+    "Equivalence: 54 of 28,059 cases changed, every one containing one of the new operators or keywords; each was classified old versus new before the golden file was regenerated.",
+    "Contract vlab.authoring/0.10 adds code_grammar and per-artifact arithmetic operators; MCP server 3.19.0. The database stores the version as text with no value check. 699 tests pass; full browser smoke passes."
   ]
 }

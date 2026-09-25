@@ -84,17 +84,17 @@ function environmentFunction(source) {
 }
 
 // The environment field's expression grammar on the shared core (#576):
-// arithmetic, unary +/- and ** over x, y, constants, config values and
+// arithmetic (including // and %), unary +/- and ** over x, y, constants, config values and
 // scalar intrinsics; no comparisons.
 function parseScalarExpression(text, line, config) {
   const tokens = tokenize(text, {
-    operators: ["**", "+", "-", "*", "/", "(", ")", ",", "."],
+    operators: ["**", "//", "+", "-", "*", "/", "%", "(", ")", ",", "."],
     fail: (_kind, { character }) => { throw new EnvironmentCompileError(`unsupported token '${character}' in environmental_scalar`, line, "unsupported-feature"); },
   });
   return new ExpressionParser(tokens, line, {
     start: "additive",
     comparisons: [],
-    multiplicative: ["*", "/"],
+    multiplicative: ["*", "/", "//", "%"],
     unary: ["+", "-"],
     nodes: {
       binary: (op, left, right) => ({ kind: "binary", op, left, right }),

@@ -19,16 +19,19 @@ function meaningful(source) {
   }).filter((entry) => entry.text);
 }
 
-// Initialization's expression grammar on the shared core (#576): arithmetic
-// including // and %, unary +/-, one comparison, strings; no boolean operators.
+// Initialization's expression grammar on the shared core (#576): boolean
+// and/or/not (#577), arithmetic including // and %, unary +/-, one comparison,
+// strings.
 const INITIALIZER_GRAMMAR = {
-  start: "comparison",
+  start: "or",
   comparisons: ["==", "!=", "<", "<=", ">", ">="],
   multiplicative: ["*", "/", "//", "%"],
   unary: ["+", "-"],
   nodes: {
     binary: (op, left, right, line) => ({ kind: "binary", op, left, right, line }),
     compare: (op, left, right, line) => ({ kind: "binary", op, left, right, line }),
+    bool: (op, left, right, line) => ({ kind: "bool_op", op, left, right, line }),
+    not: (value, line) => ({ kind: "unary", op: "not", value, line }),
     unary: (op, value, line) => ({ kind: "unary", op, value, line }),
     power: (left, right, line) => ({ kind: "binary", op: "**", left, right, line }),
   },
@@ -166,9 +169,24 @@ function binary(op, a, b, line) {
   }
 }
 
+function booleanOperand(op, value, line) {
+  if (typeof value !== "boolean") throw new InitializerCompileError(`'${op}' requires boolean operands`, line);
+  return value;
+}
+
 function evaluate(expr, scope) {
   if (expr.kind === "literal") return expr.value;
-  if (expr.kind === "unary") { const v = evaluate(expr.value, scope); return expr.op === "-" ? -v : +v; }
+  if (expr.kind === "unary") {
+    const v = evaluate(expr.value, scope);
+    if (expr.op === "not") return !booleanOperand("not", v, expr.line);
+    return expr.op === "-" ? -v : +v;
+  }
+  // As in the Controller and Metrics, both sides are always evaluated (#577).
+  if (expr.kind === "bool_op") {
+    const left = booleanOperand(expr.op, evaluate(expr.left, scope), expr.line);
+    const right = booleanOperand(expr.op, evaluate(expr.right, scope), expr.line);
+    return expr.op === "and" ? left && right : left || right;
+  }
   if (expr.kind === "binary") return binary(expr.op, evaluate(expr.left, scope), evaluate(expr.right, scope), expr.line);
   if (expr.kind === "load") {
     if (expr.path === "TAU") return Math.PI * 2;

@@ -48,7 +48,7 @@ fn validate_expression(expression: &Expression) -> Result<(), String> {
             validate_expression(value)?;
         }
         Expression::Binary { op, left, right } => {
-            if !matches!(op.as_str(), "+" | "-" | "*" | "/") {
+            if !matches!(op.as_str(), "+" | "-" | "*" | "/" | "//" | "%") {
                 return Err(format!("unsupported environment binary operator '{op}'"));
             }
             validate_expression(left)?;
@@ -91,6 +91,8 @@ fn evaluate(expression: &Expression, position: Vec2) -> f64 {
                 "-" => left - right,
                 "*" => left * right,
                 "/" => left / right,
+                "//" => crate::scalar_ops::floor_divide(left, right),
+                "%" => crate::scalar_ops::modulo(left, right),
                 _ => unreachable!("validated environment binary operator"),
             }
         }

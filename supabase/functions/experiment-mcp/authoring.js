@@ -18,7 +18,7 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.9",
+  contract_version: "vlab.authoring/0.10",
   experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
@@ -38,6 +38,16 @@ export const AUTHORING_CONTRACT = Object.freeze({
     }),
     capability_parameter_policy: "Additional required runtime/configuration symbols are advertised by implemented capability authoring surfaces rather than frozen into the stable language contract.",
   },
+  // #577 (D-021): one code grammar for Initialization, the environment field,
+  // Controller and Metrics; artifacts differ in the names they may use.
+  code_grammar: {
+    arithmetic_operators: ["+", "-", "*", "/", "//", "%", "**"],
+    comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
+    boolean_operators: ["and", "or", "not"],
+    boolean_literals: ["True", "False"],
+    semantics: "a // b is floor division and a % b takes the sign of the divisor (as in Python); both are scalar-only. and/or/not take boolean operands, and both sides of and/or are always evaluated (random draws on either side are always consumed). while loops are not available in any artifact.",
+    artifact_differences: "Artifacts differ only in their inputs, intrinsics and effects, listed per artifact below.",
+  },
   artifacts: {
     configuration: {
       compiled_version: "vlab.config/0.2",
@@ -51,8 +61,11 @@ export const AUTHORING_CONTRACT = Object.freeze({
       entry: "initialize(config, rng, place)",
       simulator_owned_inputs: ["config", "rng", "place"],
       language_intrinsics: ["abs", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "floor", "ceil", "pow", "min", "max", "range"],
+      arithmetic_operators: ["+", "-", "*", "/", "//", "%", "**"],
+      comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
+      boolean_operators: ["and", "or", "not"],
       exponentiation_operator: "**",
-      optional_environment_scalar_math: "The same standard scalar math intrinsics and exponentiation syntax apply inside environmental_scalar(x, y, config).",
+      optional_environment_scalar_math: "The same standard scalar math intrinsics and arithmetic operators (including // and %) apply inside environmental_scalar(x, y, config), which is a single return expression.",
       constants: ["TAU", "SQRT3_OVER_2"],
       capability_resolution: "Capability-backed initializer calls, member access and optional entries are authorable only when an implemented capability advertises the corresponding Initialization surface."
     },
@@ -68,6 +81,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
         conditionals: ["if", "elif", "else"],
         iteration: "for ... in capability-backed iterable"
       },
+      arithmetic_operators: ["+", "-", "*", "/", "//", "%", "**"],
       language_intrinsics: {
         Vec2: ["scalar", "scalar"],
         dot: ["vec2", "vec2"],
@@ -110,6 +124,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
         conditionals: ["if", "elif", "else"],
         iteration: "for ... in capability-backed snapshot collection"
       },
+      arithmetic_operators: ["+", "-", "*", "/", "//", "%", "**"],
       measurement_phase: {
         id: METRIC_MEASUREMENT_PHASE,
         semantics: "Observe the canonical physical state after one physics integration update and periodic wrapping, at the resulting scientific_time. This freezes the already-existing kernel MetricRuntime hook rather than introducing a new timing convention."

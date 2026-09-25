@@ -137,6 +137,7 @@ function binaryType(op, left, right, line) {
   if (op === "*" && ((left === "scalar" && right === "vec2") || (left === "vec2" && right === "scalar"))) return "vec2";
   if (op === "/" && left === "scalar" && right === "scalar") return "scalar";
   if (op === "/" && left === "vec2" && right === "scalar") return "vec2";
+  if ((op === "//" || op === "%") && left === "scalar" && right === "scalar") return "scalar";
   throw new ControllerCompileError("type", `operator '${op}' cannot combine ${left} and ${right}`, line);
 }
 
