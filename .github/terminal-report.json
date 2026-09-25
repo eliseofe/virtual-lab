@@ -1,14 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Experiment MCP deployment stays manual (no GitHub Action); the roles design replacing set_agent_state is recorded",
-  "owner_impact": "Nothing changes in the Lab or the MCP. As you asked, the automatic MCP deployment job is removed, so there is nothing new to monitor. Any ticket that changes the MCP must now redeploy it through the Supabase connector and verify it before it counts as done. The MCP keeps reporting which code it runs. Your decision on roles is recorded in D-022: exact compositions declared by the experimenter as fractions, counts and one 'rest' role, bound to robots at random or by explicit placement, and checked by the compiler. Your note that humans have no coding guidelines yet is in the roadmap. Test now: not needed.",
+  "outcome": "The authoring languages now share one translator core, with no change to what anyone can write",
+  "owner_impact": "Nothing changes for authors, in the Lab or through GPT. Before, the four code languages (Initialization, the environment field, Controller and Metrics) each had their own hand-copied tokenizer and expression parser, and Controller and Metrics also had copied statement parsers. They now share one core, with each language's differences stated in one place, and the compilers are about 290 lines shorter. The proof is a new test with 28,059 programs: every program the test suite compiles, plus systematic variants with deleted, swapped and broken tokens and lines, plus each language's programs fed to the others. Every compiler must give exactly the same result, or the same error with the same message, line and column, as before. Planted changes as small as a column off by one, or no longer accepting '1.' as a number, are caught. The AI authoring server (MCP) carries the same core and is redeployed after this release. Test now: optional. Edit an Experiment's Controller or Metrics and introduce an error; the message should be exactly as before.",
   "next": {
     "kind": "epic_continues",
-    "issue": 576,
-    "text": "#576 shared translator core: one parser for the authoring languages, with no change to what authors can write. It has not started yet."
+    "issue": 577,
+    "text": "#577 one code grammar: the same syntax in every code artifact, experimenter-declared roles replacing set_agent_state, and the MCP contract updated in the same ticket. It has not started yet."
   },
+  "close_issue": 576,
   "technical_evidence": [
-    "Removed .github/workflows/mcp-deploy.yml and its test; docs/EXPERIMENT_MCP.md Deployment and a DEVELOPMENT_WORKFLOW.md rule describe the manual connector deployment and verification.",
-    "docs/DECISIONS.md D-022 rewritten with the roles design; ROADMAP.md notes future human authoring guidance."
+    "web/src/authoring-core/{expression,lines,statements}.js; environment, initializer, controller and metrics compilers use them; vendored to the MCP (sync-edge-vendor list, 11 copies).",
+    "authoring-equivalence: 28,059 cases, 0 differences against the golden fingerprints recorded from the unmodified compilers (order-sensitive canonical output, exact diagnostics). Planted changes (message wording, column, dropped operator, lost 'or', number literal form, statement indentation) are caught.",
+    "Browser: full smoke passes; editor and extended-apply A/B byte-identical to the production baseline. 693 tests pass; typecheck clean."
   ]
 }
