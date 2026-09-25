@@ -9,6 +9,7 @@ mod environment_ir;
 mod metrics_ir;
 mod neighbour_index;
 mod rng;
+mod scalar_ops;
 pub use adaptive_neighbour_index::{AdaptivePeriodicBvh, PRODUCTION_NEIGHBOUR_STRATEGY};
 pub use controller_ir::IrControllerRuntime;
 pub use environment_ir::EnvironmentRuntime;

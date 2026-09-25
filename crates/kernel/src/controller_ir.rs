@@ -273,7 +273,7 @@ fn validate_expression(
             right,
             line,
         } => {
-            if !matches!(op.as_str(), "+" | "-" | "*" | "/") {
+            if !matches!(op.as_str(), "+" | "-" | "*" | "/" | "//" | "%") {
                 return Err(at_line(
                     *line,
                     format!("unsupported binary operator '{op}'"),
@@ -482,6 +482,8 @@ enum BinaryOp {
     Subtract,
     Multiply,
     Divide,
+    FloorDivide,
+    Modulo,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -805,6 +807,8 @@ fn emit_expression(
                 "-" => BinaryOp::Subtract,
                 "*" => BinaryOp::Multiply,
                 "/" => BinaryOp::Divide,
+                "//" => BinaryOp::FloorDivide,
+                "%" => BinaryOp::Modulo,
                 _ => unreachable!("validated binary operator"),
             };
             ops.push(EvalOp::Binary(op));
@@ -1027,6 +1031,12 @@ fn binary(op: BinaryOp, left: Value, right: Value) -> Value {
         (BinaryOp::Multiply, Value::Vec2(a), Value::Scalar(b)) => Value::Vec2(a * b),
         (BinaryOp::Divide, Value::Scalar(a), Value::Scalar(b)) => Value::Scalar(a / b),
         (BinaryOp::Divide, Value::Vec2(a), Value::Scalar(b)) => Value::Vec2(a * (1.0 / b)),
+        (BinaryOp::FloorDivide, Value::Scalar(a), Value::Scalar(b)) => {
+            Value::Scalar(crate::scalar_ops::floor_divide(a, b))
+        }
+        (BinaryOp::Modulo, Value::Scalar(a), Value::Scalar(b)) => {
+            Value::Scalar(crate::scalar_ops::modulo(a, b))
+        }
         _ => unreachable!("JS compiler preserves controller expression types"),
     }
 }
@@ -1859,6 +1869,31 @@ mod tests {
         }"#;
         assert!(IrControllerRuntime::from_json(invalid, "{}").is_err());
     }
+    #[test]
+    fn floor_division_and_remainder_follow_python_semantics() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Ops","entry":"step",
+          "parameters":{"X":"scalar"},"state":[],
+          "body":[
+            {"kind":"return","value":{"kind":"call","name":"Motion","args":[
+              {"kind":"binary","op":"//","left":{"kind":"load","path":"X"},"right":{"kind":"const","value":2.0}},
+              {"kind":"binary","op":"%","left":{"kind":"unary","op":"-","value":{"kind":"load","path":"X"}},"right":{"kind":"const","value":3.0}}
+            ]}}
+          ]
+        }"#;
+        let mut runtime = compile(ir, r#"{"X":7.0}"#);
+        runtime.reset(1);
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+            references: BTreeMap::new(),
+        };
+        let motion = runtime.step(0, &observation);
+        assert_eq!(motion.forward, 3.0);
+        assert_eq!(motion.turning, 2.0);
+    }
+
     #[test]
     fn piecewise_condition_assigns_branch_local_before_motion() {
         let ir = r#"{
