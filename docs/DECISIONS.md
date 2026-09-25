@@ -110,3 +110,23 @@ This keeps Study origin explicit. Study metric files live directly in the Study 
 ## D-020 — Missing scientific/software capability is explicit
 
 An authorized research AI must not fabricate unsupported simulator behavior. Missing Experiment capability is surfaced through validation; Professor users may create a durable capability request. Professor approval still does not authorize developer implementation until the owner explicitly approves the implementation design/work.
+
+## D-021 — Two authoring grammars: Configuration data and one code grammar
+
+Decided by the owner on 25 September 2026 (details and rationale: `docs/REFACTORING_AUDIT_2026-09-24.md` §9).
+
+- Configuration is data: named values only.
+- Initialization, the environment field function, Controller and Metrics share **one** code grammar: the same statements, expressions, operators and types. `while` is forbidden everywhere, so every program terminates.
+- Artifacts differ only in their **view**, meaning the names in scope and the effects allowed, and the compiler enforces this by scope:
+  - **Initialization** is the experimenter building the world, and the most powerful view.
+  - **The environment field** is a pure function of position and configuration.
+  - **Metrics** is a global, read-only observer.
+  - **Controller** is the robot. It reads only its own sensors, its own private state, its program's constants and parameters, and its own random stream, and it changes only itself. Other agents are reachable only through sensed collections (neighbours), never by index, and never `N`.
+- Loop restrictions protect information, not computation: `for k in range(K)` with a compile-time constant `K` is allowed in every code artifact; collection loops range only over collections in the artifact's view.
+- Every code artifact is statically typed.
+
+## D-022 — Robots are anonymous
+
+Decided by the owner on 25 September 2026, following swarm-robotics practice. A robot has no built-in identity: it cannot read its index, a unique identifier or the swarm size. A robot may draw a random number over a large domain with its own random stream and keep it as a self-generated tag. That is scalable, and it is local knowledge. Internal state may be anything, as long as it is not set globally for a particular robot.
+
+Open, to be settled with the owner: the implemented capability `initialization.per_agent_private_state_assignment` (`set_agent_state(i, name, value)`) lets Initialization set private state on individual robots by index (informed agents and leaders, e.g. Constant Bearing Flocking). It can also be used to hand out unique identities, which D-022 forbids.

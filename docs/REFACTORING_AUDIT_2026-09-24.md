@@ -299,7 +299,7 @@ Of the last 20 pushes to `main` before this audit, 9 were green, 10 red and 1 ca
 
 ## 9. Authoring-language design discussion (25 September 2026) — open, awaiting owner agreement
 
-Status: **under discussion with the owner; no ticket opened, no code changed.** The model-view-controller plan (#560–#569) is complete; this is the next candidate work under #425.
+Status: **design agreed by the owner on 25 September (recorded as `docs/DECISIONS.md` D-021 and D-022); tickets: #575 MCP auto-deployment, then the shared translator core, then grammar unification.** The proposal below is kept as the rationale. The model-view-controller plan (#560–#569) is complete; this is the next candidate work under #425.
 
 ### Findings
 
@@ -312,7 +312,7 @@ Status: **under discussion with the owner; no ticket opened, no code changed.** 
 - The MCP Edge Function runs byte-identical vendored copies of all five compilers (`supabase/functions/experiment-mcp/vendor/`, enforced by the vendor-parity test and `web/scripts/sync-edge-vendor.mjs`).
 - The deployed `experiment-mcp` (version 53) is a one-line stub importing `supabase/functions/experiment-mcp/index.ts` from GitHub at a pinned commit (`baf9406`, #525). `git diff baf9406 main` over the MCP code and the five compilers is empty. The live `read_workspace` contract equals the repository's `MCP_AUTHORING_CONTRACT` exactly.
 - No commit of the refactoring work (#532–#573) touched the MCP, the compilers or the contract.
-- **Deployment path:** the owner connected the Supabase connector (available to sessions started after 25 September). Deploying an MCP change means redeploying the stub with a new pinned commit through the connector's `deploy_edge_function`, then re-running the live-contract comparison. No GitHub secret is needed. Any grammar change must update the web compilers, the vendored copies and the published contract, and redeploy the MCP, in the same ticket.
+- **Deployment path:** see `docs/EXPERIMENT_MCP.md`, Deployment (#575). CI redeploys automatically when the repository secret `SUPABASE_ACCESS_TOKEN` is set. Without it, an agent with the Supabase connector redeploys the stub by hand. Any grammar change must update the web compilers, the vendored copies and the published contract, and redeploy the MCP, in the same ticket.
 
 ### Owner direction (25 September)
 

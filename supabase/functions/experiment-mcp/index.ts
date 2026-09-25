@@ -25,6 +25,11 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const MCP_RESOURCE = `${SUPABASE_URL}/functions/v1/experiment-mcp`
 const AUTHORIZATION_SERVER = `${SUPABASE_URL}/auth/v1`
 const CAPABILITY_REQUEST_INTERFACE = 'vlab.capability-request/11'
+// The deployed function is a stub importing this file from GitHub at a pinned
+// commit (see docs/EXPERIMENT_MCP.md, Deployment), so the module URL names the
+// exact source revision. /health reports it so the Lab and CI can check that
+// the live MCP matches the repository.
+const SOURCE_COMMIT = import.meta.url.match(/\/([0-9a-f]{40})\/supabase\/functions\/experiment-mcp\//)?.[1] ?? null
 
 const PROFESSOR_DISPOSITION_BEHAVIOR = Object.freeze({
   pending: 'Candidate exists and remains unavailable. Reuse it when it covers the need; never duplicate it.',
@@ -1027,6 +1032,7 @@ Deno.serve(async (req: Request) => {
       student_tool_count: MCP_TOOL_COUNT,
       professor_tool_count: MCP_TOOL_COUNT,
       simulator_access: false,
+      source_commit: SOURCE_COMMIT,
     })
   }
 
