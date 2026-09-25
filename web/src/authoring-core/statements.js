@@ -8,6 +8,14 @@
 //   expression(text, line)           its expression parser
 //   target(text, line)               its assignment-target rule
 //   unsupported(text)                the message for any other statement
+// and optionally (#577, Initialization):
+//   bareReturn                       `return` without a value is a statement
+//   identifierTargets                an assignment starts with a plain name, so
+//                                    `f(a == b)` stays a call statement
+//   expressionStatement(text, line)  a statement that is only an expression
+//                                    (a call such as place(...)); returns the
+//                                    expression, or undefined when the text
+//                                    is not one
 
 function skipBlank(lines, index) {
   while (index < lines.length && (!lines[index].text || lines[index].text.startsWith("#"))) index += 1;
@@ -15,7 +23,9 @@ function skipBlank(lines, index) {
 }
 
 export function parseStatementBlock(lines, start, blockIndent, language) {
-  const { error, expression, target, unsupported } = language;
+  const { error, expression, target, unsupported, bareReturn = false, identifierTargets = false, expressionStatement } = language;
+  const augPattern = identifierTargets ? /^([A-Za-z_][A-Za-z0-9_]*)\s*\+=\s*(.+)$/ : /^(.+?)\s*\+=\s*(.+)$/;
+  const assignPattern = identifierTargets ? /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$/ : /^(.+?)\s*=\s*(.+)$/;
   const body = [];
   let i = start;
   while (i < lines.length) {
@@ -80,12 +90,15 @@ export function parseStatementBlock(lines, start, blockIndent, language) {
       continue;
     }
 
+    if (bareReturn && entry.text === "return") { body.push({ kind: "return", value: null, line: entry.line }); i += 1; continue; }
     const returnMatch = entry.text.match(/^return\s+(.+)$/);
     if (returnMatch) { body.push({ kind: "return", value: expression(returnMatch[1], entry.line), line: entry.line }); i += 1; continue; }
-    const augMatch = entry.text.match(/^(.+?)\s*\+=\s*(.+)$/);
+    const augMatch = entry.text.match(augPattern);
     if (augMatch) { body.push({ kind: "aug_assign", target: target(augMatch[1].trim(), entry.line), op: "+", value: expression(augMatch[2], entry.line), line: entry.line }); i += 1; continue; }
-    const assignMatch = entry.text.match(/^(.+?)\s*=\s*(.+)$/);
+    const assignMatch = entry.text.match(assignPattern);
     if (assignMatch) { body.push({ kind: "assign", target: target(assignMatch[1].trim(), entry.line), value: expression(assignMatch[2], entry.line), line: entry.line }); i += 1; continue; }
+    const value = expressionStatement?.(entry.text, entry.line);
+    if (value !== undefined) { body.push({ kind: "expr", value, line: entry.line }); i += 1; continue; }
     throw error("unsupported-feature", unsupported(entry.text), entry.line);
   }
   return { body, next: i };

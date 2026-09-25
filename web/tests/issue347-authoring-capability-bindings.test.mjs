@@ -186,7 +186,7 @@ test("#347 extension routing uses typed diagnostic request classes and never aut
 });
 
 test("#347 current authoring syntax remains intact while concrete robot surfaces live on capabilities", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.11");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.12");
   assert.equal(AUTHORING_CONTRACT.artifacts.initialization.entry, "initialize(config, rng, place)");
   assert.equal(AUTHORING_CONTRACT.artifacts.controller.entry, "step(self, obs)");
   assert.equal(AUTHORING_CONTRACT.artifacts.metrics.language, "python-vlab-metrics/0.1");

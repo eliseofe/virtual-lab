@@ -1,3 +1,4 @@
+import { parseStatementBlock } from "../authoring-core/statements.js";
 import { stripComment } from "../authoring-core/lines.js";
 import { ExpressionParser, tokenize } from "../authoring-core/expression.js";
 import { RNG_DOMAINS, ScientificRng } from "./rng.js";
@@ -66,63 +67,24 @@ function parseExpr(text, line) {
   }).parse();
 }
 
+// Initialization's statements on the shared parser (#577): the same if/for/
+// assignment rules as the Controller and Metrics, plus call statements and a
+// bare return.
+const STATEMENTS = {
+  error: (_category, message, line) => new InitializerCompileError(message, line),
+  expression: (text, line) => parseExpr(text, line),
+  target(text, line) {
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(text)) return text;
+    throw new InitializerCompileError(`assignment target '${text}' is not supported`, line);
+  },
+  unsupported: (text) => `statement '${text}' is not supported`,
+  bareReturn: true,
+  identifierTargets: true,
+  expressionStatement: (text, line) => parseExpr(text, line),
+};
+
 function parseBlock(lines, start, indent) {
-  const body = [];
-  let i = start;
-  while (i < lines.length) {
-    const entry = lines[i];
-    if (entry.indent < indent) break;
-    if (entry.indent > indent) throw new InitializerCompileError("unexpected indentation", entry.line);
-    if (/^(elif\b|else:)/.test(entry.text)) break;
-
-    const forMatch = entry.text.match(/^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+):$/);
-    if (forMatch) {
-      const next = lines[i + 1];
-      if (!next || next.indent <= indent) throw new InitializerCompileError("for loop requires an indented body", entry.line);
-      const nested = parseBlock(lines, i + 1, next.indent);
-      body.push({ kind: "for", variable: forMatch[1], iterable: parseExpr(forMatch[2], entry.line), body: nested.body, line: entry.line });
-      i = nested.next; continue;
-    }
-
-    const ifMatch = entry.text.match(/^if\s+(.+):$/);
-    if (ifMatch) {
-      const next = lines[i + 1];
-      if (!next || next.indent <= indent) throw new InitializerCompileError("if requires an indented body", entry.line);
-      const first = parseBlock(lines, i + 1, next.indent);
-      const branches = [{ condition: parseExpr(ifMatch[1], entry.line), body: first.body, line: entry.line }];
-      i = first.next;
-      let otherwise = null;
-      while (i < lines.length && lines[i].indent === indent) {
-        const elifMatch = lines[i].text.match(/^elif\s+(.+):$/);
-        if (elifMatch) {
-          const branchLine = lines[i]; const child = lines[i + 1];
-          if (!child || child.indent <= indent) throw new InitializerCompileError("elif requires an indented body", branchLine.line);
-          const parsed = parseBlock(lines, i + 1, child.indent);
-          branches.push({ condition: parseExpr(elifMatch[1], branchLine.line), body: parsed.body, line: branchLine.line });
-          i = parsed.next; continue;
-        }
-        if (lines[i].text === "else:") {
-          const branchLine = lines[i]; const child = lines[i + 1];
-          if (!child || child.indent <= indent) throw new InitializerCompileError("else requires an indented body", branchLine.line);
-          const parsed = parseBlock(lines, i + 1, child.indent);
-          otherwise = parsed.body; i = parsed.next;
-        }
-        break;
-      }
-      body.push({ kind: "if", branches, otherwise, line: entry.line });
-      continue;
-    }
-
-    const augMatch = entry.text.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*\+=\s*(.+)$/);
-    if (augMatch) { body.push({ kind: "aug", name: augMatch[1], value: parseExpr(augMatch[2], entry.line), line: entry.line }); i += 1; continue; }
-    const assignMatch = entry.text.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$/);
-    if (assignMatch) { body.push({ kind: "assign", name: assignMatch[1], value: parseExpr(assignMatch[2], entry.line), line: entry.line }); i += 1; continue; }
-    if (entry.text === "return") { body.push({ kind: "return", value: null, line: entry.line }); i += 1; continue; }
-    const returnMatch = entry.text.match(/^return\s+(.+)$/);
-    if (returnMatch) { body.push({ kind: "return", value: parseExpr(returnMatch[1], entry.line), line: entry.line }); i += 1; continue; }
-    body.push({ kind: "expr", value: parseExpr(entry.text, entry.line), line: entry.line }); i += 1;
-  }
-  return { body, next: i };
+  return parseStatementBlock(lines, start, indent, STATEMENTS);
 }
 
 function parseProgram(source) {
@@ -255,19 +217,19 @@ function evaluate(expr, scope) {
 
 function executeBlock(body, scope) {
   for (const statement of body) {
-    if (statement.kind === "assign") scope.locals.set(statement.name, evaluate(statement.value, scope));
-    else if (statement.kind === "aug") {
-      if (!scope.locals.has(statement.name)) throw new InitializerCompileError(`'${statement.name}' must exist before +=`, statement.line);
-      scope.locals.set(statement.name, scope.locals.get(statement.name) + evaluate(statement.value, scope));
+    if (statement.kind === "assign") scope.locals.set(statement.target, evaluate(statement.value, scope));
+    else if (statement.kind === "aug_assign") {
+      if (!scope.locals.has(statement.target)) throw new InitializerCompileError(`'${statement.target}' must exist before +=`, statement.line);
+      scope.locals.set(statement.target, scope.locals.get(statement.target) + evaluate(statement.value, scope));
     } else if (statement.kind === "expr") evaluate(statement.value, scope);
-    else if (statement.kind === "for") {
+    else if (statement.kind === "for_each") {
       const iterable = evaluate(statement.iterable, scope);
       if (!Array.isArray(iterable)) throw new InitializerCompileError("for loop currently requires range(...)", statement.line);
       for (const value of iterable) { scope.locals.set(statement.variable, value); const result = executeBlock(statement.body, scope); if (result?.returned) return result; }
     } else if (statement.kind === "if") {
-      let chosen = statement.otherwise;
+      let chosen = statement.else_body;
       for (const branch of statement.branches) { if (pythonTruthy(evaluate(branch.condition, scope))) { chosen = branch.body; break; } }
-      if (chosen) { const result = executeBlock(chosen, scope); if (result?.returned) return result; }
+      const result = executeBlock(chosen, scope); if (result?.returned) return result;
     } else if (statement.kind === "return") return { returned: true, value: statement.value ? evaluate(statement.value, scope) : null };
   }
   return null;
@@ -283,8 +245,193 @@ function executeFunction(name, args, parent) {
   return result?.value ?? null;
 }
 
+
+// Static type checking of Initialization (#577, D-021), before it runs:
+// the same rules as the Controller and Metrics. A name keeps one type, is
+// assigned before use on every path, conditions are booleans, and calls take
+// the right number and types of arguments. Helper functions are checked for
+// the argument types they are called with, starting from initialize, so code
+// that is never called is only parsed. The evaluator below is unchanged:
+// a program that passes behaves exactly as before.
+const SCALAR_INTRINSICS = new Map([
+  ...["sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "ceil", "floor", "abs"].map((name) => [name, 1]),
+  ["atan2", 2],
+  ["pow", 2],
+]);
+const EFFECT_SIGNATURES = new Map([
+  ["place", ["scalar", "scalar", "scalar", "scalar"]],
+  ["set_agent_state", ["scalar", "string", "scalar"]],
+  ["define_reference", ["string", "scalar", "scalar"]],
+  ["set_agent_reference_sensor", ["scalar", "string", "scalar|none"]],
+]);
+
+function valueType(value) {
+  if (typeof value === "number") return "scalar";
+  if (typeof value === "boolean") return "bool";
+  if (typeof value === "string") return "string";
+  if (value === null || value === undefined) return "none";
+  return "unknown";
+}
+
+function typeError(message, line) {
+  return new InitializerCompileError(message, line);
+}
+
+function checkInitializerTypes(functions, config) {
+  const instances = new Map();
+  const active = new Set();
+
+  function callFunction(name, argTypes, line) {
+    const fn = functions.get(name);
+    if (argTypes.length !== fn.params.length) throw typeError(`${name} expects ${fn.params.length} arguments, got ${argTypes.length}`, line);
+    const key = `${name}(${argTypes.join(",")})`;
+    if (instances.has(key)) return instances.get(key);
+    if (active.has(name)) throw typeError(`recursive call to '${name}' is not supported`, line);
+    active.add(name);
+    const locals = new Map(fn.params.map((param, index) => [param, argTypes[index]]));
+    const returns = new Set();
+    const falls = checkBlock(fn.body, locals, returns);
+    if (falls) returns.add("none");
+    active.delete(name);
+    if (returns.size > 1) throw typeError(`function '${name}' returns different types: ${[...returns].sort().join(", ")}`, fn.line);
+    const result = [...returns][0] ?? "none";
+    instances.set(key, result);
+    return result;
+  }
+
+  // Returns true when execution can continue after the block.
+  function checkBlock(body, locals, returns) {
+    for (const statement of body) {
+      if (statement.kind === "assign") {
+        const type = expressionType(statement.value, locals);
+        const previous = locals.get(statement.target);
+        if (previous && previous !== type) throw typeError(`'${statement.target}' changes type from ${previous} to ${type}`, statement.line);
+        locals.set(statement.target, type);
+      } else if (statement.kind === "aug_assign") {
+        const current = locals.get(statement.target);
+        if (!current) throw typeError(`'${statement.target}' must exist before +=`, statement.line);
+        const result = binaryType("+", current, expressionType(statement.value, locals), statement.line);
+        if (result !== current) throw typeError(`'${statement.target}' changes type from ${current} to ${result}`, statement.line);
+      } else if (statement.kind === "expr") {
+        expressionType(statement.value, locals);
+      } else if (statement.kind === "for_each") {
+        const iterable = expressionType(statement.iterable, locals);
+        if (iterable !== "range") throw typeError("for loop currently requires range(...)", statement.line);
+        const nested = new Map(locals);
+        const previous = nested.get(statement.variable);
+        if (previous && previous !== "scalar") throw typeError(`'${statement.variable}' changes type from ${previous} to scalar`, statement.line);
+        nested.set(statement.variable, "scalar");
+        checkBlock(statement.body, nested, returns);
+        for (const [name, type] of nested) {
+          if (locals.has(name) && locals.get(name) !== type) throw typeError(`loop changes '${name}' type`, statement.line);
+        }
+      } else if (statement.kind === "if") {
+        const continuing = [];
+        for (const branch of statement.branches) {
+          const condition = expressionType(branch.condition, locals);
+          if (condition !== "bool") throw typeError(`if/elif condition must be bool, got ${condition}`, branch.line);
+          const nested = new Map(locals);
+          if (checkBlock(branch.body, nested, returns)) continuing.push(nested);
+        }
+        const nested = new Map(locals);
+        if (checkBlock(statement.else_body, nested, returns)) continuing.push(nested);
+        if (!continuing.length) return false;
+        // Names assigned on every continuing path, with one type, stay defined.
+        for (const [name, type] of continuing[0]) {
+          if (locals.has(name)) continue;
+          if (continuing.every((scope) => scope.get(name) === type)) locals.set(name, type);
+        }
+      } else if (statement.kind === "return") {
+        returns.add(statement.value ? expressionType(statement.value, locals) : "none");
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function binaryType(op, left, right, line) {
+    if (left === "scalar" && right === "scalar") return "scalar";
+    if (op === "+" && left === "string" && right === "string") return "string";
+    throw typeError(`operator '${op}' cannot combine ${left} and ${right}`, line);
+  }
+
+  function expressionType(expr, locals) {
+    if (expr.kind === "literal") return valueType(expr.value);
+    if (expr.kind === "unary") {
+      const type = expressionType(expr.value, locals);
+      if (expr.op === "not") {
+        if (type !== "bool") throw typeError(`'not' requires bool, got ${type}`, expr.line);
+        return "bool";
+      }
+      if (type !== "scalar") throw typeError(`unary '${expr.op}' cannot apply to ${type}`, expr.line);
+      return "scalar";
+    }
+    if (expr.kind === "bool_op") {
+      for (const side of [expr.left, expr.right]) {
+        const type = expressionType(side, locals);
+        if (type !== "bool") throw typeError(`'${expr.op}' requires bool, got ${type}`, expr.line);
+      }
+      return "bool";
+    }
+    if (expr.kind === "binary") {
+      const left = expressionType(expr.left, locals);
+      const right = expressionType(expr.right, locals);
+      if (["==", "!="].includes(expr.op)) {
+        if (left !== right && left !== "none" && right !== "none") throw typeError(`'${expr.op}' cannot compare ${left} and ${right}`, expr.line);
+        return "bool";
+      }
+      if (["<", "<=", ">", ">="].includes(expr.op)) {
+        if (left !== "scalar" || right !== "scalar") throw typeError(`'${expr.op}' cannot compare ${left} and ${right}`, expr.line);
+        return "bool";
+      }
+      return binaryType(expr.op, left, right, expr.line);
+    }
+    if (expr.kind === "load") {
+      if (expr.path === "TAU" || expr.path === "SQRT3_OVER_2") return "scalar";
+      if (expr.path === "True" || expr.path === "False") return "bool";
+      if (expr.path === "None") return "none";
+      if (expr.path.startsWith("config.")) {
+        const name = expr.path.slice(7);
+        if (!Object.prototype.hasOwnProperty.call(config.values, name)) throw typeError(`unknown config parameter '${name}'`, expr.line);
+        return valueType(config.values[name]);
+      }
+      if (locals.has(expr.path)) return locals.get(expr.path);
+      if (expr.path === "config" || expr.path === "rng" || expr.path === "place") return expr.path;
+      throw typeError(`unknown identifier '${expr.path}'`, expr.line);
+    }
+    if (expr.kind === "call") {
+      const args = expr.args.map((arg) => expressionType(arg, locals));
+      const expect = (types) => {
+        if (args.length !== types.length) throw typeError(`${expr.path} expects ${types.length} arguments, got ${args.length}`, expr.line);
+        types.forEach((type, index) => {
+          if (!type.split("|").includes(args[index])) throw typeError(`${expr.path} argument ${index + 1} must be ${type.replace("|", " or ")}, got ${args[index]}`, expr.line);
+        });
+      };
+      if (SCALAR_INTRINSICS.has(expr.path)) { expect(Array(SCALAR_INTRINSICS.get(expr.path)).fill("scalar")); return "scalar"; }
+      if (expr.path === "min" || expr.path === "max") {
+        if (!args.length) throw typeError(`${expr.path} expects at least one argument`, expr.line);
+        expect(Array(args.length).fill("scalar"));
+        return "scalar";
+      }
+      if (expr.path === "range") {
+        if (args.length < 1 || args.length > 3) throw typeError("range expects 1, 2 or 3 arguments", expr.line);
+        expect(Array(args.length).fill("scalar"));
+        return "range";
+      }
+      if (expr.path === "rng.uniform") { expect(["scalar", "scalar"]); return "scalar"; }
+      if (EFFECT_SIGNATURES.has(expr.path)) { expect(EFFECT_SIGNATURES.get(expr.path)); return "none"; }
+      if (functions.has(expr.path)) return callFunction(expr.path, args, expr.line);
+      throw typeError(`unsupported call '${expr.path}'`, expr.line);
+    }
+    throw typeError(`unknown expression node '${expr.kind}'`, expr.line);
+  }
+
+  callFunction("initialize", ["config", "rng", "place"], functions.get("initialize").line);
+}
+
 export function compileInitializer(source, config) {
   const functions = parseProgram(source);
+  checkInitializerTypes(functions, config);
   const n = config.values.N;
   const seed = config.values.SEED;
   if (!Number.isInteger(n) || n <= 0) throw new InitializerCompileError("N must be a positive integer");

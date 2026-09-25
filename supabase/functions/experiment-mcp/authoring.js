@@ -18,7 +18,7 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.11",
+  contract_version: "vlab.authoring/0.12",
   experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
@@ -48,6 +48,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
     range_loops: "for NAME in range(stop), range(start, stop) or range(start, stop, step), as in Python. In the Controller and Metrics every argument is a run constant (numbers and parameters combined with arithmetic) whose value must be an integer, with a nonzero step; the loop variable is a scalar visible only inside the loop. range(...) is only a loop iterable.",
     semantics: "a // b is floor division and a % b takes the sign of the divisor (as in Python); both are scalar-only. and/or/not take boolean operands, and both sides of and/or are always evaluated (random draws on either side are always consumed). while loops are not available in any artifact.",
     artifact_differences: "Artifacts differ only in their inputs, intrinsics and effects, listed per artifact below.",
+    static_checking: "Every code artifact is type-checked before it runs: a name keeps one type and must be assigned before use on every path, if/elif conditions are booleans, and calls take the right number and types of arguments. In Initialization this includes branches and helper functions a particular run would not reach; helper functions are checked for the argument types they are called with, and recursion is not supported.",
   },
   artifacts: {
     configuration: {
