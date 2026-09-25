@@ -57,6 +57,11 @@ const PRIVATE_SCALAR_STATE_ENABLED = CONTROLLER_CAPABILITY_SURFACES.some(
   (surface) => surface.kind === "private_state" && surface.value_type === "scalar",
 );
 
+// Configuration values that describe the world or the experiment rather than
+// the robot (#577, D-022). They stay supplied to the simulator (Metrics may
+// read them) but a Controller cannot name them.
+export const HIDDEN_FROM_ROBOTS = new Set(["N", "ARENA_SIZE", "EXPERIMENT_DURATION"]);
+
 const CALL_SIGNATURES = {
   ...LANGUAGE_CALL_SIGNATURES,
   ...CAPABILITY_CALL_SIGNATURES,
@@ -71,7 +76,7 @@ export function controllerCompletionItems({ parameters = {}, references = [] } =
     ...Object.keys(CALL_SIGNATURES).map((value) => ({ value, caption: value, score: 900, meta: "supported function" })),
     ...[...OBSERVATION_TYPES.keys()].map((value) => ({ value, caption: value, score: 1000, meta: "observation" })),
     ...referenceItems,
-    ...Object.keys(parameters).map((value) => ({ value, caption: value, score: 800, meta: "parameter" })),
+    ...Object.keys(parameters).filter((value) => !HIDDEN_FROM_ROBOTS.has(value)).map((value) => ({ value, caption: value, score: 800, meta: "parameter" })),
   ];
   return [...new Map(items.map((item) => [item.value, item])).values()];
 }
@@ -213,7 +218,12 @@ function inferExpression(expr, scope) {
       throw new ControllerCompileError("unsupported-capability", `controller capability surface '${expr.path}' is not implemented`, expr.line);
     }
     if (scope.locals.has(expr.path)) return scope.locals.get(expr.path);
-    if (scope.parameters.has(expr.path)) return scope.parameters.get(expr.path);
+    if (scope.parameters.has(expr.path)) {
+      if (HIDDEN_FROM_ROBOTS.has(expr.path)) {
+        throw new ControllerCompileError("forbidden-capability", `'${expr.path}' is not available to robots: a robot knows only its own sensors and state, not the swarm size, the arena or the run length (D-022)`, expr.line);
+      }
+      return scope.parameters.get(expr.path);
+    }
     if (SECURITY_FORBIDDEN_ROOTS.has(expr.path)) {
       throw new ControllerCompileError("forbidden-capability", `'${expr.path}' is outside the controller security boundary`, expr.line);
     }

@@ -19,6 +19,9 @@ action = agent.step(observation)
 - The controller returns an action; it does not directly update world/physical state.
 - The controller has no direct reference to global world state, the global agent collection, host RNG/seed, arbitrary clock, network, filesystem or simulator object.
 - Global position is not a robotics controller observation capability unless the owner explicitly changes that gatekeeper decision.
+- **Locality (D-021, #577).** A controller's decision may depend only on its own observation, its own private state, its program's constants and parameters, and its own random stream. Other agents are reachable only through what its sensors report, never by index.
+- **Anonymity (D-022, #577).** An agent has no identity: it cannot read its index, a unique identifier, the swarm size (`N`), the arena (`ARENA_SIZE`) or the run length (`EXPERIMENT_DURATION`). It may sample random values with its own stream and adopt them, for example as a self-generated tag.
+- **Heterogeneity is a composition, not an assignment.** The experimenter (Initialization) declares roles with exact sizes, given as a fraction of N, a count, or the rest. Roles are bound to bodies by a seeded uniform permutation or by explicit placement. An agent receives only its role's starting private-state values; no one sets state on an individual agent. The exact counts, and the seeded deal, keep compositions reproducible, with no run-to-run fluctuation in their sizes.
 
 ## Randomness contract
 

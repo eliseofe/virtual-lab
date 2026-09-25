@@ -92,11 +92,16 @@ export const REFERENCE_EXPERIMENTS = Object.freeze([
     ticks: 500,
     artifacts: {
       configuration: `N = 5\n${smallRuntime}SENSOR_NOISE = 0.0\n`,
+      // #577: roles with explicit placement reproduce the former per-index
+      // set_agent_state assignment exactly (same compiled kernel input).
       initialization: `def initialize(config, rng, place):
+    role("lead", count=2, placement="explicit", role=1.0)
+    role("other", rest=True, placement="explicit")
     for i in range(config.N):
-        place(i, i * 1.0, 0.0, 0.0)
         if i < 2:
-            set_agent_state(i, "role", 1.0)
+            place(i, i * 1.0, 0.0, 0.0, role="lead")
+        else:
+            place(i, i * 1.0, 0.0, 0.0, role="other")
 `,
       controller: `class Stochastic(Agent):
     role = 0.0

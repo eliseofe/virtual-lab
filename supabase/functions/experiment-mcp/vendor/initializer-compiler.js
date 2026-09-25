@@ -40,7 +40,7 @@ const INITIALIZER_GRAMMAR = {
 
 function parseExpr(text, line) {
   const tokens = tokenize(text, {
-    operators: ["**", "//", "==", "!=", "<=", ">=", "+", "-", "*", "/", "%", "(", ")", ",", ".", "<", ">"],
+    operators: ["**", "//", "==", "!=", "<=", ">=", "+", "-", "*", "/", "%", "(", ")", ",", ".", "<", ">", "="],
     strings: true,
     fail: (kind, detail) => {
       throw new InitializerCompileError(kind === "unterminated" ? "unterminated string literal" : `unsupported token '${detail.character}'`, line);
@@ -61,7 +61,10 @@ function parseExpr(text, line) {
     },
     identifier(parser, first) {
       const path = parser.dotted(first).join(".");
-      if (parser.peek("(")) return { kind: "call", path, args: parser.callArguments(), line };
+      if (parser.peek("(")) {
+        const { args, keywords } = parser.callArgumentsWithKeywords();
+        return keywords.length ? { kind: "call", path, args, keywords, line } : { kind: "call", path, args, line };
+      }
       return { kind: "load", path, line };
     },
   }).parse();
@@ -169,6 +172,10 @@ function evaluate(expr, scope) {
   }
   if (expr.kind === "call") {
     const args = expr.args.map((arg) => evaluate(arg, scope));
+    const keywords = Object.fromEntries((expr.keywords ?? []).map((keyword) => [keyword.name, evaluate(keyword.value, scope)]));
+    if (expr.keywords?.length && expr.path !== "role" && expr.path !== "place") {
+      throw new InitializerCompileError(`${expr.path} does not take keyword arguments`, expr.line);
+    }
     if (expr.path === "sqrt") return Math.sqrt(args[0]);
     if (expr.path === "exp") return Math.exp(args[0]);
     if (expr.path === "log") return Math.log(args[0]);
@@ -205,8 +212,10 @@ function evaluate(expr, scope) {
         throw new InitializerCompileError(error instanceof Error ? error.message : String(error), expr.line);
       }
     }
-    if (expr.path === "place") { scope.place(...args); return null; }
-    if (expr.path === "set_agent_state") { scope.setAgentState(...args); return null; }
+    if (expr.path === "place") { scope.place(...args, keywords.role ?? null, expr.line); return null; }
+    if (expr.path === "role") { scope.declareRole(args, keywords, expr.line); return null; }
+    if (expr.path === "role_count") return scope.roleCount(args, expr.line);
+    if (expr.path === "set_agent_state") throw new InitializerCompileError(SET_AGENT_STATE_RETIRED, expr.line);
     if (expr.path === "define_reference") { scope.defineReference(...args); return null; }
     if (expr.path === "set_agent_reference_sensor") { scope.setAgentReferenceSensor(...args); return null; }
     if (scope.functions.has(expr.path)) return executeFunction(expr.path, args, scope);
@@ -260,7 +269,6 @@ const SCALAR_INTRINSICS = new Map([
 ]);
 const EFFECT_SIGNATURES = new Map([
   ["place", ["scalar", "scalar", "scalar", "scalar"]],
-  ["set_agent_state", ["scalar", "string", "scalar"]],
   ["define_reference", ["string", "scalar", "scalar"]],
   ["set_agent_reference_sensor", ["scalar", "string", "scalar|none"]],
 ]);
@@ -401,6 +409,30 @@ function checkInitializerTypes(functions, config) {
     }
     if (expr.kind === "call") {
       const args = expr.args.map((arg) => expressionType(arg, locals));
+      const keywords = new Map((expr.keywords ?? []).map((keyword) => [keyword.name, expressionType(keyword.value, locals)]));
+      const keywordTypes = (allowed) => {
+        for (const [name, type] of keywords) {
+          const expected = allowed(name);
+          if (!expected) throw typeError(`${expr.path} does not take keyword argument '${name}'`, expr.line);
+          if (type !== expected) throw typeError(`${expr.path} keyword '${name}' must be ${expected}, got ${type}`, expr.line);
+        }
+      };
+      if (expr.path === "set_agent_state") throw typeError(SET_AGENT_STATE_RETIRED, expr.line);
+      if (expr.path === "role") {
+        keywordTypes((name) => ({ fraction: "scalar", count: "scalar", rest: "bool", placement: "string" })[name] ?? "scalar");
+      } else if (expr.path === "place") {
+        keywordTypes((name) => (name === "role" ? "string" : null));
+      } else if (keywords.size) {
+        throw typeError(`${expr.path} does not take keyword arguments`, expr.line);
+      }
+      if (expr.path === "role") {
+        if (args.length !== 1 || args[0] !== "string") throw typeError("role expects one name string, e.g. role(\"informed\", fraction=0.1)", expr.line);
+        return "none";
+      }
+      if (expr.path === "role_count") {
+        if (args.length !== 1 || args[0] !== "string") throw typeError("role_count expects one role name string", expr.line);
+        return "scalar";
+      }
       const expect = (types) => {
         if (args.length !== types.length) throw typeError(`${expr.path} expects ${types.length} arguments, got ${args.length}`, expr.line);
         types.forEach((type, index) => {
@@ -429,6 +461,141 @@ function checkInitializerTypes(functions, config) {
   callFunction("initialize", ["config", "rng", "place"], functions.get("initialize").line);
 }
 
+
+// Roles (#577, D-022): heterogeneity is an exact composition declared by the
+// experimenter. No one sets state on an individual robot; a robot receives
+// only its role's starting values.
+//
+//   role("informed", fraction=config.RHO, informed=1.0)     round(fraction * N) members
+//   role("leader", count=1, placement="explicit", leader=1.0)
+//   role("uninformed", rest=True, informed=0.0)              whatever remains
+//
+// fraction, count, rest and placement are reserved; every other keyword is a
+// starting private-state value. Random roles are dealt to the bodies placed
+// without role= by a uniform random permutation from initialization stream 1,
+// so declaring roles never shifts placement draws (stream 0). Explicit roles
+// are placed with place(i, x, y, heading, role="leader"); each must receive
+// exactly its count. Roles are declared before any place() or role_count().
+const SET_AGENT_STATE_RETIRED = "set_agent_state was retired (#577): declare roles with role(name, fraction=... | count=... | rest=True, <state>=value)";
+const ROLE_RESERVED = new Set(["fraction", "count", "rest", "placement"]);
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function randomIndex(rng, bound) {
+  // Unbiased integer in [0, bound) by rejection sampling on 64-bit draws.
+  const range = BigInt(bound);
+  const limit = ((1n << 64n) / range) * range;
+  for (;;) {
+    const draw = rng.nextU64();
+    if (draw < limit) return Number(draw % range);
+  }
+}
+
+function createRoles(n, seed) {
+  const declared = new Map();
+  const explicitPlacements = new Map();
+  const unassigned = [];
+  const bodyRole = new Array(n).fill(null);
+  let closed = false;
+  let counts = null;
+
+  function resolve(line) {
+    if (counts) return counts;
+    counts = new Map();
+    let used = 0;
+    let rest = null;
+    for (const role of declared.values()) {
+      if (role.rest) { rest = role; continue; }
+      const count = role.fraction !== undefined ? Math.round(role.fraction * n) : role.count;
+      counts.set(role.name, count);
+      used += count;
+    }
+    if (rest) {
+      if (used > n) throw new InitializerCompileError(`roles ask for ${used} robots but N is ${n}`, line);
+      counts.set(rest.name, n - used);
+    } else if (declared.size && used !== n) {
+      throw new InitializerCompileError(`roles account for ${used} robots but N is ${n}; mark one role rest=True`, line);
+    }
+    return counts;
+  }
+
+  return {
+    close() { closed = true; },
+    declare(args, keywords, line) {
+      if (closed) throw new InitializerCompileError("declare every role before the first place(...) or role_count(...)", line);
+      const [name] = args;
+      if (args.length !== 1 || typeof name !== "string" || !IDENTIFIER.test(name)) throw new InitializerCompileError("role expects one name string, e.g. role(\"informed\", fraction=0.1)", line);
+      if (declared.has(name)) throw new InitializerCompileError(`role '${name}' was declared more than once`, line);
+      const sizes = ["fraction", "count", "rest"].filter((key) => keywords[key] !== undefined);
+      if (sizes.length !== 1) throw new InitializerCompileError(`role '${name}' needs exactly one of fraction=, count= or rest=True`, line);
+      const role = { name, placement: keywords.placement ?? "random", state: {} };
+      if (keywords.fraction !== undefined) {
+        if (typeof keywords.fraction !== "number" || !(keywords.fraction >= 0 && keywords.fraction <= 1)) throw new InitializerCompileError(`role '${name}' fraction must be between 0 and 1`, line);
+        role.fraction = keywords.fraction;
+      }
+      if (keywords.count !== undefined) {
+        if (!Number.isInteger(keywords.count) || keywords.count < 0) throw new InitializerCompileError(`role '${name}' count must be a non-negative integer`, line);
+        role.count = keywords.count;
+      }
+      if (keywords.rest !== undefined) {
+        if (keywords.rest !== true) throw new InitializerCompileError(`role '${name}' rest must be True`, line);
+        if ([...declared.values()].some((other) => other.rest)) throw new InitializerCompileError("only one role may be rest=True", line);
+        role.rest = true;
+      }
+      if (role.placement !== "random" && role.placement !== "explicit") throw new InitializerCompileError(`role '${name}' placement must be "random" or "explicit"`, line);
+      for (const [key, value] of Object.entries(keywords)) {
+        if (ROLE_RESERVED.has(key)) continue;
+        if (typeof value !== "number" || !Number.isFinite(value)) throw new InitializerCompileError(`role '${name}' state '${key}' must be a finite number`, line);
+        role.state[key] = value;
+      }
+      declared.set(name, role);
+    },
+    count(args, line) {
+      closed = true;
+      const [name] = args;
+      if (args.length !== 1 || !declared.has(name)) throw new InitializerCompileError(`role_count expects the name of a declared role, got ${JSON.stringify(name)}`, line);
+      return resolve(line).get(name);
+    },
+    placed(index, name, line) {
+      if (name === null) { unassigned.push(index); return; }
+      const role = declared.get(name);
+      if (!role) throw new InitializerCompileError(`place names undeclared role '${name}'`, line);
+      if (role.placement !== "explicit") throw new InitializerCompileError(`role '${name}' is dealt at random; place its members without role=, or declare it placement="explicit"`, line);
+      explicitPlacements.set(name, (explicitPlacements.get(name) ?? 0) + 1);
+      bodyRole[index] = name;
+    },
+    // After initialize(): check the composition, deal random roles and apply
+    // each role's starting state. Returns [{ name, count, placement }].
+    deal(privateState) {
+      if (!declared.size) return [];
+      const resolved = resolve(null);
+      for (const role of declared.values()) {
+        if (role.placement !== "explicit") continue;
+        const placed = explicitPlacements.get(role.name) ?? 0;
+        if (placed !== resolved.get(role.name)) {
+          throw new InitializerCompileError(`role '${role.name}' has ${resolved.get(role.name)} members but ${placed} were placed with role="${role.name}"`);
+        }
+      }
+      const pool = [];
+      for (const role of declared.values()) {
+        if (role.placement === "random") for (let k = 0; k < resolved.get(role.name); k += 1) pool.push(role.name);
+      }
+      if (pool.length !== unassigned.length) {
+        throw new InitializerCompileError(`${unassigned.length} robots were placed without a role, but the random roles have ${pool.length} members`);
+      }
+      const dealer = ScientificRng.forDomain(seed, RNG_DOMAINS.initialization, 1);
+      for (let k = pool.length - 1; k > 0; k -= 1) {
+        const j = randomIndex(dealer, k + 1);
+        [pool[k], pool[j]] = [pool[j], pool[k]];
+      }
+      unassigned.forEach((index, k) => { bodyRole[index] = pool[k]; });
+      bodyRole.forEach((name, index) => {
+        for (const [key, value] of Object.entries(declared.get(name).state)) privateState[index].set(key, value);
+      });
+      return [...declared.values()].map((role) => ({ name: role.name, count: resolved.get(role.name), placement: role.placement }));
+    },
+  };
+}
+
 export function compileInitializer(source, config) {
   const functions = parseProgram(source);
   checkInitializerTypes(functions, config);
@@ -445,18 +612,14 @@ export function compileInitializer(source, config) {
   const privateState = Array.from({ length: n }, () => new Map());
   const references = new Map();
   const referenceSensors = Array.from({ length: n }, () => new Map());
-  const place = (index, x, y, heading) => {
+  const roles = createRoles(n, seed);
+  const place = (index, x, y, heading, role = null, line = null) => {
+    roles.close();
     if (!Number.isInteger(index) || index < 0 || index >= n) throw new InitializerCompileError(`place index ${index} is outside [0, N)`);
     if ([x, y, heading].some((value) => typeof value !== "number" || !Number.isFinite(value))) throw new InitializerCompileError("place coordinates and heading must be finite numbers");
     if (state[index] !== undefined) throw new InitializerCompileError(`agent ${index} was placed more than once`);
     state[index] = { x, y, heading };
-  };
-  const setAgentState = (index, name, value) => {
-    if (!Number.isInteger(index) || index < 0 || index >= n) throw new InitializerCompileError(`set_agent_state index ${index} is outside [0, N)`);
-    if (typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new InitializerCompileError("set_agent_state field name must be an identifier string");
-    if (typeof value !== "number" || !Number.isFinite(value)) throw new InitializerCompileError("set_agent_state value must be a finite scalar");
-    if (privateState[index].has(name)) throw new InitializerCompileError(`agent ${index} private state '${name}' was assigned more than once`);
-    privateState[index].set(name, value);
+    roles.placed(index, role, line);
   };
   const defineReference = (name, x, y) => {
     if (typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
@@ -492,7 +655,8 @@ export function compileInitializer(source, config) {
     config,
     rng,
     place,
-    setAgentState,
+    declareRole: roles.declare,
+    roleCount: roles.count,
     defineReference,
     setAgentReferenceSensor,
     locals: new Map(),
@@ -507,6 +671,7 @@ export function compileInitializer(source, config) {
       }
     }
   }
+  const composition = roles.deal(privateState);
   const compiledState = state.map((agent, index) => privateState[index].size
     ? { ...agent, private_state: Object.fromEntries(privateState[index]) }
     : agent);
@@ -526,6 +691,7 @@ export function compileInitializer(source, config) {
     method: String(config.values.INITIALIZATION_METHOD ?? ""),
     state: compiledState,
     world_references: worldReferences,
+    ...(composition.length ? { roles: composition } : {}),
   };
 }
 

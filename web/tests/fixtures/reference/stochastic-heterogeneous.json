@@ -56,7 +56,19 @@
         "schema": "vlab.world-references/0.1",
         "references": [],
         "sensors": []
-      }
+      },
+      "roles": [
+        {
+          "name": "lead",
+          "count": 2,
+          "placement": "explicit"
+        },
+        {
+          "name": "other",
+          "count": 3,
+          "placement": "explicit"
+        }
+      ]
     },
     "environment": null,
     "controller": {

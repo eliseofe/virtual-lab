@@ -78,7 +78,7 @@ test("#374 candidate identity survives request lifecycle while implementation su
 
 test("#374 versions the structured candidate connector without changing authoring language", () => {
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/11'/);
-  assert.match(versions, /MCP_SERVER_VERSION = '3\.21\.0'/);
+  assert.match(versions, /MCP_SERVER_VERSION = '3\.22\.0'/);
   assert.match(versions, /MCP_INTERFACE_VERSION = '17'/);
-  assert.match(versions, /contract_version: 'vlab\.authoring\/0\.12'/);
+  assert.match(versions, /contract_version: 'vlab\.authoring\/0\.13'/);
 });
