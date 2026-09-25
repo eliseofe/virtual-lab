@@ -55,10 +55,37 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
         artifact: "initialization",
         kind: "intrinsic",
         symbol: "place",
-        syntax: "place(i, x, y, heading) or place(i, x, y, heading, role=\"name\") for a role declared placement=\"explicit\"",
-        signature: { args: ["integer", "scalar", "scalar", "scalar"], keywords: { role: "string" }, result: "void" },
+        syntax: "place(i, x, y, heading) or place(i, x, y, heading, group=\"name\") for a group declared placement=\"explicit\"",
+        signature: { args: ["integer", "scalar", "scalar", "scalar"], keywords: { group: "string" }, result: "void" },
       },
     ],
+  }),
+  freezeBinding({
+    canonical_capability_id: "e7be7240-af33-4f44-9e57-17eccf4a861b",
+    capability_key: "initialization.swarm_groups",
+    surfaces: [
+      // #577 (D-023): WHO differs. An exact partition of the swarm declared by
+      // the experimenter; robot properties attach to groups elsewhere.
+      {
+        artifact: "initialization",
+        kind: "intrinsic",
+        symbol: "group",
+        syntax: "group(\"name\", fraction=f | count=k | rest=True, placement=\"random\" | \"explicit\", partition=\"name\")",
+        signature: {
+          args: ["string"],
+          keywords: { fraction: "scalar", count: "integer", rest: "bool", placement: "string", partition: "string" },
+          result: "void",
+        },
+      },
+      {
+        artifact: "initialization",
+        kind: "intrinsic",
+        symbol: "group_count",
+        syntax: "group_count(\"name\")",
+        signature: { args: ["string"], result: "integer" },
+      },
+    ],
+    requires: ["53362857-5650-499c-b45c-b95e6c4af13d"],
   }),
   freezeBinding({
     canonical_capability_id: "0bee68fe-cb87-4d19-a51e-fa3602b79ed4",
@@ -130,28 +157,17 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
     canonical_capability_id: "25ee37e5-ba59-4e8a-9768-a5604e2501b5",
     capability_key: "initialization.per_agent_private_state_assignment",
     surfaces: [
-      // #577 (D-022): heterogeneity is an exact composition of roles declared
-      // by the experimenter; no one sets state on an individual robot.
+      // #577 (D-023): starting private state is attached to a group; no one
+      // sets state on an individual robot.
       {
         artifact: "initialization",
         kind: "intrinsic",
-        symbol: "role",
-        syntax: "role(\"name\", fraction=f | count=k | rest=True, placement=\"random\" | \"explicit\", <state_name>=value, ...)",
-        signature: {
-          args: ["string"],
-          keywords: { fraction: "scalar", count: "integer", rest: "bool", placement: "string", "<state_name>": "scalar" },
-          result: "void",
-        },
-      },
-      {
-        artifact: "initialization",
-        kind: "intrinsic",
-        symbol: "role_count",
-        syntax: "role_count(\"name\")",
-        signature: { args: ["string"], result: "integer" },
+        symbol: "set_state",
+        syntax: "set_state(\"group\", <state_name>=value, ...)",
+        signature: { args: ["string"], keywords: { "<state_name>": "scalar" }, result: "void" },
       },
     ],
-    requires: ["624eb86c-65ee-4a15-abd4-9fd331c55956"],
+    requires: ["624eb86c-65ee-4a15-abd4-9fd331c55956", "e7be7240-af33-4f44-9e57-17eccf4a861b"],
   }),
   freezeBinding({
     canonical_capability_id: "59d44d30-e5ca-43eb-b648-d784ee1d8ac1",
@@ -220,8 +236,9 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
       {
         artifact: "initialization",
         kind: "intrinsic",
-        symbol: "set_agent_reference_sensor",
-        syntax: "set_agent_reference_sensor(agent_index, name, max_range)",
+        symbol: "equip",
+        syntax: "equip(\"group\", \"reference\", range=r | None), or equip(\"all\", \"reference\") for every robot",
+        signature: { args: ["string", "string"], keywords: { range: "scalar|none" }, result: "void" },
       },
       {
         artifact: "controller",
@@ -242,7 +259,7 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
         value_type: "vec2",
       },
     ],
-    requires: ["9a3a3034-a268-4c14-afbc-48325f3998ae"],
+    requires: ["9a3a3034-a268-4c14-afbc-48325f3998ae", "e7be7240-af33-4f44-9e57-17eccf4a861b"],
   }),
   freezeBinding({
     canonical_capability_id: "c52df915-e739-4de8-ad85-a3b15886d025",

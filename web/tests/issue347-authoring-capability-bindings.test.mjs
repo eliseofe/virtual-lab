@@ -61,7 +61,7 @@ function implementedRegistryRows(sql) {
 test("#347 authoring bindings preserve the frozen registry and reference later canonical additions explicitly", () => {
   const rows = implementedRegistryRows(registryMigration);
   assert.equal(rows.length, 11, "the historical registry migration remains frozen");
-  assert.equal(CANONICAL_CAPABILITY_BINDINGS.length, 14);
+  assert.equal(CANONICAL_CAPABILITY_BINDINGS.length, 15);
 
   const byId = new Map(rows.map((row) => [row.id, row.key]));
   const ids = new Set();
@@ -76,6 +76,7 @@ test("#347 authoring bindings preserve the frozen registry and reference later c
       ["initialization.per_agent_private_state_assignment", "25ee37e5-ba59-4e8a-9768-a5604e2501b5"],
       ["controller.stochastic_distributions", "1c8ae3f7-15bd-4d01-b320-6ca166989d22"],
       ["observation.named_reference_relative_position", "1fbe59fb-79f3-48f7-9500-16557297ea0a"],
+      ["initialization.swarm_groups", "e7be7240-af33-4f44-9e57-17eccf4a861b"],
     ]);
     if (laterCanonicalAdditions.has(binding.capability_key)) {
       assert.equal(binding.canonical_capability_id, laterCanonicalAdditions.get(binding.capability_key));
@@ -186,7 +187,7 @@ test("#347 extension routing uses typed diagnostic request classes and never aut
 });
 
 test("#347 current authoring syntax remains intact while concrete robot surfaces live on capabilities", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.13");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.14");
   assert.equal(AUTHORING_CONTRACT.artifacts.initialization.entry, "initialize(config, rng, place)");
   assert.equal(AUTHORING_CONTRACT.artifacts.controller.entry, "step(self, obs)");
   assert.equal(AUTHORING_CONTRACT.artifacts.metrics.language, "python-vlab-metrics/0.1");

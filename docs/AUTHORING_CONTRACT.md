@@ -2,7 +2,7 @@
 
 Status: **current contract candidate, 20 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.13`, exposed by production `experiment-mcp` server `3.22.0`, interface `17`. Since #577 all code artifacts share one grammar (`code_grammar`): `//` (floor division) and `%` (remainder with the sign of the divisor) on scalars, and `and`/`or`/`not` on booleans with both sides of `and`/`or` always evaluated; `for NAME in range(...)` loops over run constants (numbers and parameters) in the Controller and Metrics; every code artifact, Initialization included, is type-checked before it runs (`code_grammar.static_checking`). Robots are anonymous (D-022): heterogeneity is declared as roles in Initialization (`role(...)`, `role_count(...)`, `place(..., role=...)`), and the Controller cannot read `N`, `ARENA_SIZE` or `EXPERIMENT_DURATION`.
+Current machine-readable contract: `vlab.authoring/0.14`, exposed by production `experiment-mcp` server `3.23.0`, interface `17`. Since #577 all code artifacts share one grammar (`code_grammar`): `//` (floor division) and `%` (remainder with the sign of the divisor) on scalars, and `and`/`or`/`not` on booleans with both sides of `and`/`or` always evaluated; `for NAME in range(...)` loops over run constants (numbers and parameters) in the Controller and Metrics; every code artifact, Initialization included, is type-checked before it runs (`code_grammar.static_checking`). Robots are anonymous (D-022): heterogeneity is declared in Initialization as exact groups (`group(...)`, `group_count(...)`, `place(..., group=...)`) to which robot properties attach (`set_state(...)` for starting memory, `equip(...)` for reference sensors) (D-023), and the Controller cannot read `N`, `ARENA_SIZE` or `EXPERIMENT_DURATION`.
 
 ## Canonical Experiment artifacts
 
@@ -72,27 +72,43 @@ Standard scalar mathematics is language substrate rather than a scientific capab
 
 This vocabulary is intentionally independent of any specific paper. Scientific capabilities continue to describe observations, actions, environment semantics, heterogeneous state, stochastic services, or other model-domain abilities—not generic algebra or trigonometry.
 
-## Heterogeneity as roles (#577, D-022)
+## Heterogeneity as groups (#577, D-022, D-023)
 
-Implemented capability `initialization.per_agent_private_state_assignment` is authored as **roles**. Robots are anonymous: no one sets state on an individual robot, and a robot receives only its role's starting private-state values.
+Robots are anonymous: no one addresses an individual robot. Heterogeneity is declared by the experimenter in two independent parts:
+
+- **Who differs** is a partition of the swarm into groups of exact size (capability `initialization.swarm_groups`). A group carries no values.
+- **What differs** is attached to a group by one statement per kind of robot property: `set_state` for starting memory (capability `initialization.per_agent_private_state_assignment`), and `equip` for reference sensors (capability `observation.named_reference_relative_position`).
 
 ```python
-role("informed", fraction=config.RHO, informed=1.0)
-role("leader", count=1, placement="explicit", leader=1.0)
-role("uninformed", rest=True, informed=0.0)
-place(0, 0.0, 0.0, 0.0, role="leader")          # explicit members, looping over role_count("leader")
+group("informed", fraction=config.RHO)
+group("leader", count=1, placement="explicit")
+group("uninformed", rest=True)
+group("equipped", fraction=0.5, partition="hardware")   # an independent partition
+group("plain", rest=True, partition="hardware")
+
+set_state("informed", informed=1.0)
+set_state("leader", leader=1.0)
+define_reference("nest", 0.0, 0.0)
+equip("equipped", "nest", range=5.0)                   # equip("all", "nest") for every robot
+
+place(0, 0.0, 0.0, 0.0, group="leader")         # explicit members, looping over group_count("leader")
 for i in range(1, config.N):
-    place(i, x, y, heading)                       # random roles are dealt to these bodies
+    place(i, x, y, heading)                     # random groups are dealt to these bodies
 ```
 
-- **Sizes.** `fraction=f` gives `round(f × N)` members, with halves rounding up; `count=k` gives exactly `k`; exactly one role may be `rest=True` and receives the remaining robots. Without a `rest` role the sizes must add up to `N`. Counts are exact in every run, and the Lab's setup message and the MCP (`compiled.roles`) report them.
+- **Sizes.** `fraction=f` gives `round(f × N)` members, with halves rounding up; `count=k` gives exactly `k`; one group per partition may be `rest=True` and receives the remaining robots. Without a `rest` group the sizes of a partition must add up to `N`. Counts are exact in every run, and the Lab's setup message and the MCP (`compiled.groups`) report them.
+- **Partitions.** Groups without `partition=` form the default partition. Groups of one partition are mutually exclusive; different partitions are independent, like crossed factors in an experimental design.
 - **Binding.**
-  - `placement="random"`, the default, deals the role's members to the bodies placed without `role=`. The deal is a uniform random permutation drawn from initialization stream 1, so declaring roles never changes placement draws, which use stream 0.
-  - `placement="explicit"` requires placing each member with `place(i, x, y, heading, role="name")`.
+  - `placement="random"`, the default, deals each partition's members to the robots not explicitly placed in that partition. The deal is a uniform random permutation drawn from initialization stream `1 + partition order`, so groups never change placement draws, which use stream 0. The default partition, declared first, uses stream 1 as roles did.
+  - `placement="explicit"` requires placing each member with `place(i, x, y, heading, group="name")`. A robot can be placed explicitly in at most one group.
   - The compiler checks the executed composition exactly and reports a mismatch with the numbers.
-- **State.** `fraction`, `count`, `rest` and `placement` are reserved. Every other keyword is a starting private-state value, which must be finite and declared by the Controller (cross-artifact validation). The Rust runtime receives the same per-agent profile as before, so it is unchanged.
-- Declare every role before the first `place(...)` or `role_count(...)`.
-- `set_agent_state(i, name, value)` was retired in #577. Stored revisions that use it no longer compile.
+- **Properties.**
+  - `set_state("group", name=value, ...)`: finite starting values for private state, which the Controller must declare (cross-artifact validation). Robots outside the group keep the Controller class default.
+  - `equip("group", "reference", range=r)`: the group's robots sense the reference up to range `r`, or without limit when `range` is `None` or omitted.
+  - `"all"` names every robot. A robot must not receive the same state name or the same sensor from two groups; this is a compile error.
+- The Rust runtime receives the same per-agent profile and per-agent sensor list as before, so it is unchanged.
+- Declare every group before the first `place(...)` or `group_count(...)`.
+- Retired in #577, with errors pointing to the replacement: `set_agent_state(i, name, value)`, `role(...)`, `role_count(...)` and `set_agent_reference_sensor(i, name, range)`. Stored revisions that use them no longer compile.
 
 ## Generic Controller control-flow substrate
 
@@ -235,4 +251,4 @@ Experiment-domain AI clients have no GitHub/repository, shell, deployment, arbit
 
 ## Accepted scientific fixture
 
-The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.13`.
+The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.14`.

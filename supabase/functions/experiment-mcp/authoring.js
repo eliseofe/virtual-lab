@@ -18,7 +18,7 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.13",
+  contract_version: "vlab.authoring/0.14",
   experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
@@ -59,7 +59,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
     },
     initialization: {
       compiled_version: "vlab.initializer-state/0.4",
-      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Heterogeneity is declared as roles (see roles below); no one sets state on an individual robot. Additional callable/member surfaces and optional entries are capability-owned.",
+      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Heterogeneity is declared as groups (see groups below); no one addresses an individual robot. Additional callable/member surfaces and optional entries are capability-owned.",
       entry: "initialize(config, rng, place)",
       simulator_owned_inputs: ["config", "rng", "place"],
       language_intrinsics: ["abs", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "floor", "ceil", "pow", "min", "max", "range"],
@@ -69,13 +69,20 @@ export const AUTHORING_CONTRACT = Object.freeze({
       exponentiation_operator: "**",
       optional_environment_scalar_math: "The same standard scalar math intrinsics and arithmetic operators (including // and %) apply inside environmental_scalar(x, y, config), which is a single return expression.",
       constants: ["TAU", "SQRT3_OVER_2"],
-      keyword_arguments: "Calls may end with keyword arguments NAME=value; only role(...) and place(..., role=...) accept them.",
-      roles: {
-        principle: "Robots are anonymous (D-022). Heterogeneity is an exact composition declared by the experimenter; a robot receives only its role's starting private-state values.",
-        declare: "role(\"name\", fraction=f | count=k | rest=True, placement=\"random\" | \"explicit\", <state_name>=value, ...) before any place(...) or role_count(...). fraction, count, rest and placement are reserved; every other keyword is a starting private-state value, which the Controller must declare.",
-        sizes: "fraction gives round(fraction * N) members (halves round up); count gives exactly k; exactly one role may be rest=True and receives the remaining robots. Without a rest role the sizes must add up to N. Counts are exact in every run and are reported back as compiled.roles.",
-        placement: "random (default): members are dealt to the bodies placed without role= by a uniform random permutation from initialization stream 1, so placement draws are unaffected. explicit: place each member with place(i, x, y, heading, role=\"name\"), looping over role_count(\"name\"); each explicit role must receive exactly its count.",
-        example: "role(\"informed\", fraction=config.RHO, informed=1.0)\nrole(\"uninformed\", rest=True, informed=0.0)\nfor i in range(config.N):\n    place(i, x, y, heading)",
+      keyword_arguments: "Calls may end with keyword arguments NAME=value; only group(...), set_state(...), equip(...) and place(..., group=...) accept them.",
+      groups: {
+        principle: "Robots are anonymous (D-022). Heterogeneity is declared by the experimenter in two independent parts (D-023): WHO differs is a partition of the swarm into groups of exact size; WHAT differs is attached to a group by one statement per kind of robot property. No one addresses an individual robot.",
+        declare: "group(\"name\", fraction=f | count=k | rest=True, placement=\"random\" | \"explicit\", partition=\"name\") before any place(...) or group_count(...). A group carries no values.",
+        sizes: "fraction gives round(fraction * N) members (halves round up); count gives exactly k; one group per partition may be rest=True and receives the remaining robots. Without a rest group the sizes of a partition must add up to N. Counts are exact in every run and are reported back as compiled.groups.",
+        partitions: "Groups without partition= form the default partition. Groups sharing a partition are mutually exclusive; different partitions are independent (crossed factors), e.g. informed/uninformed and, separately, equipped/plain.",
+        placement: "random (default): each partition's members are dealt to the robots not explicitly placed in that partition by a uniform random permutation from initialization stream 1 + (partition order), so placement draws are unaffected. explicit: place each member with place(i, x, y, heading, group=\"name\"), looping over group_count(\"name\"); each explicit group must receive exactly its count. A robot can be placed explicitly in at most one group.",
+        properties: {
+          set_state: "set_state(\"group\", <state_name>=value, ...): starting values for Controller-declared private scalar state; robots outside the group keep the Controller class default.",
+          equip: "equip(\"group\", \"reference\", range=r | None): the group's robots sense the named reference (defined with define_reference) up to range r, or without limit when range is None or omitted.",
+          all: "\"all\" names every robot, e.g. equip(\"all\", \"nest\").",
+          conflicts: "A robot must not receive the same state name or the same sensor from two groups; this is a compile error.",
+        },
+        example: "group(\"informed\", fraction=config.RHO)\ngroup(\"uninformed\", rest=True)\nset_state(\"informed\", informed=1.0)\nfor i in range(config.N):\n    place(i, x, y, heading)",
       },
       capability_resolution: "Capability-backed initializer calls, member access and optional entries are authorable only when an implemented capability advertises the corresponding Initialization surface."
     },
@@ -393,8 +400,8 @@ export function validateExperimentSources({ config_source, initializer_source, c
     compiled: {
       configuration: config.version,
       initializer: initializer.version,
-      // #577: the exact composition, e.g. [{ name: "informed", count: 10, placement: "random" }]
-      roles: initializer.roles ?? [],
+      // #577 (D-023): the exact composition, e.g. [{ name: "informed", partition: "default", count: 10, placement: "random" }]
+      groups: initializer.groups ?? [],
       environment: environment?.schema ?? null,
       controller_language: controller.language,
       controller_ir_schema: controller.schema,

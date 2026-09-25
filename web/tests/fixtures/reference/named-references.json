@@ -52,7 +52,21 @@
             "max_range": 1
           }
         ]
-      }
+      },
+      "groups": [
+        {
+          "name": "far",
+          "partition": "default",
+          "count": 1,
+          "placement": "explicit"
+        },
+        {
+          "name": "near",
+          "partition": "default",
+          "count": 1,
+          "placement": "explicit"
+        }
+      ]
     },
     "environment": null,
     "controller": {
