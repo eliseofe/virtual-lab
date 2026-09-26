@@ -1,15 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Everything aligned to the new heterogeneity syntax",
-  "owner_impact": "Metrics can now read True/False traits (e.g. count informed robots). The editor suggests group, rest_of_group, set_trait, equip, place and trait(...). The capability GPT and Claude see is named 'Traits by group'. Docs distinguish traits (fixed) from memory (changes). Your three Experiments now use True/False, Sergio's Experiment is migrated with the same teams, and every older stored version compiles again (old versions may no longer mean exactly what they did, as agreed). Test now: yes. Open Constant Bearing Flocking from the Showcase and run it; the setup message reads 'Groups: information: informed 80, uninformed 120'.",
+  "outcome": "#577 complete: the environment field has locals and if/elif/else",
+  "owner_impact": "Last part of the one-grammar work. environmental_scalar(x, y, config) can now use local variables, += and if/elif/else on comparisons and and/or/not, e.g. compute a distance once and return different values inside and outside a site. It stays a pure function of position: every path must return a number, with no loops, randomness or effects. Fields written as a single return compile to exactly the same simulator input as before, so no Experiment changed. With this, #577 is complete: all four code artifacts share one grammar. Test now: optional. To try it, write an environment field with an if/else in a copy of an Experiment and run it.",
   "next": {
-    "kind": "epic_continues",
-    "issue": 577,
-    "text": "#577 release 5: statements (local names, if/elif/else) in the environment field function, the last part of the one-grammar work. It has not started yet."
+    "kind": "scope_complete",
+    "close_issue": 577,
+    "text": "#577 is complete. What remains from this thread is your audit of all Experiments, whenever you want it."
   },
   "technical_evidence": [
-    "Kernel: ControllerRuntime::scientific_private_state_is_bool; bool traits appear in the Metrics snapshot as booleans. New recorded reference 'traits-groups' (dimensions, nesting, True/False and numeric traits read by Controller and Metrics): informed count 6 and gain total 14 as designed; native and WebAssembly bit-identical; the other five references unchanged.",
-    "Editor: Initialization and Controller autocomplete entries. Contract vlab.authoring/0.16, MCP 3.26.0, migration 20260926170000 (display name, contract versions).",
-    "Equivalence harness: 28,989 cases, 0 differ. 717 tests pass; tsc, cargo tests and fmt clean."
+    "Environment compiler on the shared statement parser with type, definite-assignment and definite-return checks; IR vlab.environment-scalar-ir/0.2 (body of statements) only when the body is more than a single return, else the unchanged 0.1 expression.",
+    "Rust EnvironmentRuntime accepts 0.1 and 0.2, validates types, definite assignment and definite return, evaluates both sides of and/or.",
+    "Equivalence: only compileEnvironmentScalar cases changed, none that previously compiled; changes are rejections by the old single-return rule (now accepted or given a specific error) and sharper errors on invalid input. New recorded reference 'environment-statements': native and WebAssembly bit-identical; the six other references unchanged.",
+    "721 tests pass; tsc, cargo tests and fmt clean; mirrored browser smoke and startup-recovery smoke pass. Contract vlab.authoring/0.17, MCP 3.27.0."
   ]
 }

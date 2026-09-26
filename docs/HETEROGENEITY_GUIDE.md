@@ -2,7 +2,7 @@
 
 How to make robots differ in a Virtual Lab Experiment. This is the human
 reference for Initialization and the matching part of the Controller
-(`vlab.authoring/0.16`, decisions D-022 and D-023). GPT reads the same rules
+(`vlab.authoring/0.17`, decisions D-022 and D-023). GPT reads the same rules
 from the MCP authoring contract.
 
 ## 1. The idea
