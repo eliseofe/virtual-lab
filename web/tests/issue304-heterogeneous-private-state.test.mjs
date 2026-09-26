@@ -233,3 +233,23 @@ test("#577 robots cannot read the swarm size, the arena or the run length", () =
   }
   compileBrowserController("class Probe(Agent):\n    def step(self, obs):\n        return Motion(GAIN, 0.0)\n", { parameters });
 });
+
+test("#577 Metrics read True/False traits as booleans and numeric traits as numbers", async () => {
+  const { compileMetrics } = await import("../src/metrics/compiler.js");
+  const ir = compileMetrics(`@metric(id="informed.count", name="Informed", unit=None, sampling=every(1.0))
+def informed_count(snapshot):
+    count = 0.0
+    for agent in snapshot.agents:
+        if agent.private_state.informed:
+            count += agent.private_state.gain
+    return count
+`, { parameters: {}, agentState: { informed: "bool", gain: "scalar" } });
+  assert.ok(ir.observation_contract.fields.includes("snapshot.agents[].private_state.informed"));
+  assert.throws(() => compileMetrics(`@metric(id="m", name="M", unit=None, sampling=every(1.0))
+def m(snapshot):
+    total = 0.0
+    for agent in snapshot.agents:
+        total += agent.private_state.informed
+    return total
+`, { parameters: {}, agentState: { informed: "bool" } }), /bool/);
+});

@@ -16,7 +16,7 @@ Violet provides useful design lessons and selectively reusable MIT-licensed idea
 
 ## D-004 — Agent scientific boundary
 
-Canonical controller contract is `action = agent.step(observation)`. Observation is local. Agent private state is encapsulated and mutable only by its controller. Simulator/environment constructs observations and applies actions.
+Canonical controller contract is `action = agent.step(observation)`. Observation is local. Agent private state is encapsulated; its memory is mutable only by its controller, and its traits (D-023) are fixed by the experimenter at initialization. Simulator/environment constructs observations and applies actions.
 
 ## D-005 — Simulator owns randomness
 

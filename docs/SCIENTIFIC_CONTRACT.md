@@ -13,13 +13,12 @@ action = agent.step(observation)
 ```
 
 - `observation` is local and produced by the simulator according to the Experiment's observation model.
-- The agent owns private internal state.
-- Only the agent/controller may mutate its private state.
+- The agent owns private internal state of two kinds (D-023): **memory**, which only the agent/controller may change during the run, and **traits**, which the experimenter sets per group at initialization and which nobody, the agent included, may change afterwards.
 - The simulator/environment may not write into private controller state.
 - The controller returns an action; it does not directly update world/physical state.
 - The controller has no direct reference to global world state, the global agent collection, host RNG/seed, arbitrary clock, network, filesystem or simulator object.
 - Global position is not a robotics controller observation capability unless the owner explicitly changes that gatekeeper decision.
-- **Locality (D-021, #577).** A controller's decision may depend only on its own observation, its own private state, its program's constants and parameters, and its own random stream. Other agents are reachable only through what its sensors report, never by index.
+- **Locality (D-021, #577).** A controller's decision may depend only on its own observation, its own memory and traits, its program's constants and parameters, and its own random stream. Other agents are reachable only through what its sensors report, never by index.
 - **Anonymity (D-022, #577).** An agent has no identity: it cannot read its index, a unique identifier, the swarm size (`N`), the arena (`ARENA_SIZE`) or the run length (`EXPERIMENT_DURATION`). It may sample random values with its own stream and adopt them, for example as a self-generated tag.
 - **Heterogeneity is a composition, not an assignment (D-022, D-023).** The experimenter (Initialization) splits the swarm into groups with exact sizes, given as a fraction, a count, or the rest; every split names its dimension, separate dimensions are dealt independently and nested splits fix joint counts. Groups are bound to bodies by a seeded uniform permutation or by explicit placement. Groups receive read-only traits (`set_trait`, declared in the Controller as `trait(...)`) and sensors (`equip`, range enforced by the simulator). No one sets values or equipment on an individual agent, and a robot cannot change what the experimenter imposed. The exact counts, and the seeded deal, keep compositions reproducible, with no run-to-run fluctuation in their sizes.
 

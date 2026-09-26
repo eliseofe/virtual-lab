@@ -77,6 +77,7 @@ export function controllerCompletionItems({ parameters = {}, references = [] } =
     ...[...OBSERVATION_TYPES.keys()].map((value) => ({ value, caption: value, score: 1000, meta: "observation" })),
     ...referenceItems,
     ...Object.keys(parameters).filter((value) => !HIDDEN_FROM_ROBOTS.has(value)).map((value) => ({ value, caption: value, score: 800, meta: "parameter" })),
+    { value: "trait(False)", caption: "trait(False)", score: 700, meta: "class attribute: read-only, set per group (set_trait)" },
   ];
   return [...new Map(items.map((item) => [item.value, item])).values()];
 }

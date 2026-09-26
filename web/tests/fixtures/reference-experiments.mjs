@@ -172,4 +172,57 @@ def reference_norm(snapshot):
 ${meanPositionMetrics}`,
     },
   },
+  {
+    id: "traits-groups",
+    purpose: "Groups over two dimensions with a nested split, True/False and numeric traits read by the Controller and by Metrics (#577, D-023).",
+    seed: 23,
+    ticks: 400,
+    artifacts: {
+      configuration: `N = 12\n${smallRuntime}SENSOR_NOISE = 0.0\n`,
+      initialization: `def initialize(config, rng, place):
+    group("informed", count=6, dimension="information")
+    rest_of_group("uninformed", dimension="information")
+    group("informed_fast", count=2, dimension="speed", within="informed")
+    rest_of_group("informed_slow", dimension="speed", within="informed")
+    group("equipped", fraction=0.5, dimension="hardware")
+    rest_of_group("plain", dimension="hardware")
+    set_trait("informed", "informed", True)
+    set_trait("informed_fast", "gain", 2.0)
+    define_reference("goal", 4.0, 0.0)
+    equip("equipped", "goal", range=3.0)
+    for i in range(config.N):
+        place(i, rng.uniform(-4.0, 4.0), rng.uniform(-4.0, 4.0), rng.uniform(0.0, TAU))
+`,
+      controller: `class TraitAgent(Agent):
+    informed = trait(False)
+    gain = trait(1.0)
+    turns = 0.0
+
+    def step(self, obs):
+        self.turns = self.turns + 1.0
+        if self.informed and obs.references.goal.available:
+            to_goal = obs.references.goal.relative_position
+            return Motion(0.2 * self.gain, atan2(dot(to_goal, perpendicular(obs.heading)), dot(to_goal, obs.heading)))
+        elif self.informed:
+            return Motion(0.2 * self.gain, 0.0)
+        return Motion(0.1, 0.3)
+`,
+      metrics: `@metric(id="informed.count", name="Informed robots", unit=None, sampling=every(0.1))
+def informed_count(snapshot):
+    count = 0.0
+    for agent in snapshot.agents:
+        if agent.private_state.informed:
+            count += 1.0
+    return count
+
+@metric(id="gain.total", name="Total gain", unit=None, sampling=every(0.1))
+def gain_total(snapshot):
+    total = 0.0
+    for agent in snapshot.agents:
+        total += agent.private_state.gain
+    return total
+
+${meanPositionMetrics}`,
+    },
+  },
 ]);

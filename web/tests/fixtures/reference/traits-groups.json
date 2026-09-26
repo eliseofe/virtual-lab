@@ -1,0 +1,1050 @@
+{
+  "id": "traits-groups",
+  "purpose": "Groups over two dimensions with a nested split, True/False and numeric traits read by the Controller and by Metrics (#577, D-023).",
+  "ticks": 400,
+  "compiled": {
+    "config": {
+      "version": "vlab.config/0.2",
+      "values": {
+        "N": 12,
+        "ARENA_SIZE": 10,
+        "CONTROL_DT": 0.1,
+        "EXPERIMENT_DURATION": 10,
+        "INTERACTION_RADIUS": 2,
+        "MAX_FORWARD_SPEED": 2,
+        "MAX_ANGULAR_SPEED": 2,
+        "SENSOR_NOISE": 0
+      }
+    },
+    "initializer": {
+      "version": "vlab.initializer-state/0.4",
+      "method": "",
+      "state": [
+        {
+          "x": 3.2763490678844818,
+          "y": 0.7880939864222363,
+          "heading": 0.10491517185965633
+        },
+        {
+          "x": 3.3895220833406574,
+          "y": 2.076968618964318,
+          "heading": 3.338213977357934,
+          "private_state": {
+            "informed": true,
+            "gain": 2
+          }
+        },
+        {
+          "x": 3.095329747427539,
+          "y": -2.4674293785645958,
+          "heading": 3.2813831552544808,
+          "private_state": {
+            "informed": true
+          }
+        },
+        {
+          "x": -1.5148137513798217,
+          "y": 0.48858878350609736,
+          "heading": 4.161772841493315,
+          "private_state": {
+            "informed": true
+          }
+        },
+        {
+          "x": 3.302424225562726,
+          "y": 2.41655200971322,
+          "heading": 2.7509365736393447
+        },
+        {
+          "x": 3.664997114833324,
+          "y": 0.3789358753740597,
+          "heading": 3.2607876349221216,
+          "private_state": {
+            "informed": true,
+            "gain": 2
+          }
+        },
+        {
+          "x": -3.2325397228296335,
+          "y": -3.225678413502181,
+          "heading": 5.889479469026311
+        },
+        {
+          "x": 1.624294600804114,
+          "y": -3.720632137440976,
+          "heading": 3.1946946368689826
+        },
+        {
+          "x": 0.6297948066347203,
+          "y": 2.5872068088803264,
+          "heading": 0.7895465670190159
+        },
+        {
+          "x": -2.7687967791175803,
+          "y": -2.241275445484794,
+          "heading": 5.555464623782939
+        },
+        {
+          "x": 0.14118329818173692,
+          "y": 0.5883386499332737,
+          "heading": 1.555388898292759,
+          "private_state": {
+            "informed": true
+          }
+        },
+        {
+          "x": -3.41539147647495,
+          "y": -0.3632932296926077,
+          "heading": 1.384927852037197,
+          "private_state": {
+            "informed": true
+          }
+        }
+      ],
+      "world_references": {
+        "schema": "vlab.world-references/0.1",
+        "references": [
+          {
+            "name": "goal",
+            "x": 4,
+            "y": 0
+          }
+        ],
+        "sensors": [
+          {
+            "agent_index": 2,
+            "name": "goal",
+            "max_range": 3
+          },
+          {
+            "agent_index": 4,
+            "name": "goal",
+            "max_range": 3
+          },
+          {
+            "agent_index": 5,
+            "name": "goal",
+            "max_range": 3
+          },
+          {
+            "agent_index": 8,
+            "name": "goal",
+            "max_range": 3
+          },
+          {
+            "agent_index": 9,
+            "name": "goal",
+            "max_range": 3
+          },
+          {
+            "agent_index": 11,
+            "name": "goal",
+            "max_range": 3
+          }
+        ]
+      },
+      "groups": [
+        {
+          "name": "informed",
+          "dimension": "information",
+          "count": 6,
+          "placement": "random"
+        },
+        {
+          "name": "uninformed",
+          "dimension": "information",
+          "count": 6,
+          "placement": "random"
+        },
+        {
+          "name": "informed_fast",
+          "dimension": "speed",
+          "within": "informed",
+          "count": 2,
+          "placement": "random"
+        },
+        {
+          "name": "informed_slow",
+          "dimension": "speed",
+          "within": "informed",
+          "count": 4,
+          "placement": "random"
+        },
+        {
+          "name": "equipped",
+          "dimension": "hardware",
+          "count": 6,
+          "placement": "random"
+        },
+        {
+          "name": "plain",
+          "dimension": "hardware",
+          "count": 6,
+          "placement": "random"
+        }
+      ]
+    },
+    "environment": null,
+    "controller": {
+      "schema": "vlab.controller-ir/0.1",
+      "language": "python-vlab/0.1",
+      "controller": "TraitAgent",
+      "entry": "step",
+      "parameters": {
+        "N": "scalar",
+        "ARENA_SIZE": "scalar",
+        "CONTROL_DT": "scalar",
+        "EXPERIMENT_DURATION": "scalar",
+        "INTERACTION_RADIUS": "scalar",
+        "MAX_FORWARD_SPEED": "scalar",
+        "MAX_ANGULAR_SPEED": "scalar",
+        "SENSOR_NOISE": "scalar"
+      },
+      "references": [
+        "goal"
+      ],
+      "state": [
+        {
+          "name": "informed",
+          "type": "bool",
+          "initial": false,
+          "trait": true
+        },
+        {
+          "name": "gain",
+          "type": "scalar",
+          "initial": 1,
+          "trait": true
+        },
+        {
+          "name": "turns",
+          "type": "scalar",
+          "initial": 0
+        }
+      ],
+      "body": [
+        {
+          "kind": "assign",
+          "target": "self.turns",
+          "value": {
+            "kind": "binary",
+            "op": "+",
+            "left": {
+              "kind": "load",
+              "path": "self.turns",
+              "line": 7
+            },
+            "right": {
+              "kind": "const",
+              "value": 1,
+              "line": 7
+            },
+            "line": 7
+          },
+          "line": 7
+        },
+        {
+          "kind": "if",
+          "branches": [
+            {
+              "condition": {
+                "kind": "bool_op",
+                "op": "and",
+                "left": {
+                  "kind": "load",
+                  "path": "self.informed",
+                  "line": 8
+                },
+                "right": {
+                  "kind": "load",
+                  "path": "obs.references.goal.available",
+                  "line": 8
+                },
+                "line": 8
+              },
+              "body": [
+                {
+                  "kind": "assign",
+                  "target": "to_goal",
+                  "value": {
+                    "kind": "load",
+                    "path": "obs.references.goal.relative_position",
+                    "line": 9
+                  },
+                  "line": 9
+                },
+                {
+                  "kind": "return",
+                  "value": {
+                    "kind": "call",
+                    "name": "Motion",
+                    "args": [
+                      {
+                        "kind": "binary",
+                        "op": "*",
+                        "left": {
+                          "kind": "const",
+                          "value": 0.2,
+                          "line": 10
+                        },
+                        "right": {
+                          "kind": "load",
+                          "path": "self.gain",
+                          "line": 10
+                        },
+                        "line": 10
+                      },
+                      {
+                        "kind": "call",
+                        "name": "atan2",
+                        "args": [
+                          {
+                            "kind": "call",
+                            "name": "dot",
+                            "args": [
+                              {
+                                "kind": "load",
+                                "path": "to_goal",
+                                "line": 10
+                              },
+                              {
+                                "kind": "call",
+                                "name": "perpendicular",
+                                "args": [
+                                  {
+                                    "kind": "load",
+                                    "path": "obs.heading",
+                                    "line": 10
+                                  }
+                                ],
+                                "line": 10
+                              }
+                            ],
+                            "line": 10
+                          },
+                          {
+                            "kind": "call",
+                            "name": "dot",
+                            "args": [
+                              {
+                                "kind": "load",
+                                "path": "to_goal",
+                                "line": 10
+                              },
+                              {
+                                "kind": "load",
+                                "path": "obs.heading",
+                                "line": 10
+                              }
+                            ],
+                            "line": 10
+                          }
+                        ],
+                        "line": 10
+                      }
+                    ],
+                    "line": 10
+                  },
+                  "line": 10
+                }
+              ],
+              "line": 8
+            },
+            {
+              "condition": {
+                "kind": "load",
+                "path": "self.informed",
+                "line": 11
+              },
+              "body": [
+                {
+                  "kind": "return",
+                  "value": {
+                    "kind": "call",
+                    "name": "Motion",
+                    "args": [
+                      {
+                        "kind": "binary",
+                        "op": "*",
+                        "left": {
+                          "kind": "const",
+                          "value": 0.2,
+                          "line": 12
+                        },
+                        "right": {
+                          "kind": "load",
+                          "path": "self.gain",
+                          "line": 12
+                        },
+                        "line": 12
+                      },
+                      {
+                        "kind": "const",
+                        "value": 0,
+                        "line": 12
+                      }
+                    ],
+                    "line": 12
+                  },
+                  "line": 12
+                }
+              ],
+              "line": 11
+            }
+          ],
+          "else_body": [],
+          "line": 8
+        },
+        {
+          "kind": "return",
+          "value": {
+            "kind": "call",
+            "name": "Motion",
+            "args": [
+              {
+                "kind": "const",
+                "value": 0.1,
+                "line": 13
+              },
+              {
+                "kind": "const",
+                "value": 0.3,
+                "line": 13
+              }
+            ],
+            "line": 13
+          },
+          "line": 13
+        }
+      ]
+    },
+    "metrics": {
+      "language": "python-vlab-metrics/0.1",
+      "schema": "vlab.metrics-ir/0.1",
+      "measurement_phase": "post-physics-wrapped-state/1",
+      "observation_contract": {
+        "mode": "read-only-global-snapshot",
+        "fields": [
+          "snapshot.scientific_time",
+          "snapshot.physics_ticks",
+          "snapshot.control_updates",
+          "snapshot.agent_count",
+          "snapshot.agents[].index",
+          "snapshot.agents[].position",
+          "snapshot.agents[].velocity",
+          "snapshot.agents[].angular_velocity",
+          "snapshot.agents[].heading",
+          "snapshot.agents[].heading_angle",
+          "snapshot.agents[].action.forward",
+          "snapshot.agents[].action.turning",
+          "snapshot.config.N",
+          "snapshot.config.ARENA_SIZE",
+          "snapshot.config.CONTROL_DT",
+          "snapshot.config.EXPERIMENT_DURATION",
+          "snapshot.config.INTERACTION_RADIUS",
+          "snapshot.config.MAX_FORWARD_SPEED",
+          "snapshot.config.MAX_ANGULAR_SPEED",
+          "snapshot.config.SENSOR_NOISE",
+          "snapshot.agents[].private_state.informed",
+          "snapshot.agents[].private_state.gain",
+          "snapshot.agents[].private_state.turns",
+          "snapshot.references.goal.position"
+        ],
+        "intrinsics": []
+      },
+      "references": [
+        "goal"
+      ],
+      "metrics": [
+        {
+          "id": "informed.count",
+          "name": "Informed robots",
+          "unit": null,
+          "sampling": {
+            "kind": "periodic",
+            "interval_seconds": 0.1
+          },
+          "function": "informed_count",
+          "body": [
+            {
+              "kind": "assign",
+              "target": "count",
+              "value": {
+                "kind": "const",
+                "value": 0,
+                "line": 3
+              },
+              "line": 3
+            },
+            {
+              "kind": "for_each",
+              "variable": "agent",
+              "iterable": {
+                "kind": "load",
+                "path": "snapshot.agents",
+                "line": 4
+              },
+              "body": [
+                {
+                  "kind": "if",
+                  "branches": [
+                    {
+                      "condition": {
+                        "kind": "load",
+                        "path": "agent.private_state.informed",
+                        "line": 5
+                      },
+                      "body": [
+                        {
+                          "kind": "aug_assign",
+                          "target": "count",
+                          "op": "+",
+                          "value": {
+                            "kind": "const",
+                            "value": 1,
+                            "line": 6
+                          },
+                          "line": 6
+                        }
+                      ],
+                      "line": 5
+                    }
+                  ],
+                  "else_body": [],
+                  "line": 5
+                }
+              ],
+              "line": 4
+            },
+            {
+              "kind": "return",
+              "value": {
+                "kind": "load",
+                "path": "count",
+                "line": 7
+              },
+              "line": 7
+            }
+          ],
+          "source_line": 1
+        },
+        {
+          "id": "gain.total",
+          "name": "Total gain",
+          "unit": null,
+          "sampling": {
+            "kind": "periodic",
+            "interval_seconds": 0.1
+          },
+          "function": "gain_total",
+          "body": [
+            {
+              "kind": "assign",
+              "target": "total",
+              "value": {
+                "kind": "const",
+                "value": 0,
+                "line": 11
+              },
+              "line": 11
+            },
+            {
+              "kind": "for_each",
+              "variable": "agent",
+              "iterable": {
+                "kind": "load",
+                "path": "snapshot.agents",
+                "line": 12
+              },
+              "body": [
+                {
+                  "kind": "aug_assign",
+                  "target": "total",
+                  "op": "+",
+                  "value": {
+                    "kind": "load",
+                    "path": "agent.private_state.gain",
+                    "line": 13
+                  },
+                  "line": 13
+                }
+              ],
+              "line": 12
+            },
+            {
+              "kind": "return",
+              "value": {
+                "kind": "load",
+                "path": "total",
+                "line": 14
+              },
+              "line": 14
+            }
+          ],
+          "source_line": 9
+        },
+        {
+          "id": "mean_x",
+          "name": "Mean x",
+          "unit": null,
+          "sampling": {
+            "kind": "periodic",
+            "interval_seconds": 0.1
+          },
+          "function": "mean_x",
+          "body": [
+            {
+              "kind": "assign",
+              "target": "total",
+              "value": {
+                "kind": "call",
+                "name": "Vec2",
+                "args": [
+                  {
+                    "kind": "const",
+                    "value": 0,
+                    "line": 18
+                  },
+                  {
+                    "kind": "const",
+                    "value": 0,
+                    "line": 18
+                  }
+                ],
+                "line": 18
+              },
+              "line": 18
+            },
+            {
+              "kind": "for_each",
+              "variable": "agent",
+              "iterable": {
+                "kind": "load",
+                "path": "snapshot.agents",
+                "line": 19
+              },
+              "body": [
+                {
+                  "kind": "aug_assign",
+                  "target": "total",
+                  "op": "+",
+                  "value": {
+                    "kind": "load",
+                    "path": "agent.position",
+                    "line": 20
+                  },
+                  "line": 20
+                }
+              ],
+              "line": 19
+            },
+            {
+              "kind": "return",
+              "value": {
+                "kind": "binary",
+                "op": "/",
+                "left": {
+                  "kind": "call",
+                  "name": "dot",
+                  "args": [
+                    {
+                      "kind": "load",
+                      "path": "total",
+                      "line": 21
+                    },
+                    {
+                      "kind": "call",
+                      "name": "Vec2",
+                      "args": [
+                        {
+                          "kind": "const",
+                          "value": 1,
+                          "line": 21
+                        },
+                        {
+                          "kind": "const",
+                          "value": 0,
+                          "line": 21
+                        }
+                      ],
+                      "line": 21
+                    }
+                  ],
+                  "line": 21
+                },
+                "right": {
+                  "kind": "load",
+                  "path": "snapshot.agent_count",
+                  "line": 21
+                },
+                "line": 21
+              },
+              "line": 21
+            }
+          ],
+          "source_line": 16
+        },
+        {
+          "id": "final_mean_y",
+          "name": "Final mean y",
+          "unit": null,
+          "sampling": {
+            "kind": "final"
+          },
+          "function": "final_mean_y",
+          "body": [
+            {
+              "kind": "assign",
+              "target": "total",
+              "value": {
+                "kind": "call",
+                "name": "Vec2",
+                "args": [
+                  {
+                    "kind": "const",
+                    "value": 0,
+                    "line": 25
+                  },
+                  {
+                    "kind": "const",
+                    "value": 0,
+                    "line": 25
+                  }
+                ],
+                "line": 25
+              },
+              "line": 25
+            },
+            {
+              "kind": "for_each",
+              "variable": "agent",
+              "iterable": {
+                "kind": "load",
+                "path": "snapshot.agents",
+                "line": 26
+              },
+              "body": [
+                {
+                  "kind": "aug_assign",
+                  "target": "total",
+                  "op": "+",
+                  "value": {
+                    "kind": "load",
+                    "path": "agent.position",
+                    "line": 27
+                  },
+                  "line": 27
+                }
+              ],
+              "line": 26
+            },
+            {
+              "kind": "return",
+              "value": {
+                "kind": "binary",
+                "op": "/",
+                "left": {
+                  "kind": "call",
+                  "name": "dot",
+                  "args": [
+                    {
+                      "kind": "load",
+                      "path": "total",
+                      "line": 28
+                    },
+                    {
+                      "kind": "call",
+                      "name": "Vec2",
+                      "args": [
+                        {
+                          "kind": "const",
+                          "value": 0,
+                          "line": 28
+                        },
+                        {
+                          "kind": "const",
+                          "value": 1,
+                          "line": 28
+                        }
+                      ],
+                      "line": 28
+                    }
+                  ],
+                  "line": 28
+                },
+                "right": {
+                  "kind": "load",
+                  "path": "snapshot.agent_count",
+                  "line": 28
+                },
+                "line": 28
+              },
+              "line": 28
+            }
+          ],
+          "source_line": 23
+        },
+        {
+          "id": "spread",
+          "name": "Spread",
+          "unit": null,
+          "sampling": {
+            "kind": "periodic",
+            "interval_seconds": 0.5
+          },
+          "function": "spread",
+          "body": [
+            {
+              "kind": "assign",
+              "target": "largest",
+              "value": {
+                "kind": "const",
+                "value": 0,
+                "line": 32
+              },
+              "line": 32
+            },
+            {
+              "kind": "for_each",
+              "variable": "agent",
+              "iterable": {
+                "kind": "load",
+                "path": "snapshot.agents",
+                "line": 33
+              },
+              "body": [
+                {
+                  "kind": "assign",
+                  "target": "d",
+                  "value": {
+                    "kind": "call",
+                    "name": "norm",
+                    "args": [
+                      {
+                        "kind": "load",
+                        "path": "agent.position",
+                        "line": 34
+                      }
+                    ],
+                    "line": 34
+                  },
+                  "line": 34
+                },
+                {
+                  "kind": "if",
+                  "branches": [
+                    {
+                      "condition": {
+                        "kind": "bool_op",
+                        "op": "and",
+                        "left": {
+                          "kind": "compare",
+                          "op": ">",
+                          "left": {
+                            "kind": "load",
+                            "path": "d",
+                            "line": 35
+                          },
+                          "right": {
+                            "kind": "load",
+                            "path": "largest",
+                            "line": 35
+                          },
+                          "line": 35
+                        },
+                        "right": {
+                          "kind": "compare",
+                          "op": ">=",
+                          "left": {
+                            "kind": "load",
+                            "path": "d",
+                            "line": 35
+                          },
+                          "right": {
+                            "kind": "const",
+                            "value": 0,
+                            "line": 35
+                          },
+                          "line": 35
+                        },
+                        "line": 35
+                      },
+                      "body": [
+                        {
+                          "kind": "assign",
+                          "target": "largest",
+                          "value": {
+                            "kind": "load",
+                            "path": "d",
+                            "line": 36
+                          },
+                          "line": 36
+                        }
+                      ],
+                      "line": 35
+                    },
+                    {
+                      "condition": {
+                        "kind": "bool_op",
+                        "op": "or",
+                        "left": {
+                          "kind": "compare",
+                          "op": "<",
+                          "left": {
+                            "kind": "load",
+                            "path": "d",
+                            "line": 37
+                          },
+                          "right": {
+                            "kind": "const",
+                            "value": 0,
+                            "line": 37
+                          },
+                          "line": 37
+                        },
+                        "right": {
+                          "kind": "bool_const",
+                          "value": false,
+                          "line": 37
+                        },
+                        "line": 37
+                      },
+                      "body": [
+                        {
+                          "kind": "assign",
+                          "target": "largest",
+                          "value": {
+                            "kind": "unary",
+                            "op": "-",
+                            "value": {
+                              "kind": "const",
+                              "value": 1,
+                              "line": 38
+                            },
+                            "line": 38
+                          },
+                          "line": 38
+                        }
+                      ],
+                      "line": 37
+                    }
+                  ],
+                  "else_body": [],
+                  "line": 35
+                }
+              ],
+              "line": 33
+            },
+            {
+              "kind": "return",
+              "value": {
+                "kind": "binary",
+                "op": "+",
+                "left": {
+                  "kind": "binary",
+                  "op": "+",
+                  "left": {
+                    "kind": "call",
+                    "name": "sqrt",
+                    "args": [
+                      {
+                        "kind": "call",
+                        "name": "pow",
+                        "args": [
+                          {
+                            "kind": "load",
+                            "path": "largest",
+                            "line": 39
+                          },
+                          {
+                            "kind": "const",
+                            "value": 2,
+                            "line": 39
+                          }
+                        ],
+                        "line": 39
+                      }
+                    ],
+                    "line": 39
+                  },
+                  "right": {
+                    "kind": "call",
+                    "name": "abs",
+                    "args": [
+                      {
+                        "kind": "call",
+                        "name": "min",
+                        "args": [
+                          {
+                            "kind": "const",
+                            "value": 0,
+                            "line": 39
+                          },
+                          {
+                            "kind": "load",
+                            "path": "largest",
+                            "line": 39
+                          }
+                        ],
+                        "line": 39
+                      }
+                    ],
+                    "line": 39
+                  },
+                  "line": 39
+                },
+                "right": {
+                  "kind": "binary",
+                  "op": "*",
+                  "left": {
+                    "kind": "const",
+                    "value": 0,
+                    "line": 39
+                  },
+                  "right": {
+                    "kind": "call",
+                    "name": "atan2",
+                    "args": [
+                      {
+                        "kind": "const",
+                        "value": 1,
+                        "line": 39
+                      },
+                      {
+                        "kind": "const",
+                        "value": 1,
+                        "line": 39
+                      }
+                    ],
+                    "line": 39
+                  },
+                  "line": 39
+                },
+                "line": 39
+              },
+              "line": 39
+            }
+          ],
+          "source_line": 30
+        }
+      ]
+    }
+  },
+  "kernel_input": {
+    "initial_state_json": "[{\"x\":3.2763490678844818,\"y\":0.7880939864222363,\"heading\":0.10491517185965633},{\"x\":3.3895220833406574,\"y\":2.076968618964318,\"heading\":3.338213977357934,\"private_state\":{\"informed\":true,\"gain\":2}},{\"x\":3.095329747427539,\"y\":-2.4674293785645958,\"heading\":3.2813831552544808,\"private_state\":{\"informed\":true}},{\"x\":-1.5148137513798217,\"y\":0.48858878350609736,\"heading\":4.161772841493315,\"private_state\":{\"informed\":true}},{\"x\":3.302424225562726,\"y\":2.41655200971322,\"heading\":2.7509365736393447},{\"x\":3.664997114833324,\"y\":0.3789358753740597,\"heading\":3.2607876349221216,\"private_state\":{\"informed\":true,\"gain\":2}},{\"x\":-3.2325397228296335,\"y\":-3.225678413502181,\"heading\":5.889479469026311},{\"x\":1.624294600804114,\"y\":-3.720632137440976,\"heading\":3.1946946368689826},{\"x\":0.6297948066347203,\"y\":2.5872068088803264,\"heading\":0.7895465670190159},{\"x\":-2.7687967791175803,\"y\":-2.241275445484794,\"heading\":5.555464623782939},{\"x\":0.14118329818173692,\"y\":0.5883386499332737,\"heading\":1.555388898292759,\"private_state\":{\"informed\":true}},{\"x\":-3.41539147647495,\"y\":-0.3632932296926077,\"heading\":1.384927852037197,\"private_state\":{\"informed\":true}}]",
+    "world_references_json": "{\"schema\":\"vlab.world-references/0.1\",\"references\":[{\"name\":\"goal\",\"x\":4,\"y\":0}],\"sensors\":[{\"agent_index\":2,\"name\":\"goal\",\"max_range\":3},{\"agent_index\":4,\"name\":\"goal\",\"max_range\":3},{\"agent_index\":5,\"name\":\"goal\",\"max_range\":3},{\"agent_index\":8,\"name\":\"goal\",\"max_range\":3},{\"agent_index\":9,\"name\":\"goal\",\"max_range\":3},{\"agent_index\":11,\"name\":\"goal\",\"max_range\":3}]}",
+    "seed": 23,
+    "physics_dt_bits": "0x3f847ae147ae147b",
+    "control_dt_bits": "0x3fb999999999999a",
+    "metric_dt_bits": "0x3fb999999999999a",
+    "interaction_radius_bits": "0x4000000000000000",
+    "arena_size_bits": "0x4024000000000000",
+    "sensor_noise_bits": "0x0000000000000000",
+    "max_forward_speed_bits": "0x4000000000000000",
+    "max_angular_speed_bits": "0x4000000000000000",
+    "environment_ir_json": "null",
+    "controller_ir_json": "{\"schema\":\"vlab.controller-ir/0.1\",\"language\":\"python-vlab/0.1\",\"controller\":\"TraitAgent\",\"entry\":\"step\",\"parameters\":{\"N\":\"scalar\",\"ARENA_SIZE\":\"scalar\",\"CONTROL_DT\":\"scalar\",\"EXPERIMENT_DURATION\":\"scalar\",\"INTERACTION_RADIUS\":\"scalar\",\"MAX_FORWARD_SPEED\":\"scalar\",\"MAX_ANGULAR_SPEED\":\"scalar\",\"SENSOR_NOISE\":\"scalar\"},\"references\":[\"goal\"],\"state\":[{\"name\":\"informed\",\"type\":\"bool\",\"initial\":false,\"trait\":true},{\"name\":\"gain\",\"type\":\"scalar\",\"initial\":1,\"trait\":true},{\"name\":\"turns\",\"type\":\"scalar\",\"initial\":0}],\"body\":[{\"kind\":\"assign\",\"target\":\"self.turns\",\"value\":{\"kind\":\"binary\",\"op\":\"+\",\"left\":{\"kind\":\"load\",\"path\":\"self.turns\",\"line\":7},\"right\":{\"kind\":\"const\",\"value\":1,\"line\":7},\"line\":7},\"line\":7},{\"kind\":\"if\",\"branches\":[{\"condition\":{\"kind\":\"bool_op\",\"op\":\"and\",\"left\":{\"kind\":\"load\",\"path\":\"self.informed\",\"line\":8},\"right\":{\"kind\":\"load\",\"path\":\"obs.references.goal.available\",\"line\":8},\"line\":8},\"body\":[{\"kind\":\"assign\",\"target\":\"to_goal\",\"value\":{\"kind\":\"load\",\"path\":\"obs.references.goal.relative_position\",\"line\":9},\"line\":9},{\"kind\":\"return\",\"value\":{\"kind\":\"call\",\"name\":\"Motion\",\"args\":[{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"const\",\"value\":0.2,\"line\":10},\"right\":{\"kind\":\"load\",\"path\":\"self.gain\",\"line\":10},\"line\":10},{\"kind\":\"call\",\"name\":\"atan2\",\"args\":[{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"to_goal\",\"line\":10},{\"kind\":\"call\",\"name\":\"perpendicular\",\"args\":[{\"kind\":\"load\",\"path\":\"obs.heading\",\"line\":10}],\"line\":10}],\"line\":10},{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"to_goal\",\"line\":10},{\"kind\":\"load\",\"path\":\"obs.heading\",\"line\":10}],\"line\":10}],\"line\":10}],\"line\":10},\"line\":10}],\"line\":8},{\"condition\":{\"kind\":\"load\",\"path\":\"self.informed\",\"line\":11},\"body\":[{\"kind\":\"return\",\"value\":{\"kind\":\"call\",\"name\":\"Motion\",\"args\":[{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"const\",\"value\":0.2,\"line\":12},\"right\":{\"kind\":\"load\",\"path\":\"self.gain\",\"line\":12},\"line\":12},{\"kind\":\"const\",\"value\":0,\"line\":12}],\"line\":12},\"line\":12}],\"line\":11}],\"else_body\":[],\"line\":8},{\"kind\":\"return\",\"value\":{\"kind\":\"call\",\"name\":\"Motion\",\"args\":[{\"kind\":\"const\",\"value\":0.1,\"line\":13},{\"kind\":\"const\",\"value\":0.3,\"line\":13}],\"line\":13},\"line\":13}]}",
+    "metrics_ir_json": "{\"language\":\"python-vlab-metrics/0.1\",\"schema\":\"vlab.metrics-ir/0.1\",\"measurement_phase\":\"post-physics-wrapped-state/1\",\"observation_contract\":{\"mode\":\"read-only-global-snapshot\",\"fields\":[\"snapshot.scientific_time\",\"snapshot.physics_ticks\",\"snapshot.control_updates\",\"snapshot.agent_count\",\"snapshot.agents[].index\",\"snapshot.agents[].position\",\"snapshot.agents[].velocity\",\"snapshot.agents[].angular_velocity\",\"snapshot.agents[].heading\",\"snapshot.agents[].heading_angle\",\"snapshot.agents[].action.forward\",\"snapshot.agents[].action.turning\",\"snapshot.config.N\",\"snapshot.config.ARENA_SIZE\",\"snapshot.config.CONTROL_DT\",\"snapshot.config.EXPERIMENT_DURATION\",\"snapshot.config.INTERACTION_RADIUS\",\"snapshot.config.MAX_FORWARD_SPEED\",\"snapshot.config.MAX_ANGULAR_SPEED\",\"snapshot.config.SENSOR_NOISE\",\"snapshot.agents[].private_state.informed\",\"snapshot.agents[].private_state.gain\",\"snapshot.agents[].private_state.turns\",\"snapshot.references.goal.position\"],\"intrinsics\":[]},\"references\":[\"goal\"],\"metrics\":[{\"id\":\"informed.count\",\"name\":\"Informed robots\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.1},\"function\":\"informed_count\",\"body\":[{\"kind\":\"assign\",\"target\":\"count\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":3},\"line\":3},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":4},\"body\":[{\"kind\":\"if\",\"branches\":[{\"condition\":{\"kind\":\"load\",\"path\":\"agent.private_state.informed\",\"line\":5},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"count\",\"op\":\"+\",\"value\":{\"kind\":\"const\",\"value\":1,\"line\":6},\"line\":6}],\"line\":5}],\"else_body\":[],\"line\":5}],\"line\":4},{\"kind\":\"return\",\"value\":{\"kind\":\"load\",\"path\":\"count\",\"line\":7},\"line\":7}],\"source_line\":1},{\"id\":\"gain.total\",\"name\":\"Total gain\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.1},\"function\":\"gain_total\",\"body\":[{\"kind\":\"assign\",\"target\":\"total\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":11},\"line\":11},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":12},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"total\",\"op\":\"+\",\"value\":{\"kind\":\"load\",\"path\":\"agent.private_state.gain\",\"line\":13},\"line\":13}],\"line\":12},{\"kind\":\"return\",\"value\":{\"kind\":\"load\",\"path\":\"total\",\"line\":14},\"line\":14}],\"source_line\":9},{\"id\":\"mean_x\",\"name\":\"Mean x\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.1},\"function\":\"mean_x\",\"body\":[{\"kind\":\"assign\",\"target\":\"total\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":18},{\"kind\":\"const\",\"value\":0,\"line\":18}],\"line\":18},\"line\":18},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":19},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"total\",\"op\":\"+\",\"value\":{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":20},\"line\":20}],\"line\":19},{\"kind\":\"return\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"total\",\"line\":21},{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":1,\"line\":21},{\"kind\":\"const\",\"value\":0,\"line\":21}],\"line\":21}],\"line\":21},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":21},\"line\":21},\"line\":21}],\"source_line\":16},{\"id\":\"final_mean_y\",\"name\":\"Final mean y\",\"unit\":null,\"sampling\":{\"kind\":\"final\"},\"function\":\"final_mean_y\",\"body\":[{\"kind\":\"assign\",\"target\":\"total\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":25},{\"kind\":\"const\",\"value\":0,\"line\":25}],\"line\":25},\"line\":25},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":26},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"total\",\"op\":\"+\",\"value\":{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":27},\"line\":27}],\"line\":26},{\"kind\":\"return\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"total\",\"line\":28},{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":28},{\"kind\":\"const\",\"value\":1,\"line\":28}],\"line\":28}],\"line\":28},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":28},\"line\":28},\"line\":28}],\"source_line\":23},{\"id\":\"spread\",\"name\":\"Spread\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.5},\"function\":\"spread\",\"body\":[{\"kind\":\"assign\",\"target\":\"largest\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":32},\"line\":32},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":33},\"body\":[{\"kind\":\"assign\",\"target\":\"d\",\"value\":{\"kind\":\"call\",\"name\":\"norm\",\"args\":[{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":34}],\"line\":34},\"line\":34},{\"kind\":\"if\",\"branches\":[{\"condition\":{\"kind\":\"bool_op\",\"op\":\"and\",\"left\":{\"kind\":\"compare\",\"op\":\">\",\"left\":{\"kind\":\"load\",\"path\":\"d\",\"line\":35},\"right\":{\"kind\":\"load\",\"path\":\"largest\",\"line\":35},\"line\":35},\"right\":{\"kind\":\"compare\",\"op\":\">=\",\"left\":{\"kind\":\"load\",\"path\":\"d\",\"line\":35},\"right\":{\"kind\":\"const\",\"value\":0,\"line\":35},\"line\":35},\"line\":35},\"body\":[{\"kind\":\"assign\",\"target\":\"largest\",\"value\":{\"kind\":\"load\",\"path\":\"d\",\"line\":36},\"line\":36}],\"line\":35},{\"condition\":{\"kind\":\"bool_op\",\"op\":\"or\",\"left\":{\"kind\":\"compare\",\"op\":\"<\",\"left\":{\"kind\":\"load\",\"path\":\"d\",\"line\":37},\"right\":{\"kind\":\"const\",\"value\":0,\"line\":37},\"line\":37},\"right\":{\"kind\":\"bool_const\",\"value\":false,\"line\":37},\"line\":37},\"body\":[{\"kind\":\"assign\",\"target\":\"largest\",\"value\":{\"kind\":\"unary\",\"op\":\"-\",\"value\":{\"kind\":\"const\",\"value\":1,\"line\":38},\"line\":38},\"line\":38}],\"line\":37}],\"else_body\":[],\"line\":35}],\"line\":33},{\"kind\":\"return\",\"value\":{\"kind\":\"binary\",\"op\":\"+\",\"left\":{\"kind\":\"binary\",\"op\":\"+\",\"left\":{\"kind\":\"call\",\"name\":\"sqrt\",\"args\":[{\"kind\":\"call\",\"name\":\"pow\",\"args\":[{\"kind\":\"load\",\"path\":\"largest\",\"line\":39},{\"kind\":\"const\",\"value\":2,\"line\":39}],\"line\":39}],\"line\":39},\"right\":{\"kind\":\"call\",\"name\":\"abs\",\"args\":[{\"kind\":\"call\",\"name\":\"min\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":39},{\"kind\":\"load\",\"path\":\"largest\",\"line\":39}],\"line\":39}],\"line\":39},\"line\":39},\"right\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"const\",\"value\":0,\"line\":39},\"right\":{\"kind\":\"call\",\"name\":\"atan2\",\"args\":[{\"kind\":\"const\",\"value\":1,\"line\":39},{\"kind\":\"const\",\"value\":1,\"line\":39}],\"line\":39},\"line\":39},\"line\":39},\"line\":39}],\"source_line\":30}]}",
+    "parameters_json": "{\"N\":12,\"ARENA_SIZE\":10,\"CONTROL_DT\":0.1,\"EXPERIMENT_DURATION\":10,\"INTERACTION_RADIUS\":2,\"MAX_FORWARD_SPEED\":2,\"MAX_ANGULAR_SPEED\":2,\"SENSOR_NOISE\":0}"
+  }
+}
