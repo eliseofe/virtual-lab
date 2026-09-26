@@ -1062,7 +1062,7 @@ struct InitialAgentJson {
     y: f64,
     heading: f64,
     #[serde(default)]
-    private_state: BTreeMap<String, f64>,
+    private_state: BTreeMap<String, controller_ir::StateValue>,
 }
 
 struct ParsedInitialState {
@@ -1076,7 +1076,12 @@ fn parse_initial_state(json: &str) -> Result<ParsedInitialState, String> {
     let mut state = Vec::with_capacity(agents.len());
     let mut controller_private_state = Vec::with_capacity(agents.len());
     for (index, agent) in agents.into_iter().enumerate() {
-        for (name, value) in &agent.private_state {
+        let private_state: BTreeMap<String, f64> = agent
+            .private_state
+            .into_iter()
+            .map(|(name, value)| (name, value.as_f64()))
+            .collect();
+        for (name, value) in &private_state {
             if !value.is_finite() {
                 return Err(format!(
                     "initial private state '{name}' for agent {index} must be finite"
@@ -1087,7 +1092,7 @@ fn parse_initial_state(json: &str) -> Result<ParsedInitialState, String> {
             position: Vec2::new(agent.x, agent.y),
             heading_angle: agent.heading,
         });
-        controller_private_state.push(agent.private_state);
+        controller_private_state.push(private_state);
     }
     let initialization = SwarmInitialization { state };
     initialization.validate()?;

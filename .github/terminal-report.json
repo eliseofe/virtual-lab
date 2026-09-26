@@ -1,15 +1,16 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "Professors can publish to the Showcase through the MCP",
-  "owner_impact": "You asked that Showcase curation not require the Lab's button. The MCP now has a manage_showcase tool: list the Showcase (it shows which of your entries are behind their Experiment's current revision), publish the current revision of one of your Experiments, or remove it. It calls the same database functions as the Lab's buttons, signed in as you, so only Professors can publish, and only their own Experiments; students see the tool and get a refusal. I used it to republish Constant Bearing Flocking and Firat's aggregation at their migrated revisions. Test now: yes. Open Constant Bearing Flocking from the Showcase; the setup message should read 'Groups: informed 80, uninformed 120'. In GPT you can ask it to publish or list the Showcase (the connector may need a refresh to see the new tool).",
+  "outcome": "Heterogeneity syntax completed: named dimensions, rest_of_group, nesting, read-only traits",
+  "owner_impact": "The syntax you shaped today is live. Every group names its dimension; rest_of_group replaces rest=True; within= nests a split inside a group, so a paper's exact joint counts (e.g. 10 malicious among 40 informed) are expressible, while separate dimensions stay independent. Values given to groups are traits: the Controller declares them as informed = trait(False) and can only read them; Initialization gives them with set_trait(\"informed\", \"informed\", True). True/False is supported. The full guide is docs/HETEROGENEITY_GUIDE.md. Your three Experiments are migrated with the same robots and values, and republished to the Showcase. Test now: yes. Open Constant Bearing Flocking from the Showcase; the setup message should read 'Groups: information: informed 80, uninformed 120'.",
   "next": {
     "kind": "epic_continues",
     "issue": 577,
     "text": "#577 release 5: statements (local names, if/elif/else) in the environment field function, the last part of the one-grammar work. It has not started yet."
   },
   "technical_evidence": [
-    "supabase/functions/experiment-mcp/index.ts: manage_showcase (list/publish/remove) over list_showcase_experiments, promote_experiment_to_showcase and remove_experiment_from_showcase with the user-scoped client; no role gate or direct table write in the tool (web/tests/mcp-showcase-curation.test.mjs).",
-    "Tool surface 9 -> 10, MCP server 3.24.0, authoring contract vlab.authoring/0.14 and interface 17 unchanged; docs EXPERIMENT_MCP.md and AI_LAB_PROTOCOL.md updated.",
-    "715 tests pass; tsc clean."
+    "Initializer: splits keyed by (dimension, within), dealt in declaration order from initialization stream 1 + order (the first split reproduces the previous deal); overlap-based conflict checks for traits and sensors; retired forms raise errors naming the replacement.",
+    "Controller: NAME = trait(default) with number or True/False, read-only (compile error on assignment, also rejected by the Rust runtime); Rust stores bool traits as 1/0 and loads them as booleans; cross-validation requires set_trait targets to be declared traits of the same type.",
+    "Equivalence: of 28,989 cases, all changes are explained (Initialization sources using heterogeneity syntax, Controller sources using trait, and one reworded class-attribute error). Reference trajectories unchanged; all 5 reference runs bit-identical on the rebuilt WebAssembly kernel.",
+    "716 tests pass, tsc clean, cargo tests and fmt clean. Contract vlab.authoring/0.15, MCP 3.25.0, migration 20260926140000 updates capability definitions."
   ]
 }

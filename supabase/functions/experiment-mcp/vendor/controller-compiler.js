@@ -237,6 +237,7 @@ function targetType(target, scope, line, forAssignment = false) {
     const name = target.slice(5);
     const type = scope.state.get(name);
     if (!type) throw new ControllerCompileError("invalid-private-state", `private state '${name}' was not declared on the class`, line);
+    if (scope.traits.has(name)) throw new ControllerCompileError("forbidden-capability", `trait '${name}' is read-only: it is set per group by the experimenter (set_trait); keep a separate variable if the robot must change it`, line);
     return type;
   }
   if (scope.parameters.has(target) || target === "obs" || scope.loopVariables.has(target)) {
@@ -280,6 +281,7 @@ function checkStatements(body, scope) {
         parameters: scope.parameters,
         references: scope.references,
         state: scope.state,
+        traits: scope.traits,
         locals: new Map([...scope.locals, [statement.variable, "scalar"]]),
         loopVariables: scope.loopVariables,
       };
@@ -295,6 +297,7 @@ function checkStatements(body, scope) {
         parameters: scope.parameters,
         references: scope.references,
         state: scope.state,
+        traits: scope.traits,
         locals: new Map(scope.locals),
         loopVariables: new Map([[statement.variable, "neighbour"]]),
       };
@@ -313,6 +316,7 @@ function checkStatements(body, scope) {
           parameters: scope.parameters,
           references: scope.references,
           state: scope.state,
+          traits: scope.traits,
           locals: new Map(scope.locals),
           loopVariables: new Map(scope.loopVariables),
         };
@@ -326,6 +330,7 @@ function checkStatements(body, scope) {
           parameters: scope.parameters,
           references: scope.references,
           state: scope.state,
+          traits: scope.traits,
           locals: new Map(scope.locals),
           loopVariables: new Map(scope.loopVariables),
         };
@@ -337,6 +342,7 @@ function checkStatements(body, scope) {
           parameters: scope.parameters,
           references: scope.references,
           state: scope.state,
+          traits: scope.traits,
           locals: new Map(scope.locals),
           loopVariables: new Map(scope.loopVariables),
         });
@@ -442,9 +448,18 @@ function parseClassState(lines, start, classIndent) {
   while (i < lines.length && lines[i].text !== "def step(self, obs):") {
     const entry = lines[i];
     if (entry.indent !== classIndent) throw new ControllerCompileError("syntax", "class members must use one consistent indentation level", entry.line);
-    const match = entry.text.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(-?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?)$/);
-    if (!match) throw new ControllerCompileError("unsupported-feature", "Round 1 private state declarations must be scalar numeric class attributes", entry.line);
-    state.push({ name: match[1], type: "scalar", initial: Number(match[2]), line: entry.line });
+    // #577 (D-023): NAME = number is the robot's own memory; NAME = trait(default)
+    // is set per group by the experimenter (set_trait) and is read-only here.
+    const number = "-?(?:\\d+\\.\\d*|\\.\\d+|\\d+)(?:[eE][+-]?\\d+)?";
+    const memory = entry.text.match(new RegExp(`^([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(${number})$`));
+    const trait = entry.text.match(new RegExp(`^([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*trait\\(\\s*(${number}|True|False)\\s*\\)$`));
+    if (memory) state.push({ name: memory[1], type: "scalar", initial: Number(memory[2]), line: entry.line });
+    else if (trait) {
+      const boolean = trait[2] === "True" || trait[2] === "False";
+      state.push({ name: trait[1], type: boolean ? "bool" : "scalar", initial: boolean ? trait[2] === "True" : Number(trait[2]), trait: true, line: entry.line });
+    } else {
+      throw new ControllerCompileError("unsupported-feature", "class attributes must be NAME = number (the robot's memory) or NAME = trait(default) (set per group by the experimenter, read-only)", entry.line);
+    }
     i += 1;
   }
   return { state, next: i };
@@ -516,7 +531,8 @@ export function compileController(source, options = {}) {
   }
   const stateMap = new Map(parsedState.state.map((entry) => [entry.name, entry.type]));
   if (stateMap.size !== parsedState.state.length) throw new ControllerCompileError("type", "private state names must be unique");
-  const scope = { parameters, references, state: stateMap, locals: new Map(), loopVariables: new Map() };
+  const traits = new Set(parsedState.state.filter((entry) => entry.trait).map((entry) => entry.name));
+  const scope = { parameters, references, state: stateMap, traits, locals: new Map(), loopVariables: new Map() };
   if (!checkStatements(parsed.body, scope)) throw new ControllerCompileError("type", "step method must return a Motion/action");
 
   return {
@@ -526,7 +542,7 @@ export function compileController(source, options = {}) {
     entry: "step",
     parameters: Object.fromEntries(parameters),
     references: referenceNames,
-    state: parsedState.state.map(({ name, type, initial }) => ({ name, type, initial })),
+    state: parsedState.state.map(({ name, type, initial, trait }) => ({ name, type, initial, ...(trait ? { trait: true } : {}) })),
     body: lowerNeighbourIterableAliases(parsed.body),
   };
 }

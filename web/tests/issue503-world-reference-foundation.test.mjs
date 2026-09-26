@@ -20,9 +20,9 @@ const config = {
 // #577 (D-023): sensors are equipment attached to groups; explicit groups
 // reproduce the former per-index assignment exactly.
 const source = `def initialize(config, rng, place):
-    group("a", count=1, placement="explicit")
-    group("b", count=1, placement="explicit")
-    group("c", count=1, placement="explicit")
+    group("a", count=1, dimension="sensing", placement="explicit")
+    group("b", count=1, dimension="sensing", placement="explicit")
+    group("c", count=1, dimension="sensing", placement="explicit")
     place(0, 0.0, 0.0, 0.0, group="a")
     place(1, 1.0, 0.0, 0.0, group="b")
     place(2, 2.0, 0.0, 0.0, group="c")

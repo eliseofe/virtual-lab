@@ -15,11 +15,11 @@ import {
   pruneMetricFromPanels,
 } from './results-authoring.js'
 
-export const MCP_SERVER_VERSION = '3.24.0'
+export const MCP_SERVER_VERSION = '3.25.0'
 export const MCP_INTERFACE_VERSION = '17'
 export const MCP_AUTHORING_CONTRACT = Object.freeze({
   ...BASE_AUTHORING_CONTRACT,
-  contract_version: 'vlab.authoring/0.14',
+  contract_version: 'vlab.authoring/0.15',
   experiment_interface_version: MCP_INTERFACE_VERSION,
   capability_request_interface: 'vlab.capability-request/11',
   results_presentation: RESULTS_PRESENTATION_CONTRACT,

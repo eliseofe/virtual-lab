@@ -153,3 +153,10 @@ Decided by the owner on 26 September 2026, refining D-022. The per-robot sensor 
 - **No conflicts.** A robot receiving the same state or the same sensor from two groups is a compile error.
 - **Hardware limits stay physical.** A sensor's range is enforced by the simulator, not by the Controller restricting itself. That is the reason sensors are per-group equipment and not only a memory flag.
 - `role(...)`, `role_count(...)` and `set_agent_reference_sensor(...)` are retired, with errors naming the replacement. No current Experiment used per-robot sensors.
+
+**Refinement (26 September 2026, with the owner).** The syntax was made uniform and explicit:
+- `rest_of_group(name, dimension=...)` replaces `rest=True`, because "the rest" is a size, not a yes/no switch.
+- Every group names its `dimension=`; there are no unnamed dimensions. `within=` nests a split inside one group, for papers that fix joint counts (e.g. 3 malicious among 20 informed), while separate dimensions stay independent.
+- Values given by groups are **traits**: the Controller declares them as `NAME = trait(default)` (a number or True/False) and may only read them; the experimenter sets them with `set_trait(group, trait, value)`. What the experimenter imposes stays true for the whole run, as sensors already do; a robot's own memory is declared separately and may change.
+- Names chosen by the experimenter are always quoted; `word=` is always a fixed option of the language.
+- The authoring guide is `docs/HETEROGENEITY_GUIDE.md`.

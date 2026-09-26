@@ -95,9 +95,9 @@ export const REFERENCE_EXPERIMENTS = Object.freeze([
       // #577: explicit groups reproduce the former per-index
       // set_agent_state assignment exactly (same compiled kernel input).
       initialization: `def initialize(config, rng, place):
-    group("lead", count=2, placement="explicit")
-    group("other", rest=True, placement="explicit")
-    set_state("lead", role=1.0)
+    group("lead", count=2, dimension="rank", placement="explicit")
+    rest_of_group("other", dimension="rank", placement="explicit")
+    set_trait("lead", "role", 1.0)
     for i in range(config.N):
         if i < 2:
             place(i, i * 1.0, 0.0, 0.0, group="lead")
@@ -105,7 +105,7 @@ export const REFERENCE_EXPERIMENTS = Object.freeze([
             place(i, i * 1.0, 0.0, 0.0, group="other")
 `,
       controller: `class Stochastic(Agent):
-    role = 0.0
+    role = trait(0.0)
 
     def step(self, obs):
         if rng.bernoulli(0.35) and not self.role > 2.0:
@@ -150,8 +150,8 @@ def initialize(config, rng, place):
     artifacts: {
       configuration: `N = 2\n${smallRuntime}SENSOR_NOISE = 0.0\n`,
       initialization: `def initialize(config, rng, place):
-    group("far", count=1, placement="explicit")
-    group("near", count=1, placement="explicit")
+    group("far", count=1, dimension="sensing", placement="explicit")
+    group("near", count=1, dimension="sensing", placement="explicit")
     place(0, -4.9, 0.0, 0.0, group="far")
     place(1, 0.0, 0.0, 0.0, group="near")
     define_reference("goal", 4.9, 0.0)

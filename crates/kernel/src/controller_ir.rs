@@ -63,8 +63,37 @@ struct StateDeclaration {
     name: String,
     #[serde(rename = "type")]
     value_type: String,
-    initial: f64,
+    initial: StateValue,
+    // #577 (D-023): a trait is set per group by the experimenter and is
+    // read-only for the robot.
+    #[serde(default, rename = "trait")]
+    is_trait: bool,
 }
+
+/// A private-state value as JSON: a number, or true/false for bool traits.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum StateValue {
+    Number(f64),
+    Bool(bool),
+}
+
+impl StateValue {
+    pub(crate) fn as_f64(self) -> f64 {
+        match self {
+            StateValue::Number(value) => value,
+            StateValue::Bool(value) => f64::from(u8::from(value)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct StateSlot {
+    index: usize,
+    boolean: bool,
+}
+
+type StateSlots = HashMap<String, StateSlot>;
 
 #[derive(Debug, Deserialize)]
 struct ConditionalBranch {
@@ -667,6 +696,7 @@ enum PreparedLoad {
     ReferenceRelativePosition(usize),
     Parameter(usize),
     PrivateState(usize),
+    PrivateBool(usize),
     Local(usize),
 }
 
@@ -733,7 +763,7 @@ fn resolve_load(
     line: Option<usize>,
     parameter_slots: &HashMap<String, usize>,
     reference_slots: &HashMap<String, usize>,
-    state_slots: &HashMap<String, usize>,
+    state_slots: &StateSlots,
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
 ) -> Result<PreparedLoad, String> {
@@ -765,11 +795,14 @@ fn resolve_load(
         }
     }
     if let Some(name) = path.strip_prefix("self.") {
-        return Ok(PreparedLoad::PrivateState(
-            *state_slots
-                .get(name)
-                .ok_or_else(|| at_line(line, "validated private state slot missing"))?,
-        ));
+        let slot = *state_slots
+            .get(name)
+            .ok_or_else(|| at_line(line, "validated private state slot missing"))?;
+        return Ok(if slot.boolean {
+            PreparedLoad::PrivateBool(slot.index)
+        } else {
+            PreparedLoad::PrivateState(slot.index)
+        });
     }
     if let Some(variable) = loop_variable {
         if path.strip_prefix(variable) == Some(".relative_position") {
@@ -792,7 +825,7 @@ fn emit_expression(
     expression: &Expression,
     parameter_slots: &HashMap<String, usize>,
     reference_slots: &HashMap<String, usize>,
-    state_slots: &HashMap<String, usize>,
+    state_slots: &StateSlots,
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
     ops: &mut Vec<EvalOp>,
@@ -999,7 +1032,7 @@ fn prepare_expression(
     expression: &Expression,
     parameter_slots: &HashMap<String, usize>,
     reference_slots: &HashMap<String, usize>,
-    state_slots: &HashMap<String, usize>,
+    state_slots: &StateSlots,
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
 ) -> Result<PreparedExpression, String> {
@@ -1024,13 +1057,45 @@ fn prepare_expression(
     })
 }
 
+/// Traits are set by the experimenter per group and are read-only for the
+/// robot (#577, D-023).
+fn check_trait_writes(body: &[Statement], traits: &HashSet<String>) -> Result<(), String> {
+    for statement in body {
+        match statement {
+            Statement::Assign { target, line, .. } | Statement::AugAssign { target, line, .. } => {
+                if let Some(name) = target.strip_prefix("self.") {
+                    if traits.contains(name) {
+                        return Err(at_line(
+                            *line,
+                            format!("trait '{name}' is read-only: it is set per group by the experimenter"),
+                        ));
+                    }
+                }
+            }
+            Statement::ForEach { body, .. } => check_trait_writes(body, traits)?,
+            Statement::If {
+                branches,
+                else_body,
+                ..
+            } => {
+                for branch in branches {
+                    check_trait_writes(&branch.body, traits)?;
+                }
+                check_trait_writes(else_body, traits)?;
+            }
+            Statement::Return { .. } => {}
+        }
+    }
+    Ok(())
+}
+
 fn prepare_target(
     target: &str,
-    state_slots: &HashMap<String, usize>,
+    state_slots: &StateSlots,
     local_slots: &HashMap<String, usize>,
 ) -> PreparedTarget {
     if let Some(name) = target.strip_prefix("self.") {
-        PreparedTarget::PrivateState(state_slots[name])
+        PreparedTarget::PrivateState(state_slots[name].index)
     } else {
         PreparedTarget::Local(local_slots[target])
     }
@@ -1040,7 +1105,7 @@ fn prepare_statements(
     body: &[Statement],
     parameter_slots: &HashMap<String, usize>,
     reference_slots: &HashMap<String, usize>,
-    state_slots: &HashMap<String, usize>,
+    state_slots: &StateSlots,
     local_slots: &HashMap<String, usize>,
     loop_variable: Option<&str>,
 ) -> Result<Vec<PreparedStatement>, String> {
@@ -1236,6 +1301,7 @@ fn push_load(
         ),
         PreparedLoad::Parameter(slot) => Value::Scalar(parameters[slot]),
         PreparedLoad::PrivateState(slot) => Value::Scalar(private_state[slot]),
+        PreparedLoad::PrivateBool(slot) => Value::Bool(private_state[slot] != 0.0),
         PreparedLoad::Local(slot) => locals[slot],
     });
 }
@@ -1669,7 +1735,7 @@ pub struct IrControllerRuntime {
     body: Vec<PreparedStatement>,
     parameters: Vec<f64>,
     private_initial: Vec<f64>,
-    private_state_slots: HashMap<String, usize>,
+    private_state_slots: StateSlots,
     private_state: Vec<Vec<f64>>,
     reference_names: Vec<String>,
     root_seed: u32,
@@ -1718,31 +1784,47 @@ impl IrControllerRuntime {
             }
         }
 
-        let mut state_slots = HashMap::new();
+        let mut state_slots: StateSlots = HashMap::new();
         let mut private_initial = Vec::new();
+        let mut traits = HashSet::new();
         for declaration in &ir.state {
-            if declaration.value_type != "scalar" {
-                return Err(format!(
-                    "private state '{}' must be scalar",
-                    declaration.name
-                ));
-            }
-            if !declaration.initial.is_finite() {
+            let boolean = match (declaration.value_type.as_str(), declaration.initial) {
+                ("scalar", StateValue::Number(_)) => false,
+                ("bool", StateValue::Bool(_)) if declaration.is_trait => true,
+                ("bool", _) => {
+                    return Err(format!(
+                        "private state '{}' may be bool only as a trait with a true/false default",
+                        declaration.name
+                    ))
+                }
+                _ => {
+                    return Err(format!(
+                        "private state '{}' must be scalar or a bool trait",
+                        declaration.name
+                    ))
+                }
+            };
+            let initial = declaration.initial.as_f64();
+            if !initial.is_finite() {
                 return Err(format!(
                     "private state '{}' initial value must be finite",
                     declaration.name
                 ));
             }
-            if state_slots
-                .insert(declaration.name.clone(), private_initial.len())
-                .is_some()
-            {
+            let slot = StateSlot {
+                index: private_initial.len(),
+                boolean,
+            };
+            if state_slots.insert(declaration.name.clone(), slot).is_some() {
                 return Err(format!(
                     "duplicate private state declaration '{}'",
                     declaration.name
                 ));
             }
-            private_initial.push(declaration.initial);
+            if declaration.is_trait {
+                traits.insert(declaration.name.clone());
+            }
+            private_initial.push(initial);
         }
 
         let mut reference_slots = HashMap::new();
@@ -1774,6 +1856,7 @@ impl IrControllerRuntime {
             return Err("controller IR has no action return".to_owned());
         }
         check_range_bounds(&ir.body, &supplied)?;
+        check_trait_writes(&ir.body, &traits)?;
 
         let mut local_names = BTreeSet::new();
         collect_local_names(&ir.body, &mut local_names);
@@ -1832,11 +1915,17 @@ impl ControllerRuntime for IrControllerRuntime {
         self.private_state = vec![self.private_initial.clone(); agent_count];
         for (agent_index, profile) in private_state.iter().enumerate() {
             for (name, value) in profile {
-                let slot = self.private_state_slots.get(name).copied().ok_or_else(|| {
+                let declared = self.private_state_slots.get(name).copied().ok_or_else(|| {
                     format!(
                         "agent {agent_index} assigns undeclared controller private state '{name}'"
                     )
                 })?;
+                if declared.boolean && *value != 0.0 && *value != 1.0 {
+                    return Err(format!(
+                        "agent {agent_index} trait '{name}' must be true or false"
+                    ));
+                }
+                let slot = declared.index;
                 if !value.is_finite() {
                     return Err(format!(
                         "agent {agent_index} private state '{name}' must be finite"
@@ -1874,7 +1963,7 @@ impl ControllerRuntime for IrControllerRuntime {
     }
 
     fn scientific_private_state_value(&self, agent_index: usize, name: &str) -> Option<f64> {
-        let slot = self.private_state_slots.get(name).copied()?;
+        let slot = self.private_state_slots.get(name).map(|slot| slot.index)?;
         self.private_state.get(agent_index)?.get(slot).copied()
     }
 }
@@ -2141,6 +2230,48 @@ mod tests {
             error.contains("range arguments must be integers"),
             "{error}"
         );
+    }
+
+    #[test]
+    fn bool_traits_are_read_as_booleans_and_cannot_be_written() {
+        let ir = r#"{
+          "schema":"vlab.controller-ir/0.1","language":"python-vlab/0.1","controller":"Informed","entry":"step",
+          "parameters":{},"state":[{"name":"informed","type":"bool","initial":false,"trait":true}],
+          "body":[
+            {"kind":"if","branches":[{"condition":{"kind":"load","path":"self.informed"},
+              "body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[{"kind":"const","value":1.0},{"kind":"const","value":0.0}]}}]}],
+             "else_body":[{"kind":"return","value":{"kind":"call","name":"Motion","args":[{"kind":"const","value":0.0},{"kind":"const","value":0.0}]}}]}
+          ]
+        }"#;
+        let mut runtime = compile(ir, "{}");
+        let profiles = vec![
+            BTreeMap::from([("informed".to_owned(), 1.0)]),
+            BTreeMap::new(),
+        ];
+        runtime.reset_with_private_state(2, &profiles).unwrap();
+        let observation = Observation {
+            heading: Vec2::new(1.0, 0.0),
+            neighbours: vec![],
+            environmental_scalar: None,
+            references: BTreeMap::new(),
+        };
+        assert_eq!(runtime.step(0, &observation).forward, 1.0, "informed robot");
+        assert_eq!(runtime.step(1, &observation).forward, 0.0, "default false");
+        let bad = vec![BTreeMap::from([("informed".to_owned(), 0.5)])];
+        assert!(runtime.reset_with_private_state(1, &bad).is_err());
+
+        let writes = ir.replace(
+            r#""body":["#,
+            r#""body":[{"kind":"assign","target":"self.informed","value":{"kind":"bool_const","value":true}},"#,
+        );
+        let error = IrControllerRuntime::from_json(&writes, "{}").err().unwrap();
+        assert!(error.contains("trait 'informed' is read-only"), "{error}");
+
+        let untraited = ir.replace(r#","trait":true"#, "");
+        let error = IrControllerRuntime::from_json(&untraited, "{}")
+            .err()
+            .unwrap();
+        assert!(error.contains("may be bool only as a trait"), "{error}");
     }
 
     #[test]

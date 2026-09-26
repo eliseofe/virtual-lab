@@ -215,8 +215,9 @@ function evaluate(expr, scope) {
     }
     if (expr.path === "place") { scope.place(...args, keywords.group ?? null, expr.line); return null; }
     if (expr.path === "group") { scope.groups.declare(args, keywords, expr.line); return null; }
+    if (expr.path === "rest_of_group") { scope.groups.declareRest(args, keywords, expr.line); return null; }
     if (expr.path === "group_count") return scope.groups.count(args, expr.line);
-    if (expr.path === "set_state") { scope.groups.setState(args, keywords, expr.line); return null; }
+    if (expr.path === "set_trait") { scope.groups.setTrait(args, expr.line); return null; }
     if (expr.path === "equip") { scope.groups.equip(args, keywords, expr.line); return null; }
     if (expr.path === "define_reference") { scope.defineReference(...args); return null; }
     if (scope.functions.has(expr.path)) return executeFunction(expr.path, args, scope);
@@ -273,7 +274,7 @@ const EFFECT_SIGNATURES = new Map([
   ["define_reference", ["string", "scalar", "scalar"]],
 ]);
 // Calls that take keyword arguments (#577).
-const KEYWORD_CALLS = new Set(["place", "group", "set_state", "equip"]);
+const KEYWORD_CALLS = new Set(["place", "group", "rest_of_group", "equip"]);
 
 function valueType(value) {
   if (typeof value === "number") return "scalar";
@@ -420,10 +421,12 @@ function checkInitializerTypes(functions, config) {
         }
       };
       if (Object.prototype.hasOwnProperty.call(RETIRED, expr.path)) throw typeError(RETIRED[expr.path], expr.line);
-      if (expr.path === "group") {
-        keywordTypes((name) => ({ fraction: "scalar", count: "scalar", rest: "bool", placement: "string", partition: "string" })[name] ?? null);
-      } else if (expr.path === "set_state") {
-        keywordTypes(() => "scalar");
+      if (expr.path === "group" || expr.path === "rest_of_group") {
+        for (const name of keywords.keys()) {
+          const message = groupKeywordError(expr.path, name);
+          if (message) throw typeError(message, expr.line);
+        }
+        keywordTypes((name) => ({ fraction: "scalar", count: "scalar", placement: "string", dimension: "string", within: "string" })[name] ?? null);
       } else if (expr.path === "equip") {
         keywordTypes((name) => (name === "range" ? "scalar|none" : null));
       } else if (expr.path === "place") {
@@ -431,8 +434,12 @@ function checkInitializerTypes(functions, config) {
       } else if (keywords.size) {
         throw typeError(`${expr.path} does not take keyword arguments`, expr.line);
       }
-      if (expr.path === "group" || expr.path === "set_state") {
-        if (args.length !== 1 || args[0] !== "string") throw typeError(`${expr.path} expects one group name string, e.g. ${expr.path === "group" ? "group(\"informed\", fraction=0.1)" : "set_state(\"informed\", informed=1.0)"}`, expr.line);
+      if (expr.path === "group" || expr.path === "rest_of_group") {
+        if (args.length !== 1 || args[0] !== "string") throw typeError(`${expr.path} expects one group name string, e.g. ${expr.path}("informed"${expr.path === "group" ? ", fraction=0.1" : ""}, dimension="information")`, expr.line);
+        return "none";
+      }
+      if (expr.path === "set_trait") {
+        if (args.length !== 3 || args[0] !== "string" || args[1] !== "string" || !["scalar", "bool"].includes(args[2])) throw typeError("set_trait expects a group, a trait name and a number or True/False, e.g. set_trait(\"informed\", \"informed\", True)", expr.line);
         return "none";
       }
       if (expr.path === "equip") {
@@ -473,35 +480,47 @@ function checkInitializerTypes(functions, config) {
 
 
 // Groups (#577, D-022, D-023): heterogeneity is an exact composition declared
-// by the experimenter, in two independent parts. WHO differs is a partition of
-// the swarm into groups of exact size; WHAT differs is attached to a group by
-// one statement per kind of robot property. No one addresses an individual
-// robot.
+// by the experimenter, in two independent parts. WHO differs: each dimension
+// splits the swarm (or, with within=, one group) into groups of exact size.
+// WHAT differs: traits and sensors are attached to groups. No one addresses an
+// individual robot; every name below is chosen by the experimenter.
 //
-//   group("informed", fraction=config.RHO)             round(fraction * N) members
-//   group("uninformed", rest=True)                     whatever remains
-//   group("leader", count=1, placement="explicit")     placed with place(..., group="leader")
-//   group("equipped", fraction=0.5, partition="hardware")   an independent partition
+//   group("informed", fraction=config.RHO, dimension="information")
+//   rest_of_group("uninformed", dimension="information")
+//   group("bad", count=3, dimension="behaviour", within="informed")
+//   rest_of_group("good", dimension="behaviour", within="informed")
+//   group("leader", count=1, dimension="rank", placement="explicit")
 //
-//   set_state("informed", informed=1.0)                starting Controller state
-//   equip("equipped", "nest", range=5.0)               a reference sensor (range=None: unlimited)
+//   set_trait("informed", "informed", True)     group, Controller trait, value
+//   equip("informed", "nest", range=5.0)        group, reference, range (None: unlimited)
 //
-// Groups in one partition are exclusive and account for all N robots (one may
-// be rest=True). Each partition is dealt independently: random groups go to
-// the robots not explicitly placed in that partition, by a uniform random
-// permutation from initialization stream 1 + (partition order), so groups
-// never shift placement draws (stream 0). "all" names every robot. A robot
-// must not receive the same state or sensor from two groups. Groups are
-// declared before any place() or group_count().
+// A split is one dimension of the whole swarm, or of one group (within=). Its
+// groups are exclusive and account for all its robots; at most one is
+// rest_of_group. Splits are dealt independently, in declaration order, each by
+// a uniform random permutation from initialization stream 1 + (split order),
+// so groups never shift placement draws (stream 0). Explicit placement is for
+// groups of whole-swarm dimensions. "all" names every robot. A robot must not
+// receive the same trait or sensor from two groups.
 const RETIRED = {
-  set_agent_state: "set_agent_state was retired (#577): declare a group with group(name, fraction=... | count=... | rest=True) and give it starting state with set_state(name, <state>=value)",
+  set_agent_state: "set_agent_state was retired (#577): declare group(name, fraction=... | count=..., dimension=\"...\") and give it a trait with set_trait(group, trait, value)",
   set_agent_reference_sensor: "set_agent_reference_sensor was retired (#577, D-023): give a group the sensor with equip(group, reference, range=...), or equip(\"all\", reference) for every robot",
-  role: "role(...) was replaced (#577, D-023): declare group(name, fraction=... | count=... | rest=True) and give it starting state with set_state(name, <state>=value)",
+  role: "role(...) was replaced (#577, D-023): declare group(name, fraction=... | count=..., dimension=\"...\") and give it a trait with set_trait(group, trait, value)",
   role_count: "role_count was replaced by group_count (#577, D-023)",
+  set_state: "set_state was replaced by set_trait(group, trait, value) (#577, D-023): one trait per call, e.g. set_trait(\"informed\", \"informed\", True)",
 };
-const DEFAULT_PARTITION = "default";
 const ALL = "all";
+// The error for a keyword group(...) / rest_of_group(...) does not take.
+function groupKeywordError(what, key) {
+  if (key === "rest") return "rest=True was replaced by rest_of_group(name, dimension=...) (#577)";
+  if (key === "partition") return "partition= was renamed dimension= (#577)";
+  if (!(what === "rest_of_group" ? REST_KEYWORDS : GROUP_KEYWORDS).includes(key)) {
+    return `${what} does not take keyword argument '${key}'${what === "group" && key !== "range" ? `; give the group a trait with set_trait(group, "${key}", value)` : ""}`;
+  }
+  return null;
+}
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const GROUP_KEYWORDS = ["fraction", "count", "dimension", "within", "placement"];
+const REST_KEYWORDS = ["dimension", "within", "placement"];
 
 function randomIndex(rng, bound) {
   // Unbiased integer in [0, bound) by rejection sampling on 64-bit draws.
@@ -515,77 +534,114 @@ function randomIndex(rng, bound) {
 
 function createGroups(n, seed) {
   const declared = new Map();
-  const partitions = new Map();
+  const splits = new Map();
   const explicitGroup = new Array(n).fill(null);
   const explicitPlacements = new Map();
-  const states = new Map();
+  const traits = new Map();
   const sensors = new Map();
   let closed = false;
   let counts = null;
 
-  const where = (partition) => (partition === DEFAULT_PARTITION ? "" : ` in partition "${partition}"`);
+  const splitName = (split) => (split.within ? `dimension "${split.dimension}" within "${split.within}"` : `dimension "${split.dimension}"`);
   const known = (name, what, line) => {
     if (name === ALL) return;
     if (typeof name !== "string" || !declared.has(name)) throw new InitializerCompileError(`${what} names undeclared group ${JSON.stringify(name)}`, line);
   };
-  // Two groups overlap unless they are distinct groups of one partition.
-  const overlap = (a, b) => a === b || a === ALL || b === ALL || declared.get(a).partition !== declared.get(b).partition;
+  const chain = (name) => {
+    const names = [];
+    for (let current = name; current; current = declared.get(current).within) names.push(current);
+    return names;
+  };
+  // Two groups are disjoint when they, or groups containing them, are
+  // different groups of the same split; otherwise a robot can be in both.
+  const overlap = (a, b) => {
+    if (a === b || a === ALL || b === ALL) return true;
+    for (const x of chain(a)) for (const y of chain(b)) {
+      if (x !== y && declared.get(x).split === declared.get(y).split) return false;
+    }
+    return true;
+  };
+
+  function declareGroup(name, keywords, rest, line) {
+    const what = rest ? "rest_of_group" : "group";
+    if (closed) throw new InitializerCompileError("declare every group before the first place(...) or group_count(...)", line);
+    if (typeof name !== "string" || !IDENTIFIER.test(name)) throw new InitializerCompileError(`${what} expects one group name string, e.g. ${what}("informed"${rest ? "" : ", fraction=0.1"}, dimension="information")`, line);
+    if (name === ALL) throw new InitializerCompileError("'all' already names every robot; choose another group name", line);
+    if (declared.has(name)) throw new InitializerCompileError(`group '${name}' was declared more than once`, line);
+    for (const key of Object.keys(keywords)) {
+      const message = groupKeywordError(what, key);
+      if (message) throw new InitializerCompileError(message, line);
+    }
+    const dimension = keywords.dimension;
+    if (dimension === undefined) throw new InitializerCompileError(`${what} '${name}' needs dimension="...", naming the split it belongs to`, line);
+    if (typeof dimension !== "string" || !IDENTIFIER.test(dimension)) throw new InitializerCompileError(`${what} '${name}' dimension must be an identifier string`, line);
+    const within = keywords.within ?? null;
+    if (within !== null && (typeof within !== "string" || !declared.has(within))) throw new InitializerCompileError(`${what} '${name}' within= must name a group declared before it`, line);
+    const placement = keywords.placement ?? "random";
+    if (placement !== "random" && placement !== "explicit") throw new InitializerCompileError(`${what} '${name}' placement must be "random" or "explicit"`, line);
+    if (placement === "explicit" && within !== null) throw new InitializerCompileError(`group '${name}' is inside '${within}': nested groups are always dealt at random among the parent's robots`, line);
+    const key = `${dimension}\u0000${within ?? ""}`;
+    if (!splits.has(key)) splits.set(key, { key, dimension, within, groups: [] });
+    const split = splits.get(key);
+    const group = { name, split: key, within, placement };
+    if (rest) {
+      if (split.groups.some((other) => other.rest)) throw new InitializerCompileError(`${splitName(split)} already has a rest_of_group`, line);
+      group.rest = true;
+    } else {
+      const sizes = ["fraction", "count"].filter((size) => keywords[size] !== undefined);
+      if (sizes.length !== 1) throw new InitializerCompileError(`group '${name}' needs exactly one of fraction= or count= (or declare it with rest_of_group)`, line);
+      if (keywords.fraction !== undefined) {
+        if (typeof keywords.fraction !== "number" || !(keywords.fraction >= 0 && keywords.fraction <= 1)) throw new InitializerCompileError(`group '${name}' fraction must be between 0 and 1`, line);
+        group.fraction = keywords.fraction;
+      } else {
+        if (!Number.isInteger(keywords.count) || keywords.count < 0) throw new InitializerCompileError(`group '${name}' count must be a non-negative integer`, line);
+        group.count = keywords.count;
+      }
+    }
+    declared.set(name, group);
+    split.groups.push(group);
+  }
 
   function resolve(line) {
     if (counts) return counts;
     counts = new Map();
-    for (const [partition, groups] of partitions) {
+    for (const split of splits.values()) {
+      const total = split.within === null ? n : counts.get(split.within);
       let used = 0;
       let rest = null;
-      for (const group of groups) {
+      for (const group of split.groups) {
         if (group.rest) { rest = group; continue; }
-        const count = group.fraction !== undefined ? Math.round(group.fraction * n) : group.count;
+        const count = group.fraction !== undefined ? Math.round(group.fraction * total) : group.count;
         counts.set(group.name, count);
         used += count;
       }
       if (rest) {
-        if (used > n) throw new InitializerCompileError(`groups${where(partition)} ask for ${used} robots but N is ${n}`, line);
-        counts.set(rest.name, n - used);
-      } else if (used !== n) {
-        throw new InitializerCompileError(`groups${where(partition)} account for ${used} robots but N is ${n}; mark one group rest=True`, line);
+        if (used > total) throw new InitializerCompileError(`${splitName(split)} asks for ${used} robots but has ${total}`, line);
+        counts.set(rest.name, total - used);
+      } else if (used !== total) {
+        throw new InitializerCompileError(`${splitName(split)} accounts for ${used} robots but has ${total}; add a rest_of_group`, line);
       }
     }
     return counts;
   }
 
+  function attach(store, key, name, value, clashMessage, line) {
+    const holders = store.get(key) ?? [];
+    const clash = holders.find((other) => overlap(other.group, name));
+    if (clash) throw new InitializerCompileError(clashMessage(clash.group), line);
+    holders.push({ group: name, value });
+    store.set(key, holders);
+  }
+
   return {
     close() { closed = true; },
     declare(args, keywords, line) {
-      if (closed) throw new InitializerCompileError("declare every group before the first place(...) or group_count(...)", line);
-      const [name] = args;
-      if (args.length !== 1 || typeof name !== "string" || !IDENTIFIER.test(name)) throw new InitializerCompileError("group expects one name string, e.g. group(\"informed\", fraction=0.1)", line);
-      if (name === ALL) throw new InitializerCompileError("'all' already names every robot; choose another group name", line);
-      if (declared.has(name)) throw new InitializerCompileError(`group '${name}' was declared more than once`, line);
-      for (const key of Object.keys(keywords)) {
-        if (!["fraction", "count", "rest", "placement", "partition"].includes(key)) throw new InitializerCompileError(`group does not take keyword argument '${key}'; set starting state with set_state("${name}", ${key}=...)`, line);
-      }
-      const sizes = ["fraction", "count", "rest"].filter((key) => keywords[key] !== undefined);
-      if (sizes.length !== 1) throw new InitializerCompileError(`group '${name}' needs exactly one of fraction=, count= or rest=True`, line);
-      const partition = keywords.partition ?? DEFAULT_PARTITION;
-      if (typeof partition !== "string" || !IDENTIFIER.test(partition)) throw new InitializerCompileError(`group '${name}' partition must be an identifier string`, line);
-      const group = { name, partition, placement: keywords.placement ?? "random" };
-      if (keywords.fraction !== undefined) {
-        if (typeof keywords.fraction !== "number" || !(keywords.fraction >= 0 && keywords.fraction <= 1)) throw new InitializerCompileError(`group '${name}' fraction must be between 0 and 1`, line);
-        group.fraction = keywords.fraction;
-      }
-      if (keywords.count !== undefined) {
-        if (!Number.isInteger(keywords.count) || keywords.count < 0) throw new InitializerCompileError(`group '${name}' count must be a non-negative integer`, line);
-        group.count = keywords.count;
-      }
-      if (!partitions.has(partition)) partitions.set(partition, []);
-      if (keywords.rest !== undefined) {
-        if (keywords.rest !== true) throw new InitializerCompileError(`group '${name}' rest must be True`, line);
-        if (partitions.get(partition).some((other) => other.rest)) throw new InitializerCompileError(`only one group${where(partition)} may be rest=True`, line);
-        group.rest = true;
-      }
-      if (group.placement !== "random" && group.placement !== "explicit") throw new InitializerCompileError(`group '${name}' placement must be "random" or "explicit"`, line);
-      declared.set(name, group);
-      partitions.get(partition).push(group);
+      if (args.length !== 1) throw new InitializerCompileError("group expects one group name string, e.g. group(\"informed\", fraction=0.1, dimension=\"information\")", line);
+      declareGroup(args[0], keywords, false, line);
+    },
+    declareRest(args, keywords, line) {
+      if (args.length !== 1) throw new InitializerCompileError("rest_of_group expects one group name string, e.g. rest_of_group(\"uninformed\", dimension=\"information\")", line);
+      declareGroup(args[0], keywords, true, line);
     },
     count(args, line) {
       closed = true;
@@ -593,19 +649,12 @@ function createGroups(n, seed) {
       if (args.length !== 1 || name === ALL || !declared.has(name)) throw new InitializerCompileError(`group_count expects the name of a declared group, got ${JSON.stringify(name)}`, line);
       return resolve(line).get(name);
     },
-    setState(args, keywords, line) {
-      const [name] = args;
-      if (args.length !== 1) throw new InitializerCompileError("set_state expects one group name, e.g. set_state(\"informed\", informed=1.0)", line);
-      known(name, "set_state", line);
-      if (!Object.keys(keywords).length) throw new InitializerCompileError("set_state expects at least one <state>=value", line);
-      for (const [key, value] of Object.entries(keywords)) {
-        if (typeof value !== "number" || !Number.isFinite(value)) throw new InitializerCompileError(`set_state '${key}' must be a finite number`, line);
-        const setters = states.get(key) ?? [];
-        const clash = setters.find((other) => overlap(other.group, name));
-        if (clash) throw new InitializerCompileError(clash.group === name ? `state '${key}' is set twice for group '${name}'` : `state '${key}' is set by groups '${clash.group}' and '${name}', and a robot can belong to both`, line);
-        setters.push({ group: name, value });
-        states.set(key, setters);
-      }
+    setTrait(args, line) {
+      const [name, trait, value] = args;
+      if (args.length !== 3 || typeof trait !== "string" || !IDENTIFIER.test(trait)) throw new InitializerCompileError("set_trait expects a group, a trait name and a value, e.g. set_trait(\"informed\", \"informed\", True)", line);
+      known(name, "set_trait", line);
+      if (typeof value !== "boolean" && (typeof value !== "number" || !Number.isFinite(value))) throw new InitializerCompileError(`set_trait '${trait}' value must be a finite number, True or False`, line);
+      attach(traits, trait, name, value, (other) => (other === name ? `trait '${trait}' is set twice for group '${name}'` : `trait '${trait}' is set by groups '${other}' and '${name}', and a robot can belong to both`), line);
     },
     equip(args, keywords, line) {
       const [name, reference] = args;
@@ -616,11 +665,7 @@ function createGroups(n, seed) {
       }
       const range = keywords.range ?? null;
       if (range !== null && (typeof range !== "number" || !Number.isFinite(range) || range <= 0)) throw new InitializerCompileError("equip range must be None or a finite positive number", line);
-      const holders = sensors.get(reference) ?? [];
-      const clash = holders.find((other) => overlap(other.group, name));
-      if (clash) throw new InitializerCompileError(clash.group === name ? `group '${name}' is equipped with '${reference}' twice` : `sensor '${reference}' is given by groups '${clash.group}' and '${name}', and a robot can belong to both`, line);
-      holders.push({ group: name, range });
-      sensors.set(reference, holders);
+      attach(sensors, reference, name, range, (other) => (other === name ? `group '${name}' is equipped with '${reference}' twice` : `sensor '${reference}' is given by groups '${other}' and '${name}', and a robot can belong to both`), line);
     },
     placed(index, name, line) {
       if (name === null) return;
@@ -631,33 +676,34 @@ function createGroups(n, seed) {
       explicitGroup[index] = name;
     },
     references() { return [...sensors.keys()]; },
-    // After initialize(): check the composition, deal each partition and
-    // apply every group's state and sensors. Returns the composition
-    // [{ name, partition, count, placement }] and the per-robot sensors.
+    // After initialize(): check the composition, deal each split and apply
+    // traits and sensors. Returns the composition
+    // [{ name, dimension, within?, count, placement }] and per-robot sensors.
     deal(privateState) {
       const agentSensors = Array.from({ length: n }, () => new Map());
       const resolved = resolve(null);
       const members = new Map([[ALL, Array.from({ length: n }, (_, index) => index)]]);
-      [...partitions.entries()].forEach(([partition, groups], order) => {
-        for (const group of groups) {
+      [...splits.values()].forEach((split, order) => {
+        for (const group of split.groups) {
           if (group.placement !== "explicit") continue;
           const placed = explicitPlacements.get(group.name) ?? 0;
           if (placed !== resolved.get(group.name)) {
             throw new InitializerCompileError(`group '${group.name}' has ${resolved.get(group.name)} members but ${placed} were placed with group="${group.name}"`);
           }
         }
+        const candidates = split.within === null ? members.get(ALL) : members.get(split.within);
         const unassigned = [];
-        for (let index = 0; index < n; index += 1) {
+        for (const index of candidates) {
           const explicit = explicitGroup[index];
-          if (explicit !== null && declared.get(explicit).partition === partition) members.set(explicit, [...(members.get(explicit) ?? []), index]);
+          if (explicit !== null && declared.get(explicit).split === split.key) members.set(explicit, [...(members.get(explicit) ?? []), index]);
           else unassigned.push(index);
         }
         const pool = [];
-        for (const group of groups) {
+        for (const group of split.groups) {
           if (group.placement === "random") for (let k = 0; k < resolved.get(group.name); k += 1) pool.push(group.name);
         }
         if (pool.length !== unassigned.length) {
-          throw new InitializerCompileError(`${unassigned.length} robots were placed without a group${where(partition)}, but the random groups have ${pool.length} members`);
+          throw new InitializerCompileError(`${unassigned.length} robots were placed without a group of ${splitName(split)}, but its random groups have ${pool.length} members`);
         }
         const dealer = ScientificRng.forDomain(seed, RNG_DOMAINS.initialization, 1 + order);
         for (let k = pool.length - 1; k > 0; k -= 1) {
@@ -665,14 +711,18 @@ function createGroups(n, seed) {
           [pool[k], pool[j]] = [pool[j], pool[k]];
         }
         unassigned.forEach((index, k) => members.set(pool[k], [...(members.get(pool[k]) ?? []), index]));
+        for (const group of split.groups) if (!members.has(group.name)) members.set(group.name, []);
       });
-      for (const [key, setters] of states) {
-        for (const { group, value } of setters) for (const index of members.get(group) ?? []) privateState[index].set(key, value);
+      for (const [trait, holders] of traits) {
+        for (const { group, value } of holders) for (const index of members.get(group) ?? []) privateState[index].set(trait, value);
       }
       for (const [reference, holders] of sensors) {
-        for (const { group, range } of holders) for (const index of members.get(group) ?? []) agentSensors[index].set(reference, range);
+        for (const { group, value } of holders) for (const index of members.get(group) ?? []) agentSensors[index].set(reference, value);
       }
-      const composition = [...declared.values()].map((group) => ({ name: group.name, partition: group.partition, count: resolved.get(group.name), placement: group.placement }));
+      const composition = [...declared.values()].map((group) => {
+        const split = splits.get(group.split);
+        return { name: group.name, dimension: split.dimension, ...(split.within ? { within: split.within } : {}), count: resolved.get(group.name), placement: group.placement };
+      });
       return { composition, agentSensors };
     },
   };
@@ -756,7 +806,14 @@ export function compileInitializer(source, config) {
 }
 
 export function validateInitializerControllerPrivateState(initializer, controller) {
-  const declarations = new Map((controller?.state ?? []).map((entry) => [entry.name, entry.type]));
+  // #577 (D-023): Initialization sets only traits, which the Controller must
+  // declare as NAME = trait(default) with the same type (number or True/False).
+  const declarations = new Map((controller?.state ?? []).map((entry) => [entry.name, entry]));
+  const invalid = (message) => {
+    const error = new InitializerCompileError(message);
+    error.category = "invalid-private-state";
+    return error;
+  };
   for (let index = 0; index < (initializer?.state ?? []).length; index += 1) {
     const profile = initializer.state[index]?.private_state;
     if (profile === undefined) continue;
@@ -764,19 +821,12 @@ export function validateInitializerControllerPrivateState(initializer, controlle
       throw new InitializerCompileError(`agent ${index} private_state must be an object`);
     }
     for (const [name, value] of Object.entries(profile)) {
-      if (!declarations.has(name)) {
-        const error = new InitializerCompileError(`agent ${index} assigns undeclared controller private state '${name}'`);
-        error.category = "invalid-private-state";
-        throw error;
-      }
-      if (declarations.get(name) !== "scalar") {
-        const error = new InitializerCompileError(`agent ${index} private state '${name}' is not scalar`);
-        error.category = "invalid-private-state";
-        throw error;
-      }
-      if (typeof value !== "number" || !Number.isFinite(value)) {
-        throw new InitializerCompileError(`agent ${index} private state '${name}' must be a finite scalar`);
-      }
+      const declaration = declarations.get(name);
+      if (!declaration) throw invalid(`set_trait gives '${name}', but the Controller does not declare it; add ${name} = trait(default) to the Controller class`);
+      if (!declaration.trait) throw invalid(`set_trait gives '${name}', but the Controller declares it as ordinary memory; declare it as ${name} = trait(default) so the robot can read but not change it`);
+      const valueKind = typeof value === "boolean" ? "bool" : "scalar";
+      if (valueKind !== declaration.type) throw invalid(`trait '${name}' is ${declaration.type === "bool" ? "True/False" : "a number"} in the Controller, but set_trait gives ${valueKind === "bool" ? "True/False" : "a number"}`);
+      if (valueKind === "scalar" && !Number.isFinite(value)) throw new InitializerCompileError(`agent ${index} trait '${name}' must be finite`);
     }
   }
   return initializer;

@@ -18,7 +18,7 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.14",
+  contract_version: "vlab.authoring/0.15",
   experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
@@ -59,7 +59,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
     },
     initialization: {
       compiled_version: "vlab.initializer-state/0.4",
-      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Heterogeneity is declared as groups (see groups below); no one addresses an individual robot. Additional callable/member surfaces and optional entries are capability-owned.",
+      syntax: "Restricted Python-like function definitions. Must define initialize(config, rng, place). Supports assignments, +=, if/elif/else, for ... in range(...), return, helper functions and language intrinsics. Heterogeneity is declared as groups with traits and sensors (see groups below); no one addresses an individual robot. Additional callable/member surfaces and optional entries are capability-owned.",
       entry: "initialize(config, rng, place)",
       simulator_owned_inputs: ["config", "rng", "place"],
       language_intrinsics: ["abs", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "floor", "ceil", "pow", "min", "max", "range"],
@@ -69,20 +69,20 @@ export const AUTHORING_CONTRACT = Object.freeze({
       exponentiation_operator: "**",
       optional_environment_scalar_math: "The same standard scalar math intrinsics and arithmetic operators (including // and %) apply inside environmental_scalar(x, y, config), which is a single return expression.",
       constants: ["TAU", "SQRT3_OVER_2"],
-      keyword_arguments: "Calls may end with keyword arguments NAME=value; only group(...), set_state(...), equip(...) and place(..., group=...) accept them.",
+      keyword_arguments: "Calls may end with keyword arguments NAME=value; only group(...), rest_of_group(...), equip(...) and place(..., group=...) accept them. Every NAME= is a fixed option of the language; names the experimenter chooses (groups, dimensions, traits, references) are always quoted strings.",
       groups: {
-        principle: "Robots are anonymous (D-022). Heterogeneity is declared by the experimenter in two independent parts (D-023): WHO differs is a partition of the swarm into groups of exact size; WHAT differs is attached to a group by one statement per kind of robot property. No one addresses an individual robot.",
-        declare: "group(\"name\", fraction=f | count=k | rest=True, placement=\"random\" | \"explicit\", partition=\"name\") before any place(...) or group_count(...). A group carries no values.",
-        sizes: "fraction gives round(fraction * N) members (halves round up); count gives exactly k; one group per partition may be rest=True and receives the remaining robots. Without a rest group the sizes of a partition must add up to N. Counts are exact in every run and are reported back as compiled.groups.",
-        partitions: "Groups without partition= form the default partition. Groups sharing a partition are mutually exclusive; different partitions are independent (crossed factors), e.g. informed/uninformed and, separately, equipped/plain.",
-        placement: "random (default): each partition's members are dealt to the robots not explicitly placed in that partition by a uniform random permutation from initialization stream 1 + (partition order), so placement draws are unaffected. explicit: place each member with place(i, x, y, heading, group=\"name\"), looping over group_count(\"name\"); each explicit group must receive exactly its count. A robot can be placed explicitly in at most one group.",
+        principle: "Robots are anonymous (D-022). Heterogeneity is declared by the experimenter in two independent parts (D-023): WHO differs is a split of the swarm into groups of exact size; WHAT differs is attached to groups (traits and sensors). No one addresses an individual robot. The language gives these names no meaning; the Controller does.",
+        declare: "group(\"name\", fraction=f | count=k, dimension=\"dim\", within=\"parent\", placement=\"random\" | \"explicit\") and rest_of_group(\"name\", dimension=\"dim\", within=\"parent\", placement=...) before any place(...) or group_count(...). dimension= is required on every declaration; within= and placement= are optional.",
+        splits: "A split is one dimension of the whole swarm, or of one group when within= names it. The groups of a split are mutually exclusive and account for all its robots: sizes must add up to its total unless one group is rest_of_group (at most one per split), which receives the remaining robots. Different dimensions are independent (crossed factors): each is exact, their overlap follows the seed. Nested splits (within=) give exact joint counts, e.g. exactly 3 malicious among exactly 20 informed.",
+        sizes: "fraction gives round(fraction * total) members, halves rounding up, where total is N for a whole-swarm dimension and the parent group's size for a nested split; count gives exactly k. Counts are exact in every run and are reported back as compiled.groups [{ name, dimension, within?, count, placement }].",
+        placement: "random (default): each split's members are dealt to its robots not explicitly placed in it, by a uniform random permutation from initialization stream 1 + (split order), so placement draws are unaffected. explicit (whole-swarm dimensions only): place each member with place(i, x, y, heading, group=\"name\"), looping over group_count(\"name\"); each explicit group must receive exactly its count. A robot can be placed explicitly in at most one group.",
         properties: {
-          set_state: "set_state(\"group\", <state_name>=value, ...): starting values for Controller-declared private scalar state; robots outside the group keep the Controller class default.",
+          set_trait: "set_trait(\"group\", \"trait\", value): the group's robots start with that trait value (a number, True or False). The Controller must declare it as trait = trait(default) with the same type; robots outside the group keep the default. Traits are read-only for the robot: assigning self.trait in the Controller is a compile error. A robot that must change such a value keeps its own ordinary variable.",
           equip: "equip(\"group\", \"reference\", range=r | None): the group's robots sense the named reference (defined with define_reference) up to range r, or without limit when range is None or omitted.",
           all: "\"all\" names every robot, e.g. equip(\"all\", \"nest\").",
-          conflicts: "A robot must not receive the same state name or the same sensor from two groups; this is a compile error.",
+          conflicts: "A robot must not receive the same trait or the same sensor from two groups; this is a compile error.",
         },
-        example: "group(\"informed\", fraction=config.RHO)\ngroup(\"uninformed\", rest=True)\nset_state(\"informed\", informed=1.0)\nfor i in range(config.N):\n    place(i, x, y, heading)",
+        example: "group(\"informed\", fraction=config.RHO, dimension=\"information\")\nrest_of_group(\"uninformed\", dimension=\"information\")\nset_trait(\"informed\", \"informed\", True)\nfor i in range(config.N):\n    place(i, x, y, heading)\n\n# Controller class: informed = trait(False)",
       },
       capability_resolution: "Capability-backed initializer calls, member access and optional entries are authorable only when an implemented capability advertises the corresponding Initialization surface."
     },
@@ -92,6 +92,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
       syntax: "Restricted Python-compatible class syntax: class Name(Agent), optional capability-backed class state declarations, and def step(self, obs). Supports typed scalar/vector/boolean expressions, assignments, +=, arithmetic, scalar comparisons, boolean composition, if/elif/else, bounded iteration over capability-backed iterables, and return of capability-backed actions.",
       entry: "step(self, obs)",
       anonymity: "A robot knows only its own sensors, private state, parameters and random stream. N, ARENA_SIZE and EXPERIMENT_DURATION are not available to the Controller (D-022); other Configuration values are robot parameters.",
+      class_attributes: "NAME = number declares the robot's own memory, which the robot may read and change. NAME = trait(default) declares a trait (a number, True or False) that the experimenter sets per group with set_trait; the robot may read it but assigning it is a compile error (D-023). Metrics can read numeric traits and memory, not True/False traits yet.",
       control_flow: {
         boolean_literals: ["True", "False"],
         comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
@@ -400,7 +401,7 @@ export function validateExperimentSources({ config_source, initializer_source, c
     compiled: {
       configuration: config.version,
       initializer: initializer.version,
-      // #577 (D-023): the exact composition, e.g. [{ name: "informed", partition: "default", count: 10, placement: "random" }]
+      // #577 (D-023): the exact composition, e.g. [{ name: "informed", dimension: "information", count: 10, placement: "random" }]
       groups: initializer.groups ?? [],
       environment: environment?.schema ?? null,
       controller_language: controller.language,
