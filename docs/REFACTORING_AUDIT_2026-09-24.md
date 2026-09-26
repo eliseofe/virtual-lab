@@ -232,7 +232,7 @@ assert.match(discard, /\.delete\(\{ count: "exact" \}\)/);
 
 ## 6. Suggested ticket sequence under #425
 
-Each item is one substantial, independently testable ticket. They are ordered so that every later ticket has a safety net from an earlier one. None has started; each needs owner go-ahead per `DEVELOPMENT_WORKFLOW.md`.
+Each item is one substantial, independently testable ticket. They are ordered so that every later ticket has a safety net from an earlier one. **Status (26 September 2026):** tickets 1–5 and 7–9 are done (#532–#569), and the shared authoring-language core and grammar unification are done (#575–#577). Ticket 6 (explicit bootstrap, F4), the edge function split (F12) and the remaining F7/F10.3/F14/F15 items are optional and not started. F11 belongs to #301/#302. Current state: `CURRENT_STATUS.md`; summary of changes: `docs/HANDOVER_2026-09-26.md`.
 
 | # | Ticket | Findings | Risk | Deployable? |
 |---|---|---|---|---|
@@ -297,9 +297,9 @@ Of the last 20 pushes to `main` before this audit, 9 were green, 10 red and 1 ca
 
 ---
 
-## 9. Authoring-language design discussion (25 September 2026) — open, awaiting owner agreement
+## 9. Authoring-language design discussion (25 September 2026) — agreed and implemented (#575–#577)
 
-Status: **design agreed by the owner on 25 September (recorded as `docs/DECISIONS.md` D-021 and D-022); tickets: #575 MCP auto-deployment, then the shared translator core, then grammar unification.** The proposal below is kept as the rationale. The model-view-controller plan (#560–#569) is complete; this is the next candidate work under #425.
+Status: **design agreed by the owner on 25 September (recorded as `docs/DECISIONS.md` D-021 and D-022); tickets: #575 MCP auto-deployment, then the shared translator core, then grammar unification.** The proposal below is kept as the rationale. The model-view-controller plan (#560–#569) is complete, and this design was implemented in #575–#577 (`vlab.authoring/0.17`), with heterogeneity through groups added as D-023.
 
 ### Progress
 
