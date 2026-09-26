@@ -18,7 +18,7 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.16",
+  contract_version: "vlab.authoring/0.17",
   experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
@@ -67,7 +67,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
       comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
       boolean_operators: ["and", "or", "not"],
       exponentiation_operator: "**",
-      optional_environment_scalar_math: "The same standard scalar math intrinsics and arithmetic operators (including // and %) apply inside environmental_scalar(x, y, config), which is a single return expression.",
+      optional_environment_scalar_math: "environmental_scalar(x, y, config) is a pure function of position: its body may assign local variables (numbers or True/False), use +=, and branch with if/elif/else on comparisons and and/or/not, and must return a number on every path (#577). It reads x, y, config.NAME values, TAU, SQRT3_OVER_2 and the standard scalar math intrinsics; it has no loops, randomness or effects.",
       constants: ["TAU", "SQRT3_OVER_2"],
       keyword_arguments: "Calls may end with keyword arguments NAME=value; only group(...), rest_of_group(...), equip(...) and place(..., group=...) accept them. Every NAME= is a fixed option of the language; names the experimenter chooses (groups, dimensions, traits, references) are always quoted strings.",
       groups: {

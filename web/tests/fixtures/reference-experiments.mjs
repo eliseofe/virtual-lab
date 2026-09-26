@@ -225,4 +225,44 @@ def gain_total(snapshot):
 ${meanPositionMetrics}`,
     },
   },
+  {
+    id: "environment-statements",
+    purpose: "Environment field written with locals and if/elif/else (#577 release 5), sensed by the Controller; Metrics count robots stopped on the site.",
+    seed: 31,
+    ticks: 300,
+    artifacts: {
+      configuration: `N = 6\n${smallRuntime}SENSOR_NOISE = 0.0\nSITE = 2.0\n`,
+      initialization: `def environmental_scalar(x, y, config):
+    d2 = x * x + y * y
+    inside = d2 < config.SITE * config.SITE
+    if inside and not (x < 0.0):
+        return 1.0
+    elif inside:
+        v = 0.5
+    else:
+        v = -0.25
+    v += 0.25 * sin(y)
+    return v
+
+def initialize(config, rng, place):
+    for i in range(config.N):
+        place(i, rng.uniform(-4.0, 4.0), rng.uniform(-4.0, 4.0), rng.uniform(0.0, TAU))
+`,
+      controller: `class FieldAgent(Agent):
+    def step(self, obs):
+        if obs.environmental_scalar > 0.75:
+            return Motion(0.0, 0.0)
+        return Motion(0.3, 0.2 * obs.environmental_scalar)
+`,
+      metrics: `@metric(id="stopped.count", name="Robots stopped on the site", unit=None, sampling=every(0.1))
+def stopped_count(snapshot):
+    count = 0.0
+    for agent in snapshot.agents:
+        if agent.action.forward == 0.0:
+            count += 1.0
+    return count
+
+${meanPositionMetrics}`,
+    },
+  },
 ]);
