@@ -1,17 +1,18 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "#594 fixed: Experiments whose Metrics read robot state or the field open again",
-  "owner_impact": "Opening an Experiment runs a check first. That check compiled the Metrics without the robots' memory, traits and the field, so any Experiment whose Metrics use them was refused with 'cannot run in the current simulator version', even though it runs correctly. It blocked the corrected Firat aggregation, Emergent Taxis and Collective Gradient Perception, and two of the audit copies. The check now uses the same information as the run, and all nine audit Experiments open. Test now: yes. Open the collection 'Audit fixes — 26 Sep 2026 (to check)', open the Firat aggregation Experiment and run it; the aggregation plot fills in.",
+  "outcome": "#596 fixed: Active Elastic's angular-momentum metric is correct across the arena edge",
+  "owner_impact": "The built-in Active Elastic Experiment measured the flock's rotation from a plain average of robot positions. Because the arena wraps around, that average jumps to the wrong place whenever the flock crosses an edge, and the metric then showed rotation that was not there (up to 0.28 for a flock simply moving in a straight line, where the true value is about 0). The centre and the distances are now wrap-aware, so the value stays below 0.01 for a translating flock. Polarisation and the robots' motion are unchanged. Test now: optional. Open Active Elastic, run it for a few thousand seconds and watch 'Angular momentum order parameter': it stays near 0 while the flock travels.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "#594 is closed. The four Showcase Experiments are ready for your check in the audit collection."
+    "text": "#596 is closed. Nothing else is pending from the audit."
   },
-  "close_issue": 594,
+  "close_issue": 596,
   "technical_evidence": [
-    "experiment-validation.js compileExperiment passes agentState (Controller state) and runtimeCapabilities (environment_scalar) to compileMetrics, matching metrics-runtime-bridge.js.",
-    "New test: every recorded reference Experiment and a minimal state-plus-field Metrics Experiment pass productionExperimentRunnability; both fail on the previous code.",
-    "All nine audit Experiments exported from production: 5 blocked before, 9 open after. Web tests 725 pass; tsc, build, verify-dist, mirrored browser smoke and startup-recovery smoke pass."
+    "experiment-catalog.js: angular_momentum uses a circular-mean centre per coordinate and minimum-image radial vectors; ARENA_SIZE is read from the Configuration.",
+    "Side-by-side on seeds 42 and 7 over 8000 s: old metric 0.106 and 0.282 at t=4000 while polarisation is 1.0; new metric at most 0.008.",
+    "References: only angular_momentum samples change in active-elastic-catalog and active-elastic-random-start (native and WebAssembly re-recorded); trajectories bit-identical; the other five references unchanged; authoring equivalence 29144 cases, 0 differ.",
+    "Web tests 725 pass; two catalog tests now compile the Metrics with ARENA_SIZE as the Lab does, and #198 pins the wrap-aware centre."
   ]
 }

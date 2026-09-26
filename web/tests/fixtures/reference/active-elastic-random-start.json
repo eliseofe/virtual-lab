@@ -1024,63 +1024,18 @@
           "body": [
             {
               "kind": "assign",
-              "target": "center",
-              "value": {
-                "kind": "call",
-                "name": "Vec2",
-                "args": [
-                  {
-                    "kind": "const",
-                    "value": 0,
-                    "line": 17
-                  },
-                  {
-                    "kind": "const",
-                    "value": 0,
-                    "line": 17
-                  }
-                ],
-                "line": 17
-              },
-              "line": 17
-            },
-            {
-              "kind": "for_each",
-              "variable": "agent",
-              "iterable": {
-                "kind": "load",
-                "path": "snapshot.agents",
-                "line": 18
-              },
-              "body": [
-                {
-                  "kind": "aug_assign",
-                  "target": "center",
-                  "op": "+",
-                  "value": {
-                    "kind": "load",
-                    "path": "agent.position",
-                    "line": 19
-                  },
-                  "line": 19
-                }
-              ],
-              "line": 18
-            },
-            {
-              "kind": "assign",
-              "target": "center",
+              "target": "k",
               "value": {
                 "kind": "binary",
                 "op": "/",
                 "left": {
-                  "kind": "load",
-                  "path": "center",
+                  "kind": "const",
+                  "value": 6.283185307179586,
                   "line": 20
                 },
                 "right": {
                   "kind": "load",
-                  "path": "snapshot.agent_count",
+                  "path": "ARENA_SIZE",
                   "line": 20
                 },
                 "line": 20
@@ -1089,7 +1044,7 @@
             },
             {
               "kind": "assign",
-              "target": "rotation",
+              "target": "cx",
               "value": {
                 "kind": "const",
                 "value": 0,
@@ -1098,33 +1053,563 @@
               "line": 21
             },
             {
+              "kind": "assign",
+              "target": "sx",
+              "value": {
+                "kind": "const",
+                "value": 0,
+                "line": 22
+              },
+              "line": 22
+            },
+            {
+              "kind": "assign",
+              "target": "cy",
+              "value": {
+                "kind": "const",
+                "value": 0,
+                "line": 23
+              },
+              "line": 23
+            },
+            {
+              "kind": "assign",
+              "target": "sy",
+              "value": {
+                "kind": "const",
+                "value": 0,
+                "line": 24
+              },
+              "line": 24
+            },
+            {
               "kind": "for_each",
               "variable": "agent",
               "iterable": {
                 "kind": "load",
                 "path": "snapshot.agents",
-                "line": 22
+                "line": 25
+              },
+              "body": [
+                {
+                  "kind": "aug_assign",
+                  "target": "cx",
+                  "op": "+",
+                  "value": {
+                    "kind": "call",
+                    "name": "cos",
+                    "args": [
+                      {
+                        "kind": "binary",
+                        "op": "*",
+                        "left": {
+                          "kind": "load",
+                          "path": "k",
+                          "line": 26
+                        },
+                        "right": {
+                          "kind": "call",
+                          "name": "dot",
+                          "args": [
+                            {
+                              "kind": "load",
+                              "path": "agent.position",
+                              "line": 26
+                            },
+                            {
+                              "kind": "call",
+                              "name": "Vec2",
+                              "args": [
+                                {
+                                  "kind": "const",
+                                  "value": 1,
+                                  "line": 26
+                                },
+                                {
+                                  "kind": "const",
+                                  "value": 0,
+                                  "line": 26
+                                }
+                              ],
+                              "line": 26
+                            }
+                          ],
+                          "line": 26
+                        },
+                        "line": 26
+                      }
+                    ],
+                    "line": 26
+                  },
+                  "line": 26
+                },
+                {
+                  "kind": "aug_assign",
+                  "target": "sx",
+                  "op": "+",
+                  "value": {
+                    "kind": "call",
+                    "name": "sin",
+                    "args": [
+                      {
+                        "kind": "binary",
+                        "op": "*",
+                        "left": {
+                          "kind": "load",
+                          "path": "k",
+                          "line": 27
+                        },
+                        "right": {
+                          "kind": "call",
+                          "name": "dot",
+                          "args": [
+                            {
+                              "kind": "load",
+                              "path": "agent.position",
+                              "line": 27
+                            },
+                            {
+                              "kind": "call",
+                              "name": "Vec2",
+                              "args": [
+                                {
+                                  "kind": "const",
+                                  "value": 1,
+                                  "line": 27
+                                },
+                                {
+                                  "kind": "const",
+                                  "value": 0,
+                                  "line": 27
+                                }
+                              ],
+                              "line": 27
+                            }
+                          ],
+                          "line": 27
+                        },
+                        "line": 27
+                      }
+                    ],
+                    "line": 27
+                  },
+                  "line": 27
+                },
+                {
+                  "kind": "aug_assign",
+                  "target": "cy",
+                  "op": "+",
+                  "value": {
+                    "kind": "call",
+                    "name": "cos",
+                    "args": [
+                      {
+                        "kind": "binary",
+                        "op": "*",
+                        "left": {
+                          "kind": "load",
+                          "path": "k",
+                          "line": 28
+                        },
+                        "right": {
+                          "kind": "call",
+                          "name": "dot",
+                          "args": [
+                            {
+                              "kind": "load",
+                              "path": "agent.position",
+                              "line": 28
+                            },
+                            {
+                              "kind": "call",
+                              "name": "Vec2",
+                              "args": [
+                                {
+                                  "kind": "const",
+                                  "value": 0,
+                                  "line": 28
+                                },
+                                {
+                                  "kind": "const",
+                                  "value": 1,
+                                  "line": 28
+                                }
+                              ],
+                              "line": 28
+                            }
+                          ],
+                          "line": 28
+                        },
+                        "line": 28
+                      }
+                    ],
+                    "line": 28
+                  },
+                  "line": 28
+                },
+                {
+                  "kind": "aug_assign",
+                  "target": "sy",
+                  "op": "+",
+                  "value": {
+                    "kind": "call",
+                    "name": "sin",
+                    "args": [
+                      {
+                        "kind": "binary",
+                        "op": "*",
+                        "left": {
+                          "kind": "load",
+                          "path": "k",
+                          "line": 29
+                        },
+                        "right": {
+                          "kind": "call",
+                          "name": "dot",
+                          "args": [
+                            {
+                              "kind": "load",
+                              "path": "agent.position",
+                              "line": 29
+                            },
+                            {
+                              "kind": "call",
+                              "name": "Vec2",
+                              "args": [
+                                {
+                                  "kind": "const",
+                                  "value": 0,
+                                  "line": 29
+                                },
+                                {
+                                  "kind": "const",
+                                  "value": 1,
+                                  "line": 29
+                                }
+                              ],
+                              "line": 29
+                            }
+                          ],
+                          "line": 29
+                        },
+                        "line": 29
+                      }
+                    ],
+                    "line": 29
+                  },
+                  "line": 29
+                }
+              ],
+              "line": 25
+            },
+            {
+              "kind": "assign",
+              "target": "center",
+              "value": {
+                "kind": "call",
+                "name": "Vec2",
+                "args": [
+                  {
+                    "kind": "binary",
+                    "op": "/",
+                    "left": {
+                      "kind": "call",
+                      "name": "atan2",
+                      "args": [
+                        {
+                          "kind": "load",
+                          "path": "sx",
+                          "line": 30
+                        },
+                        {
+                          "kind": "load",
+                          "path": "cx",
+                          "line": 30
+                        }
+                      ],
+                      "line": 30
+                    },
+                    "right": {
+                      "kind": "load",
+                      "path": "k",
+                      "line": 30
+                    },
+                    "line": 30
+                  },
+                  {
+                    "kind": "binary",
+                    "op": "/",
+                    "left": {
+                      "kind": "call",
+                      "name": "atan2",
+                      "args": [
+                        {
+                          "kind": "load",
+                          "path": "sy",
+                          "line": 30
+                        },
+                        {
+                          "kind": "load",
+                          "path": "cy",
+                          "line": 30
+                        }
+                      ],
+                      "line": 30
+                    },
+                    "right": {
+                      "kind": "load",
+                      "path": "k",
+                      "line": 30
+                    },
+                    "line": 30
+                  }
+                ],
+                "line": 30
+              },
+              "line": 30
+            },
+            {
+              "kind": "assign",
+              "target": "rotation",
+              "value": {
+                "kind": "const",
+                "value": 0,
+                "line": 31
+              },
+              "line": 31
+            },
+            {
+              "kind": "for_each",
+              "variable": "agent",
+              "iterable": {
+                "kind": "load",
+                "path": "snapshot.agents",
+                "line": 32
               },
               "body": [
                 {
                   "kind": "assign",
-                  "target": "radial",
+                  "target": "offset",
                   "value": {
                     "kind": "binary",
                     "op": "-",
                     "left": {
                       "kind": "load",
                       "path": "agent.position",
-                      "line": 23
+                      "line": 33
                     },
                     "right": {
                       "kind": "load",
                       "path": "center",
-                      "line": 23
+                      "line": 33
                     },
-                    "line": 23
+                    "line": 33
                   },
-                  "line": 23
+                  "line": 33
+                },
+                {
+                  "kind": "assign",
+                  "target": "rx",
+                  "value": {
+                    "kind": "call",
+                    "name": "dot",
+                    "args": [
+                      {
+                        "kind": "load",
+                        "path": "offset",
+                        "line": 34
+                      },
+                      {
+                        "kind": "call",
+                        "name": "Vec2",
+                        "args": [
+                          {
+                            "kind": "const",
+                            "value": 1,
+                            "line": 34
+                          },
+                          {
+                            "kind": "const",
+                            "value": 0,
+                            "line": 34
+                          }
+                        ],
+                        "line": 34
+                      }
+                    ],
+                    "line": 34
+                  },
+                  "line": 34
+                },
+                {
+                  "kind": "assign",
+                  "target": "ry",
+                  "value": {
+                    "kind": "call",
+                    "name": "dot",
+                    "args": [
+                      {
+                        "kind": "load",
+                        "path": "offset",
+                        "line": 35
+                      },
+                      {
+                        "kind": "call",
+                        "name": "Vec2",
+                        "args": [
+                          {
+                            "kind": "const",
+                            "value": 0,
+                            "line": 35
+                          },
+                          {
+                            "kind": "const",
+                            "value": 1,
+                            "line": 35
+                          }
+                        ],
+                        "line": 35
+                      }
+                    ],
+                    "line": 35
+                  },
+                  "line": 35
+                },
+                {
+                  "kind": "assign",
+                  "target": "rx",
+                  "value": {
+                    "kind": "binary",
+                    "op": "-",
+                    "left": {
+                      "kind": "load",
+                      "path": "rx",
+                      "line": 36
+                    },
+                    "right": {
+                      "kind": "binary",
+                      "op": "*",
+                      "left": {
+                        "kind": "load",
+                        "path": "ARENA_SIZE",
+                        "line": 36
+                      },
+                      "right": {
+                        "kind": "call",
+                        "name": "floor",
+                        "args": [
+                          {
+                            "kind": "binary",
+                            "op": "+",
+                            "left": {
+                              "kind": "binary",
+                              "op": "/",
+                              "left": {
+                                "kind": "load",
+                                "path": "rx",
+                                "line": 36
+                              },
+                              "right": {
+                                "kind": "load",
+                                "path": "ARENA_SIZE",
+                                "line": 36
+                              },
+                              "line": 36
+                            },
+                            "right": {
+                              "kind": "const",
+                              "value": 0.5,
+                              "line": 36
+                            },
+                            "line": 36
+                          }
+                        ],
+                        "line": 36
+                      },
+                      "line": 36
+                    },
+                    "line": 36
+                  },
+                  "line": 36
+                },
+                {
+                  "kind": "assign",
+                  "target": "ry",
+                  "value": {
+                    "kind": "binary",
+                    "op": "-",
+                    "left": {
+                      "kind": "load",
+                      "path": "ry",
+                      "line": 37
+                    },
+                    "right": {
+                      "kind": "binary",
+                      "op": "*",
+                      "left": {
+                        "kind": "load",
+                        "path": "ARENA_SIZE",
+                        "line": 37
+                      },
+                      "right": {
+                        "kind": "call",
+                        "name": "floor",
+                        "args": [
+                          {
+                            "kind": "binary",
+                            "op": "+",
+                            "left": {
+                              "kind": "binary",
+                              "op": "/",
+                              "left": {
+                                "kind": "load",
+                                "path": "ry",
+                                "line": 37
+                              },
+                              "right": {
+                                "kind": "load",
+                                "path": "ARENA_SIZE",
+                                "line": 37
+                              },
+                              "line": 37
+                            },
+                            "right": {
+                              "kind": "const",
+                              "value": 0.5,
+                              "line": 37
+                            },
+                            "line": 37
+                          }
+                        ],
+                        "line": 37
+                      },
+                      "line": 37
+                    },
+                    "line": 37
+                  },
+                  "line": 37
+                },
+                {
+                  "kind": "assign",
+                  "target": "radial",
+                  "value": {
+                    "kind": "call",
+                    "name": "Vec2",
+                    "args": [
+                      {
+                        "kind": "load",
+                        "path": "rx",
+                        "line": 38
+                      },
+                      {
+                        "kind": "load",
+                        "path": "ry",
+                        "line": 38
+                      }
+                    ],
+                    "line": 38
+                  },
+                  "line": 38
                 },
                 {
                   "kind": "assign",
@@ -1135,7 +1620,7 @@
                     "left": {
                       "kind": "load",
                       "path": "radial",
-                      "line": 24
+                      "line": 39
                     },
                     "right": {
                       "kind": "call",
@@ -1148,22 +1633,22 @@
                             {
                               "kind": "load",
                               "path": "radial",
-                              "line": 24
+                              "line": 39
                             }
                           ],
-                          "line": 24
+                          "line": 39
                         },
                         {
                           "kind": "const",
                           "value": 1e-12,
-                          "line": 24
+                          "line": 39
                         }
                       ],
-                      "line": 24
+                      "line": 39
                     },
-                    "line": 24
+                    "line": 39
                   },
-                  "line": 24
+                  "line": 39
                 },
                 {
                   "kind": "aug_assign",
@@ -1176,20 +1661,20 @@
                       {
                         "kind": "load",
                         "path": "radial_hat",
-                        "line": 25
+                        "line": 40
                       },
                       {
                         "kind": "load",
                         "path": "agent.heading",
-                        "line": 25
+                        "line": 40
                       }
                     ],
-                    "line": 25
+                    "line": 40
                   },
-                  "line": 25
+                  "line": 40
                 }
               ],
-              "line": 22
+              "line": 32
             },
             {
               "kind": "return",
@@ -1203,22 +1688,22 @@
                     {
                       "kind": "load",
                       "path": "rotation",
-                      "line": 26
+                      "line": 41
                     }
                   ],
-                  "line": 26
+                  "line": 41
                 },
                 "right": {
                   "kind": "load",
                   "path": "snapshot.agent_count",
-                  "line": 26
+                  "line": 41
                 },
-                "line": 26
+                "line": 41
               },
-              "line": 26
+              "line": 41
             }
           ],
-          "source_line": 15
+          "source_line": 18
         }
       ]
     }
@@ -1237,7 +1722,7 @@
     "max_angular_speed_bits": "0x3ff921fb54442d18",
     "environment_ir_json": "null",
     "controller_ir_json": "{\"schema\":\"vlab.controller-ir/0.1\",\"language\":\"python-vlab/0.1\",\"controller\":\"ActiveElasticAgent\",\"entry\":\"step\",\"parameters\":{\"N\":\"scalar\",\"ARENA_SIZE\":\"scalar\",\"INITIAL_POSITION_NOISE\":\"scalar\",\"CONTROL_DT\":\"scalar\",\"SENSOR_NOISE\":\"scalar\",\"EXPERIMENT_DURATION\":\"scalar\",\"U\":\"scalar\",\"OMEGA_MAX\":\"scalar\",\"K1\":\"scalar\",\"K2\":\"scalar\",\"POTENTIAL_ALPHA\":\"scalar\",\"POTENTIAL_EPSILON\":\"scalar\",\"DESIRED_DISTANCE\":\"scalar\",\"PROXIMAL_RANGE\":\"scalar\",\"INTERACTION_RADIUS\":\"scalar\",\"MAX_FORWARD_SPEED\":\"scalar\",\"MAX_ANGULAR_SPEED\":\"scalar\"},\"references\":[],\"state\":[],\"body\":[{\"kind\":\"assign\",\"target\":\"proximal\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":3},{\"kind\":\"const\",\"value\":0,\"line\":3}],\"line\":3},\"line\":3},{\"kind\":\"assign\",\"target\":\"sigma_lj\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"DESIRED_DISTANCE\",\"line\":4},\"right\":{\"kind\":\"call\",\"name\":\"pow\",\"args\":[{\"kind\":\"const\",\"value\":2,\"line\":4},{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"const\",\"value\":1,\"line\":4},\"right\":{\"kind\":\"load\",\"path\":\"POTENTIAL_ALPHA\",\"line\":4},\"line\":4}],\"line\":4},\"line\":4},\"line\":4},{\"kind\":\"for_each\",\"variable\":\"neighbour\",\"iterable\":{\"kind\":\"load\",\"path\":\"obs.neighbours\",\"line\":5},\"body\":[{\"kind\":\"assign\",\"target\":\"displacement\",\"value\":{\"kind\":\"load\",\"path\":\"neighbour.relative_position\",\"line\":6},\"line\":6},{\"kind\":\"assign\",\"target\":\"distance\",\"value\":{\"kind\":\"call\",\"name\":\"norm\",\"args\":[{\"kind\":\"load\",\"path\":\"displacement\",\"line\":7}],\"line\":7},\"line\":7},{\"kind\":\"assign\",\"target\":\"ratio\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"sigma_lj\",\"line\":8},\"right\":{\"kind\":\"load\",\"path\":\"distance\",\"line\":8},\"line\":8},\"line\":8},{\"kind\":\"assign\",\"target\":\"magnitude\",\"value\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"unary\",\"op\":\"-\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"const\",\"value\":4,\"line\":9},\"right\":{\"kind\":\"load\",\"path\":\"POTENTIAL_ALPHA\",\"line\":9},\"line\":9},\"right\":{\"kind\":\"load\",\"path\":\"POTENTIAL_EPSILON\",\"line\":9},\"line\":9},\"right\":{\"kind\":\"load\",\"path\":\"distance\",\"line\":9},\"line\":9},\"line\":9},\"right\":{\"kind\":\"binary\",\"op\":\"-\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"const\",\"value\":2,\"line\":9},\"right\":{\"kind\":\"call\",\"name\":\"pow\",\"args\":[{\"kind\":\"load\",\"path\":\"ratio\",\"line\":9},{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"const\",\"value\":2,\"line\":9},\"right\":{\"kind\":\"load\",\"path\":\"POTENTIAL_ALPHA\",\"line\":9},\"line\":9}],\"line\":9},\"line\":9},\"right\":{\"kind\":\"call\",\"name\":\"pow\",\"args\":[{\"kind\":\"load\",\"path\":\"ratio\",\"line\":9},{\"kind\":\"load\",\"path\":\"POTENTIAL_ALPHA\",\"line\":9}],\"line\":9},\"line\":9},\"line\":9},\"line\":9},{\"kind\":\"aug_assign\",\"target\":\"proximal\",\"op\":\"+\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"magnitude\",\"line\":10},\"right\":{\"kind\":\"load\",\"path\":\"displacement\",\"line\":10},\"line\":10},\"right\":{\"kind\":\"load\",\"path\":\"distance\",\"line\":10},\"line\":10},\"line\":10}],\"line\":5},{\"kind\":\"assign\",\"target\":\"forward\",\"value\":{\"kind\":\"binary\",\"op\":\"+\",\"left\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"K1\",\"line\":11},\"right\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"proximal\",\"line\":11},{\"kind\":\"load\",\"path\":\"obs.heading\",\"line\":11}],\"line\":11},\"line\":11},\"right\":{\"kind\":\"load\",\"path\":\"U\",\"line\":11},\"line\":11},\"line\":11},{\"kind\":\"assign\",\"target\":\"turning\",\"value\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"K2\",\"line\":12},\"right\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"proximal\",\"line\":12},{\"kind\":\"call\",\"name\":\"perpendicular\",\"args\":[{\"kind\":\"load\",\"path\":\"obs.heading\",\"line\":12}],\"line\":12}],\"line\":12},\"line\":12},\"line\":12},{\"kind\":\"return\",\"value\":{\"kind\":\"call\",\"name\":\"Motion\",\"args\":[{\"kind\":\"load\",\"path\":\"forward\",\"line\":13},{\"kind\":\"load\",\"path\":\"turning\",\"line\":13}],\"line\":13},\"line\":13}]}",
-    "metrics_ir_json": "{\"language\":\"python-vlab-metrics/0.1\",\"schema\":\"vlab.metrics-ir/0.1\",\"measurement_phase\":\"post-physics-wrapped-state/1\",\"observation_contract\":{\"mode\":\"read-only-global-snapshot\",\"fields\":[\"snapshot.scientific_time\",\"snapshot.physics_ticks\",\"snapshot.control_updates\",\"snapshot.agent_count\",\"snapshot.agents[].index\",\"snapshot.agents[].position\",\"snapshot.agents[].velocity\",\"snapshot.agents[].angular_velocity\",\"snapshot.agents[].heading\",\"snapshot.agents[].heading_angle\",\"snapshot.agents[].action.forward\",\"snapshot.agents[].action.turning\",\"snapshot.config.N\",\"snapshot.config.ARENA_SIZE\",\"snapshot.config.INITIAL_POSITION_NOISE\",\"snapshot.config.CONTROL_DT\",\"snapshot.config.SENSOR_NOISE\",\"snapshot.config.EXPERIMENT_DURATION\",\"snapshot.config.U\",\"snapshot.config.OMEGA_MAX\",\"snapshot.config.K1\",\"snapshot.config.K2\",\"snapshot.config.POTENTIAL_ALPHA\",\"snapshot.config.POTENTIAL_EPSILON\",\"snapshot.config.DESIRED_DISTANCE\",\"snapshot.config.PROXIMAL_RANGE\",\"snapshot.config.INTERACTION_RADIUS\",\"snapshot.config.MAX_FORWARD_SPEED\",\"snapshot.config.MAX_ANGULAR_SPEED\"],\"intrinsics\":[]},\"references\":[],\"metrics\":[{\"id\":\"polarization\",\"name\":\"Polarization order parameter\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.1},\"function\":\"polarization\",\"body\":[{\"kind\":\"assign\",\"target\":\"total\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":10},{\"kind\":\"const\",\"value\":0,\"line\":10}],\"line\":10},\"line\":10},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":11},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"total\",\"op\":\"+\",\"value\":{\"kind\":\"load\",\"path\":\"agent.heading\",\"line\":12},\"line\":12}],\"line\":11},{\"kind\":\"return\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"norm\",\"args\":[{\"kind\":\"load\",\"path\":\"total\",\"line\":13}],\"line\":13},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":13},\"line\":13},\"line\":13}],\"source_line\":8},{\"id\":\"angular_momentum\",\"name\":\"Angular momentum order parameter\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.1},\"function\":\"angular_momentum\",\"body\":[{\"kind\":\"assign\",\"target\":\"center\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":17},{\"kind\":\"const\",\"value\":0,\"line\":17}],\"line\":17},\"line\":17},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":18},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"center\",\"op\":\"+\",\"value\":{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":19},\"line\":19}],\"line\":18},{\"kind\":\"assign\",\"target\":\"center\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"center\",\"line\":20},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":20},\"line\":20},\"line\":20},{\"kind\":\"assign\",\"target\":\"rotation\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":21},\"line\":21},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":22},\"body\":[{\"kind\":\"assign\",\"target\":\"radial\",\"value\":{\"kind\":\"binary\",\"op\":\"-\",\"left\":{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":23},\"right\":{\"kind\":\"load\",\"path\":\"center\",\"line\":23},\"line\":23},\"line\":23},{\"kind\":\"assign\",\"target\":\"radial_hat\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"radial\",\"line\":24},\"right\":{\"kind\":\"call\",\"name\":\"max\",\"args\":[{\"kind\":\"call\",\"name\":\"norm\",\"args\":[{\"kind\":\"load\",\"path\":\"radial\",\"line\":24}],\"line\":24},{\"kind\":\"const\",\"value\":1e-12,\"line\":24}],\"line\":24},\"line\":24},\"line\":24},{\"kind\":\"aug_assign\",\"target\":\"rotation\",\"op\":\"+\",\"value\":{\"kind\":\"call\",\"name\":\"cross2\",\"args\":[{\"kind\":\"load\",\"path\":\"radial_hat\",\"line\":25},{\"kind\":\"load\",\"path\":\"agent.heading\",\"line\":25}],\"line\":25},\"line\":25}],\"line\":22},{\"kind\":\"return\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"abs\",\"args\":[{\"kind\":\"load\",\"path\":\"rotation\",\"line\":26}],\"line\":26},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":26},\"line\":26},\"line\":26}],\"source_line\":15}]}",
+    "metrics_ir_json": "{\"language\":\"python-vlab-metrics/0.1\",\"schema\":\"vlab.metrics-ir/0.1\",\"measurement_phase\":\"post-physics-wrapped-state/1\",\"observation_contract\":{\"mode\":\"read-only-global-snapshot\",\"fields\":[\"snapshot.scientific_time\",\"snapshot.physics_ticks\",\"snapshot.control_updates\",\"snapshot.agent_count\",\"snapshot.agents[].index\",\"snapshot.agents[].position\",\"snapshot.agents[].velocity\",\"snapshot.agents[].angular_velocity\",\"snapshot.agents[].heading\",\"snapshot.agents[].heading_angle\",\"snapshot.agents[].action.forward\",\"snapshot.agents[].action.turning\",\"snapshot.config.N\",\"snapshot.config.ARENA_SIZE\",\"snapshot.config.INITIAL_POSITION_NOISE\",\"snapshot.config.CONTROL_DT\",\"snapshot.config.SENSOR_NOISE\",\"snapshot.config.EXPERIMENT_DURATION\",\"snapshot.config.U\",\"snapshot.config.OMEGA_MAX\",\"snapshot.config.K1\",\"snapshot.config.K2\",\"snapshot.config.POTENTIAL_ALPHA\",\"snapshot.config.POTENTIAL_EPSILON\",\"snapshot.config.DESIRED_DISTANCE\",\"snapshot.config.PROXIMAL_RANGE\",\"snapshot.config.INTERACTION_RADIUS\",\"snapshot.config.MAX_FORWARD_SPEED\",\"snapshot.config.MAX_ANGULAR_SPEED\"],\"intrinsics\":[]},\"references\":[],\"metrics\":[{\"id\":\"polarization\",\"name\":\"Polarization order parameter\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.1},\"function\":\"polarization\",\"body\":[{\"kind\":\"assign\",\"target\":\"total\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":10},{\"kind\":\"const\",\"value\":0,\"line\":10}],\"line\":10},\"line\":10},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":11},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"total\",\"op\":\"+\",\"value\":{\"kind\":\"load\",\"path\":\"agent.heading\",\"line\":12},\"line\":12}],\"line\":11},{\"kind\":\"return\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"norm\",\"args\":[{\"kind\":\"load\",\"path\":\"total\",\"line\":13}],\"line\":13},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":13},\"line\":13},\"line\":13}],\"source_line\":8},{\"id\":\"angular_momentum\",\"name\":\"Angular momentum order parameter\",\"unit\":null,\"sampling\":{\"kind\":\"periodic\",\"interval_seconds\":0.1},\"function\":\"angular_momentum\",\"body\":[{\"kind\":\"assign\",\"target\":\"k\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"const\",\"value\":6.283185307179586,\"line\":20},\"right\":{\"kind\":\"load\",\"path\":\"ARENA_SIZE\",\"line\":20},\"line\":20},\"line\":20},{\"kind\":\"assign\",\"target\":\"cx\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":21},\"line\":21},{\"kind\":\"assign\",\"target\":\"sx\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":22},\"line\":22},{\"kind\":\"assign\",\"target\":\"cy\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":23},\"line\":23},{\"kind\":\"assign\",\"target\":\"sy\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":24},\"line\":24},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":25},\"body\":[{\"kind\":\"aug_assign\",\"target\":\"cx\",\"op\":\"+\",\"value\":{\"kind\":\"call\",\"name\":\"cos\",\"args\":[{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"k\",\"line\":26},\"right\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":26},{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":1,\"line\":26},{\"kind\":\"const\",\"value\":0,\"line\":26}],\"line\":26}],\"line\":26},\"line\":26}],\"line\":26},\"line\":26},{\"kind\":\"aug_assign\",\"target\":\"sx\",\"op\":\"+\",\"value\":{\"kind\":\"call\",\"name\":\"sin\",\"args\":[{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"k\",\"line\":27},\"right\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":27},{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":1,\"line\":27},{\"kind\":\"const\",\"value\":0,\"line\":27}],\"line\":27}],\"line\":27},\"line\":27}],\"line\":27},\"line\":27},{\"kind\":\"aug_assign\",\"target\":\"cy\",\"op\":\"+\",\"value\":{\"kind\":\"call\",\"name\":\"cos\",\"args\":[{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"k\",\"line\":28},\"right\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":28},{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":28},{\"kind\":\"const\",\"value\":1,\"line\":28}],\"line\":28}],\"line\":28},\"line\":28}],\"line\":28},\"line\":28},{\"kind\":\"aug_assign\",\"target\":\"sy\",\"op\":\"+\",\"value\":{\"kind\":\"call\",\"name\":\"sin\",\"args\":[{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"k\",\"line\":29},\"right\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":29},{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":29},{\"kind\":\"const\",\"value\":1,\"line\":29}],\"line\":29}],\"line\":29},\"line\":29}],\"line\":29},\"line\":29}],\"line\":25},{\"kind\":\"assign\",\"target\":\"center\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"atan2\",\"args\":[{\"kind\":\"load\",\"path\":\"sx\",\"line\":30},{\"kind\":\"load\",\"path\":\"cx\",\"line\":30}],\"line\":30},\"right\":{\"kind\":\"load\",\"path\":\"k\",\"line\":30},\"line\":30},{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"atan2\",\"args\":[{\"kind\":\"load\",\"path\":\"sy\",\"line\":30},{\"kind\":\"load\",\"path\":\"cy\",\"line\":30}],\"line\":30},\"right\":{\"kind\":\"load\",\"path\":\"k\",\"line\":30},\"line\":30}],\"line\":30},\"line\":30},{\"kind\":\"assign\",\"target\":\"rotation\",\"value\":{\"kind\":\"const\",\"value\":0,\"line\":31},\"line\":31},{\"kind\":\"for_each\",\"variable\":\"agent\",\"iterable\":{\"kind\":\"load\",\"path\":\"snapshot.agents\",\"line\":32},\"body\":[{\"kind\":\"assign\",\"target\":\"offset\",\"value\":{\"kind\":\"binary\",\"op\":\"-\",\"left\":{\"kind\":\"load\",\"path\":\"agent.position\",\"line\":33},\"right\":{\"kind\":\"load\",\"path\":\"center\",\"line\":33},\"line\":33},\"line\":33},{\"kind\":\"assign\",\"target\":\"rx\",\"value\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"offset\",\"line\":34},{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":1,\"line\":34},{\"kind\":\"const\",\"value\":0,\"line\":34}],\"line\":34}],\"line\":34},\"line\":34},{\"kind\":\"assign\",\"target\":\"ry\",\"value\":{\"kind\":\"call\",\"name\":\"dot\",\"args\":[{\"kind\":\"load\",\"path\":\"offset\",\"line\":35},{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"const\",\"value\":0,\"line\":35},{\"kind\":\"const\",\"value\":1,\"line\":35}],\"line\":35}],\"line\":35},\"line\":35},{\"kind\":\"assign\",\"target\":\"rx\",\"value\":{\"kind\":\"binary\",\"op\":\"-\",\"left\":{\"kind\":\"load\",\"path\":\"rx\",\"line\":36},\"right\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"ARENA_SIZE\",\"line\":36},\"right\":{\"kind\":\"call\",\"name\":\"floor\",\"args\":[{\"kind\":\"binary\",\"op\":\"+\",\"left\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"rx\",\"line\":36},\"right\":{\"kind\":\"load\",\"path\":\"ARENA_SIZE\",\"line\":36},\"line\":36},\"right\":{\"kind\":\"const\",\"value\":0.5,\"line\":36},\"line\":36}],\"line\":36},\"line\":36},\"line\":36},\"line\":36},{\"kind\":\"assign\",\"target\":\"ry\",\"value\":{\"kind\":\"binary\",\"op\":\"-\",\"left\":{\"kind\":\"load\",\"path\":\"ry\",\"line\":37},\"right\":{\"kind\":\"binary\",\"op\":\"*\",\"left\":{\"kind\":\"load\",\"path\":\"ARENA_SIZE\",\"line\":37},\"right\":{\"kind\":\"call\",\"name\":\"floor\",\"args\":[{\"kind\":\"binary\",\"op\":\"+\",\"left\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"ry\",\"line\":37},\"right\":{\"kind\":\"load\",\"path\":\"ARENA_SIZE\",\"line\":37},\"line\":37},\"right\":{\"kind\":\"const\",\"value\":0.5,\"line\":37},\"line\":37}],\"line\":37},\"line\":37},\"line\":37},\"line\":37},{\"kind\":\"assign\",\"target\":\"radial\",\"value\":{\"kind\":\"call\",\"name\":\"Vec2\",\"args\":[{\"kind\":\"load\",\"path\":\"rx\",\"line\":38},{\"kind\":\"load\",\"path\":\"ry\",\"line\":38}],\"line\":38},\"line\":38},{\"kind\":\"assign\",\"target\":\"radial_hat\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"load\",\"path\":\"radial\",\"line\":39},\"right\":{\"kind\":\"call\",\"name\":\"max\",\"args\":[{\"kind\":\"call\",\"name\":\"norm\",\"args\":[{\"kind\":\"load\",\"path\":\"radial\",\"line\":39}],\"line\":39},{\"kind\":\"const\",\"value\":1e-12,\"line\":39}],\"line\":39},\"line\":39},\"line\":39},{\"kind\":\"aug_assign\",\"target\":\"rotation\",\"op\":\"+\",\"value\":{\"kind\":\"call\",\"name\":\"cross2\",\"args\":[{\"kind\":\"load\",\"path\":\"radial_hat\",\"line\":40},{\"kind\":\"load\",\"path\":\"agent.heading\",\"line\":40}],\"line\":40},\"line\":40}],\"line\":32},{\"kind\":\"return\",\"value\":{\"kind\":\"binary\",\"op\":\"/\",\"left\":{\"kind\":\"call\",\"name\":\"abs\",\"args\":[{\"kind\":\"load\",\"path\":\"rotation\",\"line\":41}],\"line\":41},\"right\":{\"kind\":\"load\",\"path\":\"snapshot.agent_count\",\"line\":41},\"line\":41},\"line\":41}],\"source_line\":18}]}",
     "parameters_json": "{\"N\":91,\"ARENA_SIZE\":10,\"INITIAL_POSITION_NOISE\":0,\"CONTROL_DT\":0.1,\"SENSOR_NOISE\":0.1,\"EXPERIMENT_DURATION\":25000,\"U\":0.005,\"OMEGA_MAX\":1.5707963267948966,\"K1\":0.005,\"K2\":0.06,\"POTENTIAL_ALPHA\":2,\"POTENTIAL_EPSILON\":1.5,\"DESIRED_DISTANCE\":0.45,\"PROXIMAL_RANGE\":0.81,\"INTERACTION_RADIUS\":0.81,\"MAX_FORWARD_SPEED\":0.005,\"MAX_ANGULAR_SPEED\":1.5707963267948966}"
   }
 }
