@@ -14,6 +14,7 @@ const registryDoc = readFileSync(new URL("../../docs/EXPERIMENT_REGISTRY_CONTRAC
 const expectedTools = [
   "read_workspace",
   "manage_collection",
+  "manage_showcase",
   "create_experiment",
   "edit_experiment",
   "delete_experiment",
@@ -27,7 +28,7 @@ function registeredTools(source) {
   return [...source.matchAll(/server\.registerTool\(\s*['"]([^'"]+)['"]/g)].map((match) => match[1]);
 }
 
-test("#367 exact formal tool surface is nine provider-independent research-AI operations", () => {
+test("#367 exact formal tool surface is ten provider-independent research-AI operations", () => {
   const actual = [...registeredTools(index), ...registeredTools(metrics)].sort();
   assert.deepEqual(actual, [...expectedTools].sort());
 
@@ -67,10 +68,10 @@ test("#367 current documents contain one canonical-only surface and exact nine-t
     assert.doesNotMatch(doc, /legacy three-source|bounded compatibility input|compatibility fields for the old three-source/i);
   }
   assert.match(authoringDoc, /vlab\.authoring\/0\.14/);
-  assert.match(mcpDoc, /MCP server: `3\.23\.0`/);
+  assert.match(mcpDoc, /MCP server: `3\.24\.0`/);
   assert.match(mcpDoc, /interface: `17`/);
-  assert.match(mcpDoc, /exactly \*\*9\*\* shared tools/i);
-  assert.match(protocolDoc, /exact shared experiment-domain tool surface contains 9 tools/i);
+  assert.match(mcpDoc, /exactly \*\*10\*\* shared tools/i);
+  assert.match(protocolDoc, /exact shared experiment-domain tool surface contains 10 tools/i);
 });
 
 test("#367 Student and Professor receive the same scientific tool set; authority remains data-scoped", () => {
@@ -83,7 +84,7 @@ test("#367 Student and Professor receive the same scientific tool set; authority
 });
 
 test("#367 versions the breaking connector cutover explicitly", () => {
-  assert.match(metrics, /MCP_SERVER_VERSION = '3\.23\.0'/);
+  assert.match(metrics, /MCP_SERVER_VERSION = '3\.24\.0'/);
   assert.match(metrics, /MCP_INTERFACE_VERSION = '17'/);
   assert.match(metrics, /contract_version: 'vlab\.authoring\/0\.14'/);
 });

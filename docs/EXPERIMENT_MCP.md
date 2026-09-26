@@ -10,7 +10,7 @@ Supabase project: `virtual-lab` (`izdmmudfrmqhvlgepwes`).
 
 ## Current deployed contract
 
-- MCP server: `3.23.0`
+- MCP server: `3.24.0`
 - interface: `17`
 - authoring contract: `vlab.authoring/0.14`
 - canonical Experiment artifacts: `vlab.experiment-artifacts/3`
@@ -42,9 +42,9 @@ Supabase Auth is the authorization server. Authentication and RLS are the enforc
 
 ## Shared tool surface
 
-The research-AI connector exposes exactly **9** shared tools to Student and Professor sessions:
+The research-AI connector exposes exactly **10** shared tools to Student and Professor sessions:
 
-`read_workspace | manage_collection | create_experiment | edit_experiment | delete_experiment | author_metrics_results | request_capability | resume_capability_closure | revalidate_capability_closure`
+`read_workspace | manage_collection | manage_showcase | create_experiment | edit_experiment | delete_experiment | author_metrics_results | request_capability | resume_capability_closure | revalidate_capability_closure`
 
 Role differences are enforced by data visibility and authority rules, not by duplicate or provider-specific tool variants.
 
@@ -59,6 +59,10 @@ Experiment discovery is explicit. Set `include_workspace_index=true` only when t
 ### `manage_collection`
 
 Collection create/rename/delete for owned collections. Deleting a collection does not delete its Experiments; they become unfiled.
+
+### `manage_showcase`
+
+Showcase curation, added in server `3.24.0`. `action=list` returns the current Showcase entries with their published revision and, for the caller's own Experiments, the current revision and whether the published copy is behind. `action=publish` publishes the current (or a stated, still-current) revision of an owned Experiment, replacing its previous Showcase copy. `action=remove` takes an owned Experiment off the Showcase. The tool calls the same database functions as the Lab's curation buttons, as the signed-in user, so the Professor role and Experiment ownership are enforced there; Students see the same tool and receive the refusal. The Showcase holds a frozen copy, so editing an Experiment changes what visitors see only after it is published again.
 
 ### `create_experiment`
 
@@ -196,4 +200,4 @@ Deployment is **manual** (the owner chose not to add an automatic GitHub Action,
 
 ## Deployment evidence
 
-#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 established Professor-controlled candidate generalization metadata at server `3.13.0`. The capability-request integrity repairs then made clear-requirement evidence lossless, preserved exact blocked-Experiment revision snapshots, and patched shared-candidate resume readback at server `3.13.1`. Professor multi-way disposition and same-candidate revision began at server `3.14.0`; Already Supported resolution is versioned at server `3.17.0` / request interface `vlab.capability-request/11`, while interface `17`, `vlab.authoring/0.9`, and the exact nine-tool surface remain unchanged. #577 (server `3.19.0`) introduced `vlab.authoring/0.10`: one code grammar, with `//`, `%` and `and`/`or`/`not` in every code artifact; server `3.20.0` / `vlab.authoring/0.11` added `for NAME in range(...)` over run constants to the Controller and Metrics; server `3.21.0` / `vlab.authoring/0.12` made Initialization type-checked before it runs, on the shared statement parser; server `3.22.0` / `vlab.authoring/0.13` replaced `set_agent_state` with experimenter-declared roles and hid `N`, `ARENA_SIZE` and `EXPERIMENT_DURATION` from the Controller (D-022); server `3.23.0` / `vlab.authoring/0.14` generalized roles into groups (D-023): `group(...)` declares who differs, and `set_state(...)` and `equip(...)` attach starting memory and reference sensors to groups, replacing `role(...)` and `set_agent_reference_sensor(...)`.
+#200 established the MCP authoring/Results contract. #298 established RLS-visible Experiment discovery; #334 introduced neutral capability discovery during the transition. #346 established typed extension requests and #347 bound authoring surfaces to canonical capability identity. #348 cut production over to the independent registry. #354 established origin-neutral canonical capability/binding consistency; #361 established pre-triage request reuse and scientific-language request identity. #360 established shared durable closure semantics; #367 established the exact nine-tool connector; #375 separated the stable authoring skeleton from implemented capability surfaces. #374 added structured unavailable candidate capabilities and contract deltas. #373 established Professor-controlled candidate generalization metadata at server `3.13.0`. The capability-request integrity repairs then made clear-requirement evidence lossless, preserved exact blocked-Experiment revision snapshots, and patched shared-candidate resume readback at server `3.13.1`. Professor multi-way disposition and same-candidate revision began at server `3.14.0`; Already Supported resolution is versioned at server `3.17.0` / request interface `vlab.capability-request/11`, while interface `17`, `vlab.authoring/0.9`, and the exact nine-tool surface remain unchanged. #577 (server `3.19.0`) introduced `vlab.authoring/0.10`: one code grammar, with `//`, `%` and `and`/`or`/`not` in every code artifact; server `3.20.0` / `vlab.authoring/0.11` added `for NAME in range(...)` over run constants to the Controller and Metrics; server `3.21.0` / `vlab.authoring/0.12` made Initialization type-checked before it runs, on the shared statement parser; server `3.22.0` / `vlab.authoring/0.13` replaced `set_agent_state` with experimenter-declared roles and hid `N`, `ARENA_SIZE` and `EXPERIMENT_DURATION` from the Controller (D-022); server `3.23.0` / `vlab.authoring/0.14` generalized roles into groups (D-023): `group(...)` declares who differs, and `set_state(...)` and `equip(...)` attach starting memory and reference sensors to groups, replacing `role(...)` and `set_agent_reference_sensor(...)`; server `3.24.0` added `manage_showcase`, so Professors can publish their own Experiments to the Showcase through the MCP (tool surface 10, authoring contract unchanged).

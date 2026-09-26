@@ -1,16 +1,15 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "One way to make robots differ: groups say who, set_state and equip say what",
-  "owner_impact": "Your decision D-023. Initialization now declares who differs with group(...), exact sizes as before (fraction, count or rest), and attaches properties to groups: set_state(\"informed\", informed=1.0) for starting memory, and equip(\"scouts\", \"nest\", range=5.0) for a reference sensor, whose range the simulator enforces. \"all\" means every robot. Groups can form independent partitions, like crossed factors: e.g. 20% informed and, independently, 50% equipped, each with exact counts. A robot receiving the same state or sensor from two groups is a compile error. role(...) and the per-robot set_agent_reference_sensor(...) are retired; no Experiment used the latter. Constant Bearing Flocking, its showcase candidate and Firat's aggregation are migrated to groups with the same robots in the same groups as before. Test now: yes. After I tell you the migration is done, republish Constant Bearing Flocking and Firat to the Showcase ('Publish current revision'), then open Constant Bearing Flocking; the setup message should read 'Groups: informed 80, uninformed 120'.",
+  "outcome": "Professors can publish to the Showcase through the MCP",
+  "owner_impact": "You asked that Showcase curation not require the Lab's button. The MCP now has a manage_showcase tool: list the Showcase (it shows which of your entries are behind their Experiment's current revision), publish the current revision of one of your Experiments, or remove it. It calls the same database functions as the Lab's buttons, signed in as you, so only Professors can publish, and only their own Experiments; students see the tool and get a refusal. I used it to republish Constant Bearing Flocking and Firat's aggregation at their migrated revisions. Test now: yes. Open Constant Bearing Flocking from the Showcase; the setup message should read 'Groups: informed 80, uninformed 120'. In GPT you can ask it to publish or list the Showcase (the connector may need a refresh to see the new tool).",
   "next": {
     "kind": "epic_continues",
     "issue": 577,
     "text": "#577 release 5: statements (local names, if/elif/else) in the environment field function, the last part of the one-grammar work. It has not started yet."
   },
   "technical_evidence": [
-    "Initializer: createGroups with partitions; each partition dealt from initialization stream 1 + order, so the first partition reproduces the D-022 deal exactly; set_state/equip conflicts rejected statically; retired calls raise errors naming the replacement.",
-    "Kernel input unchanged: the reference Experiments migrated to explicit groups compile to byte-identical simulator inputs and sensor lists; only the composition summary moved from roles to groups.",
-    "Equivalence harness: 381 of 28,059 fingerprints changed, all Initialization sources using the retired or new calls; 4 group-syntax seeds added (28,679 cases).",
-    "Capability initialization.swarm_groups (provenance inherited from the two capabilities it generalizes); contract vlab.authoring/0.14, MCP 3.23.0. 712 tests pass; tsc; verify-dist; mirrored browser smoke and startup-recovery smoke pass."
+    "supabase/functions/experiment-mcp/index.ts: manage_showcase (list/publish/remove) over list_showcase_experiments, promote_experiment_to_showcase and remove_experiment_from_showcase with the user-scoped client; no role gate or direct table write in the tool (web/tests/mcp-showcase-curation.test.mjs).",
+    "Tool surface 9 -> 10, MCP server 3.24.0, authoring contract vlab.authoring/0.14 and interface 17 unchanged; docs EXPERIMENT_MCP.md and AI_LAB_PROTOCOL.md updated.",
+    "715 tests pass; tsc clean."
   ]
 }
