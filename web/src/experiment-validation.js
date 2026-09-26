@@ -41,7 +41,15 @@ function compileExperiment(experiment, runtimeValues, { seed = 0 } = {}) {
   const controller = compileController(controllerSource, { parameters: parameterTypes, references });
   validateEnvironmentControllerPair(environment, controller);
   validateInitializerControllerPrivateState(initializer, controller);
-  const metrics = compileMetrics(metricsSource, { parameters: parameterTypes, references });
+  // Metrics may read the Controller's private state (memory and traits) and the
+  // Environment, exactly as when the run starts (metrics-runtime-bridge.js).
+  const agentState = Object.fromEntries((controller.state ?? []).map(({ name, type }) => [name, type]));
+  const metrics = compileMetrics(metricsSource, {
+    parameters: parameterTypes,
+    references,
+    agentState,
+    runtimeCapabilities: environment ? ["environment_scalar"] : [],
+  });
 
   return { config, runtime, initializer, environment, controller, metrics, parameters };
 }

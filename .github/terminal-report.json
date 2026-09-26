@@ -1,17 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "#592 fixed: the MCP Metrics/Results tool accepts every valid Metrics and can remove stale panels",
-  "owner_impact": "While fixing the audited Experiments through the connector, its fine-grained Metrics/Results tool refused Experiments whose Metrics read robot state, traits or the field (for example the corrected Firat aggregation), even though whole-Experiment edits accepted them, and it could not delete a Results panel that pointed to a removed metric. Both are fixed in connector version 3.28.0; the authoring language is unchanged. Test now: optional. In ChatGPT or Claude, ask the connector to read the Results of the Firat aggregation Experiment; it now answers instead of reporting 'unknown agent private scientific state'.",
+  "outcome": "#594 fixed: Experiments whose Metrics read robot state or the field open again",
+  "owner_impact": "Opening an Experiment runs a check first. That check compiled the Metrics without the robots' memory, traits and the field, so any Experiment whose Metrics use them was refused with 'cannot run in the current simulator version', even though it runs correctly. It blocked the corrected Firat aggregation, Emergent Taxis and Collective Gradient Perception, and two of the audit copies. The check now uses the same information as the run, and all nine audit Experiments open. Test now: yes. Open the collection 'Audit fixes — 26 Sep 2026 (to check)', open the Firat aggregation Experiment and run it; the aggregation plot fills in.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "#592 is closed. The audit fixes are in the collection 'Audit fixes — 26 Sep 2026 (to check)' for your review."
+    "text": "#594 is closed. The four Showcase Experiments are ready for your check in the audit collection."
   },
-  "close_issue": 592,
+  "close_issue": 594,
   "technical_evidence": [
-    "authoring.js exports metricsCompileContext(artifacts): best-effort per artifact, same shape as whole-Experiment validation (shared metricsContext helper); results-authoring.js uses it for read, create/update/remove metric.",
-    "mutateResultsPanels drops references to metrics that no longer exist before an edit; remove_panel checks the saved panels, so a stale panel can be removed; unknown metrics in a new panel are still rejected.",
-    "Two new tests fail on the previous code and pass now; web tests 723 pass. MCP server 3.28.0, contract vlab.authoring/0.17 unchanged."
+    "experiment-validation.js compileExperiment passes agentState (Controller state) and runtimeCapabilities (environment_scalar) to compileMetrics, matching metrics-runtime-bridge.js.",
+    "New test: every recorded reference Experiment and a minimal state-plus-field Metrics Experiment pass productionExperimentRunnability; both fail on the previous code.",
+    "All nine audit Experiments exported from production: 5 blocked before, 9 open after. Web tests 725 pass; tsc, build, verify-dist, mirrored browser smoke and startup-recovery smoke pass."
   ]
 }
