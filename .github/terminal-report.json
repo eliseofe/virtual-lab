@@ -4,13 +4,16 @@
   "owner_impact": "Last part of the one-grammar work. environmental_scalar(x, y, config) can now use local variables, += and if/elif/else on comparisons and and/or/not, e.g. compute a distance once and return different values inside and outside a site. It stays a pure function of position: every path must return a number, with no loops, randomness or effects. Fields written as a single return compile to exactly the same simulator input as before, so no Experiment changed. With this, #577 is complete: all four code artifacts share one grammar. Test now: optional. To try it, write an environment field with an if/else in a copy of an Experiment and run it.",
   "next": {
     "kind": "scope_complete",
-    "close_issue": 577,
-    "text": "#577 is complete. What remains from this thread is your audit of all Experiments, whenever you want it."
+    "disposition": "closed",
+    "lab_url": "https://eliseofe.github.io/virtual-lab/",
+    "text": "#577 (one grammar) is complete and closed. What remains from this thread is your audit of all Experiments, whenever you want it."
   },
+  "close_issue": 577,
   "technical_evidence": [
     "Environment compiler on the shared statement parser with type, definite-assignment and definite-return checks; IR vlab.environment-scalar-ir/0.2 (body of statements) only when the body is more than a single return, else the unchanged 0.1 expression.",
     "Rust EnvironmentRuntime accepts 0.1 and 0.2, validates types, definite assignment and definite return, evaluates both sides of and/or.",
     "Equivalence: only compileEnvironmentScalar cases changed, none that previously compiled; changes are rejections by the old single-return rule (now accepted or given a specific error) and sharper errors on invalid input. New recorded reference 'environment-statements': native and WebAssembly bit-identical; the six other references unchanged.",
-    "721 tests pass; tsc, cargo tests and fmt clean; mirrored browser smoke and startup-recovery smoke pass. Contract vlab.authoring/0.17, MCP 3.27.0."
+    "721 tests pass; tsc, cargo tests and fmt clean; mirrored browser smoke and startup-recovery smoke pass. Contract vlab.authoring/0.17, MCP 3.27.0.",
+    "Follow-up: the release report's completion state now uses the workflow's scope_complete format (the previous deploy's report step rejected it; deployment and smoke had passed)."
   ]
 }
