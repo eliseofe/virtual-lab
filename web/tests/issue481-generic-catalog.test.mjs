@@ -41,7 +41,7 @@ test("#481 catalog Active Elastic preserves scientific values while satisfying t
   assert.equal(config.MAX_ANGULAR_SPEED, config.OMEGA_MAX);
 
   const metricsSource = DEFAULT_CATALOG_EXPERIMENT.artifacts.find((artifact) => artifact.id === "metrics")?.content ?? "";
-  const metrics = compileMetrics(metricsSource);
+  const metrics = compileMetrics(metricsSource, { parameters: { ARENA_SIZE: "scalar" } });
   assert.deepEqual(metrics.metrics.map((metric) => metric.id), ["polarization", "angular_momentum"]);
 });
 

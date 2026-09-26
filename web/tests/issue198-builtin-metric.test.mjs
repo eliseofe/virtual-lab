@@ -20,7 +20,10 @@ test("#198 Active Elastic catalog content retains the two owner-authorized live 
   assert.match(metricsSource, /@metric\(id="polarization", name="Polarization order parameter"/);
   assert.match(metricsSource, /@metric\(id="angular_momentum", name="Angular momentum order parameter"/);
   assert.match(metricsSource, /rotation \+= cross2\(radial_hat, agent\.heading\)/);
-  const ir = compileMetrics(metricsSource);
+  // #596: the flock centre and radial vectors are wrap-aware (the arena is periodic).
+  assert.match(metricsSource, /center = Vec2\(atan2\(sx, cx\) \/ k, atan2\(sy, cy\) \/ k\)/);
+  assert.match(metricsSource, /rx = rx - ARENA_SIZE \* floor\(rx \/ ARENA_SIZE \+ 0\.5\)/);
+  const ir = compileMetrics(metricsSource, { parameters: { ARENA_SIZE: "scalar" } });
   assert.deepEqual(ir.metrics.map((metric) => metric.id), ["polarization", "angular_momentum"]);
   assert.match(JSON.stringify(ir.metrics[1]), /"name":"cross2"/);
 });
