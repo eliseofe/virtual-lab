@@ -72,10 +72,11 @@ Current deployed contract:
 - authoring `vlab.authoring/0.14`
 - capability requests `vlab.capability-request/8`
 
-The exact shared experiment-domain tool surface contains 9 tools:
+The exact shared experiment-domain tool surface contains 10 tools:
 
 - `read_workspace`
 - `manage_collection`
+- `manage_showcase`
 - `create_experiment`
 - `edit_experiment`
 - `delete_experiment`
@@ -84,7 +85,7 @@ The exact shared experiment-domain tool surface contains 9 tools:
 - `resume_capability_closure`
 - `revalidate_capability_closure`
 
-These are shared research-AI tools for Student and Professor sessions. Professor-specific authority remains queue-wide request triage/supervision, not a different scientific representability rule.
+These are shared research-AI tools for Student and Professor sessions. Professor-specific authority remains queue-wide request triage/supervision and Showcase curation of their own Experiments (enforced by the database, not by a different tool set), not a different scientific representability rule.
 
 The tool names are transport details; the durable semantics are Experiment discovery/organization/versioned authoring, fine-grained Metrics authoring, Results binding authoring and durable unsupported-science closure/revalidation.
 

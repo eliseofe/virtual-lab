@@ -65,6 +65,7 @@ test("#472 revision wrappers keep closure submission atomic and existing tools",
   assert.deepEqual([...MCP_TOOL_NAMES], [
     "read_workspace",
     "manage_collection",
+    "manage_showcase",
     "create_experiment",
     "edit_experiment",
     "delete_experiment",

@@ -548,6 +548,79 @@ function registerExperimentTools(
     },
   )
 
+  // Showcase curation through the MCP. It calls the same database functions
+  // as the Lab's buttons, as the signed-in user, so the Professor role and
+  // Experiment ownership are enforced there; students see the same tool and
+  // receive the database's refusal.
+  server.registerTool(
+    'manage_showcase',
+    {
+      title: 'Publish Experiments to the public Showcase',
+      description:
+        'Showcase curation (Professors, own Experiments only). action=list returns the current Showcase entries, each with the published revision and, for your own Experiments, the current revision and whether the published copy is behind. action=publish publishes the current revision of an owned Experiment, replacing its previous Showcase copy; pass experiment_id and optionally revision (defaults to the current revision; a stale revision is rejected). action=remove takes an owned Experiment off the Showcase. The Showcase shows a frozen copy, so editing an Experiment does not change what visitors see until it is published again.',
+      inputSchema: {
+        action: z.enum(['list', 'publish', 'remove']),
+        experiment_id: z.string().uuid().optional(),
+        revision: z.number().int().positive().optional(),
+      },
+      annotations: DESTRUCTIVE_ANNOTATIONS,
+    },
+    async ({ action, experiment_id, revision }) => {
+      if (action === 'list') {
+        const { data: entries, error } = await supabase.rpc('list_showcase_experiments')
+        if (error) return toolError('Could not read the Showcase.', error.message)
+        const sourceIds = (entries ?? []).map((entry: any) => entry.source_experiment_id).filter(Boolean)
+        const { data: owned, error: ownedError } = sourceIds.length
+          ? await supabase.from('experiments').select('id, revision').eq('owner_id', userId).in('id', sourceIds)
+          : { data: [], error: null }
+        if (ownedError) return toolError('Could not read the owned Experiments.', ownedError.message)
+        const currentRevision = new Map((owned ?? []).map((row: any) => [row.id, Number(row.revision)]))
+        return toolResult({
+          action,
+          entries: (entries ?? []).map((entry: any) => {
+            const current = currentRevision.get(entry.source_experiment_id)
+            return {
+              showcase_id: entry.showcase_id,
+              experiment_id: entry.source_experiment_id,
+              title: entry.title,
+              published_revision: entry.source_revision,
+              published_at: entry.published_at,
+              collection: entry.showcase_collection_name,
+              ...(current === undefined ? {} : { current_revision: current, published_copy_is_behind: current !== Number(entry.source_revision) }),
+            }
+          }),
+        })
+      }
+
+      if (!experiment_id) return toolError(`${action} requires experiment_id.`)
+
+      if (action === 'remove') {
+        const { data, error } = await supabase.rpc('remove_experiment_from_showcase', { p_experiment_id: experiment_id })
+        if (error) return toolError('Could not remove the Experiment from the Showcase.', error.message)
+        return toolResult({ action, experiment_id, removed: Boolean(data) })
+      }
+
+      let expected = revision
+      if (expected === undefined) {
+        const { data: experiment, error } = await supabase
+          .from('experiments')
+          .select('revision')
+          .eq('id', experiment_id)
+          .eq('owner_id', userId)
+          .maybeSingle()
+        if (error) return toolError('Could not read the Experiment.', error.message)
+        if (!experiment) return toolError('Only your own Experiments can be published to the Showcase.')
+        expected = Number(experiment.revision)
+      }
+      const { data: showcaseId, error } = await supabase.rpc('promote_experiment_to_showcase', {
+        p_experiment_id: experiment_id,
+        p_expected_revision: expected,
+      })
+      if (error) return toolError('Could not publish the Experiment to the Showcase.', error.message)
+      return toolResult({ action, experiment_id, published_revision: expected, showcase_id: showcaseId })
+    },
+  )
+
   server.registerTool(
     'create_experiment',
     {
