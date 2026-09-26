@@ -339,6 +339,36 @@ function errorDiagnostic(artifact, error) {
   };
 }
 
+// What Metrics may read besides configuration constants: named references,
+// the Controller's private state (memory and traits) and the Environment.
+function metricsContext({ parameterTypes, references = [], controller = null, environment = null }) {
+  return {
+    parameters: parameterTypes,
+    references,
+    agentState: Object.fromEntries((controller?.state ?? []).map(({ name, type }) => [name, type])),
+    runtimeCapabilities: environment ? ["environment_scalar"] : [],
+  };
+}
+
+// The same Metrics context for a stored Experiment, for fine-grained Metrics
+// authoring. Each part is best effort: an artifact that does not compile only
+// narrows what the Metrics may read, and whole-Experiment validation still runs
+// before any write.
+export function metricsCompileContext(artifacts) {
+  const byId = new Map((artifacts ?? []).map((artifact) => [artifact?.id, artifact?.content ?? ""]));
+  const config = compileConfig(byId.get("configuration") ?? "");
+  const parameterTypes = Object.fromEntries(Object.keys(numericParameters(config)).map((name) => [name, "scalar"]));
+  const initializerSource = byId.get("initialization") ?? "";
+  const initializerConfig = { ...config, values: { ...config.values, SEED: 0 } };
+  let references = [];
+  let environment = null;
+  let controller = null;
+  try { references = compileInitializer(initializerSource, initializerConfig).world_references?.references?.map(({ name }) => name) ?? []; } catch {}
+  try { environment = compileEnvironmentScalar(initializerSource, initializerConfig); } catch {}
+  try { controller = compileController(byId.get("controller") ?? "", { parameters: parameterTypes, references }); } catch {}
+  return metricsContext({ parameterTypes, references, controller, environment });
+}
+
 export function validateExperimentArtifacts(artifacts) {
   let normalized;
   try { normalized = normalizeExperimentArtifacts(artifacts); }
@@ -382,15 +412,7 @@ export function validateExperimentSources({ config_source, initializer_source, c
   catch (error) { diagnostics.push(errorDiagnostic("initializer", error)); return invalid(diagnostics); }
 
   let metrics;
-  try {
-    const agentState = Object.fromEntries((controller.state ?? []).map(({ name, type }) => [name, type]));
-    metrics = compileMetrics(metrics_source, {
-      parameters: parameterTypes,
-      references,
-      agentState,
-      runtimeCapabilities: environment ? ["environment_scalar"] : [],
-    });
-  }
+  try { metrics = compileMetrics(metrics_source, metricsContext({ parameterTypes, references, controller, environment })); }
   catch (error) { diagnostics.push(errorDiagnostic("metrics", error)); return invalid(diagnostics); }
 
   return {

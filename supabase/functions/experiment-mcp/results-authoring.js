@@ -1,4 +1,4 @@
-import { compileConfig, numericParameters } from './vendor/config-compiler.js'
+import { metricsCompileContext } from './authoring.js'
 import { compileMetrics } from './vendor/metrics-compiler.js'
 
 export const RESULTS_PRESENTATION_SCHEMA = 'vlab.results-presentation/1'
@@ -14,13 +14,6 @@ export const RESULTS_PRESENTATION_CONTRACT = Object.freeze({
   scientific_revision_policy: 'Results presentation is workspace state and does not increment the scientific Experiment revision.',
   arbitrary_plot_code: false,
 })
-
-function metricParameters(artifacts) {
-  const configuration = artifacts.find((artifact) => artifact.id === 'configuration')?.content ?? ''
-  const config = compileConfig(configuration)
-  const numeric = numericParameters(config)
-  return Object.fromEntries(Object.keys(numeric).map((name) => [name, 'scalar']))
-}
 
 function metricsArtifact(artifacts) {
   const artifact = artifacts.find((candidate) => candidate.id === 'metrics')
@@ -55,23 +48,23 @@ function metricSpans(source, compiled) {
   })
 }
 
-function oneMetric(source, parameters) {
-  const compiled = compileMetrics(source, { parameters })
+function oneMetric(source, context) {
+  const compiled = compileMetrics(source, context)
   if (compiled.metrics.length !== 1) throw new Error('metric_source must define exactly one @metric(...) function.')
   return compiled.metrics[0]
 }
 
 export function metricIdsFromArtifacts(artifacts) {
   const metric = metricsArtifact(artifacts)
-  const compiled = compileMetrics(metric.content, { parameters: metricParameters(artifacts) })
+  const compiled = compileMetrics(metric.content, metricsCompileContext(artifacts))
   return compiled.metrics.map((entry) => entry.id)
 }
 
 export function mutateMetricArtifact(artifacts, { action, metric_id = null, metric_source = null }) {
-  const parameters = metricParameters(artifacts)
+  const context = metricsCompileContext(artifacts)
   const currentArtifact = metricsArtifact(artifacts)
   const source = currentArtifact.content
-  const compiled = compileMetrics(source, { parameters })
+  const compiled = compileMetrics(source, context)
   const spans = metricSpans(source, compiled)
   const byId = new Map(spans.map((span) => [span.id, span]))
 
@@ -80,7 +73,7 @@ export function mutateMetricArtifact(artifacts, { action, metric_id = null, metr
 
   if (action === 'create_metric') {
     if (typeof metric_source !== 'string') throw new Error('create_metric requires metric_source.')
-    const replacement = oneMetric(metric_source, parameters)
+    const replacement = oneMetric(metric_source, context)
     if (byId.has(replacement.id)) throw new Error(`Metric '${replacement.id}' already exists.`)
     affectedMetricId = replacement.id
     const prefix = source.trimEnd()
@@ -90,7 +83,7 @@ export function mutateMetricArtifact(artifacts, { action, metric_id = null, metr
     if (typeof metric_source !== 'string') throw new Error('update_metric requires metric_source.')
     const span = byId.get(metric_id)
     if (!span) throw new Error(`Metric '${metric_id}' does not exist.`)
-    const replacement = oneMetric(metric_source, parameters)
+    const replacement = oneMetric(metric_source, context)
     if (replacement.id !== metric_id) {
       throw new Error(`update_metric must preserve stable metric id '${metric_id}'. Remove/create explicitly to change identity.`)
     }
@@ -105,7 +98,7 @@ export function mutateMetricArtifact(artifacts, { action, metric_id = null, metr
     throw new Error(`Unsupported metric action '${action}'.`)
   }
 
-  compileMetrics(nextSource, { parameters })
+  compileMetrics(nextSource, context)
   const nextArtifacts = artifacts.map((artifact) => artifact.id === 'metrics'
     ? { ...artifact, content: nextSource }
     : { ...artifact })
@@ -151,8 +144,18 @@ export function emptyResultsPresentation() {
   return { schema_version: RESULTS_PRESENTATION_SCHEMA, revision: 0, panels: [] }
 }
 
+// Saved panels may name metrics that a later Experiment revision removed. Such
+// references cannot be plotted, so they are dropped (and a panel left empty is
+// dropped) before any change, instead of blocking every panel edit.
+function plottablePanels(currentPanels, availableMetricIds) {
+  const available = new Set(availableMetricIds ?? [])
+  return (currentPanels ?? [])
+    .map((panel) => ({ ...panel, metric_ids: (panel?.metric_ids ?? []).filter((id) => available.has(String(id))) }))
+    .filter((panel) => panel.metric_ids.length > 0)
+}
+
 export function mutateResultsPanels(currentPanels, availableMetricIds, operation) {
-  let panels = normalizeResultsPanels(currentPanels ?? [], availableMetricIds)
+  let panels = normalizeResultsPanels(plottablePanels(currentPanels, availableMetricIds), availableMetricIds)
   if (operation.action === 'upsert_panel') {
     const next = normalizeResultsPanels([{
       id: operation.panel_id,
@@ -164,7 +167,7 @@ export function mutateResultsPanels(currentPanels, availableMetricIds, operation
     else panels.push(next)
   } else if (operation.action === 'remove_panel') {
     const id = panelId(operation.panel_id)
-    if (!panels.some((panel) => panel.id === id)) throw new Error(`Results panel '${id}' does not exist.`)
+    if (!(currentPanels ?? []).some((panel) => panel?.id === id)) throw new Error(`Results panel '${id}' does not exist.`)
     panels = panels.filter((panel) => panel.id !== id)
   } else {
     throw new Error(`Unsupported Results action '${operation.action}'.`)
