@@ -3,7 +3,7 @@
 ## Start here
 
 1. Read `DEVELOPMENT_WORKFLOW.md` completely.
-2. Read `CURRENT_STATUS.md` completely.
+2. Read `CURRENT_STATUS.md` completely. If your knowledge of the repository predates 24 September 2026, also read `docs/HANDOVER_2026-09-26.md`.
 3. Read the active issue for the current task.
 4. Read only the technical/scientific documents in `docs/` that are relevant to that task.
 5. Consult `ROADMAP.md` when strategic direction or sequencing is materially relevant.
