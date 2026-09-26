@@ -38,7 +38,7 @@ test("#523 exposes the sixth Professor action", () => {
 
 test("#523 MCP roundtrips resolved support without treating it as missing", () => {
   assert.match(mcp, /vlab\.capability-request\/11/);
-  assert.match(metrics, /MCP_SERVER_VERSION = '3\.27\.0'/);
+  assert.match(metrics, /MCP_SERVER_VERSION = '3\.28\.0'/);
   assert.match(mcp, /resolved_supported/);
   assert.match(mcp, /support_resolution/);
   assert.match(mcp, /already_supported:/);

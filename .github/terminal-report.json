@@ -1,19 +1,17 @@
 {
   "schema": "vlab.terminal-report/2",
-  "outcome": "#577 complete: the environment field has locals and if/elif/else",
-  "owner_impact": "Last part of the one-grammar work. environmental_scalar(x, y, config) can now use local variables, += and if/elif/else on comparisons and and/or/not, e.g. compute a distance once and return different values inside and outside a site. It stays a pure function of position: every path must return a number, with no loops, randomness or effects. Fields written as a single return compile to exactly the same simulator input as before, so no Experiment changed. With this, #577 is complete: all four code artifacts share one grammar. Test now: optional. To try it, write an environment field with an if/else in a copy of an Experiment and run it.",
+  "outcome": "#592 fixed: the MCP Metrics/Results tool accepts every valid Metrics and can remove stale panels",
+  "owner_impact": "While fixing the audited Experiments through the connector, its fine-grained Metrics/Results tool refused Experiments whose Metrics read robot state, traits or the field (for example the corrected Firat aggregation), even though whole-Experiment edits accepted them, and it could not delete a Results panel that pointed to a removed metric. Both are fixed in connector version 3.28.0; the authoring language is unchanged. Test now: optional. In ChatGPT or Claude, ask the connector to read the Results of the Firat aggregation Experiment; it now answers instead of reporting 'unknown agent private scientific state'.",
   "next": {
     "kind": "scope_complete",
     "disposition": "closed",
     "lab_url": "https://eliseofe.github.io/virtual-lab/",
-    "text": "#577 (one grammar) is complete and closed. What remains from this thread is your audit of all Experiments, whenever you want it."
+    "text": "#592 is closed. The audit fixes are in the collection 'Audit fixes — 26 Sep 2026 (to check)' for your review."
   },
-  "close_issue": 577,
+  "close_issue": 592,
   "technical_evidence": [
-    "Environment compiler on the shared statement parser with type, definite-assignment and definite-return checks; IR vlab.environment-scalar-ir/0.2 (body of statements) only when the body is more than a single return, else the unchanged 0.1 expression.",
-    "Rust EnvironmentRuntime accepts 0.1 and 0.2, validates types, definite assignment and definite return, evaluates both sides of and/or.",
-    "Equivalence: only compileEnvironmentScalar cases changed, none that previously compiled; changes are rejections by the old single-return rule (now accepted or given a specific error) and sharper errors on invalid input. New recorded reference 'environment-statements': native and WebAssembly bit-identical; the six other references unchanged.",
-    "721 tests pass; tsc, cargo tests and fmt clean; mirrored browser smoke and startup-recovery smoke pass. Contract vlab.authoring/0.17, MCP 3.27.0.",
-    "Follow-up: the release report's completion state now uses the workflow's scope_complete format (the previous deploy's report step rejected it; deployment and smoke had passed)."
+    "authoring.js exports metricsCompileContext(artifacts): best-effort per artifact, same shape as whole-Experiment validation (shared metricsContext helper); results-authoring.js uses it for read, create/update/remove metric.",
+    "mutateResultsPanels drops references to metrics that no longer exist before an edit; remove_panel checks the saved panels, so a stale panel can be removed; unknown metrics in a new panel are still rejected.",
+    "Two new tests fail on the previous code and pass now; web tests 723 pass. MCP server 3.28.0, contract vlab.authoring/0.17 unchanged."
   ]
 }

@@ -124,3 +124,40 @@ test("#200 deployed-contract source increments versions and keeps Results outsid
   assert.doesNotMatch(bridge, /__vlabResultsUI|\.click\(\)/);
   assert.match(shell, /import "\.\/results-presentation-bridge\.js"/);
 });
+
+// #592: the fine-grained Metrics tool compiles Metrics with the same context as
+// whole-Experiment validation (Controller private state, references, Environment).
+test("#592 Metrics may read private state, traits and the Environment through fine-grained authoring", () => {
+  const full = [
+    { id: "configuration", type: "configuration", label: "Configuration", format: "python-vlab", order: 1, content: "N = 4\nCONTROL_DT = 0.1\nEXPERIMENT_DURATION = 10.0\nARENA_SIZE = 10.0\nSENSOR_NOISE = 0.0\nINTERACTION_RADIUS = 1.0\nMAX_FORWARD_SPEED = 0.1\nMAX_ANGULAR_SPEED = 1.0\nRHO = 0.5\n" },
+    { id: "initialization", type: "initialization", label: "Initialization", format: "python-vlab", order: 2, content: "def environmental_scalar(x, y, config):\n    return x\n\ndef initialize(config, rng, place):\n    group(\"informed\", fraction=config.RHO, dimension=\"information\")\n    rest_of_group(\"uninformed\", dimension=\"information\")\n    set_trait(\"informed\", \"informed\", True)\n    for i in range(config.N):\n        place(i, rng.uniform(-1.0, 1.0), rng.uniform(-1.0, 1.0), 0.0)\n" },
+    { id: "controller", type: "controller", label: "Controller", format: "python-vlab", order: 3, content: "class Robot(Agent):\n    informed = trait(False)\n    state = 0.0\n\n    def step(self, obs):\n        self.state = obs.environmental_scalar\n        return Motion(0.1, 0.0)\n" },
+    { id: "metrics", type: "metrics", label: "Metrics", format: "python-vlab-metrics/0.1", order: 4, content: "" },
+  ];
+  const metric = `@metric(id="informed.field", name="Field under informed robots", unit=None, sampling=every(1.0))
+def informed_field(snapshot):
+    total = 0.0
+    for a in snapshot.agents:
+        if a.private_state.informed and a.private_state.state > -100.0:
+            total = total + environment_scalar_at(a.position)
+    return total
+`;
+  const created = mutateMetricArtifact(full, { action: "create_metric", metric_source: metric });
+  assert.deepEqual(metricIdsFromArtifacts(created.artifacts), ["informed.field"]);
+});
+
+test("#592 a panel naming a removed metric can be removed and does not block other panel edits", () => {
+  const stale = [
+    { id: "panel.kept", type: "time-series", metric_ids: ["metric.one", "metric.gone"] },
+    { id: "panel.stale", type: "time-series", metric_ids: ["metric.gone"] },
+  ];
+  assert.deepEqual(mutateResultsPanels(stale, ["metric.one"], { action: "remove_panel", panel_id: "panel.stale" }), [
+    { id: "panel.kept", type: "time-series", metric_ids: ["metric.one"] },
+  ]);
+  assert.deepEqual(mutateResultsPanels(stale, ["metric.one"], { action: "upsert_panel", panel_id: "panel.new", metric_ids: ["metric.one"] }), [
+    { id: "panel.kept", type: "time-series", metric_ids: ["metric.one"] },
+    { id: "panel.new", type: "time-series", metric_ids: ["metric.one"] },
+  ]);
+  assert.throws(() => mutateResultsPanels(stale, ["metric.one"], { action: "remove_panel", panel_id: "panel.missing" }), /does not exist/);
+  assert.throws(() => mutateResultsPanels([], ["metric.one"], { action: "upsert_panel", panel_id: "panel.bad", metric_ids: ["metric.gone"] }), /unknown metric/);
+});
