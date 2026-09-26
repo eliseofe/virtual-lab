@@ -2,7 +2,7 @@
 
 Status: **current contract candidate, 20 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.15`, exposed by production `experiment-mcp` server `3.25.0`, interface `17`. Since #577 all code artifacts share one grammar (`code_grammar`): `//` (floor division) and `%` (remainder with the sign of the divisor) on scalars, and `and`/`or`/`not` on booleans with both sides of `and`/`or` always evaluated; `for NAME in range(...)` loops over run constants (numbers and parameters) in the Controller and Metrics; every code artifact, Initialization included, is type-checked before it runs (`code_grammar.static_checking`). Robots are anonymous (D-022): heterogeneity is declared in Initialization as exact groups, each naming its dimension (`group(...)`, `rest_of_group(...)`, `within=`), to which read-only traits (`set_trait(...)`, Controller `NAME = trait(default)`) and sensors (`equip(...)`) attach (D-023; full guide in `docs/HETEROGENEITY_GUIDE.md`), and the Controller cannot read `N`, `ARENA_SIZE` or `EXPERIMENT_DURATION`.
+Current machine-readable contract: `vlab.authoring/0.16`, exposed by production `experiment-mcp` server `3.26.0`, interface `17`. Since #577 all code artifacts share one grammar (`code_grammar`): `//` (floor division) and `%` (remainder with the sign of the divisor) on scalars, and `and`/`or`/`not` on booleans with both sides of `and`/`or` always evaluated; `for NAME in range(...)` loops over run constants (numbers and parameters) in the Controller and Metrics; every code artifact, Initialization included, is type-checked before it runs (`code_grammar.static_checking`). Robots are anonymous (D-022): heterogeneity is declared in Initialization as exact groups, each naming its dimension (`group(...)`, `rest_of_group(...)`, `within=`), to which read-only traits (`set_trait(...)`, Controller `NAME = trait(default)`) and sensors (`equip(...)`) attach (D-023; full guide in `docs/HETEROGENEITY_GUIDE.md`), and the Controller cannot read `N`, `ARENA_SIZE` or `EXPERIMENT_DURATION`.
 
 ## Canonical Experiment artifacts
 
@@ -224,4 +224,4 @@ Experiment-domain AI clients have no GitHub/repository, shell, deployment, arbit
 
 ## Accepted scientific fixture
 
-The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.15`.
+The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.16`.

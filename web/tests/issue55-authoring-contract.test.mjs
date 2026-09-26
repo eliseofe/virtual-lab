@@ -36,7 +36,7 @@ test("issue #55/#63/#196 edge validator vendors the exact production compilers a
 });
 
 test("issue #55/#196 contract contains software interface only, not a scientific reference experiment", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.15");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.16");
   assert.equal(AUTHORING_CONTRACT.experiment_interface_version, "9");
   assert.equal(AUTHORING_CONTRACT.experiment_artifact_interface, "vlab.experiment-artifacts/3");
   assert.equal(AUTHORING_CONTRACT.runtime_contract.version, "vlab.runtime/0.2");
@@ -62,7 +62,7 @@ test("issue #55/#196 contract contains software interface only, not a scientific
 test("issue #55/#63/#196 a generic experiment with arbitrary scientific parameter names and empty Metrics validates", () => {
   const result = validateExperimentSources(SOFTWARE_FIXTURE);
   assert.equal(result.valid, true, JSON.stringify(result, null, 2));
-  assert.equal(result.contract_version, "vlab.authoring/0.15");
+  assert.equal(result.contract_version, "vlab.authoring/0.16");
   assert.equal(result.compiled.configuration, "vlab.config/0.2");
   assert.equal(result.compiled.initializer, "vlab.initializer-state/0.4");
   assert.equal(result.compiled.controller_language, "python-vlab/0.1");

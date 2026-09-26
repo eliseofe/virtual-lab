@@ -91,7 +91,7 @@ export function metricsCompletionItems({
       score: 950,
       meta: "agent snapshot field",
     })),
-    ...Object.keys(agentState).filter((name) => agentState[name] === "scalar").map((name) => ({
+    ...Object.keys(agentState).map((name) => ({
       value: `agent.private_state.${name}`,
       caption: `agent.private_state.${name}`,
       score: 950,
@@ -286,11 +286,7 @@ function loadType(path, locals, parameters, context, line) {
     if (AGENT_FIELD_TYPES.has(field)) return AGENT_FIELD_TYPES.get(field);
     if (field.startsWith("private_state.")) {
       const name = field.slice("private_state.".length);
-      if (Object.hasOwn(context.agentState, name)) {
-        // #577: True/False traits are not yet part of the Metrics snapshot.
-        if (context.agentState[name] === "bool") throw new MetricsCompileError("unsupported-capability", `trait '${name}' is True/False, which Metrics cannot read yet; use a numeric trait (e.g. trait(0.0) and 1.0) to measure it`, line);
-        return context.agentState[name];
-      }
+      if (Object.hasOwn(context.agentState, name)) return context.agentState[name];
       throw new MetricsCompileError("type", `unknown agent private scientific state '${name}'`, line);
     }
     throw new MetricsCompileError("invalid-observation-field", `unknown agent snapshot field '${field}'`, line);
@@ -727,7 +723,7 @@ export function compileMetrics(source, {
       fields: [
         ...METRIC_OBSERVATION_FIELDS.filter((field) => field !== "snapshot.agents"),
         ...Object.keys(parameters).map((name) => `snapshot.config.${name}`),
-        ...Object.keys(context.agentState).filter((name) => context.agentState[name] === "scalar").map((name) => `snapshot.agents[].private_state.${name}`),
+        ...Object.keys(context.agentState).map((name) => `snapshot.agents[].private_state.${name}`),
         ...referenceNames.map((name) => `snapshot.references.${name}.position`),
       ],
       intrinsics: [...SNAPSHOT_INTRINSIC_SURFACES]

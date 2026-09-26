@@ -1966,6 +1966,12 @@ impl ControllerRuntime for IrControllerRuntime {
         let slot = self.private_state_slots.get(name).map(|slot| slot.index)?;
         self.private_state.get(agent_index)?.get(slot).copied()
     }
+
+    fn scientific_private_state_is_bool(&self, name: &str) -> bool {
+        self.private_state_slots
+            .get(name)
+            .is_some_and(|slot| slot.boolean)
+    }
 }
 
 #[cfg(test)]

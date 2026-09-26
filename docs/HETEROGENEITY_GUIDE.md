@@ -2,7 +2,7 @@
 
 How to make robots differ in a Virtual Lab Experiment. This is the human
 reference for Initialization and the matching part of the Controller
-(`vlab.authoring/0.15`, decisions D-022 and D-023). GPT reads the same rules
+(`vlab.authoring/0.16`, decisions D-022 and D-023). GPT reads the same rules
 from the MCP authoring contract.
 
 ## 1. The idea
@@ -123,8 +123,8 @@ set_trait("informed", "informed", True)
   trait.
 - The trait must be declared with `trait(...)` in the Controller, with the
   same type (number or True/False).
-- Metrics can read numeric traits and ordinary memory; True/False traits are
-  not readable in Metrics yet.
+- Metrics can read traits and memory, e.g. `agent.private_state.informed`
+  (True/False) in an `if`, or a numeric trait in a sum.
 
 ## 6. Sensors
 

@@ -182,6 +182,10 @@ pub trait ControllerRuntime {
     fn scientific_private_state_value(&self, _agent_index: usize, _name: &str) -> Option<f64> {
         None
     }
+    /// True for a True/False trait (#577), which Metrics read as a boolean.
+    fn scientific_private_state_is_bool(&self, _name: &str) -> bool {
+        false
+    }
 }
 pub trait MetricRuntime {
     fn reset(&mut self);
@@ -610,13 +614,16 @@ impl ScientificSnapshot<'_> {
             "heading_angle" => Some(ScientificValue::Scalar(agent.heading_angle)),
             "action.forward" => Some(ScientificValue::Scalar(action.forward)),
             "action.turning" => Some(ScientificValue::Scalar(action.turning)),
-            _ => field
-                .strip_prefix("private_state.")
-                .and_then(|name| {
-                    self.controller
-                        .scientific_private_state_value(agent_index, name)
+            _ => field.strip_prefix("private_state.").and_then(|name| {
+                let value = self
+                    .controller
+                    .scientific_private_state_value(agent_index, name)?;
+                Some(if self.controller.scientific_private_state_is_bool(name) {
+                    ScientificValue::Bool(value != 0.0)
+                } else {
+                    ScientificValue::Scalar(value)
                 })
-                .map(ScientificValue::Scalar),
+            }),
         }
     }
 

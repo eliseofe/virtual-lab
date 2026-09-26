@@ -49,7 +49,7 @@ test("#524 MCP classifies before request creation and resumes support evidence",
 
 test("#524 versions the repaired closure protocol and documents exceptional Already Supported", () => {
   assert.match(mcp, /CAPABILITY_REQUEST_INTERFACE = 'vlab\.capability-request\/11'/);
-  assert.match(versions, /MCP_SERVER_VERSION = '3\.25\.0'/);
+  assert.match(versions, /MCP_SERVER_VERSION = '3\.26\.0'/);
   assert.match(versions, /capability_request_interface: 'vlab\.capability-request\/11'/);
   assert.match(workflow, /Supported requirements create no request/i);
   assert.match(workflow, /Already Supported is reserved for exceptional false positives/i);

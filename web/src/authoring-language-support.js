@@ -5,6 +5,20 @@ import { compileInitializer, initializerStructure, validateInitializerController
 import { compileMetrics, metricsCompletionItems, metricsStructure } from "./metrics/compiler.js";
 import { validateInitialStateForRuntime, validateRuntimeValues } from "./runtime/contract.js";
 
+// Initialization intrinsics offered by the editor (#577, docs/HETEROGENEITY_GUIDE.md).
+// Quoted names are the author's; word= options belong to the language.
+const INITIALIZATION_SNIPPETS = Object.freeze([
+  ["place(i, x, y, heading)", "place one robot"],
+  ["rng.uniform(low, high)", "seeded random number"],
+  ["group(\"name\", fraction=0.1, dimension=\"dimension\")", "group: who differs"],
+  ["group(\"name\", count=1, dimension=\"dimension\")", "group: who differs"],
+  ["rest_of_group(\"name\", dimension=\"dimension\")", "group: everyone left in the dimension"],
+  ["group_count(\"name\")", "resolved size of a group"],
+  ["set_trait(\"group\", \"trait\", True)", "trait: read-only value for a group"],
+  ["define_reference(\"name\", x, y)", "named point in the world"],
+  ["equip(\"group\", \"reference\", range=1.0)", "sensor for a group"],
+].map(([value, meta]) => Object.freeze({ value, caption: value, score: 800, meta })));
+
 const ARTIFACT_IDS = ["configuration", "initialization", "controller", "metrics"];
 
 function normalizedLocation(value) {
@@ -157,6 +171,7 @@ export function artifactCompletionItems(id, sources) {
       score: 900,
       meta: "configuration parameter",
     }));
+    items.push(...INITIALIZATION_SNIPPETS);
     try {
       const structure = initializerStructure(sources.initialization ?? "");
       for (const symbol of structure.symbols) {

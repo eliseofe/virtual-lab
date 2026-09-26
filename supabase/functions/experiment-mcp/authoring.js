@@ -18,7 +18,7 @@ export const CORE_EXPERIMENT_ARTIFACTS = Object.freeze([
 ]);
 
 export const AUTHORING_CONTRACT = Object.freeze({
-  contract_version: "vlab.authoring/0.15",
+  contract_version: "vlab.authoring/0.16",
   experiment_interface_version: "9",
   experiment_artifact_interface: "vlab.experiment-artifacts/3",
   validation_mode: "compile-without-simulation",
@@ -92,7 +92,7 @@ export const AUTHORING_CONTRACT = Object.freeze({
       syntax: "Restricted Python-compatible class syntax: class Name(Agent), optional capability-backed class state declarations, and def step(self, obs). Supports typed scalar/vector/boolean expressions, assignments, +=, arithmetic, scalar comparisons, boolean composition, if/elif/else, bounded iteration over capability-backed iterables, and return of capability-backed actions.",
       entry: "step(self, obs)",
       anonymity: "A robot knows only its own sensors, private state, parameters and random stream. N, ARENA_SIZE and EXPERIMENT_DURATION are not available to the Controller (D-022); other Configuration values are robot parameters.",
-      class_attributes: "NAME = number declares the robot's own memory, which the robot may read and change. NAME = trait(default) declares a trait (a number, True or False) that the experimenter sets per group with set_trait; the robot may read it but assigning it is a compile error (D-023). Metrics can read numeric traits and memory, not True/False traits yet.",
+      class_attributes: "NAME = number declares the robot's own memory, which the robot may read and change. NAME = trait(default) declares a trait (a number, True or False) that the experimenter sets per group with set_trait; the robot may read it but assigning it is a compile error (D-023). Metrics read traits and memory as agent.private_state.NAME (True/False traits as booleans).",
       control_flow: {
         boolean_literals: ["True", "False"],
         comparison_operators: ["<", "<=", ">", ">=", "==", "!="],
