@@ -452,9 +452,9 @@ try {
       if (replayRandomized?.runSeed !== randomizedSeed || Number(replayRandomized?.scientificTime ?? -1) !== 0) throw new Error(`same-seed restart did not preserve the new seed: ${JSON.stringify(replayRandomized)}`);
 
       const referenceInitializer = `def initialize(config, rng, place):
-    group("far", count=1, placement="explicit")
-    group("near", count=1, placement="explicit")
-    group("blind", rest=True)
+    group("far", count=1, dimension="sensing", placement="explicit")
+    group("near", count=1, dimension="sensing", placement="explicit")
+    rest_of_group("blind", dimension="sensing")
     for i in range(config.N):
         if i == 0:
             place(i, i * 0.01, 0.0, 0.0, group="far")

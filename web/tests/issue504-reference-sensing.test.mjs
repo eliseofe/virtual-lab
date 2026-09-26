@@ -22,8 +22,8 @@ SENSOR_NOISE = 0.0
 `;
 
 const initialization = `def initialize(config, rng, place):
-    group("far", count=1, placement="explicit")
-    group("near", count=1, placement="explicit")
+    group("far", count=1, dimension="sensing", placement="explicit")
+    group("near", count=1, dimension="sensing", placement="explicit")
     place(0, -4.9, 0.0, 0.0, group="far")
     place(1, 0.0, 0.0, 0.0, group="near")
     define_reference("goal", 4.9, 0.0)

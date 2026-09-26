@@ -56,13 +56,13 @@
       "groups": [
         {
           "name": "far",
-          "partition": "default",
+          "dimension": "sensing",
           "count": 1,
           "placement": "explicit"
         },
         {
           "name": "near",
-          "partition": "default",
+          "dimension": "sensing",
           "count": 1,
           "placement": "explicit"
         }

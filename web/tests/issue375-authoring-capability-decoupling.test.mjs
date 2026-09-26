@@ -62,7 +62,7 @@ GAIN = 0.5
 };
 
 test("#375 stable authoring contract no longer carries the current capability inventory", () => {
-  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.14");
+  assert.equal(AUTHORING_CONTRACT.contract_version, "vlab.authoring/0.15");
   assert.equal(AUTHORING_CONTRACT.capability_resolution.authority, "capability_registry");
   assert.equal(AUTHORING_CONTRACT.capability_resolution.unregistered_surface_policy, "reject");
   assert.equal(AUTHORING_CONTRACT.capability_resolution.candidate_surface_policy, "not_authorable");
@@ -124,7 +124,7 @@ test("#375 browser and edge controller compilers consume the same implemented ca
 test("#375 currently supported controller programs remain valid", () => {
   const result = validateExperimentSources(FIXTURE);
   assert.equal(result.valid, true, JSON.stringify(result, null, 2));
-  assert.equal(result.contract_version, "vlab.authoring/0.14");
+  assert.equal(result.contract_version, "vlab.authoring/0.15");
 });
 
 test("#375 unsupported observation remains blocked as a semantic capability", () => {
@@ -192,7 +192,7 @@ test("#375 neutral MCP discovery keeps contract and capabilities separate but jo
   assert.match(mcp, /authoring_surfaces: binding\?\.surfaces \?\? \[\]/);
   assert.match(mcp, /capability_registry: discoverableCapabilityRegistry/);
   assert.doesNotMatch(mcp, /AUTHORING_CONTRACT\.canonical_capability_bindings/);
-  assert.match(versions, /MCP_SERVER_VERSION = '3\.24\.0'/);
+  assert.match(versions, /MCP_SERVER_VERSION = '3\.25\.0'/);
   assert.match(versions, /MCP_INTERFACE_VERSION = '17'/);
-  assert.match(versions, /contract_version: 'vlab\.authoring\/0\.14'/);
+  assert.match(versions, /contract_version: 'vlab\.authoring\/0\.15'/);
 });

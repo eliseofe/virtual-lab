@@ -2,7 +2,7 @@
 
 Status: **current contract candidate, 20 September 2026**.
 
-Current machine-readable contract: `vlab.authoring/0.14`, exposed by production `experiment-mcp` server `3.23.0`, interface `17`. Since #577 all code artifacts share one grammar (`code_grammar`): `//` (floor division) and `%` (remainder with the sign of the divisor) on scalars, and `and`/`or`/`not` on booleans with both sides of `and`/`or` always evaluated; `for NAME in range(...)` loops over run constants (numbers and parameters) in the Controller and Metrics; every code artifact, Initialization included, is type-checked before it runs (`code_grammar.static_checking`). Robots are anonymous (D-022): heterogeneity is declared in Initialization as exact groups (`group(...)`, `group_count(...)`, `place(..., group=...)`) to which robot properties attach (`set_state(...)` for starting memory, `equip(...)` for reference sensors) (D-023), and the Controller cannot read `N`, `ARENA_SIZE` or `EXPERIMENT_DURATION`.
+Current machine-readable contract: `vlab.authoring/0.15`, exposed by production `experiment-mcp` server `3.25.0`, interface `17`. Since #577 all code artifacts share one grammar (`code_grammar`): `//` (floor division) and `%` (remainder with the sign of the divisor) on scalars, and `and`/`or`/`not` on booleans with both sides of `and`/`or` always evaluated; `for NAME in range(...)` loops over run constants (numbers and parameters) in the Controller and Metrics; every code artifact, Initialization included, is type-checked before it runs (`code_grammar.static_checking`). Robots are anonymous (D-022): heterogeneity is declared in Initialization as exact groups, each naming its dimension (`group(...)`, `rest_of_group(...)`, `within=`), to which read-only traits (`set_trait(...)`, Controller `NAME = trait(default)`) and sensors (`equip(...)`) attach (D-023; full guide in `docs/HETEROGENEITY_GUIDE.md`), and the Controller cannot read `N`, `ARENA_SIZE` or `EXPERIMENT_DURATION`.
 
 ## Canonical Experiment artifacts
 
@@ -74,41 +74,14 @@ This vocabulary is intentionally independent of any specific paper. Scientific c
 
 ## Heterogeneity as groups (#577, D-022, D-023)
 
-Robots are anonymous: no one addresses an individual robot. Heterogeneity is declared by the experimenter in two independent parts:
+The complete authoring rules, with examples, are in `docs/HETEROGENEITY_GUIDE.md`; the MCP contract carries the same rules as `initialization.groups`. In short:
 
-- **Who differs** is a partition of the swarm into groups of exact size (capability `initialization.swarm_groups`). A group carries no values.
-- **What differs** is attached to a group by one statement per kind of robot property: `set_state` for starting memory (capability `initialization.per_agent_private_state_assignment`), and `equip` for reference sensors (capability `observation.named_reference_relative_position`).
-
-```python
-group("informed", fraction=config.RHO)
-group("leader", count=1, placement="explicit")
-group("uninformed", rest=True)
-group("equipped", fraction=0.5, partition="hardware")   # an independent partition
-group("plain", rest=True, partition="hardware")
-
-set_state("informed", informed=1.0)
-set_state("leader", leader=1.0)
-define_reference("nest", 0.0, 0.0)
-equip("equipped", "nest", range=5.0)                   # equip("all", "nest") for every robot
-
-place(0, 0.0, 0.0, 0.0, group="leader")         # explicit members, looping over group_count("leader")
-for i in range(1, config.N):
-    place(i, x, y, heading)                     # random groups are dealt to these bodies
-```
-
-- **Sizes.** `fraction=f` gives `round(f × N)` members, with halves rounding up; `count=k` gives exactly `k`; one group per partition may be `rest=True` and receives the remaining robots. Without a `rest` group the sizes of a partition must add up to `N`. Counts are exact in every run, and the Lab's setup message and the MCP (`compiled.groups`) report them.
-- **Partitions.** Groups without `partition=` form the default partition. Groups of one partition are mutually exclusive; different partitions are independent, like crossed factors in an experimental design.
-- **Binding.**
-  - `placement="random"`, the default, deals each partition's members to the robots not explicitly placed in that partition. The deal is a uniform random permutation drawn from initialization stream `1 + partition order`, so groups never change placement draws, which use stream 0. The default partition, declared first, uses stream 1 as roles did.
-  - `placement="explicit"` requires placing each member with `place(i, x, y, heading, group="name")`. A robot can be placed explicitly in at most one group.
-  - The compiler checks the executed composition exactly and reports a mismatch with the numbers.
-- **Properties.**
-  - `set_state("group", name=value, ...)`: finite starting values for private state, which the Controller must declare (cross-artifact validation). Robots outside the group keep the Controller class default.
-  - `equip("group", "reference", range=r)`: the group's robots sense the reference up to range `r`, or without limit when `range` is `None` or omitted.
-  - `"all"` names every robot. A robot must not receive the same state name or the same sensor from two groups; this is a compile error.
-- The Rust runtime receives the same per-agent profile and per-agent sensor list as before, so it is unchanged.
-- Declare every group before the first `place(...)` or `group_count(...)`.
-- Retired in #577, with errors pointing to the replacement: `set_agent_state(i, name, value)`, `role(...)`, `role_count(...)` and `set_agent_reference_sensor(i, name, range)`. Stored revisions that use them no longer compile.
+- **Who differs.** `group(name, fraction= | count=, dimension=, within=, placement=)` and `rest_of_group(name, dimension=, within=, placement=)` split the swarm (or, with `within=`, one group) into groups of exact size. Every declaration names its dimension; separate dimensions are independent, nested splits give exact joint counts. Capability `initialization.swarm_groups`.
+- **What differs.** `set_trait(group, trait, value)` gives a group a trait (number or True/False) that the Controller declares as `NAME = trait(default)` and may only read (capability `initialization.per_agent_private_state_assignment`); `equip(group, reference, range=)` gives a group a reference sensor (capability `observation.named_reference_relative_position`). `"all"` names every robot.
+- **Checks.** Sizes add up per split; no robot receives the same trait or sensor from two groups; traits are declared as traits with the matching type and never assigned by the robot.
+- **Binding.** Random groups are dealt per split from initialization stream `1 + split order`, so placement draws (stream 0) are unaffected; explicit groups (whole-swarm dimensions only) are placed with `place(..., group=)`.
+- The Rust runtime receives per-agent trait values and sensor lists; traits are stored as numbers, True/False as 1/0 read back as booleans, and the runtime also rejects writes to traits.
+- Retired, with errors naming the replacement: `set_agent_state`, `role`, `role_count`, `set_state`, `rest=True`, `partition=`, `set_agent_reference_sensor`.
 
 ## Generic Controller control-flow substrate
 
@@ -251,4 +224,4 @@ Experiment-domain AI clients have no GitHub/repository, shell, deployment, arbit
 
 ## Accepted scientific fixture
 
-The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.14`.
+The authoring contract itself remains science-neutral. Owner-authorized scientific fixtures used for product acceptance are recorded in `docs/SCIENTIFIC_CONTRACT.md`; they are not generic requirements of `vlab.authoring/0.15`.

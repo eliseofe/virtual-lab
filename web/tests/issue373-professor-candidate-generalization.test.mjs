@@ -74,9 +74,9 @@ test("#373 generalized candidates remain unavailable to controller authoring", (
 });
 
 test("#373 versions discovery without changing the nine-tool or authoring contract", () => {
-  assert.match(versions, /MCP_SERVER_VERSION = '3\.24\.0'/);
+  assert.match(versions, /MCP_SERVER_VERSION = '3\.25\.0'/);
   assert.match(versions, /MCP_INTERFACE_VERSION = '17'/);
-  assert.match(versions, /contract_version: 'vlab\.authoring\/0\.14'/);
+  assert.match(versions, /contract_version: 'vlab\.authoring\/0\.15'/);
   assert.match(versions, /capability_request_interface: 'vlab\.capability-request\/11'/);
   assert.match(mcp, /shared_tool_count: MCP_TOOL_COUNT/);
 });

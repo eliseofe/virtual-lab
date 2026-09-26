@@ -151,10 +151,13 @@ function currentPinch() {
 let latestGroups = [];
 function withGroups(text) {
   if (!latestGroups.length) return text;
-  const partitions = new Map();
-  for (const { name, partition, count } of latestGroups) partitions.set(partition, [...(partitions.get(partition) ?? []), `${name} ${count}`]);
-  const parts = [...partitions].map(([partition, groups]) => (partition === "default" ? "" : `${partition}: `) + groups.join(", "));
-  return `${text} Groups: ${parts.join("; ")}.`;
+  // One entry per split: "information: informed 80, uninformed 120".
+  const splits = new Map();
+  for (const { name, dimension, within, count } of latestGroups) {
+    const label = within ? `${dimension} within ${within}` : dimension;
+    splits.set(label, [...(splits.get(label) ?? []), `${name} ${count}`]);
+  }
+  return `${text} Groups: ${[...splits].map(([label, groups]) => `${label}: ${groups.join(", ")}`).join("; ")}.`;
 }
 
 function compileSetup({ seed = activeSeed, configSource = ui.config.value, initializerSource = ui.initializerSource.value } = {}) {

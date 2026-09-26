@@ -70,10 +70,21 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
         artifact: "initialization",
         kind: "intrinsic",
         symbol: "group",
-        syntax: "group(\"name\", fraction=f | count=k | rest=True, placement=\"random\" | \"explicit\", partition=\"name\")",
+        syntax: "group(\"name\", fraction=f | count=k, dimension=\"dim\", within=\"parent\", placement=\"random\" | \"explicit\")",
         signature: {
           args: ["string"],
-          keywords: { fraction: "scalar", count: "integer", rest: "bool", placement: "string", partition: "string" },
+          keywords: { fraction: "scalar", count: "integer", dimension: "string", within: "string", placement: "string" },
+          result: "void",
+        },
+      },
+      {
+        artifact: "initialization",
+        kind: "intrinsic",
+        symbol: "rest_of_group",
+        syntax: "rest_of_group(\"name\", dimension=\"dim\", within=\"parent\", placement=\"random\" | \"explicit\")",
+        signature: {
+          args: ["string"],
+          keywords: { dimension: "string", within: "string", placement: "string" },
           result: "void",
         },
       },
@@ -157,14 +168,21 @@ export const IMPLEMENTED_CAPABILITY_BINDINGS = Object.freeze([
     canonical_capability_id: "25ee37e5-ba59-4e8a-9768-a5604e2501b5",
     capability_key: "initialization.per_agent_private_state_assignment",
     surfaces: [
-      // #577 (D-023): starting private state is attached to a group; no one
-      // sets state on an individual robot.
+      // #577 (D-023): traits are set per group by the experimenter and are
+      // read-only for the robot; no one sets state on an individual robot.
       {
         artifact: "initialization",
         kind: "intrinsic",
-        symbol: "set_state",
-        syntax: "set_state(\"group\", <state_name>=value, ...)",
-        signature: { args: ["string"], keywords: { "<state_name>": "scalar" }, result: "void" },
+        symbol: "set_trait",
+        syntax: "set_trait(\"group\", \"trait\", value)",
+        signature: { args: ["string", "string", "scalar|bool"], result: "void" },
+      },
+      {
+        artifact: "controller",
+        kind: "trait_declaration",
+        symbol: "trait",
+        syntax: "NAME = trait(default) class attribute, read-only via self.NAME",
+        value_type: "scalar|bool",
       },
     ],
     requires: ["624eb86c-65ee-4a15-abd4-9fd331c55956", "e7be7240-af33-4f44-9e57-17eccf4a861b"],
